@@ -1,7 +1,6 @@
 # README
 
 [![RSpec](https://github.com/feather-page/cms/actions/workflows/rspec.yml/badge.svg)](https://github.com/feather-page/cms/actions/workflows/rspec.yml)
-[![Maintainability](https://api.codeclimate.com/v1/badges/75677d635caedd03b093/maintainability)](https://codeclimate.com/github/feather-page/cms/maintainability)
 [![Coverage Status](https://coveralls.io/repos/github/feather-page/cms/badge.svg?branch=main)](https://coveralls.io/github/feather-page/cms?branch=main)
 
 
@@ -26,8 +25,8 @@ brew install hugo
 brew install libvips
 
 # Install Ruby with a version manager of your choice.
-rbenv install 3.2.2
-rbenv local 3.2.2
+rbenv install 3.4.1
+rbenv local 3.4.1
 
 # Install GEMs.
 bundle install
