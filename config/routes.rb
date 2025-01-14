@@ -23,6 +23,7 @@ Rails.application.routes.draw do
     end
     resources :deployment_targets, only: %i[index edit update]
     resources :social_media_links, only: %i[create destroy]
+    resource :site_user_invitations, only: %i[new create]
 
     get 'image/create'
     resources :images, only: %i[show create] do
