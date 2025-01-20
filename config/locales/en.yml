@@ -99,3 +99,15 @@ en:
   user_mailer:
     login:
       subject: Your login-link from feather.page
+  user_invitations:
+    new:
+      submit: Send invitation
+    create:
+      notice: User was successfully invited.
+  user_invitation_mailer:
+    invite:
+      subject: "You have been invited to %{site_name} on feather.page"
+      introduction: Someone invited you to join their site on feather.page.
+      click_link_to_accept: Click the link below to accept the invitation.
+      accept_invitation: Accept invitation
+

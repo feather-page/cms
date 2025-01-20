@@ -3,17 +3,35 @@ describe 'User Invitation' do
     it 'creates a new user' do
       as_superadmin do |user|
         site = create(:site, users: [user])
-        invitation = build(:site_user_invitation)
+        invitation = build(:user_invitation)
 
-        pp new_site_site_user_invitations_path(site)
-        visit new_site_site_user_invitations_path(site)
+        visit new_site_user_invitation_path(site)
 
         fill_in 'Email', with: invitation.email
-        click_on 'Send an invitation'
+        click_on 'Send invitation'
 
         expect(page).to have_text('User was successfully invited.')
 
-        expect(SiteUserInvitation.find_by_email(email: invitation.email, site:, user:)).to be_present
+        expect(UserInvitation.where(email: invitation.email, site:, inviting_user: user).count).to eq(1)
+      end
+    end
+
+    describe 'when the user already exists' do
+      it 'does not create a second user' do
+        as_superadmin do |user|
+          site = create(:site, users: [user])
+          existing_user = create(:user)
+          invitation = create(:user_invitation, email: existing_user.email, site: site)
+
+          visit new_site_user_invitation_path(site)
+
+          fill_in 'Email', with: invitation.email
+          click_on 'Send invitation'
+
+          expect(page).to have_text('User was successfully invited.')
+
+          expect(UserInvitation.where(email: invitation.email, site:).count).to eq(1)
+        end
       end
     end
   end
