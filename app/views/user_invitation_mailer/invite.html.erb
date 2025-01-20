@@ -1,0 +1,7 @@
+<h1><%= t('.subject', site_name: @user_invitation.site.title) %></h1>
+
+<p><%= t('.introduction') %></p>
+
+<p><%= t('.click_link_to_accept') %></p>
+
+<a href="<%= accept_invitation_url(token: @token) %>"><%= t('.accept_invitation') %></a>

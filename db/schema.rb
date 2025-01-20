@@ -216,16 +216,6 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
     t.index ["slug", "site_id"], name: "index_posts_on_slug_and_site_id", unique: true
   end
 
-  create_table "site_user_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "email"
-    t.uuid "site_id", null: false
-    t.uuid "inviting_user_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["inviting_user_id"], name: "index_site_user_invitations_on_inviting_user_id"
-    t.index ["site_id"], name: "index_site_user_invitations_on_site_id"
-  end
-
   create_table "site_users", force: :cascade do |t|
     t.string "role", default: "editor", null: false
     t.uuid "site_id", null: false
@@ -285,6 +275,19 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
     t.index ["public_id"], name: "index_themes_on_public_id", unique: true
   end
 
+  create_table "user_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "email"
+    t.string "public_id"
+    t.uuid "site_id", null: false
+    t.uuid "inviting_user_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["email", "site_id"], name: "index_user_invitations_on_email_and_site_id", unique: true
+    t.index ["inviting_user_id"], name: "index_user_invitations_on_inviting_user_id"
+    t.index ["public_id"], name: "index_user_invitations_on_public_id", unique: true
+    t.index ["site_id"], name: "index_user_invitations_on_site_id"
+  end
+
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "email", null: false
     t.datetime "last_login_at"
@@ -305,10 +308,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
   add_foreign_key "navigations", "sites"
   add_foreign_key "pages", "sites"
   add_foreign_key "posts", "sites"
-  add_foreign_key "site_user_invitations", "sites"
-  add_foreign_key "site_user_invitations", "users", column: "inviting_user_id"
   add_foreign_key "site_users", "sites"
   add_foreign_key "site_users", "users"
   add_foreign_key "sites", "themes"
   add_foreign_key "social_media_links", "sites"
+  add_foreign_key "user_invitations", "sites"
+  add_foreign_key "user_invitations", "users", column: "inviting_user_id"
 end
