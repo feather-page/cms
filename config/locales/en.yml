@@ -26,6 +26,8 @@ en:
         icon: Icon
         name: Name
         url: URL
+      user-invitation:
+        email: Email
   cancel: Cancel
   deployment_target:
     types:
@@ -104,6 +106,10 @@ en:
       submit: Send invitation
     create:
       notice: User was successfully invited.
+    edit:
+      submit: Accept invitation
+    update:
+      notice: You have successfully accepted the invitation.
   user_invitation_mailer:
     invite:
       subject: "You have been invited to %{site_name} on feather.page"

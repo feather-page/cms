@@ -7,4 +7,8 @@ class UserInvitation < ApplicationRecord
   validates :email, format: { with: URI::MailTo::EMAIL_REGEXP }
 
   generates_token_for :accept_invitation, expires_in: 7.days
+
+  def to_param
+    generate_token_for(:accept_invitation)
+  end
 end
