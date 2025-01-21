@@ -38,5 +38,23 @@ describe 'User Invitation' do
 
   describe 'resending an invitation'
 
-  describe 'accepting an invitation'
+  describe 'accepting an invitation' do
+    context 'without an existing user' do
+      it 'creates a new user and adds the user to the site' do
+        as_superadmin do |user|
+          site = create(:site, users: [user])
+          invitation = create(:user_invitation, site: site)
+
+          visit edit_site_user_invitation_path(site, invitation)
+
+          click_on 'Accept invitation'
+
+          expect(page).to have_text('You have successfully accepted the invitation.')
+
+          expect(User.where(email: invitation.email).count).to eq(1)
+          expect(User.find_by(email: invitation.email).sites).to include(site)
+        end
+      end
+    end
+  end
 end

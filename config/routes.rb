@@ -23,7 +23,11 @@ Rails.application.routes.draw do
     end
     resources :deployment_targets, only: %i[index edit update]
     resources :social_media_links, only: %i[create destroy]
-    resources :user_invitations, only: %i[index new create]
+    resources :user_invitations, only: %i[index new create edit update] do
+      member do
+        post :accept
+      end
+    end
 
     get 'image/create'
     resources :images, only: %i[show create] do
@@ -39,8 +43,6 @@ Rails.application.routes.draw do
       patch :move_down
     end
   end
-
-  get '/accept-invitation/:token', to: 'user_invitations#accept', as: :accept_invitation
 
   root 'sites#index'
 
