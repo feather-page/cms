@@ -25,7 +25,6 @@ Rails.application.routes.draw do
     resources :social_media_links, only: %i[create destroy]
     resources :user_invitations, only: %i[index new create edit update] do
       member do
-        post :accept
         post :resend
       end
     end

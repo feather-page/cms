@@ -31,6 +31,8 @@ class UserInvitationsController < ApplicationController
     @user_invitation = UserInvitation.find(params[:id])
     authorize(@user_invitation)
 
+    UserInvitations::Resend.call(user_invitation: @user_invitation, current_user:)
+
     turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
   end
 

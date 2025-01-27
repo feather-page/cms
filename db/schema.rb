@@ -278,10 +278,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
   create_table "user_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.string "email"
     t.string "public_id"
+    t.datetime "accepted_at", precision: nil
     t.uuid "site_id", null: false
     t.uuid "inviting_user_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["accepted_at"], name: "index_user_invitations_on_accepted_at"
     t.index ["email", "site_id"], name: "index_user_invitations_on_email_and_site_id", unique: true
     t.index ["inviting_user_id"], name: "index_user_invitations_on_inviting_user_id"
     t.index ["public_id"], name: "index_user_invitations_on_public_id", unique: true

@@ -118,4 +118,6 @@ en:
       introduction: Someone invited you to join their site on feather.page.
       click_link_to_accept: Click the link below to accept the invitation.
       accept_invitation: Accept invitation
-
+    invite_accepted:
+      subject: "The user %{email} accepted your invitation to %{site_name}."
+      introduction: You can now collaborate on the site together.

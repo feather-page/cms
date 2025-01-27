@@ -60,7 +60,7 @@ describe 'User Invitation' do
           site = create(:site, users: [user])
           invitation = create(:user_invitation, site: site)
 
-          visit edit_site_user_invitation_path(site, invitation)
+          visit edit_site_user_invitation_path(site_id: site, id: invitation.accept_invitation_token)
 
           click_on 'Accept invitation'
 
