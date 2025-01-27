@@ -36,7 +36,22 @@ describe 'User Invitation' do
     end
   end
 
-  describe 'resending an invitation'
+  describe 'resending an invitation' do
+    it 'resends the invitation email' do
+      as_superadmin do |user|
+        site = create(:site, users: [user])
+        invitation = create(:user_invitation, site: site)
+
+        visit site_user_invitations_path(site)
+
+        within "##{dom_id(invitation)}" do
+          click_on 'Resend'
+        end
+
+        expect(page).to have_text('Invitation was successfully resent.')
+      end
+    end
+  end
 
   describe 'accepting an invitation' do
     context 'without an existing user' do

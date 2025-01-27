@@ -1,7 +1,7 @@
 describe UserInvitationPolicy do
   subject(:policy) { described_class }
 
-  permissions :new?, :create? do
+  permissions :new?, :create?, :resend? do
     context 'for a superadmin' do
       it 'returns true' do
         user = build(:user, :superadmin)

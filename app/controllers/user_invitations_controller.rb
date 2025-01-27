@@ -13,7 +13,7 @@ class UserInvitationsController < ApplicationController
   end
 
   def create
-    UserInvitations::Create.execute(current_user:, site: current_site, email: user_invitation_params[:email])
+    UserInvitations::Create.call(current_user:, site: current_site, email: user_invitation_params[:email])
 
     turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
   end
@@ -25,6 +25,13 @@ class UserInvitationsController < ApplicationController
     login(result.user)
 
     turbo_redirect_to(root_path, notice: t('.notice'))
+  end
+
+  def resend
+    @user_invitation = UserInvitation.find(params[:id])
+    authorize(@user_invitation)
+
+    turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
   end
 
   private

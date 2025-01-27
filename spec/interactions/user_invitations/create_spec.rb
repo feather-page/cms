@@ -1,6 +1,6 @@
 describe UserInvitations::Create do
   subject(:outcome) do
-    described_class.execute(site:, current_user:, email:)
+    described_class.call(site:, current_user:, email:)
   end
 
   let(:site) { create(:site) }
@@ -22,11 +22,11 @@ describe UserInvitations::Create do
       end
 
       it 'sends an email to the invited user' do
-        expect do
-          ActiveJob::Base.queue_adapter.perform_enqueued_jobs = true
-          outcome
-          ActiveJob::Base.queue_adapter.perform_enqueued_jobs = false
-        end.to change(ActionMailer::Base.deliveries, :count).by(1)
+        perform_enqueued_jobs do
+          expect do
+            outcome
+          end.to change(ActionMailer::Base.deliveries, :count).by(1)
+        end
       end
     end
   end

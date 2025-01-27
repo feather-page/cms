@@ -26,6 +26,7 @@ Rails.application.routes.draw do
     resources :user_invitations, only: %i[index new create edit update] do
       member do
         post :accept
+        post :resend
       end
     end
 
