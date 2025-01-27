@@ -1,6 +1,6 @@
 class UserInvitationsController < ApplicationController
   def index
-    @user_invitations = current_site.user_invitations
+    @user_invitations = current_site.user_invitations.pending
   end
 
   def new

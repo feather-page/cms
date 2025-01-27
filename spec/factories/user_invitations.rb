@@ -3,5 +3,9 @@ FactoryBot.define do
     email { Faker::Internet.email }
     site
     inviting_user { association(:user) }
+
+    trait :accepted do
+      accepted_at { Time.current }
+    end
   end
 end
