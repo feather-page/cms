@@ -1,5 +1,5 @@
 module Sites
-  class AssociateUserWithSite
+  class AssociateUser
     extend LightService::Action
 
     expects :site, :user
