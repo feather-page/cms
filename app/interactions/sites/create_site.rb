@@ -5,7 +5,7 @@ module Sites
     def self.call(title:, current_user:, language_code:, domain:)
       with(title:, current_user:, language_code:, domain:, user: current_user).reduce(
         SaveSite,
-        AssociateUserWithSite,
+        AssociateUser,
         AddHomePage,
         CreateStaging
       )

@@ -1,4 +1,4 @@
-describe InviteUser do
+describe UserInvitations::Create do
   subject(:outcome) do
     described_class.execute(site:, current_user:, email:)
   end
@@ -14,11 +14,8 @@ describe InviteUser do
     context 'with a valid email' do
       let(:email) { Faker::Internet.email }
 
-      it 'works' do
-        expect(outcome).to be_success
-      end
-
       it 'creates a user invitation' do
+        expect(outcome).to be_success
         expect(outcome.user_invitation).to be_persisted
         expect(outcome.user_invitation.site).to eq(site)
         expect(outcome.user_invitation.email).to eq(email)

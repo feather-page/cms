@@ -5,7 +5,7 @@ module UserInvitations
     def self.call(user_invitation:)
       with(email: user_invitation.email, site: user_invitation.site).reduce(
         FindOrCreateUserByEmail,
-        Sites::AssociateUserWithSite
+        Sites::AssociateUser
       )
     end
   end
@@ -17,7 +17,7 @@ module UserInvitations
     promises :user
 
     executed do |context|
-      context.user = User.create!(email: context.email)
+      context.user = User.find_or_create_by!(email: context.email)
     end
   end
 end

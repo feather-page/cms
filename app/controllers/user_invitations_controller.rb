@@ -13,7 +13,7 @@ class UserInvitationsController < ApplicationController
   end
 
   def create
-    InviteUser.execute(current_user:, site: current_site, email: user_invitation_params[:email])
+    UserInvitations::Create.execute(current_user:, site: current_site, email: user_invitation_params[:email])
 
     turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
   end
