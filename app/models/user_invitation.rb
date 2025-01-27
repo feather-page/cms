@@ -8,7 +8,11 @@ class UserInvitation < ApplicationRecord
 
   generates_token_for :accept_invitation, expires_in: 7.days
 
-  def to_param
+  def accepted?
+    accepted_at.present?
+  end
+
+  def accept_invitation_token
     generate_token_for(:accept_invitation)
   end
 end

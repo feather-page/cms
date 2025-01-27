@@ -1,5 +1,1 @@
-<%= form_for([current_site, @user_invitation]) do |f| %>
-  <div class="actions">
-    <%= f.submit(t('.submit')) %>
-  </div>
-<% end %>
+<%= link_to t('.submit'), site_user_invitation_path(current_site, params[:id]), data: { turbo_method: :put } %>
