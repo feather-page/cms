@@ -1,4 +1,19 @@
 describe 'User Invitation' do
+  describe 'viewing the list of invitations' do
+    it 'shows all pending invitations' do
+      as_superadmin do |user|
+        site = create(:site, users: [user])
+        pending_invitation = create(:user_invitation, site:, inviting_user: user)
+        accepted_invitation = create(:user_invitation, :accepted, site:, inviting_user: user)
+
+        visit site_user_invitations_path(site)
+
+        expect(page).to have_text(pending_invitation.email)
+        expect(page).to have_no_text(accepted_invitation.email)
+      end
+    end
+  end
+
   describe 'iniviting a user' do
     it 'creates a new user' do
       as_superadmin do |user|

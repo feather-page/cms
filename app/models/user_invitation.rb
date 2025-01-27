@@ -8,6 +8,8 @@ class UserInvitation < ApplicationRecord
 
   generates_token_for :accept_invitation, expires_in: 7.days
 
+  scope :pending, -> { where(accepted_at: nil) }
+
   def accepted?
     accepted_at.present?
   end
