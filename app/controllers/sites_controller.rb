@@ -55,6 +55,6 @@ class SitesController < ApplicationController
   end
 
   def site_params
-    params.require(:site).permit(:emoji, :copyright, :title, :language_code, :domain, :theme_id).merge(current_user:)
+    params.expect(site: %i[emoji copyright title language_code domain theme_id]).merge(current_user:)
   end
 end
