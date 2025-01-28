@@ -1,0 +1,6 @@
+<tr id="<%= dom_id(user_invitation) %>" is="turbo-frame">
+  <td><%= user_invitation.email %></td>
+  <td>
+    <%= link_to t('.resend'), resend_site_user_invitation_path(current_site, user_invitation), class: 'button is-small', data: { turbo_method: :post } %>
+  </td>
+</tr>
