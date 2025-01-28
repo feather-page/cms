@@ -1,8 +1,4 @@
 class UserInvitationsController < ApplicationController
-  def index
-    @user_invitations = current_site.user_invitations.pending
-  end
-
   def new
     @user_invitation = current_site.user_invitations.new
     authorize(@user_invitation)
@@ -15,7 +11,7 @@ class UserInvitationsController < ApplicationController
   def create
     UserInvitations::Create.call(current_user:, site: current_site, email: user_invitation_params[:email])
 
-    turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
+    turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
   end
 
   def update
@@ -27,13 +23,21 @@ class UserInvitationsController < ApplicationController
     turbo_redirect_to(root_path, notice: t('.notice'))
   end
 
+  def destroy
+    @user_invitation = UserInvitation.find(params[:id])
+    authorize(@user_invitation)
+    @user_invitation.destroy
+
+    turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
+  end
+
   def resend
     @user_invitation = UserInvitation.find(params[:id])
     authorize(@user_invitation)
 
     UserInvitations::Resend.call(user_invitation: @user_invitation, current_user:)
 
-    turbo_redirect_to(site_user_invitations_path(current_site), notice: t('.notice'))
+    turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
   end
 
   private
