@@ -26,6 +26,6 @@ class SocialMediaLinksController < ApplicationController
   end
 
   def social_media_link_params
-    params.require(:social_media_link).permit(:name, :url, :icon)
+    params.expect(social_media_link: %i[name url icon])
   end
 end
