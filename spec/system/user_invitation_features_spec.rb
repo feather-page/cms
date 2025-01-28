@@ -6,7 +6,7 @@ describe 'User Invitation' do
         pending_invitation = create(:user_invitation, site:, inviting_user: user)
         accepted_invitation = create(:user_invitation, :accepted, site:, inviting_user: user)
 
-        visit site_user_invitations_path(site)
+        visit site_users_path(site)
 
         expect(page).to have_text(pending_invitation.email)
         expect(page).to have_no_text(accepted_invitation.email)
@@ -20,7 +20,7 @@ describe 'User Invitation' do
         site = create(:site, users: [user])
         invitation = build(:user_invitation)
 
-        visit new_site_user_invitation_path(site)
+        visit new_site_invitation_path(site)
 
         fill_in 'Email', with: invitation.email
         click_on 'Send invitation'
@@ -38,7 +38,7 @@ describe 'User Invitation' do
           existing_user = create(:user)
           invitation = create(:user_invitation, email: existing_user.email, site: site)
 
-          visit new_site_user_invitation_path(site)
+          visit new_site_invitation_path(site)
 
           fill_in 'Email', with: invitation.email
           click_on 'Send invitation'
@@ -57,13 +57,33 @@ describe 'User Invitation' do
         site = create(:site, users: [user])
         invitation = create(:user_invitation, site: site)
 
-        visit site_user_invitations_path(site)
+        visit site_users_path(site)
 
         within "##{dom_id(invitation)}" do
           click_on 'Resend'
         end
 
         expect(page).to have_text('Invitation was successfully resent.')
+      end
+    end
+  end
+
+  describe 'revoking an invitation' do
+    it 'destroys the invitation' do
+      as_superadmin do |user|
+        site = create(:site, users: [user])
+        invitation = create(:user_invitation, site: site)
+
+        visit site_users_path(site)
+
+        within "##{dom_id(invitation)}" do
+          accept_confirm do
+            click_on 'Revoke'
+          end
+        end
+
+        expect(page).to have_text('Invitation was successfully revoked.')
+        expect(UserInvitation.where(id: invitation.id).count).to eq(0)
       end
     end
   end
@@ -75,7 +95,7 @@ describe 'User Invitation' do
           site = create(:site, users: [user])
           invitation = create(:user_invitation, site: site)
 
-          visit edit_site_user_invitation_path(site_id: site, id: invitation.accept_invitation_token)
+          visit edit_site_invitation_path(site_id: site, id: invitation.accept_invitation_token)
 
           click_on 'Accept invitation'
 

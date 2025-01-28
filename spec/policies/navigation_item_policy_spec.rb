@@ -3,7 +3,7 @@ describe NavigationItemPolicy do
 
   let!(:navigation_item) { create(:navigation_item) }
 
-  permissions :destroy?, :move_up?, :move_up? do
+  permissions :destroy?, :move_up? do
     context 'for a super admin' do
       let(:user) { build(:user, :superadmin) }
 

@@ -6,4 +6,8 @@ class UserInvitationPolicy < ApplicationPolicy
   def resend?
     create?
   end
+
+  def destroy?
+    create?
+  end
 end
