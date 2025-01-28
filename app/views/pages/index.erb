@@ -3,12 +3,12 @@
 
 <hr>
 
-<div class="navigation-divider">
+<div class="labeled-divider">
   <span><%= t('.pages_in_navigation') %></span>
 </div>
 <%= component('Navigation', navigation: current_site.main_navigation) %>
 
-<div class="navigation-divider">
+<div class="labeled-divider">
   <span><%= t('.other_pages') %></span>
 </div>
 <%= render 'pages', pages: @pages %>

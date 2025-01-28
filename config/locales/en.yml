@@ -81,6 +81,12 @@ en:
       You can add links to your social profiles here. They will be displayed in the footer of your site.
     name_placeholder: Mastodon
     url_placeholder: https://acme.social/@woody
+  site_navigation:
+    blogposts: Blogposts
+    deployments: Deployments
+    users: Users
+    pages: Pages
+    setting: Settings
   navigation:
     add_page: Add to navigation
     remove_page: Remove from navigation
@@ -112,6 +118,16 @@ en:
       notice: You have successfully accepted the invitation.
     resend:
       notice: Invitation was successfully resent.
+    user_invitation:
+      resend: Resend
+    index:
+      invite_user: Invite another user
+      pending_invitations: Pending invitations
+      no_invitations: No pending invitations.
+      no_invitations_message:
+        html: >
+          <p>Currently there are no pending invitations.</p>
+          <p>Feel free to invite more users to collaborate on your site.</p>
   user_invitation_mailer:
     invite:
       subject: "You have been invited to %{site_name} on feather.page"
