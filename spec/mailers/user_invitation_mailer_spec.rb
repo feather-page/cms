@@ -1,5 +1,3 @@
-require "rails_helper"
-
 describe UserInvitationMailer do
   describe "invite" do
     let(:user_invitation) { create(:user_invitation) }
