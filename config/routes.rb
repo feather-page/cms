@@ -23,7 +23,7 @@ Rails.application.routes.draw do
     end
     resources :deployment_targets, only: %i[index edit update]
     resources :social_media_links, only: %i[create destroy]
-    resources :users, only: %i[index], controller: 'site_users'
+    resources :users, only: %i[index destroy], controller: 'site_users'
     resources :invitations, only: %i[new create edit update destroy], controller: 'user_invitations' do
       member do
         post :resend
