@@ -105,6 +105,10 @@ en:
     formats:
       html_datetime: "%Y-%m-%dT%H:%M"
   site_users:
+    site_user:
+      remove: Remove
+    destroy:
+      notice: The user was successfully removed from the site.
     index:
       invite_user: Invite another user
       pending_invitations: Pending invitations

@@ -35,4 +35,49 @@ describe SiteUserPolicy do
       end
     end
   end
+
+  permissions :destroy? do
+    context 'for a superadmin' do
+      it 'returns true' do
+        superadmin = build(:user, :superadmin)
+        site_user = create(:site_user)
+
+        expect(described_class).to permit(superadmin, site_user)
+      end
+    end
+
+    context 'for a site user' do
+      it 'returns true if the user is the same' do
+        user = create(:user)
+        site = create(:site, users: [user])
+
+        site_user = create(:site_user, site:)
+
+        expect(described_class).to permit(user, site_user)
+      end
+
+      it 'returns false if the user is different' do
+        site_user = create(:site_user)
+        other_user = create(:user)
+
+        expect(described_class).not_to permit(other_user, site_user)
+      end
+    end
+
+    context 'for a user that is the same as the site user' do
+      it 'returns false' do
+        site_user = create(:site_user)
+
+        expect(described_class).not_to permit(site_user.user, site_user)
+      end
+    end
+
+    context 'for an anonymous user' do
+      it 'returns false' do
+        site_user = create(:site_user)
+
+        expect(described_class).not_to permit(nil, site_user)
+      end
+    end
+  end
 end

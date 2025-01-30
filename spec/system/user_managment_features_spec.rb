@@ -19,12 +19,18 @@ describe 'User Managment' do
     it 'removes the user from the site' do
       as_superadmin do |admin|
         site = create(:site, users: [admin])
-        user = create(:user, sites: [site])
+        site_user = create(:site_user, site:)
 
         visit site_users_path(site)
-        click_link 'Remove'
 
-        expect(page).to have_no_text(user.email)
+        within "##{dom_id(site_user)}" do
+          accept_confirm do
+            click_on 'Remove'
+          end
+        end
+
+        expect(page).to have_no_text(site_user.user.email)
+        expect(site.users).not_to include(site_user.user)
       end
     end
   end

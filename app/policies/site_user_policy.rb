@@ -9,4 +9,10 @@ class SiteUserPolicy < ApplicationPolicy
       scope.where(site_id: @user.site_ids)
     end
   end
+
+  def destroy?
+    return false if user == record.user
+
+    super_admin? || site_user?(record.site)
+  end
 end
