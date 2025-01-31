@@ -1,9 +1,9 @@
-<%= form_for(@user_invitation, url: site_invitations_path(current_site)) do |f| %>
-  <div class="field">
-    <%= f.label :email %><br />
-    <%= f.text_field :email %>
+<h1 class="title is-4"><%= icon('people-fill') %> <%= t('.invite_a_new_user') %></h1>
+
+
+<div class="message">
+  <div class="message-body">
+    <%= t('.info.html')  %>
   </div>
-  <div class="actions">
-    <%= f.submit(t('.submit')) %>
-  </div>
-<% end %>
+</div>
+<%= render 'form', user_invitation: @user_invitation %>

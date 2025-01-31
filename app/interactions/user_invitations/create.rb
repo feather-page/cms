@@ -37,7 +37,7 @@ module UserInvitations
 
     executed do |context|
       context.fail! unless policy_allows?(context)
-      context.user_invitation.update!(inviting_user: context.current_user)
+      context.fail! unless context.user_invitation.update(inviting_user: context.current_user)
     end
   end
 end

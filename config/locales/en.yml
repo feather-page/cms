@@ -16,9 +16,19 @@ en:
             This is the copyright notice in the footer of your site.
             <br><br>
             You can use the <b>{{CurrentYear}}</b> placeholder to automatically insert the current year.
+      user_invitation:
+        email:
+          html: >
+            The email address of the user you want to invite.
+
     errors:
       messages:
         invalid_emoji: is not a valid emoji
+      models:
+        user_invitation:
+          attributes:
+            email:
+              already_site_user: "is already a user of this site."
     models:
       social_media_link: Social media link
     attributes:
@@ -122,6 +132,12 @@ en:
       subject: Your login-link from feather.page
   user_invitations:
     new:
+      invite_a_new_user: Invite a new user
+      info:
+        html: >
+          Enter the email address of the user you want to invite.
+          They will receive an email with a link to accept the invitation.
+    form:
       submit: Send invitation
     create:
       notice: User was successfully invited.
