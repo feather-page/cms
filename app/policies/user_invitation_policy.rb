@@ -4,6 +4,8 @@ class UserInvitationPolicy < ApplicationPolicy
   end
 
   def resend?
+    return false if record.accepted?
+
     create?
   end
 
