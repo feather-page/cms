@@ -1,0 +1,10 @@
+<%= turbo_frame_tag(:form) do %>
+  <%= form_for(user_invitation, url: site_invitations_path(current_site), class: "mb-4") do |form| %>
+    <%= component('form/email_field', form:, attribute: :email, placeholder: 'john@example.org') %>
+    <div class="field is-grouped">
+      <%= form.submit(t('.submit'), class: "button is-link") %>
+      &nbsp;
+      <%= link_to("Cancel", site_users_path(current_site), "data-turbo-frame": '_top', class: "button is-link is-light") %>
+    </div>
+  <% end %>
+<% end %>
