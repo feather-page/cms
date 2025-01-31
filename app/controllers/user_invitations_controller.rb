@@ -11,10 +11,8 @@ class UserInvitationsController < ApplicationController
   def create
     outcome = UserInvitations::Create.call(current_user:, site: current_site, email: user_invitation_params[:email])
 
-    if outcome.failure?
-      @user_invitation = outcome.user_invitation
-      return
-    end
+    @user_invitation = outcome.user_invitation
+    return if outcome.failure?
 
     turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
   end
