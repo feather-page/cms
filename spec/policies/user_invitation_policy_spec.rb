@@ -30,4 +30,16 @@ describe UserInvitationPolicy do
       end
     end
   end
+
+  permissions :resend? do
+    context 'for an already accepted invitation' do
+      it 'returns false' do
+        user = create(:user)
+        site = create(:site, users: [user])
+        invitation = create(:user_invitation, :accepted, site:)
+
+        expect(policy).not_to permit(user, invitation)
+      end
+    end
+  end
 end
