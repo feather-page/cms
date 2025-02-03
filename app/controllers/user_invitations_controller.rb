@@ -1,11 +1,17 @@
 class UserInvitationsController < ApplicationController
+  skip_before_action :authenticate!, only: %i[edit update]
+
   def new
     @user_invitation = current_site.user_invitations.new
     authorize(@user_invitation)
   end
 
   def edit
-    @user_invitation = current_site.user_invitations.find_by_token_for!(:accept_invitation, params[:id])
+    @user_invitation = UserInvitation.find_by_token_for!(:accept_invitation, params[:id])
+
+    authorize(@user_invitation)
+  rescue Pundit::NotAuthorizedError
+    redirect_to root_path, notice: t('.already_accepted')
   end
 
   def create
@@ -18,7 +24,9 @@ class UserInvitationsController < ApplicationController
   end
 
   def update
-    @user_invitation = current_site.user_invitations.find_by_token_for!(:accept_invitation, params[:id])
+    @user_invitation = UserInvitation.find_by_token_for!(:accept_invitation, params[:id])
+
+    authorize(@user_invitation)
 
     result = UserInvitations::Accept.call(user_invitation: @user_invitation)
     login(result.user)
@@ -31,7 +39,7 @@ class UserInvitationsController < ApplicationController
     authorize(@user_invitation)
     @user_invitation.destroy
 
-    turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
+    turbo_redirect_to(site_users_path(@user_invitation.site), notice: t('.notice'))
   end
 
   def resend
@@ -40,7 +48,7 @@ class UserInvitationsController < ApplicationController
 
     UserInvitations::Resend.call(user_invitation: @user_invitation, current_user:)
 
-    turbo_redirect_to(site_users_path(current_site), notice: t('.notice'))
+    turbo_redirect_to(site_users_path(@user_invitation.site), notice: t('.notice'))
   end
 
   private

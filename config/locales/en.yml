@@ -143,6 +143,7 @@ en:
       notice: User was successfully invited.
     edit:
       submit: Accept invitation
+      already_accepted: You have already accepted the invitation.
     update:
       notice: You have successfully accepted the invitation.
     resend:

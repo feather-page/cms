@@ -4,4 +4,4 @@
 
 <p><%= t('.click_link_to_accept') %></p>
 
-<a href="<%= edit_site_invitation_url(@user_invitation.site, @user_invitation.accept_invitation_token) %>"><%= t('.accept_invitation') %></a>
+<a href="<%= edit_invitation_url(@user_invitation.site, @user_invitation.accept_invitation_token) %>"><%= t('.accept_invitation') %></a>
