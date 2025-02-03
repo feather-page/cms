@@ -1,8 +1,8 @@
 <tr id="<%= dom_id(user_invitation) %>" is="turbo-frame">
   <td><%= user_invitation.email %></td>
   <td align="right">
-    <%= link_to t('.resend'), resend_site_invitation_path(current_site, user_invitation), class: 'button is-small', data: { turbo_method: :post } %>
+    <%= link_to t('.resend'), resend_invitation_path(user_invitation), class: 'button is-small', data: { turbo_method: :post } %>
 
-    <%= link_to t('.revoke'), site_invitation_path(current_site, user_invitation), class: 'button is-small is-danger', data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') } %>
+    <%= link_to t('.revoke'), invitation_path(user_invitation), class: 'button is-small is-danger', data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') } %>
   </td>
 </tr>

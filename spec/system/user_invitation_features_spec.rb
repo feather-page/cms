@@ -89,21 +89,27 @@ describe 'User Invitation' do
   end
 
   describe 'accepting an invitation' do
-    context 'without an existing user' do
+    context 'when invitation was not yet accepted' do
       it 'creates a new user and adds the user to the site' do
-        as_superadmin do |user|
-          site = create(:site, users: [user])
-          invitation = create(:user_invitation, site: site)
+        invitation = create(:user_invitation)
 
-          visit edit_site_invitation_path(site_id: site, id: invitation.accept_invitation_token)
+        visit edit_invitation_path(id: invitation.accept_invitation_token)
 
-          click_on 'Accept invitation'
+        click_on 'Accept invitation'
 
-          expect(page).to have_text('You have successfully accepted the invitation.')
+        expect(page).to have_text('You have successfully accepted the invitation.')
 
-          expect(User.where(email: invitation.email).count).to eq(1)
-          expect(User.find_by(email: invitation.email).sites).to include(site)
-        end
+        expect(User.where(email: invitation.email).count).to eq(1)
+        expect(User.find_by(email: invitation.email).sites).to include(invitation.site)
+      end
+    end
+
+    context 'when invitation was already accepted' do
+      it 'does not create a new user' do
+        invitation = create(:user_invitation, :accepted)
+        visit edit_invitation_path(id: invitation.accept_invitation_token)
+
+        expect(page).to have_text('You have already accepted the invitation.')
       end
     end
   end
