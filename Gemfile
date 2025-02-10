@@ -39,7 +39,7 @@ group :development do
   gem 'factory_bot_rails'
   gem 'faker'
   gem 'foreman'
-  gem 'kamal', '~> 2.4', require: false
+  gem 'kamal', '~> 2.5', require: false
   gem 'rack-mini-profiler'
   gem 'rspec-rails'
   gem 'rubocop'
