@@ -7,6 +7,9 @@ require:
   - rubocop-factory_bot
   - rubocop-capybara
 
+inherit_gem:
+  pundit: config/rubocop-rspec.yml
+
 AllCops:
   TargetRubyVersion: 3.2
   NewCops: enable

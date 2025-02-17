@@ -1,0 +1,9 @@
+<h1 class="title is-4"><%= icon('people-fill') %> <%= t('.invite_a_new_user') %></h1>
+
+
+<div class="message">
+  <div class="message-body">
+    <%= t('.info.html')  %>
+  </div>
+</div>
+<%= render 'form', user_invitation: @user_invitation %>
