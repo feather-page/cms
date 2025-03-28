@@ -3,7 +3,7 @@ describe PagePolicy do
 
   let!(:page) { create(:page) }
 
-  permissions :edit?, :update?, :destroy?, :add_to_navigation? do
+  permissions :edit?, :add_to_navigation?, :destroy?, :update? do
     context 'for a super admin' do
       let(:user) { build(:user, :superadmin) }
 

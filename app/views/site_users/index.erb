@@ -1,0 +1,44 @@
+<h1 class="title is-4"><%= icon('people-fill') %> Users</h1>
+
+<hr>
+
+<table class="table is-fullwidth">
+  <thead>
+    <tr>
+      <th><%= t('.email') %></th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <%= render @users %>
+  </tbody>
+</table>
+
+
+<div class="labeled-divider">
+  <span><%= t('.pending_invitations') %></span>
+</div>
+<%= link_to t('.invite_user'), new_site_invitation_path(current_site), class: "button mb-4" %>
+
+<% if @user_invitations.none? %>
+<article class="message">
+  <div class="message-header">
+    <p><%= t('.no_invitations') %></p>
+  </div>
+  <div class="message-body">
+    <%= t('.no_invitations_message.html') %>
+  </div>
+</article>
+<% else %>
+  <table class="table is-fullwidth">
+    <thead>
+      <tr>
+        <th><%= t('.email') %></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <%= render @user_invitations %>
+    </tbody>
+  </table>
+<% end %>

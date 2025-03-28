@@ -1,0 +1,8 @@
+<tr id="<%= dom_id(site_user) %>" is="turbo-frame">
+  <td><%= site_user.user.email %></td>
+  <td align="right">
+    <% if policy(site_user).destroy? %>
+      <%= link_to t('.remove'), site_user_path(site_user.site, site_user), class: 'button is-small is-danger', data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') } %>
+    <% end %>
+  </td>
+</tr>

@@ -1,0 +1,14 @@
+
+<div class="title"><%= helpers.icon("house") %> <%= current_site.title %></div>
+
+<div class="navbar">
+  <div class="navbar-start">
+    <%= navigation_item(t('site_navigation.blogposts'), helpers.site_posts_path(current_site), icon: :pen) %>
+    <%= navigation_item(t('site_navigation.pages'), helpers.site_pages_path(current_site), icon: :"file-text") %>
+  </div>
+  <div class="navbar-end">
+    <%= navigation_item(t('site_navigation.settings'), helpers.edit_site_path(current_site), icon: :gear) %>
+    <%= navigation_item(t('site_navigation.users'), helpers.site_users_path(current_site), icon: :"people-fill") %>
+    <%= navigation_item(t('site_navigation.deployments'), helpers.site_deployment_targets_path(current_site), icon: :"box-seam-fill")  %>
+  </div>
+</div>

@@ -3,9 +3,9 @@ module Sites
     extend LightService::Organizer
 
     def self.call(title:, current_user:, language_code:, domain:)
-      with(title:, current_user:, language_code:, domain:).reduce(
+      with(title:, current_user:, language_code:, domain:, user: current_user).reduce(
         SaveSite,
-        AssociateUserWithSite,
+        AssociateUser,
         AddHomePage,
         CreateStaging
       )
@@ -26,16 +26,6 @@ module Sites
       )
       context.site.theme = Theme.find_by(hugo_theme: 'simple_emoji')
       context.fail_and_return!(context.site.errors.full_messages.to_sentence) unless context.site.save
-    end
-  end
-
-  class AssociateUserWithSite
-    extend LightService::Action
-
-    expects :site, :current_user
-
-    executed do |context|
-      context.current_user.sites << context.site
     end
   end
 

@@ -9,7 +9,7 @@ RSpec.describe UserMailer do
     it "renders the headers" do
       expect(mail.subject).to eq("Your login-link from feather.page")
       expect(mail.to).to eq([user.email])
-      expect(mail.from).to eq(["login@feather.page"])
+      expect(mail.from).to eq(["no-reply@feather.page"])
     end
 
     it "renders the body" do
