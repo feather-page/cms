@@ -1,10 +1,10 @@
-<h1 class="title is-4">⚙️ <%= t('.title') %></h1>
+<h1 class="title is-4"><%= icon('gear') %> <%= t('.title') %></h1>
 
 <%= render 'edit_form', site: @site %>
 
 <hr />
 
-<h2 class="title is-4">📢 <%= t('.social_media_links') %></h2>
+<h2 class="title is-4"><%= icon('megaphone') %> <%= t('.social_media_links') %></h2>
 
 <%= render 'social_media_links/modal', social_media_link: SocialMediaLink.new(site: current_site) %>
 

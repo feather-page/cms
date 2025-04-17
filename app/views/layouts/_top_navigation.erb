@@ -13,7 +13,7 @@
             <%= link_to("Sites", sites_path, class: "navbar-item") %>
             <%= link_to("Logout", logout_path, data: { turbo_method: "delete", turbo_frame: '_top', turbo_action: 'replace'}, class: "navbar-item") %>
           <% else %>
-            <%= link_to("🔑 Login", login_path, class: "navbar-item") %>
+            <%= link_to("Login", login_path, class: "navbar-item") %>
           <% end %>
         </div>
       </div>
