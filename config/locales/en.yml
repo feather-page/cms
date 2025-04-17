@@ -152,6 +152,7 @@ en:
       notice: Invitation was successfully revoked.
     user_invitation:
       resend: Resend
+      revoke: Revoke
   user_invitation_mailer:
     invite:
       subject: "You have been invited to %{site_name} on feather.page"
