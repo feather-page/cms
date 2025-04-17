@@ -1,7 +1,7 @@
 class ApplicationMailer < ActionMailer::Base
   before_action :set_default_url_options
 
-  default from: 'login@feather.page'
+  default from: 'no-reply@feather.page'
   layout 'mailer'
 
   private

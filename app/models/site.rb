@@ -7,6 +7,7 @@ class Site < ApplicationRecord
   has_many :users, through: :site_users
   has_many :deployment_targets, dependent: :destroy
   has_many :navigations, dependent: :destroy
+  has_many :user_invitations, dependent: :destroy
 
   belongs_to :theme
 

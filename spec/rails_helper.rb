@@ -23,4 +23,5 @@ RSpec.configure do |config|
   config.include FeatureHelpers
   config.include ViewComponent::TestHelpers, type: :component
   config.include ActionView::RecordIdentifier, type: :system
+  config.include JobHelpers
 end

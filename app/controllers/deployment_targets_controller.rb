@@ -29,7 +29,7 @@ class DeploymentTargetsController < ApplicationController
   private
 
   def deployment_target_params
-    params.require(:deployment_target).permit(:public_hostname, :type).merge(current_user:)
+    params.expect(deployment_target: %i[public_hostname type]).merge(current_user:)
   end
 
   def set_deployment_target

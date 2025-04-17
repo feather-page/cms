@@ -1,0 +1,10 @@
+<h1 class="title is-4"><%= t('.title') %></h1>
+
+<div class="message">
+  <div class="message-body">
+    <%= t('.info.html', site: @user_invitation.site.title, inviting_user: @user_invitation.inviting_user.email)  %>
+  </div>
+</div>
+
+<%= link_to t('.submit'), invitation_path(params[:id]), data: { turbo_method: :put }, class: 'button is-link' %>
+<%= link_to(t('.cancel'), root_path, "data-turbo-frame": '_top', class: "button is-link is-light") %>

@@ -42,6 +42,6 @@ class PostsController < ApplicationController
   end
 
   def post_params
-    params.require(:post).permit(:title, :slug, :draft, :emoji, :content, :publish_at)
+    params.expect(post: %i[title slug draft emoji content publish_at])
   end
 end
