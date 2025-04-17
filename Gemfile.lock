@@ -392,7 +392,7 @@ GEM
       sprockets-rails
       tilt
     securerandom (0.4.1)
-    selenium-webdriver (4.29.1)
+    selenium-webdriver (4.31.0)
       base64 (~> 0.2)
       logger (~> 1.4)
       rexml (~> 3.2, >= 3.2.5)
@@ -540,7 +540,7 @@ DEPENDENCIES
   webmock
 
 RUBY VERSION
-   ruby 3.4.1p0
+   ruby 3.4.3p32
 
 BUNDLED WITH
    2.5.22
