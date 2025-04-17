@@ -142,7 +142,16 @@ en:
     create:
       notice: User was successfully invited.
     edit:
+      title: Welcome to feather.page
+      info:
+        html: >
+          You have been invited by <b>%{inviting_user}</b> to join the site <b>%{site}</b>.
+          <br><br>
+          Click the button below to accept the invitation.
+          <br><br>
+          If you don't want to join the site, please don't click the button.
       submit: Accept invitation
+      cancel: Cancel
       already_accepted: You have already accepted the invitation.
     update:
       notice: You have successfully accepted the invitation.
