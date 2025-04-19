@@ -20,7 +20,7 @@ describe 'Post features' do
         site = create(:site, users: [user])
 
         visit site_posts_path(site)
-        click_on '🖊 New Post'
+        click_on 'New Post'
 
         short_post_text = Faker::Lorem.characters(number: 299)
         fill_in_post_content(short_post_text)
@@ -42,7 +42,7 @@ describe 'Post features' do
         site = create(:site, users: [user])
 
         visit site_posts_path(site)
-        click_on '🖊 New Post'
+        click_on 'New Post'
 
         long_post_text = Faker::Lorem.characters(number: 300)
         fill_in_post_content(long_post_text)

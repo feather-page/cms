@@ -20,7 +20,7 @@ describe 'Page features' do
         site = create(:site, users: [user])
 
         visit site_pages_path(site)
-        click_on '📑 New Page'
+        click_on 'New Page'
 
         page_attributes = attributes_for(:page)
         fill_in 'Title', with: page_attributes[:title]

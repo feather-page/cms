@@ -5,7 +5,7 @@ describe 'Social links' do
         site = create(:site, users: [user])
         visit edit_site_path(site)
 
-        click_on '📢 Add link'
+        click_on 'Add link'
 
         click_on 'Instagram'
 
