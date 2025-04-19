@@ -1,17 +1,13 @@
-Capybara.register_driver :selenium_chrome_headless do |app|
-  options = Selenium::WebDriver::Chrome::Options.new.tap do |opts|
-    opts.add_argument("--headless")
-    opts.add_argument("--disable-site-isolation-trials")
-    opts.add_argument("--window-size=1920,1080")
-    opts.add_argument("--disable-search-engine-choice-screen")
-  end
+require "capybara/cuprite"
 
-  Capybara::Selenium::Driver.new(app, browser: :chrome, options:)
+Capybara.javascript_driver = :cuprite
+Capybara.register_driver(:cuprite) do |app|
+  Capybara::Cuprite::Driver.new(app, window_size: [1200, 800])
 end
 
 RSpec.configure do |config|
   config.before(:each, type: :system) do
-    driven_by :selenium_chrome_headless
+    driven_by :cuprite
   end
 
   config.before(:suite) do

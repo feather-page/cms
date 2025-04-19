@@ -55,7 +55,7 @@ end
 group :test do
   gem 'capybara'
   gem 'coveralls_reborn', require: false
-  gem 'selenium-webdriver'
+  gem 'cuprite'
   gem 'simplecov', require: false
   gem 'simplecov-lcov', require: false
   gem 'webmock'
