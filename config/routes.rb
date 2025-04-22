@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  get "bookshelves/index"
   get 'up' => 'rails/health#show'
 
   namespace :api do
@@ -14,6 +15,7 @@ Rails.application.routes.draw do
   end
 
   resources :sites, except: [:show] do
+    resources :bookshelves, only: %i[index new create]
     resources :posts
     resources :pages do
       member do

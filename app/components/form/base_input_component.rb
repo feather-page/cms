@@ -15,6 +15,12 @@ module Form
       form.object.errors[attribute]
     end
 
+    def data
+      @data.merge(
+        "1p-ignore" => true
+      )
+    end
+
     def help_text
       help_texts = []
 

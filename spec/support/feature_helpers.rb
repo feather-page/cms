@@ -5,6 +5,13 @@ module FeatureHelpers
     yield(user)
   end
 
+  def as_site_user
+    as_user do |user|
+      site = create(:site, users: [user])
+      yield(user, site)
+    end
+  end
+
   def as_site_admin
     user = create(:user, :site_admin)
     login_as(user)

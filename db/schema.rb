@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_04_22_100356) do
+ActiveRecord::Schema[8.0].define(version: 2025_04_22_101748) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -63,6 +63,29 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_22_100356) do
     t.index ["author_id"], name: "index_books_on_author_id"
     t.index ["open_library_id"], name: "index_books_on_open_library_id", unique: true
     t.index ["public_id"], name: "index_books_on_public_id", unique: true
+  end
+
+  create_table "bookshelf_books", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "book_id", null: false
+    t.uuid "bookshelf_id", null: false
+    t.string "public_id", limit: 21
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["book_id", "bookshelf_id"], name: "index_bookshelf_books_on_book_id_and_bookshelf_id"
+    t.index ["book_id"], name: "index_bookshelf_books_on_book_id"
+    t.index ["bookshelf_id", "book_id"], name: "index_bookshelf_books_on_bookshelf_id_and_book_id"
+    t.index ["bookshelf_id"], name: "index_bookshelf_books_on_bookshelf_id"
+  end
+
+  create_table "bookshelves", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "public_id", limit: 21
+    t.uuid "site_id", null: false
+    t.string "name"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["name", "site_id"], name: "index_bookshelves_on_name_and_site_id", unique: true
+    t.index ["public_id"], name: "index_bookshelves_on_public_id", unique: true
+    t.index ["site_id"], name: "index_bookshelves_on_site_id"
   end
 
   create_table "deployment_targets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -326,6 +349,9 @@ ActiveRecord::Schema[8.0].define(version: 2025_04_22_100356) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "books", "authors"
+  add_foreign_key "bookshelf_books", "books"
+  add_foreign_key "bookshelf_books", "bookshelves"
+  add_foreign_key "bookshelves", "sites"
   add_foreign_key "deployment_targets", "sites"
   add_foreign_key "images", "sites"
   add_foreign_key "navigation_items", "navigations"

@@ -1,0 +1,25 @@
+<%= turbo_frame_tag :modal do %>
+  <div class="modal is-active">
+    <div class="modal-background"></div>
+    <div class="modal-card">
+      <header class="modal-card-head">
+        <p class="modal-card-title"><%= icon('bookshelf') %> <%= t('.new_bookshelf') %></p>
+        <%= link_to 'Cancel', site_bookshelves_path(@bookshelf.site), 'data-turbo-frame': '_top', class: 'delete', aria_label: 'close' %>
+      </header>
+
+      <%= form_for(@bookshelf, as: :bookshelf, url: site_bookshelves_path(@bookshelf.site), method: :post, class: 'mb-4') do |form| %>
+        <section class="modal-card-body">
+          <%= component('form/text_field', form:, attribute: :name) %>
+        </section>
+
+        <footer class="modal-card-foot">
+          <div class="buttons">
+            <%= form.submit(t('.submit'), class: 'button is-link') %>
+            &nbsp;
+            <%= link_to 'Cancel', site_bookshelves_path(@bookshelf.site), 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+          </div>
+        </footer>
+      <% end %>
+    </div>
+  </div>
+<% end %>

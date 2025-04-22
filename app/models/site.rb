@@ -1,4 +1,5 @@
 class Site < ApplicationRecord
+  has_many :bookshelves, dependent: :destroy
   has_many :posts, dependent: :destroy
   has_many :pages, dependent: :destroy
   has_many :images, dependent: :destroy

@@ -1,0 +1,12 @@
+<h1 class="title is-4"><%= icon('bookshelf') %> <%= t('.title') %></h1>
+
+<%= link_to(
+      t('.new_bookshelf'),
+      new_site_bookshelf_path(current_site),
+      class: "button mb-4",
+      data: { turbo_frame: :modal })
+%>
+
+<hr>
+
+<%= render @bookshelves %>

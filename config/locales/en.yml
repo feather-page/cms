@@ -39,6 +39,14 @@ en:
       user-invitation:
         email: Email
   cancel: Cancel
+  bookshelves:
+    index:
+      title: "Bookshelves"
+    form:
+      submit: "Create Bookshelf"
+      new_bookshelf: "New Bookshelf"
+    create:
+      notice: "The bookshelf was succesfully created."
   deployment_target:
     types:
       backup: Backup
@@ -97,6 +105,8 @@ en:
     users: Users
     pages: Pages
     setting: Settings
+    bookshelves: "Bookshelves"
+    settings: "Settings"
   navigation:
     add_page: Add to navigation
     remove_page: Remove from navigation
