@@ -21,7 +21,11 @@ Rails.application.routes.draw do
         delete :remove_from_navigation
       end
     end
-    resources :deployment_targets, only: %i[index edit update]
+    resources :deployment_targets, only: %i[index edit update] do
+      member do
+        post :deploy
+      end
+    end
     resources :social_media_links, only: %i[create destroy]
     resources :users, only: %i[index destroy], controller: 'site_users'
     resources :invitations, only: %i[new create edit update destroy], controller: 'user_invitations', shallow: true do
