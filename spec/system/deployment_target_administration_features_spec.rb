@@ -18,4 +18,19 @@ describe 'Administration of deployment targets' do
       end
     end
   end
+
+  describe 'deploying a site to a deployment target' do
+    it 'deploys the site' do
+      as_user do |user|
+        site = create(:site, users: [user])
+        create(:deployment_target, site:)
+
+        visit site_deployment_targets_path(site)
+
+        expect do
+          click_on 'Deploy'
+        end.to have_enqueued_job(Hugo::BuildJob)
+      end
+    end
+  end
 end
