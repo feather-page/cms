@@ -5,7 +5,7 @@ ruby '3.4.3'
 
 gem 'bcrypt', '~> 3.1.20'
 gem 'bootsnap', require: false
-gem 'brotli', '~> 0.6.0'
+gem 'brotli', '~> 0.7.0'
 gem 'dotenv-rails', require: 'dotenv/load'
 gem 'faraday'
 gem 'good_job'
