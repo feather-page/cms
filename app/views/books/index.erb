@@ -1,0 +1,20 @@
+<h1 class="title is-4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
+<%= link_to "New Book", new_site_book_path, data: { turbo_frame: "new_book" }, class: 'button mb-4' %>
+
+<% @books.each do |year, yearly_books| %>
+
+  <h2 class="title is-5"><%= year %> (<%= yearly_books.count %> books)</h2>
+
+  <table class="table is-bordered is-fullwidth">
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Author</th>
+        <th>Read at</th>
+      </tr>
+    </thead>
+    <tbody>
+      <%= render yearly_books  %>
+    </tbody>
+  </table>
+<% end %>

@@ -99,6 +99,7 @@ en:
     users: Users
     pages: Pages
     setting: Settings
+    books: "Books"
   navigation:
     add_page: Add to navigation
     remove_page: Remove from navigation
@@ -173,3 +174,6 @@ en:
     invite_accepted:
       subject: "The user %{email} accepted your invitation to %{site_name}."
       introduction: You can now collaborate on the site together.
+  books:
+    create:
+      notice: "The book was succesfully added."

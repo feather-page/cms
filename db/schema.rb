@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_11_062121) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,28 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "authors_books", id: false, force: :cascade do |t|
+    t.uuid "book_id", null: false
+    t.uuid "author_id", null: false
+    t.index ["author_id", "book_id"], name: "index_authors_books_on_author_id_and_book_id"
+    t.index ["book_id", "author_id"], name: "index_authors_books_on_book_id_and_author_id"
+  end
+
+  create_table "books", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "public_id"
+    t.uuid "site_id", null: false
+    t.uuid "post_id"
+    t.string "title"
+    t.string "emoji"
+    t.string "author"
+    t.datetime "read_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["post_id"], name: "index_books_on_post_id"
+    t.index ["public_id"], name: "index_books_on_public_id", unique: true
+    t.index ["site_id"], name: "index_books_on_site_id"
   end
 
   create_table "deployment_targets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -303,6 +325,8 @@ ActiveRecord::Schema[8.0].define(version: 2025_01_14_132721) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "books", "posts"
+  add_foreign_key "books", "sites"
   add_foreign_key "deployment_targets", "sites"
   add_foreign_key "images", "sites"
   add_foreign_key "navigation_items", "navigations"
