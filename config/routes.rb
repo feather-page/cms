@@ -15,7 +15,7 @@ Rails.application.routes.draw do
 
   resources :sites, except: [:show] do
     resources :posts
-    resources :books, except: [:show]
+    resources :books, except: [:show], shallow: true
     resources :pages do
       member do
         put :add_to_navigation

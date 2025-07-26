@@ -30,7 +30,7 @@ describe 'Book features' do
         site = create(:site, users: [user])
         book = create(:book, site:)
 
-        visit edit_site_book_path(site, book)
+        visit edit_book_path(book)
 
         fill_in 'Title', with: 'New title'
 

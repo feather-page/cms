@@ -1,5 +1,5 @@
 <%= turbo_frame_tag(:form) do %>
-  <%= form_for([current_site, book], class: 'mb-4') do |form| %>
+  <%= form_for(book.persisted? ? book : [current_site, book], class: 'mb-4') do |form| %>
 
 
     <div class="columns">
@@ -23,7 +23,7 @@
     <div class="field is-grouped">
       <%= form.submit(class: 'button is-link') %>
       &nbsp;
-      <%= link_to 'Cancel', site_books_path, 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+      <%= link_to 'Cancel', site_books_path(current_site), 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
     </div>
   <% end %>
 <% end %>

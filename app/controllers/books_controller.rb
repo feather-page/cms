@@ -36,8 +36,12 @@ class BooksController < ApplicationController
 
   private
 
+  def set_site
+    @book&.site || super
+  end
+
   def set_book
-    @book = Book.find_by!(public_id: params[:id], site: current_site)
+    @book = policy_scope(Book).find_by(public_id: params[:id])
     authorize @book
   end
 

@@ -1,7 +1,7 @@
 describe BookPolicy do
   subject(:policy) { described_class }
 
-  let!(:page) { create(:book) }
+  let!(:book) { create(:book) }
 
   permissions :new?, :create?, :destroy?, :edit?, :update? do
     context 'for a super admin' do
