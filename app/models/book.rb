@@ -6,4 +6,6 @@ class Book < ApplicationRecord
   validates :read_at, presence: true
 
   scope :ordered, -> { order(read_at: :desc) }
+
+  delegate :year, to: :read_at
 end

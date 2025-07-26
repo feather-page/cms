@@ -1,5 +1,8 @@
 ---
 en:
+  date:
+    formats:
+      default: "%d/%m/%Y"
   active_interaction:
     attributes:
       sites/update_site:
@@ -32,6 +35,10 @@ en:
     models:
       social_media_link: Social media link
     attributes:
+      page:
+        page_types:
+          books: Books
+          default: Default
       social_media_link:
         icon: Icon
         name: Name

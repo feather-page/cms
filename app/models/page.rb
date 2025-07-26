@@ -1,5 +1,7 @@
 class Page < ApplicationRecord
   include Editable
+  enum :page_type, { default: 0, books: 1 }, prefix: true
+
   attribute :add_to_navigation, :boolean, default: false
   has_many :navigation_items, dependent: :destroy
 

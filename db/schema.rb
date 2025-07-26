@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_11_062121) do
+ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -215,6 +215,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_11_062121) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "public_id", limit: 21, null: false
+    t.integer "page_type", default: 0, null: false
     t.index ["public_id"], name: "index_pages_on_public_id", unique: true
     t.index ["site_id"], name: "index_pages_on_site_id"
     t.index ["slug", "site_id"], name: "index_pages_on_slug_and_site_id", unique: true

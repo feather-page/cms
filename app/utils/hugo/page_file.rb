@@ -9,7 +9,7 @@ module Hugo
     end
 
     def content
-      [front_matter.to_json, object.hugo_html].join("\n\n")
+      [front_matter.to_json, object.hugo_html, books_html].join("\n\n")
     end
 
     private
@@ -24,6 +24,12 @@ module Hugo
       front_matter[:emoji] = object.emoji if object.emoji.present?
 
       front_matter
+    end
+
+    def books_html
+      return unless object.page_type_books?
+
+      ActionController::Base.helpers.render(BooksListComponent.new(books: object.site.books), layout: false)
     end
 
     def layout

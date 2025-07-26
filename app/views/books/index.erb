@@ -1,13 +1,13 @@
 <h1 class="title is-4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
 <%= link_to "New Book", new_site_book_path, data: { turbo_frame: "new_book" }, class: 'button mb-4' %>
 
-<table class="table is-fullwidth">
+<table class="table is-bordered is-fullwidth">
   <thead>
     <tr>
       <th>Title</th>
       <th>Author</th>
       <th>Read at</th>
-      <th></th>
+      <th class="w-auto"></th>
     </tr>
   </thead>
   <tbody>

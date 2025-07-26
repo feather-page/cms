@@ -46,6 +46,6 @@ class PagesController < ApplicationController
   end
 
   def page_params
-    params.expect(page: %i[add_to_navigation title slug emoji content created_at])
+    params.expect(page: %i[add_to_navigation title page_type slug emoji content created_at])
   end
 end

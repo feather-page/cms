@@ -2,7 +2,7 @@
   <td><%= book.emoji %> <%= book.title %></td>
   <td><%= book.author %></td>
   <td><%= l(book.read_at.to_date) %></td>
-  <td>
+  <td class="has-text-right">
     <%= link_to(
           icon('pencil'),
           edit_site_book_path(current_site, book),
