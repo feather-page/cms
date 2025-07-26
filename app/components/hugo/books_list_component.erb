@@ -5,7 +5,7 @@
       <tr>
         <td><%= book.emoji %> <%= book.title %></td>
         <td><%= book.author %></td>
-        <td><%= book.read_at %></td>
+        <td><%= l(book.read_at.to_date) %></td>
       </tr>
     <% end %>
   </table>
