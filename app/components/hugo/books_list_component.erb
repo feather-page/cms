@@ -1,6 +1,6 @@
 <% @books.each do |year, books| %>
   <h2><%= year %> (<%= books.count %>)</h2>
-  <table>
+  <table class="books">
     <% books.each do |book| %>
       <tr>
         <td><%= book.emoji %> <%= book.title %></td>

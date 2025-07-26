@@ -157,11 +157,6 @@ table.books {
   width: 100%;
 }
 
-table.books :where(th, td):not(.max) {
-  padding: 0 5px;
-  width: 0;
-  white-space: nowrap;
-}
 
 .socialLink {
   text-decoration: none;
