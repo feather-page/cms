@@ -177,3 +177,6 @@ en:
   books:
     create:
       notice: "The book was succesfully added."
+    update:
+      notice: "The book was succesfully updated."
+  edit: "Edit"

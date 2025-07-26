@@ -10,7 +10,6 @@
     </div>
     <div class="content">
       <%= link_to('Edit', edit_site_post_path(current_site, post), data: { turbo_frame: :content }, class: 'button is-small') %>
-      &nbsp;
       <%= link_to('Delete', site_post_path(current_site, post), data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }, class: 'button is-small') %>
     </div>
     <hr>

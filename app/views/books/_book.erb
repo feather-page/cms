@@ -1,5 +1,18 @@
-<tr>
+<tr id="<%= dom_id(book) %>" is="turbo-frame">
   <td><%= book.emoji %> <%= book.title %></td>
   <td><%= book.author %></td>
   <td><%= l(book.read_at.to_date) %></td>
+  <td>
+    <%= link_to(
+          icon('pencil'),
+          edit_site_book_path(current_site, book),
+          title: t('edit'),
+          class: 'button is-info is-light is-small') %>
+    <%= link_to(
+          icon('trash'),
+          site_book_path(current_site, book),
+          title: t('delete'),
+          class: 'button is-danger is-light is-small',
+          data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
+  </td>
 </tr>

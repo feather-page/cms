@@ -30,7 +30,31 @@ describe 'Book features' do
         site = create(:site, users: [user])
         book = create(:book, site:)
 
+        visit edit_site_book_path(site, book)
+
+        fill_in 'Title', with: 'New title'
+
+        click_on 'Update Book'
+
+        expect(book.reload.title).to eq('New title')
+      end
+    end
+  end
+
+  describe 'deleting a book' do
+    it 'deletes a book' do
+      as_user do |user|
+        site = create(:site, users: [user])
+        book = create(:book, site:)
+
         visit site_books_path(site)
+
+        accept_confirm do
+          click_link('Delete')
+        end
+
+        expect(Book.find_by(id: book.id)).to be_nil
+      end
     end
   end
 end

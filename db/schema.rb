@@ -54,10 +54,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_11_062121) do
     t.string "public_id"
     t.uuid "site_id", null: false
     t.uuid "post_id"
-    t.string "title"
+    t.string "title", null: false
+    t.string "author", null: false
+    t.datetime "read_at", null: false
     t.string "emoji"
-    t.string "author"
-    t.datetime "read_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["post_id"], name: "index_books_on_post_id"
