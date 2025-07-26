@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::Base
+  layout -> { turbo_frame_request? ? false : "application" }
+
   include Pundit::Authorization
 
   before_action :authenticate!

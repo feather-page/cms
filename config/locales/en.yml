@@ -1,5 +1,8 @@
 ---
 en:
+  date:
+    formats:
+      default: "%d/%m/%Y"
   active_interaction:
     attributes:
       sites/update_site:
@@ -32,6 +35,10 @@ en:
     models:
       social_media_link: Social media link
     attributes:
+      page:
+        page_types:
+          books: Books
+          default: Default
       social_media_link:
         icon: Icon
         name: Name
@@ -99,6 +106,7 @@ en:
     users: Users
     pages: Pages
     setting: Settings
+    books: "Books"
   navigation:
     add_page: Add to navigation
     remove_page: Remove from navigation
@@ -173,3 +181,9 @@ en:
     invite_accepted:
       subject: "The user %{email} accepted your invitation to %{site_name}."
       introduction: You can now collaborate on the site together.
+  books:
+    create:
+      notice: "The book was succesfully added."
+    update:
+      notice: "The book was succesfully updated."
+  edit: "Edit"

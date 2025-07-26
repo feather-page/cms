@@ -1,0 +1,29 @@
+<%= turbo_frame_tag(:form) do %>
+  <%= form_for(book.persisted? ? book : [current_site, book], class: 'mb-4') do |form| %>
+
+
+    <div class="columns">
+      <div class="column is-2">
+        <%= component('form/text_field', form:, attribute: :emoji) %>
+      </div>
+      <div class="column">
+        <%= component('form/text_field', form:, attribute: :title) %>
+      </div>
+    </div>
+
+    <div class="columns">
+      <div class="column is-2">
+        <%= component('form/date_field', form:, attribute: :read_at) %>
+      </div>
+      <div class="column">
+        <%= component('form/text_field', form:, attribute: :author) %>
+      </div>
+    </div>
+
+    <div class="field is-grouped">
+      <%= form.submit(class: 'button is-link') %>
+      &nbsp;
+      <%= link_to 'Cancel', site_books_path(current_site), 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+    </div>
+  <% end %>
+<% end %>

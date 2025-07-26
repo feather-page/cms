@@ -4,10 +4,16 @@
     <%= component('form/editor', form:, attribute: :content) %>
 
     <div class="columns">
-      <div class="column is-2">
+      <div class="column is-1">
         <%= component('form/text_field', form:, attribute: :emoji) %>
       </div>
-      <div class="column">
+      <div class="column is-3">
+        <%= component(
+              'form/select',
+              form:, attribute: :page_type,
+              options: Page.page_types.map{ |key, value| [t("activerecord.attributes.page.page_types.#{key}"), key]}) %>
+      </div>
+      <div class="column is-8">
           <%= component('form/datetime_field', form:, attribute: :created_at) %>
       </div>
     </div>
