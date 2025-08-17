@@ -1,1 +1,16 @@
-deploy.production.yml
+service: meerkat
+builder:
+  arch: amd64
+  driver: docker
+
+image: ghcr.io/feather-page/cms
+registry:
+  server: ghcr.io
+  username: shostakovich
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+servers:
+  web:
+    hosts:
+      - 0.0.0.0
