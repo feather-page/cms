@@ -29,7 +29,7 @@ module Hugo
     def books_html
       return unless object.page_type_books?
 
-      ActionController::Base.helpers.render(BooksListComponent.new(books: object.site.books), layout: false)
+      ActionController::Base.helpers.render(BooksListComponent.new(books: object.site.books.ordered), layout: false)
     end
 
     def layout
