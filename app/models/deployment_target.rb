@@ -4,7 +4,6 @@ class DeploymentTarget < ApplicationRecord
   belongs_to :site
 
   encrypts :config
-  serialize :config, coder: JSON
 
   validates :public_hostname, presence: true, uniqueness: true
   validates :provider, presence: true, inclusion: { in: Rclone::PROVIDERS.keys.map(&:to_s) }
@@ -19,6 +18,14 @@ class DeploymentTarget < ApplicationRecord
 
   def deploy
     Hugo::BuildJob.perform_later(self)
+  end
+
+  def config
+    JSON.load(encrypted_config || "{}")
+  end
+
+  def config=(value)
+    self.encrypted_config = value.to_json
   end
 
   def build_path

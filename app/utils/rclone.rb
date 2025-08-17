@@ -3,6 +3,7 @@ module Rclone
 
   PROVIDERS = {
     fastmail: Provider::Fastmail,
-    internal: Provider::Internal
+    internal: Provider::Internal,
+    hetzner_ftps: Provider::HetznerFtps
   }.freeze
 end
