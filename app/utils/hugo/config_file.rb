@@ -4,6 +4,7 @@ module Hugo
       'config.json'
     end
 
+    # rubocop:disable Metrics/MethodLength
     def content
       {
         baseUrl: "https://#{deployment_target.public_hostname}/",
@@ -17,16 +18,14 @@ module Hugo
           main: main_navigation
         },
         markup: {
-          highlight: {
-            guessSyntax: true,
-            lineNos: true,
-            lineNumbersInTable: true,
-            style: "monokai",
-            tabWidth: 2
-          }
+          highlight: { guessSyntax: true, lineNos: true,
+                       lineNumbersInTable: true,
+                       style: "monokai",
+                       tabWidth: 2 }
         }
       }.to_json
     end
+    # rubocop:enable Metrics/MethodLength
 
     def main_navigation
       site.main_navigation.navigation_items.map do |item|

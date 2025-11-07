@@ -21,7 +21,7 @@ gem 'positioning'
 gem 'propshaft'
 gem 'puma', '~> 6.6'
 gem 'pundit'
-gem 'rails', '~> 8.0.1'
+gem 'rails', '~> 8.1.1'
 gem 'sassc-rails'
 gem 'solid_cable', '~> 3.0'
 gem 'stimulus-rails'
@@ -39,7 +39,7 @@ group :development do
   gem 'factory_bot_rails'
   gem 'faker'
   gem 'foreman'
-  gem 'kamal', '~> 2.7', require: false
+  gem 'kamal', '~> 2.8.2', require: false
   gem 'rack-mini-profiler'
   gem 'rspec-rails'
   gem 'rubocop'
@@ -54,7 +54,6 @@ end
 
 group :test do
   gem 'capybara'
-  gem 'coveralls_reborn', require: false
   gem 'cuprite'
   gem 'simplecov', require: false
   gem 'simplecov-lcov', require: false

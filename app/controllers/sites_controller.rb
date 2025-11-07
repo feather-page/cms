@@ -33,12 +33,8 @@ class SitesController < ApplicationController
     authorize(current_site)
 
     outcome = Sites::UpdateSite.execute(
-      site: current_site,
-      emoji: site_params[:emoji],
-      copyright: site_params[:copyright],
-      title: site_params[:title],
-      language_code: site_params[:language_code],
-      domain: site_params[:domain],
+      site: current_site, emoji: site_params[:emoji], copyright: site_params[:copyright],
+      title: site_params[:title], language_code: site_params[:language_code], domain: site_params[:domain],
       theme_id: site_params[:theme_id]
     )
 

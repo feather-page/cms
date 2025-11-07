@@ -3,7 +3,7 @@ class EmojiValidator < ActiveModel::EachValidator
     return if value.blank?
     return if valid_emoji?(value)
 
-    record.errors.add(attribute, (options[:message] || I18n.t('activerecord.errors.messages.invalid_emoji')))
+    record.errors.add(attribute, options[:message] || I18n.t('activerecord.errors.messages.invalid_emoji'))
   end
 
   private

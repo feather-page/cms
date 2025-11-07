@@ -46,6 +46,6 @@ class BooksController < ApplicationController
   end
 
   def book_params
-    params.require(:book).permit(:title, :author, :emoji, :read_at)
+    params.expect(book: %i[title author emoji read_at])
   end
 end
