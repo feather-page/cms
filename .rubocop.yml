@@ -1,4 +1,4 @@
-require:
+plugins:
   - rubocop-rails
   - rubocop-rspec
   - rubocop-performance
@@ -25,6 +25,7 @@ Metrics/BlockLength:
     - 'config/**/*.rb'
 
 Metrics/AbcSize:
+  CountRepeatedAttributes: false
   Exclude:
     - 'db/migrate/*.rb'
 

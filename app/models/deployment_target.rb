@@ -21,7 +21,7 @@ class DeploymentTarget < ApplicationRecord
   end
 
   def config
-    JSON.load(encrypted_config || "{}")
+    JSON.parse(encrypted_config || "{}")
   end
 
   def config=(value)

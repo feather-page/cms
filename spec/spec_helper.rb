@@ -1,4 +1,3 @@
-require 'coveralls'
 require 'simplecov'
 require 'simplecov-lcov'
 
@@ -11,7 +10,6 @@ SimpleCov::Formatter::LcovFormatter.config do |c|
 end
 SimpleCov.formatters = [
   SimpleCov::Formatter::HTMLFormatter,
-  Coveralls::SimpleCov::Formatter,
   SimpleCov::Formatter::LcovFormatter
 ]
 SimpleCov.start 'rails'

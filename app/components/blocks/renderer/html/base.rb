@@ -22,7 +22,9 @@ module Blocks
         end
 
         def tag(name, content)
+          # rubocop:disable Rails/OutputSafety
           raw("<#{name}>#{content}</#{name}>")
+          # rubocop:enable Rails/OutputSafety
         end
 
         def scrub_html(html)
@@ -32,7 +34,10 @@ module Blocks
 
           html_fragment = Loofah.fragment(html)
           html_fragment.scrub!(scrubber)
+
+          # rubocop:disable Rails/OutputSafety
           raw(html_fragment.to_s)
+          # rubocop:enable Rails/OutputSafety
         end
       end
     end

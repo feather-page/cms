@@ -27,6 +27,7 @@ module UserInvitations
 
   class Invite
     extend LightService::Action
+
     expects :user_invitation, :current_user
 
     promises :user_invitation
