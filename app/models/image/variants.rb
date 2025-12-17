@@ -7,10 +7,10 @@ class Image
       mobile_x3: 1290,
       desktop_x2: 2000
     }.freeze
-    FORMATS = %i[avif webp].freeze
+    FORMAT = "webp".freeze
 
     def self.keys
-      SIZES.map { |name, _| FORMATS.map { |format| :"#{name}_#{format}" } }.flatten + [:desktop_x1_jpg]
+      SIZES.map { |name, _| :"#{name}_#{FORMAT}" }.flatten + [:desktop_x1_jpg]
     end
 
     def self.options(size:, format:)
@@ -21,10 +21,8 @@ class Image
       attachable.variant :desktop_x1_jpg, **options(size: 1000, format: :jpg)
 
       SIZES.each do |size_name, size|
-        FORMATS.each do |format|
-          key = :"#{size_name}_#{format}"
-          attachable.variant(key, **options(size:, format:))
-        end
+        key = :"#{size_name}_#{FORMAT}"
+        attachable.variant(key, **options(size:, format: FORMAT))
       end
     end
   end

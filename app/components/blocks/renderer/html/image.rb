@@ -6,7 +6,6 @@ module Blocks
 
         def sources
           [
-            { srcset: srcset('avif'), type: 'image/avif' },
             { srcset: srcset('webp'), type: 'image/webp' }
           ]
         end
