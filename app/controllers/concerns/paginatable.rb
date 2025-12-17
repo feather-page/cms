@@ -1,6 +1,6 @@
 module Paginatable
   extend ActiveSupport::Concern
-  include Pagy::Backend
+  include Pagy::Method
 
   included do
     helper_method :pagy

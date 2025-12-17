@@ -1,7 +1,7 @@
 source 'https://rubygems.org'
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby '3.4.7'
+ruby '3.4.8'
 
 gem 'bcrypt', '~> 3.1.20'
 gem 'bootsnap', require: false
@@ -14,12 +14,12 @@ gem 'importmap-rails'
 gem 'jbuilder'
 gem 'light-service'
 gem 'nanoid'
-gem 'pagy', '~> 9.3'
+gem 'pagy'
 gem 'pg'
 gem 'portrayal'
 gem 'positioning'
 gem 'propshaft'
-gem 'puma', '~> 6.6'
+gem 'puma', '~> 7.1'
 gem 'pundit'
 gem 'rails', '~> 8.1.1'
 gem 'sassc-rails'
@@ -27,11 +27,11 @@ gem 'solid_cable', '~> 3.0'
 gem 'stimulus-rails'
 gem 'thruster', require: false
 gem 'turbo-rails'
-gem 'tzinfo-data', platforms: %i[mingw mswin x64_mingw jruby]
+gem 'tzinfo-data', platforms: %i[windows jruby]
 gem 'view_component'
 
 group :development, :test do
-  gem 'debug', platforms: %i[mri mingw x64_mingw]
+  gem 'debug', platforms: %i[mri windows]
 end
 
 group :development do
@@ -39,7 +39,7 @@ group :development do
   gem 'factory_bot_rails'
   gem 'faker'
   gem 'foreman'
-  gem 'kamal', '~> 2.8.2', require: false
+  gem 'kamal', '~> 2.10.1', require: false
   gem 'rack-mini-profiler'
   gem 'rspec-rails'
   gem 'rubocop'

@@ -1,5 +1,5 @@
 module ApplicationHelper
-  include Pagy::Frontend
+  include Pagy::Method
 
   def component(name, *, **)
     name = name.to_s.camelize.gsub('/', '::')
