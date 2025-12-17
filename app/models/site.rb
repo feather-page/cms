@@ -14,7 +14,7 @@ class Site < ApplicationRecord
 
   validates :title, presence: true
   validates :language_code, presence: true, inclusion: { in: Form::LanguageSelectComponent::Codes::ISO_CODES }
-  validates :domain, presence: true, format: { with: /\A[a-zA-Z0-9\-\.]+\z/ }
+  validates :domain, presence: true, format: { with: /\A[a-zA-Z0-9\-.]+\z/ }
   validates :emoji, emoji: true
   validates :copyright, presence: true
 

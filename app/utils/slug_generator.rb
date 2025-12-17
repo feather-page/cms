@@ -6,7 +6,7 @@ class SlugGenerator
   def generate(slug, attempts = 0)
     slug = slug.delete('/')
     slug = slug.downcase.strip
-    slug = slug.gsub(/[^a-z0-9\-]/i, '-').squeeze('-')
+    slug = slug.gsub(/[^a-z0-9-]/i, '-').squeeze('-')
     return slug if slug.blank?
 
     slug = "/#{slug}"

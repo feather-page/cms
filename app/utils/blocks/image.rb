@@ -7,7 +7,7 @@ module Blocks
       url = hash['data']['file']['url']
       new(
         id: hash['id'],
-        image_id: url.match(%r{/images/([0-9a-zA-Z\-]{12,36})})[1],
+        image_id: url.match(%r{/images/([0-9a-zA-Z-]{12,36})})[1],
         caption: hash['data']['caption']
       )
     end
