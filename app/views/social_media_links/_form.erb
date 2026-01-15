@@ -1,17 +1,17 @@
 <%= turbo_frame_tag('social_media_link_new') do %>
   <%= form_for([current_site, social_media_link], data: { controller: "SocialMediaForm" }) do |form| %>
-      <section class="modal-card-body">
+      <div class="card-body">
 
         <%= component('form/social_media_picker', form:, attribute: :icon) %>
         <%= component('form/text_field', form:, attribute: :name, placeholder: t('social_media_links.name_placeholder'), data: { 'SocialMediaForm-target': 'nameInput' }) %>
         <%= component('form/text_field', form:, attribute: :url, placeholder: t('social_media_links.url_placeholder'), data: { 'SocialMediaForm-target': 'urlInput' }) %>
-      </section>
-      <footer class="modal-card-foot">
-        <div class="buttons">
-          <%= form.submit(t('social_media_links.create_link'), class: 'button is-primary') %>
-          <a data-action="modal#close" class="button is-link" type="dialogclose"><%= t('cancel') %></a>
+      </div>
+      <div class="card-footer bg-light">
+        <div class="d-flex gap-2">
+          <%= form.submit(t('social_media_links.create_link'), class: 'btn btn-primary') %>
+          <a data-action="modal#close" class="btn btn-outline-primary" type="button"><%= t('cancel') %></a>
         </div>
-      </footer>
+      </div>
     </section>
   <% end %>
 <% end %>

@@ -1,36 +1,9 @@
-<h1 class="title is-4"><%= icon('people-fill') %> Users</h1>
+<h1 class="h4"><%= icon('people-fill') %> Users</h1>
 
 <hr>
 
-<table class="table is-fullwidth">
-  <thead>
-    <tr>
-      <th><%= t('.email') %></th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <%= render @users %>
-  </tbody>
-</table>
-
-
-<div class="labeled-divider">
-  <span><%= t('.pending_invitations') %></span>
-</div>
-<%= link_to t('.invite_user'), new_site_invitation_path(current_site), class: "button mb-4" %>
-
-<% if @user_invitations.none? %>
-<article class="message">
-  <div class="message-header">
-    <p><%= t('.no_invitations') %></p>
-  </div>
-  <div class="message-body">
-    <%= t('.no_invitations_message.html') %>
-  </div>
-</article>
-<% else %>
-  <table class="table is-fullwidth">
+<div class="table-responsive">
+  <table class="table table-bordered w-100">
     <thead>
       <tr>
         <th><%= t('.email') %></th>
@@ -38,7 +11,33 @@
       </tr>
     </thead>
     <tbody>
-      <%= render @user_invitations %>
+      <%= render @users %>
     </tbody>
   </table>
+</div>
+
+<div class="labeled-divider">
+  <span><%= t('.pending_invitations') %></span>
+</div>
+<%= link_to t('.invite_user'), new_site_invitation_path(current_site), class: "btn btn-secondary mb-4" %>
+
+<% if @user_invitations.none? %>
+  <div class="alert alert-secondary" role="alert">
+    <h5 class="alert-heading mb-2"><%= t('.no_invitations') %></h5>
+    <div><%= t('.no_invitations_message.html') %></div>
+  </div>
+<% else %>
+  <div class="table-responsive">
+    <table class="table table-bordered w-100">
+      <thead>
+        <tr>
+          <th><%= t('.email') %></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <%= render @user_invitations %>
+      </tbody>
+    </table>
+  </div>
 <% end %>

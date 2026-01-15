@@ -17,9 +17,9 @@ module Form
 
     def help_text
       help_texts = []
-      help_texts << helpers.tag.p(errors.join(', '), class: 'help is-danger') if errors.any?
+      help_texts << helpers.tag.div(errors.join(', '), class: 'invalid-feedback') if errors.any?
 
-      help_texts << helpers.tag.p(translation_for_help_text) if translation_for_help_text.present?
+      help_texts << helpers.tag.div(translation_for_help_text, class: 'form-text') if translation_for_help_text.present?
 
       # rubocop:disable Rails/OutputSafety
       # This is safe because we are using the Rails tag helper
@@ -38,8 +38,8 @@ module Form
     end
 
     def input_classes
-      classes = ['input']
-      classes << 'is-danger' if errors.any?
+      classes = ['form-control']
+      classes << 'is-invalid' if errors.any?
       classes.join(' ')
     end
   end

@@ -1,4 +1,4 @@
-<table id="<%= dom_id(navigation) %>" is="turbo-frame" class="table is-bordered  is-fullwidth">
+<table id="<%= dom_id(navigation) %>" is="turbo-frame" class="table table-bordered">
   <thead>
     <tr>
       <th>Title</th>
@@ -11,7 +11,7 @@
       <tr id="<%= dom_id(item) %>" is="turbo-frame">
         <td><%= item_title(item) %></td>
         <td><%= item_path(item) %></td>
-        <td>
+        <td class="text-end">
           <%= up_link(item) %>
           <%= down_link(item) %>
           <%= edit_link(item) %>

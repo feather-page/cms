@@ -85,6 +85,8 @@ GEM
     bindex (0.8.1)
     bootsnap (1.19.0)
       msgpack (~> 1.2)
+    bootstrap (5.3.8)
+      popper_js (>= 2.11.8, < 3)
     brakeman (7.1.2)
       racc
     brotli (0.7.0)
@@ -271,6 +273,7 @@ GEM
     pg (1.6.3-x86_64-darwin)
     pg (1.6.3-x86_64-linux)
     pg (1.6.3-x86_64-linux-musl)
+    popper_js (2.11.8)
     portrayal (0.9.1)
     positioning (0.4.7)
       activerecord (>= 6.1)
@@ -501,6 +504,7 @@ PLATFORMS
 DEPENDENCIES
   bcrypt (~> 3.1.20)
   bootsnap
+  bootstrap (~> 5.3)
   brakeman
   brotli (~> 0.7.0)
   capybara

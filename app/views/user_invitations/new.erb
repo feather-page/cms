@@ -1,9 +1,7 @@
-<h1 class="title is-4"><%= icon('people-fill') %> <%= t('.invite_a_new_user') %></h1>
+<h1 class="h4"><%= icon('people-fill') %> <%= t('.invite_a_new_user') %></h1>
 
-
-<div class="message">
-  <div class="message-body">
-    <%= t('.info.html')  %>
-  </div>
+<div class="alert alert-secondary" role="alert">
+  <%= t('.info.html')  %>
 </div>
+
 <%= render 'form', user_invitation: @user_invitation %>

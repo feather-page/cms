@@ -1,21 +1,23 @@
-<nav class="navbar is-fixed-top is-light">
+<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
   <div class="container">
-      <div class="navbar-brand">
+    <%= link_to(root_path, class: "navbar-brand fs-4 d-flex align-items-center gap-2") do %>
+      <span>🪶</span>
+      <span>feather.page</span>
+    <% end %>
 
-        <%= link_to(root_path, class: "navbar-item is-size-4") do %>
-          🪶
-          feather.page
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+        <% if current_user %>
+          <li class="nav-item"><%= link_to("Sites", sites_path, class: "nav-link") %></li>
+          <li class="nav-item"><%= link_to("Logout", logout_path, data: { turbo_method: "delete", turbo_frame: '_top', turbo_action: 'replace'}, class: "nav-link") %></li>
+        <% else %>
+          <li class="nav-item"><%= link_to("Login", login_path, class: "nav-link") %></li>
         <% end %>
-      </div>
-      <div class="navbar-menu">
-        <div class="navbar-end">
-          <% if current_user %>
-            <%= link_to("Sites", sites_path, class: "navbar-item") %>
-            <%= link_to("Logout", logout_path, data: { turbo_method: "delete", turbo_frame: '_top', turbo_action: 'replace'}, class: "navbar-item") %>
-          <% else %>
-            <%= link_to("Login", login_path, class: "navbar-item") %>
-          <% end %>
-        </div>
-      </div>
+      </ul>
     </div>
+  </div>
 </nav>

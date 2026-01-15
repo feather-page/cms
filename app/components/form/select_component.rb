@@ -8,8 +8,8 @@ module Form
     end
 
     def input_classes
-      classes = ['input']
-      classes << 'is-danger' if errors.any?
+      classes = ['form-select']
+      classes << 'is-invalid' if errors.any?
       classes.join(' ')
     end
   end

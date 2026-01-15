@@ -1,7 +1,10 @@
-<h1 class="title is-4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
-<%= link_to "New Book", new_site_book_path, data: { turbo_frame: "new_book" }, class: 'button mb-4' %>
+<h1 class="h4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
+<%= link_to "New Book", new_site_book_path, data: { turbo_frame: "new_book" }, class: 'btn btn-secondary mb-4' %>
 
-<table class="table is-bordered is-fullwidth">
+<hr>
+
+<div class="table-responsive">
+<table class="table table-bordered w-100">
   <thead>
     <tr>
       <th>Title</th>
@@ -11,6 +14,7 @@
     </tr>
   </thead>
   <tbody>
-    <%= render @books  %>
+    <%= render @books %>
   </tbody>
 </table>
+</div>

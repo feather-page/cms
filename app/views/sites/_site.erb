@@ -1,12 +1,14 @@
 <div class="mb-4">
-  <h2 class="title is-4">
+  <h2 class="h4">
     <%= link_to(site.title, site_posts_path(site)) %>
   </h2>
-  <table class="table">
-    <tr>
-      <td><%= t('domain') %>:</td>
-      <td><%= site.domain %></td>
-    </tr>
-  </table>
+  <div class="table-responsive">
+    <table class="table table-bordered w-100">
+      <tr>
+        <td><%= t('domain') %>:</td>
+        <td><%= site.domain %></td>
+      </tr>
+    </table>
+  </div>
 </div>
 <hr />

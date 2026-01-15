@@ -3,19 +3,18 @@
 
     <%= component('form/text_field', form:, attribute: :title) %>
 
-    <div class="columns">
-      <div class="column">
+    <div class="row">
+      <div class="col">
           <%= component('form/text_field', form:, attribute: :domain, placeholder: t('sites.domain_placeholder')) %>
       </div>
-      <div class="column">
+      <div class="col">
           <%= component('form/language_select', form:, attribute: :language_code) %>
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <%= form.submit(t('.create'), class: 'button is-link') %>
-      &nbsp;
-      <%= link_to 'Cancel', sites_path, 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+    <div class="d-flex gap-2">
+      <%= form.submit(t('.create'), class: 'btn btn-primary') %>
+      <%= link_to 'Cancel', sites_path, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
     </div>
   <% end %>
 <% end %>

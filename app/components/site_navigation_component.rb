@@ -7,6 +7,8 @@ class SiteNavigationComponent < ViewComponent::Base
 
   def navigation_item(label, path, icon:)
     link_content = helpers.icon(icon) + "&nbsp;".html_safe + label
-    helpers.link_to(link_content, path, class: "navbar-item")
+    helpers.content_tag(:li, class: 'nav-item') do
+      helpers.link_to(link_content, path, class: 'nav-link')
+    end
   end
 end

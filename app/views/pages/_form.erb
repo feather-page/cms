@@ -3,27 +3,26 @@
     <%= component('form/title_and_slug', form:) %>
     <%= component('form/editor', form:, attribute: :content) %>
 
-    <div class="columns">
-      <div class="column is-1">
+    <div class="row">
+      <div class="col-1">
         <%= component('form/text_field', form:, attribute: :emoji) %>
       </div>
-      <div class="column is-3">
+      <div class="col-3">
         <%= component(
               'form/select',
               form:, attribute: :page_type,
               options: Page.page_types.map{ |key, value| [t("activerecord.attributes.page.page_types.#{key}"), key]}) %>
       </div>
-      <div class="column is-8">
+      <div class="col-8">
           <%= component('form/datetime_field', form:, attribute: :created_at) %>
       </div>
     </div>
 
     <%= component('form/checkbox', form:, attribute: :add_to_navigation) %>
 
-    <div class="field is-grouped">
-      <%= form.submit(class: 'button is-link') %>
-      &nbsp;
-      <%= link_to 'Cancel', site_pages_path, 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+    <div class="d-flex gap-2">
+      <%= form.submit(class: 'btn btn-primary') %>
+      <%= link_to 'Cancel', site_pages_path, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
     </div>
   <% end %>
 <% end %>

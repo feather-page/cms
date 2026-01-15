@@ -1,18 +1,16 @@
 <div data-controller="modal">
   <div class="mb-2">
-    <button class="button" data-action="modal#open">
+    <button class="btn btn-secondary" data-action="modal#open">
       <%= t('social_media_links.add_new') %>
     </button>
   </div>
-  <dialog data-modal-target="modal">
-    <div class="modal is-active">
-      <div clas="modal-card">
-        <header class="modal-card-head">
-          <p class="modal-card-title"><%= t('social_media_links.add_new') %></p>
-          <button class="delete" data-action="modal#close"></button>
-        </header>
-        <%= render('social_media_links/form', social_media_link:)%>
+  <dialog data-modal-target="modal" class="p-0 border-0 rounded">
+    <div class="card shadow-sm">
+      <div class="card-header d-flex align-items-center justify-content-between">
+        <p class="m-0 fw-semibold"><%= t('social_media_links.add_new') %></p>
+        <button type="button" class="btn-close" aria-label="Close" data-action="modal#close"></button>
       </div>
+      <%= render('social_media_links/form', social_media_link:)%>
     </div>
   </dialog>
 </div>

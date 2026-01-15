@@ -2,28 +2,27 @@
   <%= form_for(current_site, as: :site, url: current_site, method: :patch, class: 'mb-4') do |form| %>
     <%= component('form/text_field', form:, attribute: :title, placeholder: t('sites.title_placeholder')) %>
 
-        <%= component('form/select', form:, attribute: :theme_id, options:
+    <%= component('form/select', form:, attribute: :theme_id, options:
       options_from_collection_for_select(Theme.all, 'id', 'name', site.theme_id))
     %>
 
-    <div class="columns">
-      <div class="column is-2">
+    <div class="row">
+      <div class="col-2">
         <%= component('form/text_field', form:, attribute: :emoji) %>
       </div>
-      <div class="column">
+      <div class="col">
           <%= component('form/text_field', form:, attribute: :domain, placeholder: t('sites.domain_placeholder')) %>
       </div>
-      <div class="column">
+      <div class="col">
           <%= component('form/language_select', form:, attribute: :language_code) %>
       </div>
     </div>
 
     <%= component('form/text_field', form:, attribute: :copyright) %>
 
-    <div class="field is-grouped">
-      <%= form.submit(t('.update'), class: 'button is-link') %>
-      &nbsp;
-      <%= link_to t('form.cancel'), current_site, 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+    <div class="d-flex gap-2">
+      <%= form.submit(t('.update'), class: 'btn btn-primary') %>
+      <%= link_to t('form.cancel'), current_site, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
     </div>
   <% end %>
 <% end %>

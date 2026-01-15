@@ -3,20 +3,19 @@
     <%= component('form/title_and_slug', form:) %>
     <%= component('form/editor', form:, attribute: :content) %>
     <%= component('form/checkbox', form:, attribute: :draft) %>
-    <div class="columns">
-      <div class="column is-2">
+    <div class="row">
+      <div class="col-2">
         <%= component('form/text_field', form:, attribute: :emoji) %>
       </div>
 
-      <div class="column">
+      <div class="col">
         <%= component('form/datetime_field', form:, attribute: :publish_at, placeholder: Time.current) %>
       </div>
     </div>
 
-    <div class="field is-grouped">
-      <%= form.submit(class: "button is-link") %>
-      &nbsp;
-      <%= link_to("Cancel", site_posts_path, "data-turbo-frame": '_top', class: "button is-link is-light") %>
+    <div class="d-flex gap-2">
+      <%= form.submit(class: "btn btn-primary") %>
+      <%= link_to("Cancel", site_posts_path, "data-turbo-frame": '_top', class: "btn btn-outline-primary") %>
     </div>
   <% end %>
 <% end %>

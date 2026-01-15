@@ -1,11 +1,5 @@
-<div class="field">
-  <%= form.label attribute, class: 'label' %>
-  <div class="control has-icons-left">
-    <div class="select is-fullwidth">
-      <%= form.select :language_code, select_options %>
-    </div>
-    <div class="icon is-small is-left">
-      <i class="ion-ios-globe"></i>
-    </div>
-  </div>
+<div class="mb-3">
+  <%= form.label attribute, class: 'form-label' %>
+  <%= form.select :language_code, select_options, {}, { class: 'form-select' } %>
+  <%= help_text %>
 </div>

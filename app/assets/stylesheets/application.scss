@@ -10,11 +10,16 @@
  * files in this directory. Styles in this file should be added after the last require_* statement.
  * It is generally better to create a new file per style scope.
  *
- *= require_tree .
- *= require_self
- *= require bulma
  *= require bootstrap-icons
+ *= require_self
+ *= require_tree .
  */
+@import "bootstrap";
+
+/* Offset for fixed-top Bootstrap navbar so content doesn't sit underneath */
+body {
+  padding-top: 4rem; /* ~64px: safe across breakpoints; adjust if navbar height changes */
+}
 
 .emoji {
   font-size: 3em;
@@ -30,6 +35,7 @@
   }
 }
 
+/* Keep editor styles independent of framework */
 .editorjs {
   border: 1px solid transparent;
 
