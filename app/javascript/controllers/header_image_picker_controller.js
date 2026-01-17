@@ -4,7 +4,9 @@ import ApiClient from 'utils/ApiClient'
 export default class extends Controller {
   static targets = [
     'preview', 'searchInput', 'results', 'loading',
-    'unsplashModal', 'uploadModal', 'fileInput', 'removeButton'
+    'unsplashModal', 'uploadModal', 'fileInput', 'removeButton',
+    'emojiInput', 'emojiDisplay', 'imageContainer', 'emojiPicker',
+    'removeEmojiButton', 'addIconButton'
   ]
 
   static values = {
@@ -16,6 +18,11 @@ export default class extends Controller {
   connect () {
     this.searchTimeout = null
     this.apiClient = new ApiClient()
+    this.handleClickOutside = this.handleClickOutside.bind(this)
+  }
+
+  disconnect () {
+    document.removeEventListener('click', this.handleClickOutside)
   }
 
   openUnsplashModal (event) {
@@ -36,6 +43,78 @@ export default class extends Controller {
   closeUploadModal (event) {
     event.preventDefault()
     this.uploadModalTarget.close()
+  }
+
+  openEmojiPicker (event) {
+    event.preventDefault()
+    event.stopPropagation()
+    const isOpen = this.emojiPickerTarget.style.display !== 'none'
+    if (isOpen) {
+      this.closeEmojiPicker()
+    } else {
+      this.emojiPickerTarget.style.display = ''
+      setTimeout(() => {
+        document.addEventListener('click', this.handleClickOutside)
+      }, 0)
+    }
+  }
+
+  handleClickOutside (event) {
+    const clickedInPicker = this.emojiPickerTarget.contains(event.target)
+    const clickedOnDisplay = this.hasEmojiDisplayTarget && this.emojiDisplayTarget.contains(event.target)
+    const clickedOnAddButton = this.hasAddIconButtonTarget && this.addIconButtonTarget.contains(event.target)
+
+    if (!clickedInPicker && !clickedOnDisplay && !clickedOnAddButton) {
+      this.closeEmojiPicker()
+    }
+  }
+
+  closeEmojiPicker () {
+    this.emojiPickerTarget.style.display = 'none'
+    document.removeEventListener('click', this.handleClickOutside)
+  }
+
+  selectEmoji (event) {
+    event.preventDefault()
+    const emoji = event.currentTarget.dataset.emoji
+    this.setEmoji(emoji)
+    this.closeEmojiPicker()
+  }
+
+  clearEmoji (event) {
+    event.preventDefault()
+    this.setEmoji('')
+    this.closeEmojiPicker()
+  }
+
+  setEmoji (emoji) {
+    if (this.hasEmojiInputTarget) {
+      this.emojiInputTarget.value = emoji
+    }
+    if (this.hasEmojiDisplayTarget) {
+      this.emojiDisplayTarget.textContent = emoji
+      this.emojiDisplayTarget.style.display = emoji ? '' : 'none'
+    }
+    if (this.hasRemoveEmojiButtonTarget) {
+      this.removeEmojiButtonTarget.style.display = emoji ? '' : 'none'
+    }
+    this.updatePreviewVisibility()
+  }
+
+  removeEmoji (event) {
+    event.preventDefault()
+    this.setEmoji('')
+  }
+
+  updatePreviewVisibility () {
+    if (!this.hasPreviewTarget) return
+
+    const hasImage = this.hasImageContainerTarget &&
+      this.imageContainerTarget.style.display !== 'none' &&
+      this.imageContainerTarget.innerHTML.trim() !== ''
+    const hasEmoji = this.hasEmojiInputTarget && this.emojiInputTarget.value
+
+    this.previewTarget.style.display = (hasImage || hasEmoji) ? '' : 'none'
   }
 
   search () {
@@ -131,7 +210,7 @@ export default class extends Controller {
     if (!file) return
 
     const formData = new FormData()
-    formData.append('image[file]', file)
+    formData.append('image', file)
 
     try {
       const response = await fetch(this.uploadUrlValue, {
@@ -144,7 +223,7 @@ export default class extends Controller {
 
       const data = await response.json()
 
-      if (data.success !== false) {
+      if (data.success === 1) {
         this.updatePreview(URL.createObjectURL(file))
         this.updateHiddenField(data.id)
         this.showRemoveButton()
@@ -161,17 +240,23 @@ export default class extends Controller {
   remove (event) {
     event.preventDefault()
 
-    if (confirm('Are you sure you want to remove the header image?')) {
+    if (confirm('Are you sure you want to remove the cover image?')) {
       this.updateHiddenField('')
-      this.previewTarget.innerHTML = ''
+      if (this.hasImageContainerTarget) {
+        this.imageContainerTarget.innerHTML = ''
+        this.imageContainerTarget.style.display = 'none'
+      }
       this.hideRemoveButton()
+      this.updatePreviewVisibility()
     }
   }
 
   updatePreview (url) {
-    this.previewTarget.innerHTML = `
-      <img src="${url}" class="img-fluid rounded" style="max-height: 200px;">
-    `
+    if (this.hasImageContainerTarget) {
+      this.imageContainerTarget.innerHTML = `<img src="${url}">`
+      this.imageContainerTarget.style.display = ''
+    }
+    this.updatePreviewVisibility()
   }
 
   updateHiddenField (value) {

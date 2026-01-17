@@ -42,7 +42,8 @@ h1 {
 }
 
 .emoji {
-  font-size: 4.5em;
+  font-size: 5rem;
+  line-height: 1;
 }
 
 nav {
@@ -249,44 +250,48 @@ table.books {
 
 /* Header Image Styles */
 .header-image-container {
-  margin: -25px -25px 2rem -25px;
+  margin: -25px -25px 0 -25px;
   position: relative;
+  padding-bottom: 2.5rem;
 }
 
 .header-image {
   width: 100%;
-  max-height: 400px;
+  height: 30vh;
+  min-height: 180px;
+  max-height: 280px;
   object-fit: cover;
   display: block;
 }
 
-.unsplash-attribution {
+.header-image-container .emoji {
   position: absolute;
-  bottom: 8px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  color: #fff;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  bottom: 0;
+  left: 25px;
+  font-size: 4.5rem;
 }
 
-.unsplash-attribution a {
-  color: #fff;
-  text-decoration: underline;
+.photo-credit {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--decoration-color);
+  font-size: 0.85rem;
+  color: grey;
 }
 
 @media only screen and (max-width: 600px) {
   .header-image-container {
-    margin: -25px -10px 1.5rem -10px;
+    margin: -25px -10px 0 -10px;
   }
 
   .header-image {
-    max-height: 250px;
+    height: 25vh;
+    min-height: 150px;
+    max-height: 200px;
   }
-}
 
-/* Adjust emoji positioning when header image present */
-.header-image-container + .emoji {
-  margin-top: -1rem;
+  .header-image-container .emoji {
+    left: 10px;
+    font-size: 4rem;
+  }
 }

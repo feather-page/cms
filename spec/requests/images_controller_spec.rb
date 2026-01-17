@@ -31,7 +31,7 @@ describe ImagesController do
       expect(site.images.last.imageable).to eql(post)
 
       expect(response.parsed_body).to eql(
-        { "success" => 1, "file" => { "url" => url_for([site, site.images.last]) } }
+        { "success" => 1, "id" => site.images.last.id, "file" => { "url" => url_for([site, site.images.last]) } }
       )
     end
   end
@@ -52,7 +52,7 @@ describe ImagesController do
         expect(response).to be_successful
 
         expect(response.parsed_body).to eql(
-          { "success" => 1, "file" => { "url" => url_for([site, site.images.last]) } }
+          { "success" => 1, "id" => site.images.last.id, "file" => { "url" => url_for([site, site.images.last]) } }
         )
       end
     end
