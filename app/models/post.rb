@@ -2,6 +2,7 @@ class Post < ApplicationRecord
   include Editable
 
   belongs_to :site
+  belongs_to :header_image, class_name: "Image", optional: true
 
   before_validation :normalize_slug
   before_validation :set_publish_at

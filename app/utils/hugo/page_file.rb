@@ -14,7 +14,7 @@ module Hugo
 
     private
 
-    def front_matter
+    def front_matter # rubocop:disable Metrics/AbcSize
       front_matter = { layout: }
 
       front_matter[:url] = object.slug if object.slug.present?
@@ -22,8 +22,21 @@ module Hugo
       front_matter[:short] = true if object.title.blank?
       front_matter[:title] = object.title if object.title.present?
       front_matter[:emoji] = object.emoji if object.emoji.present?
+      front_matter[:header_image] = header_image_data if object.header_image.present?
 
       front_matter
+    end
+
+    def header_image_data
+      image = object.header_image
+      data = { url: "/images/#{image.public_id}" }
+
+      if image.unsplash?
+        data[:unsplash_photographer] = image.unsplash_photographer_name
+        data[:unsplash_url] = image.unsplash_photographer_url
+      end
+
+      data
     end
 
     def books_html

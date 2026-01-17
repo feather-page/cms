@@ -16,6 +16,16 @@
       {{ .Site.Params.Emoji }} <a href="/">{{ .Site.Title }}</a>{{ if not .IsHome }} <span class="divider">/</span> {{ .Params.Emoji }} {{ .Title }}{{ end }}
     </nav>
     <main>
+      {{ if .Params.header_image }}
+        <div class="header-image-container">
+          <img src="{{ .Params.header_image.url }}" alt="{{ .Title }}" class="header-image">
+          {{ if .Params.header_image.unsplash_photographer }}
+            <div class="unsplash-attribution">
+              Photo by <a href="{{ .Params.header_image.unsplash_url }}" target="_blank" rel="noopener">{{ .Params.header_image.unsplash_photographer }}</a> on Unsplash
+            </div>
+          {{ end }}
+        </div>
+      {{ end }}
       {{ if .Params.emoji }}<div class="emoji">{{ .Params.emoji }}</div>{{ end }}
       <h1>{{ .Title }}</h1>
       {{ block "main" . }}

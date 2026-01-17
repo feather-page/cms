@@ -1,6 +1,7 @@
 <%= turbo_frame_tag(:form) do %>
   <%= form_for([current_site, page], class: 'mb-4') do |form| %>
     <%= component('form/title_and_slug', form:) %>
+    <%= component('form/header_image_picker', form:) %>
     <%= component('form/editor', form:, attribute: :content) %>
 
     <div class="row">

@@ -1,0 +1,97 @@
+<div class="mb-3"
+     data-controller="header-image-picker"
+     data-header-image-picker-search-url-value="<%= search_url %>"
+     data-header-image-picker-create-url-value="<%= create_url %>"
+     data-header-image-picker-upload-url-value="<%= upload_url %>">
+
+  <label class="form-label">Header Image</label>
+
+  <%= form.hidden_field attribute %>
+
+  <!-- Current Image Preview -->
+  <div data-header-image-picker-target="preview" class="mb-2">
+    <% if current_image %>
+      <%= image_tag current_image.file, class: "img-fluid rounded", style: "max-height: 200px;" %>
+    <% end %>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="btn-group" role="group">
+    <button type="button"
+            class="btn btn-outline-primary btn-sm"
+            data-action="header-image-picker#openUnsplashModal">
+      Search Unsplash
+    </button>
+
+    <button type="button"
+            class="btn btn-outline-primary btn-sm"
+            data-action="header-image-picker#openUploadModal">
+      Upload Image
+    </button>
+
+    <% if current_image %>
+      <button type="button"
+              class="btn btn-outline-danger btn-sm"
+              data-action="header-image-picker#remove"
+              data-header-image-picker-target="removeButton">
+        Remove
+      </button>
+    <% end %>
+  </div>
+
+  <!-- Unsplash Search Modal -->
+  <dialog data-header-image-picker-target="unsplashModal"
+          class="p-0 border-0 rounded">
+    <div class="card shadow-sm" style="width: 800px; max-width: 90vw;">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="m-0">Search Unsplash</h5>
+        <button type="button"
+                class="btn-close"
+                data-action="header-image-picker#closeUnsplashModal">
+        </button>
+      </div>
+      <div class="card-body">
+        <input type="text"
+               class="form-control mb-3"
+               placeholder="Search for images..."
+               data-header-image-picker-target="searchInput"
+               data-action="input->header-image-picker#search">
+
+        <div data-header-image-picker-target="loading"
+             class="text-center mb-3"
+             style="display: none;">
+          <div class="spinner-border spinner-border-sm" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+
+        <div data-header-image-picker-target="results"
+             class="row g-3"
+             style="max-height: 400px; overflow-y: auto;">
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Upload Modal -->
+  <dialog data-header-image-picker-target="uploadModal"
+          class="p-0 border-0 rounded">
+    <div class="card shadow-sm" style="width: 500px; max-width: 90vw;">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="m-0">Upload Image</h5>
+        <button type="button"
+                class="btn-close"
+                data-action="header-image-picker#closeUploadModal">
+        </button>
+      </div>
+      <div class="card-body">
+        <input type="file"
+               class="form-control"
+               accept="image/*"
+               data-header-image-picker-target="fileInput"
+               data-action="change->header-image-picker#upload">
+        <div class="form-text">Max file size: 25MB</div>
+      </div>
+    </div>
+  </dialog>
+</div>

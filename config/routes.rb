@@ -45,6 +45,13 @@ Rails.application.routes.draw do
         post :from_url
       end
     end
+
+    resources :unsplash_images, only: [] do
+      collection do
+        get :search
+        post :create
+      end
+    end
   end
 
   resources :navigation_items, only: %i[create destroy] do

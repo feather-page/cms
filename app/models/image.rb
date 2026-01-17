@@ -20,6 +20,18 @@ class Image < ApplicationRecord
     file.metadata['width']
   end
 
+  def unsplash?
+    unsplash_data.present?
+  end
+
+  def unsplash_photographer_name
+    unsplash_data&.dig('photographer_name')
+  end
+
+  def unsplash_photographer_url
+    unsplash_data&.dig('photographer_url')
+  end
+
   def fs_path(variant: nil)
     return unless file.attached?
 

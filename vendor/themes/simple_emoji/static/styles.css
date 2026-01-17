@@ -246,3 +246,47 @@ table.books {
     gap: 1rem;
   }
 }
+
+/* Header Image Styles */
+.header-image-container {
+  margin: -25px -25px 2rem -25px;
+  position: relative;
+}
+
+.header-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
+
+.unsplash-attribution {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.unsplash-attribution a {
+  color: #fff;
+  text-decoration: underline;
+}
+
+@media only screen and (max-width: 600px) {
+  .header-image-container {
+    margin: -25px -10px 1.5rem -10px;
+  }
+
+  .header-image {
+    max-height: 250px;
+  }
+}
+
+/* Adjust emoji positioning when header image present */
+.header-image-container + .emoji {
+  margin-top: -1rem;
+}
