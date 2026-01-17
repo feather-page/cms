@@ -1,13 +1,39 @@
 <%= turbo_frame_tag(:form) do %>
-  <%= form_for(book.persisted? ? book : [current_site, book], class: 'mb-4') do |form| %>
+  <%= form_for(book.persisted? ? book : [current_site, book],
+               class: 'mb-4',
+               data: {
+                 controller: 'book-search',
+                 book_search_search_url_value: search_site_books_path(current_site)
+               }) do |form| %>
 
+    <% unless book.persisted? %>
+      <div class="mb-3">
+        <%= label_tag :book_search, t('books.search_openlibrary'), class: 'form-label' %>
+        <%= text_field_tag :book_search, nil,
+            class: 'form-control',
+            data: {
+              book_search_target: 'query',
+              action: 'input->book-search#search'
+            },
+            placeholder: t('books.search_placeholder'),
+            autocomplete: 'off' %>
+        <div data-book-search-target="results" class="list-group mt-1"></div>
+      </div>
+    <% end %>
+
+    <div class="mb-3">
+      <%= component('form/select',
+            form:,
+            attribute: :reading_status,
+            options: Book.reading_statuses.keys.map { |s| [t("books.reading_statuses.#{s}"), s] }) %>
+    </div>
 
     <div class="row">
       <div class="col-2">
         <%= component('form/text_field', form:, attribute: :emoji) %>
       </div>
       <div class="col">
-        <%= component('form/text_field', form:, attribute: :title) %>
+        <%= component('form/text_field', form:, attribute: :title, data: { book_search_target: 'title' }) %>
       </div>
     </div>
 
@@ -16,13 +42,23 @@
         <%= component('form/date_field', form:, attribute: :read_at) %>
       </div>
       <div class="col">
-        <%= component('form/text_field', form:, attribute: :author) %>
+        <%= component('form/text_field', form:, attribute: :author, data: { book_search_target: 'author' }) %>
       </div>
+    </div>
+
+    <%= form.hidden_field :isbn, data: { book_search_target: 'isbn' } %>
+    <%= form.hidden_field :open_library_key %>
+    <%= hidden_field_tag :cover_url, nil, data: { book_search_target: 'coverUrl' } %>
+
+    <div data-book-search-target="coverPreview" class="mb-3">
+      <% if book.cover_image&.file&.attached? %>
+        <%= image_tag book.cover_image.file.variant(:mobile_x1_webp), class: 'book-cover-preview', style: 'max-height: 150px;' %>
+      <% end %>
     </div>
 
     <div class="d-flex gap-2">
       <%= form.submit(class: 'btn btn-primary') %>
-      <%= link_to 'Cancel', site_books_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+      <%= link_to t('form.cancel'), site_books_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
     </div>
   <% end %>
 <% end %>

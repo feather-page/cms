@@ -10,30 +10,30 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
 
   create_table "active_storage_attachments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "name", null: false
-    t.string "record_type", null: false
-    t.uuid "record_id", null: false
     t.uuid "blob_id", null: false
     t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.uuid "record_id", null: false
+    t.string "record_type", null: false
     t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
     t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
   end
 
   create_table "active_storage_blobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "key", null: false
-    t.string "filename", null: false
-    t.string "content_type"
-    t.text "metadata"
-    t.string "service_name", null: false
     t.bigint "byte_size", null: false
     t.string "checksum"
+    t.string "content_type"
     t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
     t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
   end
 
@@ -44,36 +44,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "authors_books", id: false, force: :cascade do |t|
-    t.uuid "book_id", null: false
     t.uuid "author_id", null: false
+    t.uuid "book_id", null: false
     t.index ["author_id", "book_id"], name: "index_authors_books_on_author_id_and_book_id"
     t.index ["book_id", "author_id"], name: "index_authors_books_on_book_id_and_author_id"
   end
 
   create_table "books", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "public_id"
-    t.uuid "site_id", null: false
-    t.uuid "post_id"
-    t.string "title", null: false
     t.string "author", null: false
-    t.datetime "read_at", null: false
-    t.string "emoji"
     t.datetime "created_at", null: false
+    t.string "emoji"
+    t.string "isbn"
+    t.string "open_library_key"
+    t.uuid "post_id"
+    t.string "public_id"
+    t.datetime "read_at"
+    t.integer "reading_status", default: 2, null: false
+    t.uuid "site_id", null: false
+    t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["post_id"], name: "index_books_on_post_id"
     t.index ["public_id"], name: "index_books_on_public_id", unique: true
+    t.index ["reading_status"], name: "index_books_on_reading_status"
     t.index ["site_id"], name: "index_books_on_site_id"
   end
 
   create_table "deployment_targets", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_config"
+    t.string "provider", null: false
+    t.string "public_hostname", null: false
+    t.string "public_id", limit: 21, null: false
     t.uuid "site_id", null: false
     t.integer "type", null: false
-    t.string "public_hostname", null: false
-    t.string "provider", null: false
-    t.text "encrypted_config"
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.string "public_id", limit: 21, null: false
     t.index ["provider"], name: "index_deployment_targets_on_provider"
     t.index ["public_hostname"], name: "index_deployment_targets_on_public_hostname", unique: true
     t.index ["public_id"], name: "index_deployment_targets_on_public_id", unique: true
@@ -82,78 +86,78 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "good_job_batches", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.text "description"
-    t.jsonb "serialized_properties"
-    t.text "on_finish"
-    t.text "on_success"
-    t.text "on_discard"
-    t.text "callback_queue_name"
     t.integer "callback_priority"
-    t.datetime "enqueued_at"
+    t.text "callback_queue_name"
+    t.datetime "created_at", null: false
+    t.text "description"
     t.datetime "discarded_at"
+    t.datetime "enqueued_at"
     t.datetime "finished_at"
     t.datetime "jobs_finished_at"
+    t.text "on_discard"
+    t.text "on_finish"
+    t.text "on_success"
+    t.jsonb "serialized_properties"
+    t.datetime "updated_at", null: false
   end
 
   create_table "good_job_executions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.uuid "active_job_id", null: false
-    t.text "job_class"
-    t.text "queue_name"
-    t.jsonb "serialized_params"
-    t.datetime "scheduled_at"
-    t.datetime "finished_at"
-    t.text "error"
-    t.integer "error_event", limit: 2
-    t.text "error_backtrace", array: true
-    t.uuid "process_id"
+    t.datetime "created_at", null: false
     t.interval "duration"
+    t.text "error"
+    t.text "error_backtrace", array: true
+    t.integer "error_event", limit: 2
+    t.datetime "finished_at"
+    t.text "job_class"
+    t.uuid "process_id"
+    t.text "queue_name"
+    t.datetime "scheduled_at"
+    t.jsonb "serialized_params"
+    t.datetime "updated_at", null: false
     t.index ["active_job_id", "created_at"], name: "index_good_job_executions_on_active_job_id_and_created_at"
     t.index ["process_id", "created_at"], name: "index_good_job_executions_on_process_id_and_created_at"
   end
 
   create_table "good_job_processes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.jsonb "state"
     t.integer "lock_type", limit: 2
+    t.jsonb "state"
+    t.datetime "updated_at", null: false
   end
 
   create_table "good_job_settings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.text "key"
+    t.datetime "updated_at", null: false
     t.jsonb "value"
     t.index ["key"], name: "index_good_job_settings_on_key", unique: true
   end
 
   create_table "good_jobs", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.text "queue_name"
-    t.integer "priority"
-    t.jsonb "serialized_params"
-    t.datetime "scheduled_at"
-    t.datetime "performed_at"
-    t.datetime "finished_at"
-    t.text "error"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
     t.uuid "active_job_id"
-    t.text "concurrency_key"
-    t.text "cron_key"
-    t.uuid "retried_good_job_id"
-    t.datetime "cron_at"
-    t.uuid "batch_id"
     t.uuid "batch_callback_id"
-    t.boolean "is_discrete"
-    t.integer "executions_count"
-    t.text "job_class"
+    t.uuid "batch_id"
+    t.text "concurrency_key"
+    t.datetime "created_at", null: false
+    t.datetime "cron_at"
+    t.text "cron_key"
+    t.text "error"
     t.integer "error_event", limit: 2
+    t.integer "executions_count"
+    t.datetime "finished_at"
+    t.boolean "is_discrete"
+    t.text "job_class"
     t.text "labels", array: true
-    t.uuid "locked_by_id"
     t.datetime "locked_at"
+    t.uuid "locked_by_id"
+    t.datetime "performed_at"
+    t.integer "priority"
+    t.text "queue_name"
+    t.uuid "retried_good_job_id"
+    t.datetime "scheduled_at"
+    t.jsonb "serialized_params"
+    t.datetime "updated_at", null: false
     t.index ["active_job_id", "created_at"], name: "index_good_jobs_on_active_job_id_and_created_at"
     t.index ["batch_callback_id"], name: "index_good_jobs_on_batch_callback_id", where: "(batch_callback_id IS NOT NULL)"
     t.index ["batch_id"], name: "index_good_jobs_on_batch_id", where: "(batch_id IS NOT NULL)"
@@ -171,25 +175,25 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "images", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.integer "state"
-    t.string "source_url"
-    t.uuid "site_id", null: false
-    t.string "imageable_type"
-    t.uuid "imageable_id"
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.uuid "imageable_id"
+    t.string "imageable_type"
     t.string "public_id", limit: 21, null: false
+    t.uuid "site_id", null: false
+    t.string "source_url"
+    t.integer "state"
+    t.datetime "updated_at", null: false
     t.index ["imageable_type", "imageable_id"], name: "index_images_on_imageable"
     t.index ["public_id"], name: "index_images_on_public_id", unique: true
     t.index ["site_id"], name: "index_images_on_site_id"
   end
 
   create_table "navigation_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "public_id"
+    t.datetime "created_at", null: false
     t.uuid "navigation_id", null: false
     t.uuid "page_id", null: false
     t.integer "position"
-    t.datetime "created_at", null: false
+    t.string "public_id"
     t.datetime "updated_at", null: false
     t.index ["navigation_id", "position"], name: "index_navigation_items_on_navigation_id_and_position", unique: true
     t.index ["navigation_id"], name: "index_navigation_items_on_navigation_id"
@@ -198,40 +202,40 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "navigations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.string "public_id", limit: 21
     t.uuid "site_id", null: false
-    t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["public_id"], name: "index_navigations_on_public_id", unique: true
     t.index ["site_id"], name: "index_navigations_on_site_id"
   end
 
   create_table "pages", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "title"
-    t.string "slug"
-    t.string "emoji"
     t.json "content"
-    t.uuid "site_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "public_id", limit: 21, null: false
+    t.string "emoji"
     t.integer "page_type", default: 0, null: false
+    t.string "public_id", limit: 21, null: false
+    t.uuid "site_id", null: false
+    t.string "slug"
+    t.string "title"
+    t.datetime "updated_at", null: false
     t.index ["public_id"], name: "index_pages_on_public_id", unique: true
     t.index ["site_id"], name: "index_pages_on_site_id"
     t.index ["slug", "site_id"], name: "index_pages_on_slug_and_site_id", unique: true
   end
 
   create_table "posts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "title"
-    t.string "slug"
-    t.string "emoji"
     t.json "content"
-    t.uuid "site_id", null: false
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.boolean "draft", default: false, null: false
+    t.string "emoji"
     t.string "public_id", limit: 21, null: false
     t.datetime "publish_at"
-    t.boolean "draft", default: false, null: false
+    t.uuid "site_id", null: false
+    t.string "slug"
+    t.string "title"
+    t.datetime "updated_at", null: false
     t.index ["draft"], name: "index_posts_on_draft"
     t.index ["public_id"], name: "index_posts_on_public_id", unique: true
     t.index ["publish_at"], name: "index_posts_on_publish_at"
@@ -240,10 +244,10 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "site_users", force: :cascade do |t|
+    t.string "public_id", limit: 21, null: false
     t.string "role", default: "editor", null: false
     t.uuid "site_id", null: false
     t.uuid "user_id", null: false
-    t.string "public_id", limit: 21, null: false
     t.index ["public_id"], name: "index_site_users_on_public_id", unique: true
     t.index ["role"], name: "index_site_users_on_role"
     t.index ["site_id"], name: "index_site_users_on_site_id"
@@ -252,59 +256,59 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "sites", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "domain"
-    t.string "title"
-    t.string "language_code", default: "en", null: false
+    t.string "copyright", default: "© All rights reserved."
     t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
+    t.string "domain"
+    t.string "emoji", limit: 4, default: "🌐"
+    t.string "language_code", default: "en", null: false
     t.string "public_id", limit: 21, null: false
     t.uuid "theme_id", null: false
-    t.string "emoji", limit: 4, default: "🌐"
-    t.string "copyright", default: "© All rights reserved."
+    t.string "title"
+    t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_sites_on_domain", unique: true
     t.index ["public_id"], name: "index_sites_on_public_id", unique: true
     t.index ["theme_id"], name: "index_sites_on_theme_id"
   end
 
   create_table "social_media_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "public_id", limit: 21
-    t.string "name"
-    t.string "icon"
-    t.string "url"
-    t.uuid "site_id", null: false
     t.datetime "created_at", null: false
+    t.string "icon"
+    t.string "name"
+    t.string "public_id", limit: 21
+    t.uuid "site_id", null: false
     t.datetime "updated_at", null: false
+    t.string "url"
     t.index ["public_id"], name: "index_social_media_links_on_public_id", unique: true
     t.index ["site_id"], name: "index_social_media_links_on_site_id"
   end
 
   create_table "solid_cable_messages", force: :cascade do |t|
     t.binary "channel", null: false
-    t.binary "payload", null: false
-    t.datetime "created_at", null: false
     t.bigint "channel_hash", null: false
+    t.datetime "created_at", null: false
+    t.binary "payload", null: false
     t.index ["channel"], name: "index_solid_cable_messages_on_channel"
     t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
     t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
   end
 
   create_table "themes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "name", null: false
-    t.string "public_id", limit: 21, null: false
+    t.datetime "created_at", null: false
     t.string "description"
     t.string "hugo_theme", null: false
-    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "public_id", limit: 21, null: false
     t.datetime "updated_at", null: false
     t.index ["public_id"], name: "index_themes_on_public_id", unique: true
   end
 
   create_table "user_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.string "email"
-    t.string "public_id"
     t.datetime "accepted_at", precision: nil
-    t.uuid "site_id", null: false
-    t.uuid "inviting_user_id", null: false
     t.datetime "created_at", null: false
+    t.string "email"
+    t.uuid "inviting_user_id", null: false
+    t.string "public_id"
+    t.uuid "site_id", null: false
     t.datetime "updated_at", null: false
     t.index ["accepted_at"], name: "index_user_invitations_on_accepted_at"
     t.index ["email", "site_id"], name: "index_user_invitations_on_email_and_site_id", unique: true
@@ -314,12 +318,12 @@ ActiveRecord::Schema[8.0].define(version: 2025_07_26_111431) do
   end
 
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
     t.string "email", null: false
     t.datetime "last_login_at"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.boolean "super_admin", default: false, null: false
     t.string "public_id", limit: 21, null: false
+    t.boolean "super_admin", default: false, null: false
+    t.datetime "updated_at", null: false
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
   end

@@ -1,4 +1,6 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('book') %> New Book</h1>
-</div>
-<%= render "form", book: @book %>
+<%= turbo_frame_tag(:new_book) do %>
+  <div class="page-header">
+    <h1 class="h4"><%= icon('book') %> New Book</h1>
+  </div>
+  <%= render "form", book: @book %>
+<% end %>

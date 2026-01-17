@@ -1,7 +1,14 @@
 <tr id="<%= dom_id(book) %>" is="turbo-frame">
-  <td><%= book.emoji %> <%= book.title %></td>
+  <td class="text-center align-middle">
+    <% if book.cover_image&.file&.attached? %>
+      <%= image_tag book.cover_image.file.variant(:mobile_x1_webp), style: 'max-height: 50px;' %>
+    <% elsif book.emoji.present? %>
+      <span style="font-size: 1.5rem;"><%= book.emoji %></span>
+    <% end %>
+  </td>
+  <td><%= book.title %></td>
   <td><%= book.author %></td>
-  <td><%= l(book.read_at.to_date) %></td>
+  <td><%= book.read_at ? l(book.read_at.to_date) : '-' %></td>
   <td class="text-end">
     <%= link_to(
           icon('pencil'),

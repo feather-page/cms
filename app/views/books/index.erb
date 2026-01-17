@@ -1,15 +1,28 @@
 <div class="page-header">
   <h1 class="h4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
-  <%= link_to "New Book", new_site_book_path, data: { turbo_frame: "new_book" }, class: 'btn btn-primary' %>
+  <%= link_to t('books.new_book'), new_site_book_path, data: { turbo_frame: "new_book" }, class: 'btn btn-primary' %>
 </div>
+
+<ul class="nav nav-tabs mb-3">
+  <% Book.reading_statuses.keys.each do |status| %>
+    <li class="nav-item">
+      <%= link_to t("books.reading_statuses.#{status}"),
+                  site_books_path(current_site, status: status),
+                  class: "nav-link #{'active' if params[:status] == status || (params[:status].blank? && status == 'finished')}" %>
+    </li>
+  <% end %>
+</ul>
+
+<%= turbo_frame_tag(:new_book) %>
 
 <div class="table-responsive">
 <table class="table table-bordered w-100">
   <thead>
     <tr>
-      <th>Title</th>
-      <th>Author</th>
-      <th>Read at</th>
+      <th style="width: 60px;"></th>
+      <th><%= t('activerecord.attributes.book.title') %></th>
+      <th><%= t('activerecord.attributes.book.author') %></th>
+      <th><%= t('activerecord.attributes.book.read_at') %></th>
       <th class="w-auto"></th>
     </tr>
   </thead>
