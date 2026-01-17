@@ -1,17 +1,16 @@
 <%= turbo_frame_tag(post) do %>
-  <article>
+  <article class="post-card">
     <% if post.title.present? %>
-      <h1 class="h4"><%= post.emoji %> <%= post.title %></h1>
+      <div class="post-card-title"><%= post.emoji %> <%= post.title %></div>
     <% else %>
       <div class="content"><%= post.content_html %></div>
     <% end %>
-    <div class="mb-2">
+    <div class="post-card-meta">
       <span class="badge bg-secondary"><%= l(post.created_at, format: :long) %></span>
     </div>
-    <div class="mb-2">
+    <div class="post-card-actions">
       <%= link_to('Edit', edit_site_post_path(current_site, post), data: { turbo_frame: :content }, class: 'btn btn-outline-secondary btn-sm') %>
       <%= link_to('Delete', site_post_path(current_site, post), data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }, class: 'btn btn-outline-danger btn-sm') %>
     </div>
-    <hr>
   </article>
 <% end %>

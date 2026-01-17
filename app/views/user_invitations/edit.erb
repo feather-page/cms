@@ -1,8 +1,12 @@
-<h1 class="h4"><%= t('.title') %></h1>
+<div class="page-header">
+  <h1 class="h4"><%= icon('envelope-check') %> <%= t('.title') %></h1>
+</div>
 
 <div class="alert alert-secondary" role="alert">
   <%= t('.info.html', site: @user_invitation.site.title, inviting_user: @user_invitation.inviting_user.email)  %>
 </div>
 
-<%= link_to t('.submit'), invitation_path(params[:id]), data: { turbo_method: :put }, class: 'btn btn-primary' %>
-<%= link_to(t('.cancel'), root_path, "data-turbo-frame": '_top', class: "btn btn-outline-primary") %>
+<div class="d-flex gap-2">
+  <%= link_to t('.submit'), invitation_path(params[:id]), data: { turbo_method: :put }, class: 'btn btn-primary' %>
+  <%= link_to(t('.cancel'), root_path, "data-turbo-frame": '_top', class: "btn btn-outline-secondary") %>
+</div>

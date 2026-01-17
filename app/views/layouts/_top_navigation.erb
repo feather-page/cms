@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+<nav class="navbar navbar-expand-lg fixed-top navbar-main" data-controller="theme">
   <div class="container">
     <%= link_to(root_path, class: "navbar-brand fs-4 d-flex align-items-center gap-2") do %>
       <span>🪶</span>
@@ -10,13 +10,18 @@
     </button>
 
     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+      <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
         <% if current_user %>
           <li class="nav-item"><%= link_to("Sites", sites_path, class: "nav-link") %></li>
           <li class="nav-item"><%= link_to("Logout", logout_path, data: { turbo_method: "delete", turbo_frame: '_top', turbo_action: 'replace'}, class: "nav-link") %></li>
         <% else %>
           <li class="nav-item"><%= link_to("Login", login_path, class: "nav-link") %></li>
         <% end %>
+        <li class="nav-item">
+          <button class="theme-toggle" data-action="click->theme#toggle" aria-label="Toggle dark mode">
+            <i class="bi bi-moon" data-theme-target="icon"></i>
+          </button>
+        </li>
       </ul>
     </div>
   </div>

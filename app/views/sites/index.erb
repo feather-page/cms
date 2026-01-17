@@ -1,7 +1,8 @@
-<h1 class="h1"><%= icon('houses') %> Sites</h1>
+<div class="d-flex align-items-center justify-content-between mb-4">
+  <h1 class="h1 m-0"><%= icon('houses') %> Sites</h1>
+  <%= link_to('New Site', new_site_path, class: 'btn btn-primary') %>
+</div>
 
-<%= link_to('New Site', new_site_path, class: 'btn btn-secondary') %>
-
-<hr>
-
-<%= render @sites %>
+<div class="site-cards">
+  <%= render @sites %>
+</div>

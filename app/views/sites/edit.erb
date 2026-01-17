@@ -1,10 +1,12 @@
-<h1 class="h4"><%= icon('gear') %> <%= t('.title') %></h1>
+<div class="page-header">
+  <h1 class="h4"><%= icon('gear') %> <%= t('.title') %></h1>
+</div>
 
 <%= render 'edit_form', site: @site %>
 
-<hr>
-
-<h2 class="h4"><%= icon('megaphone') %> <%= t('.social_media_links') %></h2>
+<div class="labeled-divider">
+  <span><%= t('.social_media_links') %></span>
+</div>
 
 <%= render 'social_media_links/modal', social_media_link: SocialMediaLink.new(site: current_site) %>
 
