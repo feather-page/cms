@@ -3,10 +3,9 @@
   <%= component('form/text_field', form:, attribute: :public_hostname) %>
   <%= component('form/select', form:, attribute: :type, options: DeploymentTarget.types.keys.map { |key| [t("deployment_target.types.#{key}"), key] }) %>
 
-  <div class="field is-grouped">
-    <%= form.submit('Update Deployment target', class: 'button is-link') %>
-    &nbsp;
-    <%= link_to 'Cancel', site_deployment_targets_path(current_site), 'data-turbo-frame': '_top', class: 'button is-link is-light' %>
+  <div class="d-flex gap-2">
+    <%= form.submit('Update Deployment target', class: 'btn btn-primary') %>
+    <%= link_to 'Cancel', site_deployment_targets_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
   </div>
   <% end %>
 <% end %>

@@ -1,25 +1,35 @@
 <!DOCTYPE html>
-<html class="has-navbar-fixed-top">
+<html>
   <head>
     <title>feather.page</title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <%# Apply theme immediately to prevent flash %>
+    <script>
+      (function() {
+        var theme = localStorage.getItem('feather-theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
 
-      <meta name="turbo-refresh-method" content="morph">
+    <meta name="turbo-refresh-method" content="morph">
   </head>
   <body>
     <%= render 'layouts/top_navigation' %>
-    <div class="container mt-6 px-4">
+    <div class="container mt-5 px-4">
       <% if current_site %>
         <%= component('SiteNavigation', current_site:) %>
-        <hr />
       <% end %>
       <%= render 'layouts/notices' %>
       <%= yield %>
-  </div>
+    </div>
+
   </body>
 </html>

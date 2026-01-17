@@ -1,15 +1,21 @@
-
-<div class="title"><%= helpers.icon("house") %> <%= current_site.title %></div>
-
-<div class="navbar">
-  <div class="navbar-start">
-    <%= navigation_item(t('site_navigation.blogposts'), helpers.site_posts_path(current_site), icon: :pen) %>
-    <%= navigation_item(t('site_navigation.pages'), helpers.site_pages_path(current_site), icon: :"file-text") %>
-    <%= navigation_item(t('site_navigation.books'), helpers.site_books_path(current_site), icon: :book) %>
+<div class="site-navigation">
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <div class="h2 m-0 d-flex align-items-center gap-2 site-header">
+      <%= helpers.icon("house") %>
+      <span><%= current_site.title %></span>
+    </div>
   </div>
-  <div class="navbar-end">
-    <%= navigation_item(t('site_navigation.settings'), helpers.edit_site_path(current_site), icon: :gear) %>
-    <%= navigation_item(t('site_navigation.users'), helpers.site_users_path(current_site), icon: :"people-fill") %>
-    <%= navigation_item(t('site_navigation.deployments'), helpers.site_deployment_targets_path(current_site), icon: :"box-seam-fill")  %>
-  </div>
+
+  <nav class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <ul class="nav nav-pills">
+      <%= navigation_item(t('site_navigation.blogposts'), helpers.site_posts_path(current_site), icon: :pen) %>
+      <%= navigation_item(t('site_navigation.pages'), helpers.site_pages_path(current_site), icon: :"file-text") %>
+      <%= navigation_item(t('site_navigation.books'), helpers.site_books_path(current_site), icon: :book) %>
+    </ul>
+    <ul class="nav nav-pills">
+      <%= navigation_item(t('site_navigation.settings'), helpers.edit_site_path(current_site), icon: :gear) %>
+      <%= navigation_item(t('site_navigation.users'), helpers.site_users_path(current_site), icon: :"people-fill") %>
+      <%= navigation_item(t('site_navigation.deployments'), helpers.site_deployment_targets_path(current_site), icon: :"box-seam-fill") %>
+    </ul>
+  </nav>
 </div>

@@ -3,6 +3,16 @@ export default class ApiClient {
     this.csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content')
   }
 
+  get (url) {
+    return fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-CSRF-Token': this.csrfToken
+      }
+    })
+  }
+
   post (url, data) {
     return fetch(url, {
       method: 'POST',

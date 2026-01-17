@@ -10,8 +10,7 @@ export default class extends Controller {
 
     this.iconInputTarget.value = target.dataset.icon
     this.disableAllButtons()
-    target.classList.add('is-active')
-    target.classList.add('is-link')
+    target.classList.add('active')
 
     this.prefillName(serviceData.name)
     this.setUrlPlaceholder(serviceData.url_placeholder)

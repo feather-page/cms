@@ -1,9 +1,8 @@
 <%= turbo_frame_tag(:content) do %>
-  <h1 class="title is-4"><%= icon('pen') %> Blogposts</h1>
-
-  <%= link_to "New Post", new_site_post_path, class: "button mb-4" %>
-
-  <hr>
+  <div class="page-header">
+    <h1 class="h4"><%= icon('pen') %> Blogposts</h1>
+    <%= link_to "New Post", new_site_post_path, class: "btn btn-primary" %>
+  </div>
 
   <%= turbo_frame_tag(:posts) do %>
     <%= render @posts %>

@@ -30,10 +30,10 @@ export default class extends Controller {
   }
 
   hide () {
-    this.titleAndSlugTarget.classList.add('is-hidden')
+    this.titleAndSlugTarget.classList.add('d-none')
   }
 
   unhide () {
-    this.titleAndSlugTarget.classList.remove('is-hidden')
+    this.titleAndSlugTarget.classList.remove('d-none')
   }
 }

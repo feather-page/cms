@@ -3,7 +3,7 @@ module Form
     def icon_button(service)
       helpers.content_tag(
         :button,
-        class: 'button is-medium', title: service.name,
+        class: 'btn btn-outline-secondary', title: service.name,
         data: {
           icon: service.key,
           action: 'SocialMediaForm#pickService',

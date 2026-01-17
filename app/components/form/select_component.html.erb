@@ -1,8 +1,6 @@
-<div class="field">
-  <%= form.label attribute, class: 'label' %>
-  <div class="select">
-    <%= form.select(attribute, options, class: input_classes) %>
-    <%= help_text %>
-  </div>
+<div class="mb-3">
+  <%= form.label attribute, class: 'form-label' %>
+  <%= form.select(attribute, options, {}, class: input_classes) %>
+  <%= help_text %>
 </div>
 

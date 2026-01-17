@@ -1,18 +1,25 @@
 <tr id="<%= dom_id(book) %>" is="turbo-frame">
-  <td><%= book.emoji %> <%= book.title %></td>
+  <td class="text-center align-middle">
+    <% if book.cover_image&.file&.attached? %>
+      <%= image_tag book.cover_image.file.variant(:mobile_x1_webp), style: 'max-height: 50px;' %>
+    <% elsif book.emoji.present? %>
+      <span style="font-size: 1.5rem;"><%= book.emoji %></span>
+    <% end %>
+  </td>
+  <td><%= book.title %></td>
   <td><%= book.author %></td>
-  <td><%= l(book.read_at.to_date) %></td>
-  <td class="has-text-right">
+  <td><%= book.read_at ? l(book.read_at.to_date) : '-' %></td>
+  <td class="text-end">
     <%= link_to(
           icon('pencil'),
           edit_book_path(book),
           title: t('edit'),
-          class: 'button is-info is-light is-small') %>
+          class: 'btn btn-outline-secondary btn-sm') %>
     <%= link_to(
           icon('trash'),
           book_path(book),
           title: t('delete'),
-          class: 'button is-danger is-light is-small',
+          class: 'btn btn-outline-danger btn-sm',
           data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
   </td>
 </tr>

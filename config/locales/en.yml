@@ -45,6 +45,13 @@ en:
         url: URL
       user-invitation:
         email: Email
+      book:
+        title: Title
+        author: Author
+        emoji: Emoji
+        read_at: Read at
+        reading_status: Reading Status
+        isbn: ISBN
   cancel: Cancel
   deployment_target:
     types:
@@ -183,7 +190,14 @@ en:
       introduction: You can now collaborate on the site together.
   books:
     create:
-      notice: "The book was succesfully added."
+      notice: "The book was successfully added."
     update:
-      notice: "The book was succesfully updated."
+      notice: "The book was successfully updated."
+    new_book: "New Book"
+    search_openlibrary: "Search OpenLibrary"
+    search_placeholder: "Search by title or author..."
+    reading_statuses:
+      want_to_read: "Want to Read"
+      reading: "Currently Reading"
+      finished: "Finished Reading"
   edit: "Edit"

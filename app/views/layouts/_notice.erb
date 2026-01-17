@@ -1,4 +1,4 @@
-<div data-controller="notice" class="notification is-info mb-6">
-  <button class="delete" data-action="click->notice#close"></button>
+<div data-controller="notice" class="alert alert-info alert-dismissible fade show mb-4" role="alert">
   <%= notice.html_safe %>
+  <button type="button" class="btn-close" data-action="click->notice#close" aria-label="Close"></button>
 </div>

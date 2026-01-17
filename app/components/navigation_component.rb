@@ -19,7 +19,7 @@ class NavigationComponent < ViewComponent::Base
     helpers.link_to(
       t('edit'),
       helpers.edit_site_page_path(navigation.site, item.page),
-      class: 'button is-small'
+      class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
@@ -28,7 +28,7 @@ class NavigationComponent < ViewComponent::Base
       t('delete'),
       helpers.site_page_path(navigation.site, item.page),
       data: { turbo_method: :delete },
-      class: 'button is-small'
+      class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
@@ -36,7 +36,7 @@ class NavigationComponent < ViewComponent::Base
     helpers.link_to(
       t('navigation.remove_page'),
       helpers.navigation_item_path(item),
-      data: { turbo_method: :delete }, class: 'button is-small'
+      data: { turbo_method: :delete }, class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
@@ -47,7 +47,7 @@ class NavigationComponent < ViewComponent::Base
       helpers.icon('caret-up-square'),
       helpers.move_up_navigation_item_path(item),
       title: t('navigation.move_up'),
-      data: { turbo_method: :patch }, class: 'button is-small'
+      data: { turbo_method: :patch }, class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
@@ -58,13 +58,13 @@ class NavigationComponent < ViewComponent::Base
       helpers.icon('caret-down-square'),
       helpers.move_down_navigation_item_path(item),
       title: t('navigation.move_down'),
-      data: { turbo_method: :patch }, class: 'button is-small'
+      data: { turbo_method: :patch }, class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
   private
 
   def inactive_button(icon)
-    helpers.content_tag(:span, helpers.icon(icon), class: 'button is-static is-small')
+    helpers.content_tag(:span, helpers.icon(icon), class: 'btn btn-sm btn-outline-secondary disabled')
   end
 end

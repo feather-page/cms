@@ -1,7 +1,7 @@
-<h1 class="title is-4"><%= icon('files') %> Pages</h1>
-<%= link_to "New Page", new_site_page_path, data: { turbo_frame: "new_page" }, class: 'button mb-4' %>
-
-<hr>
+<div class="page-header">
+  <h1 class="h4"><%= icon('files') %> Pages</h1>
+  <%= link_to "New Page", new_site_page_path, data: { turbo_frame: "new_page" }, class: 'btn btn-primary' %>
+</div>
 
 <div class="labeled-divider">
   <span><%= t('.pages_in_navigation') %></span>

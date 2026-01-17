@@ -47,7 +47,9 @@ class SitesController < ApplicationController
   private
 
   def set_site
-    @set_site ||= policy_scope(Site).find_by(public_id: params[:id])
+    return @set_site if defined?(@set_site)
+
+    @set_site = policy_scope(Site).find_by(public_id: params[:id])
   end
 
   def site_params

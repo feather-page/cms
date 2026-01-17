@@ -1,20 +1,19 @@
-<h1 class="title">Login</h1>
+<div class="login-container">
+  <h1 class="h1">Login</h1>
 
-<%= turbo_frame_tag('login') do %>
-  <p class="title is-6">Enter your Email and we send you a link to login again.</p>
+  <%= turbo_frame_tag('login') do %>
+    <p class="login-subtitle">Enter your email and we'll send you a link to login.</p>
 
-  <%= form_with(url: login_url) do |f| %>
-    <div class="field">
-      <%= f.label(:email, class: "label") %>
-      <div class="control">
-        <%= f.email_field(:email, placeholder: 'name@example.com', class: "input", required: true) %>
+    <%= form_with(url: login_url) do |f| %>
+      <div class="mb-3">
+        <%= f.label(:email, class: "form-label") %>
+        <%= f.email_field(:email, placeholder: 'name@example.com', class: "form-control", required: true) %>
       </div>
-    </div>
 
-    <div class="field is-grouped">
-      <%= f.submit "Continue", class: "button is-link" %>
-      &nbsp;
-      <%= link_to("Cancel", root_path, "data-turbo-frame": '_top', class: "button is-link is-light") %>
-    </div>
+      <div class="d-grid gap-2">
+        <%= f.submit "Continue", class: "btn btn-primary" %>
+        <%= link_to("Cancel", root_path, "data-turbo-frame": '_top', class: "btn btn-outline-secondary") %>
+      </div>
+    <% end %>
   <% end %>
-<% end %>
+</div>

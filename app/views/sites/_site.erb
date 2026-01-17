@@ -1,12 +1,9 @@
-<div class="mb-4">
-  <h2 class="title is-4">
+<div class="site-card">
+  <div class="site-card-title">
     <%= link_to(site.title, site_posts_path(site)) %>
-  </h2>
-  <table class="table">
-    <tr>
-      <td><%= t('domain') %>:</td>
-      <td><%= site.domain %></td>
-    </tr>
-  </table>
+  </div>
+  <div class="site-card-domain">
+    <%= icon('globe') %>
+    <span><%= site.domain %></span>
+  </div>
 </div>
-<hr />
