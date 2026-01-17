@@ -132,6 +132,11 @@ body {
 .content {
   overflow: hidden;
 
+  // Allow EditorJS toolbar and menus to overflow
+  &.editorjs {
+    overflow: visible;
+  }
+
   figure {
     margin: 1em 0 !important;
 

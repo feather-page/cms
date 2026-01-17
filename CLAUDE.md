@@ -2,7 +2,17 @@
 
 ## Project Overview
 
-Meerkat CMS (feather.page) is a Rails 8 application for managing small static websites. It uses ViewComponents, Stimulus, Turbo, and Bootstrap 5.
+Feather-Page CMS is a Ruby on Rails application that provides a web interface for managing small static websites. It leverages Hugo to build static sites and provides a simple management UI.
+
+## Design Goals
+
+*   A simple interface that can be used by non-technical users.
+*   Website should look like a real web-developer hand-coded them.
+*   Deployed websites should be static.
+*   Deployed websites should NOT load any external resources.
+*   Deployed websites should be as small as possible.
+*   Deployed websites should be SEO friendly.
+*   Deployed websites are on domains that belong to the user.
 
 ## Code Quality Requirements
 
