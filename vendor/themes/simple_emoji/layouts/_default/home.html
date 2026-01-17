@@ -7,7 +7,7 @@
   {{- end }}
   </ul>
 
-  {{ .Content }}
+  {{ .Content | replaceRE `/images/` (print $.Site.BaseURL `images/`) | safeHTML }}
   <hr />
 
   <h2>🖊 Blogposts</h2>
@@ -20,7 +20,7 @@
               {{ if isset .Params "emoji" }}
               <div class="post-emoji">{{ .Params.Emoji }}</div>
               {{ end }}
-              <div class="post-content">{{ .Content }}</div>
+              <div class="post-content">{{ .Content | replaceRE `/images/` (print $.Site.BaseURL `images/`) | safeHTML }}</div>
             </div>
             <div class="post-date">{{ .Date | time.Format ":date_medium" }}</div>
         {{ else }}

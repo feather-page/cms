@@ -1,15 +1,15 @@
 require 'rails_helper'
 
-RSpec.describe Image, type: :model do
+RSpec.describe Image do
   describe "unsplash methods" do
     let(:site) { create(:site) }
 
     context "with unsplash data" do
       let(:image) do
         create(:image, site: site, unsplash_data: {
-          "photographer_name" => "John Doe",
-          "photographer_url" => "https://unsplash.com/@johndoe"
-        })
+                 "photographer_name" => "John Doe",
+                 "photographer_url" => "https://unsplash.com/@johndoe"
+               })
       end
 
       describe "#unsplash?" do

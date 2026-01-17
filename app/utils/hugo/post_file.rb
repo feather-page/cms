@@ -23,7 +23,7 @@ module Hugo
 
     def header_image_data
       image = object.header_image
-      data = { url: "/images/#{image.public_id}" }
+      data = header_image_urls(image)
 
       if image.unsplash?
         data[:unsplash_photographer] = image.unsplash_photographer_name
@@ -31,6 +31,20 @@ module Hugo
       end
 
       data
+    end
+
+    def header_image_urls(image)
+      base_path = "/images/#{image.public_id}"
+      {
+        url: "#{base_path}/desktop_x1.webp",
+        srcset: header_image_srcset(base_path)
+      }
+    end
+
+    def header_image_srcset(base_path)
+      Image::Variants::SIZES.map do |name, width|
+        "#{base_path}/#{name}.webp #{width}w"
+      end.join(", ")
     end
   end
 end

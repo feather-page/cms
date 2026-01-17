@@ -37,5 +37,21 @@ describe Hugo::ConfigFile do
       site.update(copyright: 'Foobar {{CurrentYear}}')
       expect(content['copyright']).to eq("Foobar #{Time.zone.now.year}")
     end
+
+    context "with internal provider" do
+      let(:deployment_target) { create(:deployment_target, :staging) }
+
+      it "uses preview path as baseUrl" do
+        expect(content["baseUrl"]).to eq("/preview/#{deployment_target.id}/")
+      end
+    end
+
+    context "with external provider" do
+      let(:deployment_target) { create(:deployment_target, :fastmail) }
+
+      it "uses public hostname as baseUrl" do
+        expect(content["baseUrl"]).to eq("https://#{deployment_target.public_hostname}/")
+      end
+    end
   end
 end

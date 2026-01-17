@@ -1,5 +1,5 @@
 {{ define "main" }}
-  {{ .Content }}
+  {{ .Content | replaceRE `/images/` (print .Site.BaseURL `images/`) | safeHTML }}
 
   {{ range $.Site.Data.countries }}
      <h2>{{ .continent }}</h2>

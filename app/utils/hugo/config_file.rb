@@ -7,7 +7,7 @@ module Hugo
     # rubocop:disable Metrics/MethodLength
     def content
       {
-        baseUrl: "https://#{deployment_target.public_hostname}/",
+        baseUrl: base_url,
         languageCode: site.language_code,
         title: site.title,
         copyright:,
@@ -46,6 +46,12 @@ module Hugo
 
     def copyright
       site.copyright.gsub('{{CurrentYear}}', Time.zone.now.year.to_s)
+    end
+
+    def base_url
+      return "/preview/#{deployment_target.id}/" if deployment_target.provider == "internal"
+
+      "https://#{deployment_target.public_hostname}/"
     end
   end
 end

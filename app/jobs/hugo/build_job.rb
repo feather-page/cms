@@ -35,12 +35,19 @@ module Hugo
     end
 
     def image_files(site, deployment_target)
-      site.images.assigned.map do |image|
+      all_images(site).map do |image|
         Image::Variants.keys.map do |variant|
           image_variant = ImageVariant.new(image, variant)
           Hugo::ImageFile.new(image_variant, deployment_target)
         end
       end.flatten
+    end
+
+    def all_images(site)
+      content_images = site.images.assigned
+      header_images = site.posts.where.not(header_image: nil).map(&:header_image) +
+                      site.pages.where.not(header_image: nil).map(&:header_image)
+      (content_images + header_images).uniq
     end
 
     def symlink_themes(deployment_target)

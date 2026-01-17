@@ -63,6 +63,7 @@ en:
       notice: Deployment target was successfully updated.
     deploy:
       notice: A deployment was triggered for this deployment target.
+    preview: Preview
   domain: Domain
   delete: Delete
   are_you_sure: Are you sure?

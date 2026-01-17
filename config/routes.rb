@@ -61,6 +61,9 @@ Rails.application.routes.draw do
     end
   end
 
+  get 'preview/:deployment_target_id', to: 'previews#show', as: :preview_root
+  get 'preview/:deployment_target_id/*path', to: 'previews#show', as: :preview
+
   root 'sites#index'
 
   get 'login', to: 'sessions#new', as: :login

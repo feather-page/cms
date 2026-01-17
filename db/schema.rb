@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_17_121306) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -182,10 +182,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
     t.uuid "site_id", null: false
     t.string "source_url"
     t.integer "state"
+    t.jsonb "unsplash_data"
     t.datetime "updated_at", null: false
     t.index ["imageable_type", "imageable_id"], name: "index_images_on_imageable"
     t.index ["public_id"], name: "index_images_on_public_id", unique: true
     t.index ["site_id"], name: "index_images_on_site_id"
+    t.index ["unsplash_data"], name: "index_images_on_unsplash_data", using: :gin
   end
 
   create_table "navigation_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -214,12 +216,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
     t.json "content"
     t.datetime "created_at", null: false
     t.string "emoji"
+    t.uuid "header_image_id"
     t.integer "page_type", default: 0, null: false
     t.string "public_id", limit: 21, null: false
     t.uuid "site_id", null: false
     t.string "slug"
     t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["header_image_id"], name: "index_pages_on_header_image_id"
     t.index ["public_id"], name: "index_pages_on_public_id", unique: true
     t.index ["site_id"], name: "index_pages_on_site_id"
     t.index ["slug", "site_id"], name: "index_pages_on_slug_and_site_id", unique: true
@@ -230,6 +234,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
     t.datetime "created_at", null: false
     t.boolean "draft", default: false, null: false
     t.string "emoji"
+    t.uuid "header_image_id"
     t.string "public_id", limit: 21, null: false
     t.datetime "publish_at"
     t.uuid "site_id", null: false
@@ -237,6 +242,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["draft"], name: "index_posts_on_draft"
+    t.index ["header_image_id"], name: "index_posts_on_header_image_id"
     t.index ["public_id"], name: "index_posts_on_public_id", unique: true
     t.index ["publish_at"], name: "index_posts_on_publish_at"
     t.index ["site_id"], name: "index_posts_on_site_id"
@@ -337,7 +343,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_084347) do
   add_foreign_key "navigation_items", "navigations"
   add_foreign_key "navigation_items", "pages"
   add_foreign_key "navigations", "sites"
+  add_foreign_key "pages", "images", column: "header_image_id"
   add_foreign_key "pages", "sites"
+  add_foreign_key "posts", "images", column: "header_image_id"
   add_foreign_key "posts", "sites"
   add_foreign_key "site_users", "sites"
   add_foreign_key "site_users", "users"
