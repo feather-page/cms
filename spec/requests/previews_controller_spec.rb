@@ -12,14 +12,14 @@ describe PreviewsController do
           get preview_root_path(deployment_target)
 
           expect(response).to be_successful
-          expect(response.body).to include(site.title)
+          expect(response.body).to include(ERB::Util.html_escape(site.title))
         end
 
         it "renders the home page for index.html" do
           get preview_path(deployment_target, path: "index.html")
 
           expect(response).to be_successful
-          expect(response.body).to include(site.title)
+          expect(response.body).to include(ERB::Util.html_escape(site.title))
         end
 
         it "includes navigation items" do

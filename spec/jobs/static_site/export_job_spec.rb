@@ -25,7 +25,7 @@ RSpec.describe StaticSite::ExportJob do
 
       index_path = File.join(deployment_target.source_dir, "index.html")
       expect(File.exist?(index_path)).to be true
-      expect(File.read(index_path)).to include(site.title)
+      expect(File.read(index_path)).to include(ERB::Util.html_escape(site.title))
     end
 
     it "exports posts" do

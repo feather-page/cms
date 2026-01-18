@@ -10,6 +10,9 @@ require File.expand_path('../../config/simplecov_config', __dir__)
 require 'cucumber/rails'
 require 'capybara/cuprite'
 require 'factory_bot_rails'
+require 'webmock/cucumber'
+
+WebMock.disable_net_connect!(allow_localhost: true)
 
 # Include FactoryBot methods
 World(FactoryBot::Syntax::Methods)
