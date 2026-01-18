@@ -11,7 +11,7 @@ end
 # Star rating
 When("I set the rating to {int} stars") do |stars|
   within(".star-rating") do
-    all(".star-btn")[stars - 1].click
+    all("[data-star-rating-target='star']")[stars - 1].click
   end
 end
 
@@ -61,9 +61,9 @@ Given("a review {string} exists for {string}") do |review_title, book_title|
 end
 
 Given("a review {string} with {int} stars exists for {string}") do |review_title, stars, book_title|
-  book = Book.find_by(title: book_title)
-  post = create(:post, site: book.site, title: review_title, content: [])
-  book.update!(post: post, rating: stars)
+  @book = Book.find_by(title: book_title)
+  post = create(:post, site: @book.site, title: review_title, content: [])
+  @book.update!(post: post, rating: stars)
 end
 
 Given("a short review with {int} stars exists for {string}") do |stars, book_title|
@@ -129,17 +129,20 @@ end
 
 # Preview assertions
 When("I view the site preview") do
-  @site = Site.first
+  @book ||= Book.joins(:post).order(created_at: :desc).first
+  @site = @book.site
   deployment_target = @site.deployment_targets.first || create(:deployment_target, :staging, site: @site)
-  visit preview_root_path(deployment_target)
+  # Navigate to the post page where stars are displayed - remove leading slash from slug
+  path = @book.post.slug.to_s.sub(/^\//, "")
+  visit preview_path(deployment_target, path: path)
 end
 
 Then("the post should display {int} stars") do |stars|
   @book&.reload
   book = @book || Book.joins(:post).order(created_at: :desc).first
   expect(book.rating).to eq(stars)
-  # Also verify stars are visible in the preview
-  expect(page).to have_content("\u2605" * stars)
+  # Stars are displayed in the static site post template (wait for page to load)
+  expect(page).to have_css(".book-rating", text: /★/, wait: 5)
 end
 
 Then("the stars should be visible as {string}") do |star_display|

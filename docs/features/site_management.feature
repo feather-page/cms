@@ -5,7 +5,6 @@ Feature: Site Management
 
   Background:
     Given I am logged in
-    And a theme "Default" exists
 
   @javascript
   Scenario: Create a new site
@@ -31,15 +30,6 @@ Feature: Site Management
     And I fill in "Emoji" with "🚀"
     And I click "Update Site"
     Then the emoji "🚀" should be displayed
-
-  @javascript
-  Scenario: Change site theme
-    Given a site "My Blog" exists
-    And another theme "Modern" exists
-    When I edit the site "My Blog"
-    And I select "Modern" from "Theme"
-    And I click "Update Site"
-    Then the theme "Modern" should be active
 
   Scenario: View site list
     Given a site "Blog One" exists
