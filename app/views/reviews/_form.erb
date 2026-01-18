@@ -1,25 +1,32 @@
 <%= turbo_frame_tag(:form) do %>
   <%= form_for(post, url: form_url, method: form_method, class: "mb-4", data: { controller: 'post_form' }) do |form| %>
-    <div class="mb-3">
-      <label class="form-label"><%= t('activerecord.attributes.book.rating') %></label>
-      <div class="star-rating" data-controller="star-rating" data-star-rating-value-value="<%= @book.rating || 0 %>">
-        <% (1..5).each do |star| %>
-          <button type="button"
-                  class="btn btn-link p-0 star-btn"
-                  data-action="click->star-rating#select"
-                  data-star-rating-target="star"
-                  data-value="<%= star %>">
-            <span class="star <%= 'filled' if @book.rating && star <= @book.rating %>"
-                  style="font-size: 1.5rem; color: <%= (@book.rating && star <= @book.rating) ? '#ffc107' : '#ddd' %>;">
-              ★
-            </span>
-          </button>
-        <% end %>
-        <input type="hidden" name="rating" value="<%= @book.rating %>" data-star-rating-target="input">
+    <%= component('form/header_image_picker', form:) %>
+
+    <div class="mb-3 d-flex align-items-center gap-3">
+      <% if @book.emoji.present? %>
+        <span style="font-size: 2.5rem;"><%= @book.emoji %></span>
+      <% end %>
+      <div>
+        <label class="form-label mb-1"><%= t('activerecord.attributes.book.rating') %></label>
+        <div class="star-rating" data-controller="star-rating" data-star-rating-value-value="<%= @book.rating || 0 %>">
+          <% (1..5).each do |star| %>
+            <button type="button"
+                    class="btn p-0 border-0 bg-transparent"
+                    style="text-decoration: none;"
+                    data-action="click->star-rating#select mouseenter->star-rating#preview mouseleave->star-rating#resetPreview"
+                    data-star-rating-target="star"
+                    data-value="<%= star %>"
+                    aria-label="<%= star %> <%= star == 1 ? 'Stern' : 'Sterne' %>">
+              <span class="star <%= 'filled' if @book.rating && star <= @book.rating %>"
+                    style="font-size: 1.5rem; color: <%= (@book.rating && star <= @book.rating) ? '#ffc107' : '#ddd' %>; cursor: pointer;">
+                ★
+              </span>
+            </button>
+          <% end %>
+          <input type="hidden" name="rating" value="<%= @book.rating %>" data-star-rating-target="input">
+        </div>
       </div>
     </div>
-
-    <%= component('form/header_image_picker', form:) %>
     <%= component('form/title_and_slug', form:, default_title: @book.review_title_suggestion) %>
     <%= component('form/editor', form:, attribute: :content) %>
     <%= component('form/datetime_field', form:, attribute: :publish_at, placeholder: Time.current) %>

@@ -5,13 +5,11 @@
     <% elsif book.emoji.present? %>
       <span style="font-size: 1.5rem;"><%= book.emoji %></span>
     <% end %>
-  </td>
-  <td>
-    <%= book.title %>
     <% if book.rating.present? %>
       <br><small class="text-warning"><%= '★' * book.rating %><%= '☆' * (5 - book.rating) %></small>
     <% end %>
   </td>
+  <td><%= book.title %></td>
   <td><%= book.author %></td>
   <td><%= book.read_at ? l(book.read_at.to_date) : '-' %></td>
   <td class="text-end">
