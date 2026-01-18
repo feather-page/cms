@@ -60,7 +60,7 @@ module StaticSite
       source_path = image.fs_path(variant: variant_key)
       return unless source_path && File.exist?(source_path)
 
-      dest_path = image_output_path(image, variant_key)
+      dest_path = File.join(output_dir, image_output_path(image, variant_key))
       FileUtils.mkdir_p(File.dirname(dest_path))
       FileUtils.cp(source_path, dest_path)
     end

@@ -43,7 +43,7 @@
       <% else %>
         <%# Long post with title %>
         <% if post.emoji.present? %><%= post.emoji %><% end %>
-        <a class="post-title" href="/posts/<%= post.public_id.downcase %>/"><%= post.title %></a>
+        <a class="post-title" href="<%= static_site_post_url(post) %>"><%= post.title %></a>
         <% if post.book&.rating.present? %>
           <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
             <%= static_site_rating_stars(post.book.rating) %>

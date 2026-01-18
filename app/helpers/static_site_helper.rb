@@ -10,14 +10,14 @@ module StaticSiteHelper
   def static_site_header_image_url(image)
     return nil unless image&.file&.attached?
 
-    "/images/#{image.public_id}/desktop_x1.webp"
+    "#{static_site_base_url}images/#{image.public_id}/desktop_x1.webp"
   end
 
   def static_site_header_image_srcset(image)
     return nil unless image&.file&.attached?
 
     Image::Variants::SIZES.map do |name, width|
-      "/images/#{image.public_id}/#{name}.webp #{width}w"
+      "#{static_site_base_url}images/#{image.public_id}/#{name}.webp #{width}w"
     end.join(", ")
   end
 
@@ -32,12 +32,27 @@ module StaticSiteHelper
   def static_site_image_url(image, variant = :desktop_x1)
     return nil unless image&.file&.attached?
 
-    "/images/#{image.public_id}/#{variant}.webp"
+    "#{static_site_base_url}images/#{image.public_id}/#{variant}.webp"
   end
 
   def static_site_content_html(content_html)
     # rubocop:disable Rails/OutputSafety
-    content_html.gsub(%r{/images/}, "/images/").html_safe
+    content_html.gsub(%r{/images/}, "#{static_site_base_url}images/").html_safe
     # rubocop:enable Rails/OutputSafety
+  end
+
+  def static_site_post_url(post)
+    path = if post.slug.present?
+             "#{post.slug.sub(%r{^/}, '')}/"
+           else
+             "posts/#{post.public_id.downcase}/"
+           end
+    "#{static_site_base_url}#{path}"
+  end
+
+  private
+
+  def static_site_base_url
+    @base_url || "/"
   end
 end
