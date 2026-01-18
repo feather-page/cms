@@ -7,7 +7,7 @@ export default class ApiClient {
     return fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'X-CSRF-Token': this.csrfToken
       }
     })

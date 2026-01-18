@@ -2,11 +2,11 @@ describe StaticSite::BooksListComponent, type: :component do
   let(:site) { create(:site) }
   let(:book_with_rating) do
     create(:book, site: site, title: "Clean Code", author: "Robert C. Martin",
-           rating: 5, reading_status: :finished, read_at: Date.new(2024, 6, 15))
+                  rating: 5, reading_status: :finished, read_at: Date.new(2024, 6, 15))
   end
   let(:book_without_rating) do
     create(:book, site: site, title: "The Pragmatic Programmer", author: "David Thomas",
-           rating: nil, reading_status: :reading, read_at: nil)
+                  rating: nil, reading_status: :reading, read_at: nil)
   end
   let(:books) { [book_with_rating, book_without_rating] }
 
@@ -79,8 +79,8 @@ describe StaticSite::BooksListComponent, type: :component do
       context "when book has a cover image" do
         let(:book_with_cover) do
           book = create(:book, site: site, title: "With Cover", author: "Author",
-                        reading_status: :finished, read_at: Date.new(2024, 1, 1))
-          image = create(:image, imageable: book)
+                               reading_status: :finished, read_at: Date.new(2024, 1, 1))
+          create(:image, imageable: book)
           book.reload
           book
         end
@@ -106,7 +106,7 @@ describe StaticSite::BooksListComponent, type: :component do
       context "when book has a review post with title" do
         let(:book_with_review) do
           book = create(:book, site: site, title: "Reviewed", author: "Author",
-                        reading_status: :finished, read_at: Date.new(2024, 1, 1))
+                               reading_status: :finished, read_at: Date.new(2024, 1, 1))
           post = create(:post, site: site, title: "My Review")
           book.update!(post: post)
           book

@@ -6,7 +6,7 @@ describe StaticSite::PrecompressJob do
   let(:temp_dir) { Dir.mktmpdir }
 
   after do
-    FileUtils.remove_entry(temp_dir) if File.exist?(temp_dir)
+    FileUtils.rm_rf(temp_dir)
   end
 
   describe "#perform" do

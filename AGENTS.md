@@ -1,5 +1,7 @@
 # Anweisungen für KI-Agenten
 
+**Projekt-Stack:** Rails 8.1, Ruby 4.0.1, PostgreSQL 17
+
 ## ⛔ UNVERHANDELBARE REGELN
 
 Diese Regeln gelten IMMER und dürfen NIEMALS übersprungen werden:
@@ -11,8 +13,8 @@ Diese Regeln gelten IMMER und dürfen NIEMALS übersprungen werden:
 
 ### Validierungs-Checkpoint (VOR jedem Commit):
 ```bash
-# 1. Alle Tests ausführen / Coverage prüfen
-rake coverage
+# 1. Komplette lokale ci laufen lassen
+bin/ci
 
 # Coverage für neue Dateien: 100%
 # Gesamt-Coverage: darf nicht sinken

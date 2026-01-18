@@ -133,7 +133,7 @@ When("I view the site preview") do
   @site = @book.site
   deployment_target = @site.deployment_targets.first || create(:deployment_target, :staging, site: @site)
   # Navigate to the post page where stars are displayed - remove leading slash from slug
-  path = @book.post.slug.to_s.sub(/^\//, "")
+  path = @book.post.slug.to_s.sub(%r{^/}, "")
   visit preview_path(deployment_target, path: path)
 end
 

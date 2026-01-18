@@ -53,6 +53,6 @@ module StaticSiteHelper
   private
 
   def static_site_base_url
-    @base_url || "/"
+    @base_url || "/" # rubocop:disable Rails/HelperInstanceVariable
   end
 end

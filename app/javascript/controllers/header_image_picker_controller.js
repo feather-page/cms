@@ -197,11 +197,11 @@ export default class extends Controller {
         this.showRemoveButton()
         this.unsplashModalTarget.close()
       } else {
-        alert('Failed to select image. Please try again.')
+        window.alert('Failed to select image. Please try again.')
       }
     } catch (error) {
       console.error('Failed to create image:', error)
-      alert('Failed to select image. Please try again.')
+      window.alert('Failed to select image. Please try again.')
     }
   }
 
@@ -229,18 +229,18 @@ export default class extends Controller {
         this.showRemoveButton()
         this.uploadModalTarget.close()
       } else {
-        alert('Failed to upload image. Please try again.')
+        window.alert('Failed to upload image. Please try again.')
       }
     } catch (error) {
       console.error('Upload failed:', error)
-      alert('Failed to upload image. Please try again.')
+      window.alert('Failed to upload image. Please try again.')
     }
   }
 
   remove (event) {
     event.preventDefault()
 
-    if (confirm('Are you sure you want to remove the cover image?')) {
+    if (window.confirm('Are you sure you want to remove the cover image?')) {
       this.updateHiddenField('')
       if (this.hasImageContainerTarget) {
         this.imageContainerTarget.innerHTML = ''

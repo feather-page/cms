@@ -1,6 +1,8 @@
 require "rails_helper"
 
 RSpec.describe Unsplash::SearchResult do
+  subject(:result) { described_class.new(data) }
+
   let(:data) do
     {
       "id" => "abc123",
@@ -19,8 +21,6 @@ RSpec.describe Unsplash::SearchResult do
       }
     }
   end
-
-  subject(:result) { described_class.new(data) }
 
   describe "#id" do
     it "returns the photo id" do
@@ -63,19 +63,19 @@ RSpec.describe Unsplash::SearchResult do
   describe "#photographer" do
     it "returns photographer name and profile URL" do
       expect(result.photographer).to eq({
-        name: "John Doe",
-        profile_url: "https://unsplash.com/@johndoe"
-      })
+                                          name: "John Doe",
+                                          profile_url: "https://unsplash.com/@johndoe"
+                                        })
     end
   end
 
   describe "#unsplash_data" do
     it "returns data for storing with image" do
       expect(result.unsplash_data).to eq({
-        "photographer_name" => "John Doe",
-        "photographer_url" => "https://unsplash.com/@johndoe",
-        "download_location" => "https://api.unsplash.com/photos/abc123/download"
-      })
+                                           "photographer_name" => "John Doe",
+                                           "photographer_url" => "https://unsplash.com/@johndoe",
+                                           "download_location" => "https://api.unsplash.com/photos/abc123/download"
+                                         })
     end
   end
 end
