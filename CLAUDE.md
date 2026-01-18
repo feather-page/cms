@@ -22,14 +22,113 @@ Always run these checks before creating a commit:
 
 ```bash
 bundle exec rubocop -A          # Auto-fix style issues
-bundle exec rspec               # Run all tests
+bundle exec rspec               # Run unit tests
+bundle exec cucumber            # Run acceptance tests
 ```
 
-Both must pass before committing. Fix any failures before proceeding.
+All must pass before committing. Fix any failures before proceeding.
 
-Also create new tests, a few feature specs for the main features and faster unit tests.
+### Code Coverage
 
-Strive for 100% code coverage and try to fix all the rubocop warning - without editing the .rubocop.yml.
+**Target: 100% line coverage.** Every line of application code should be tested.
+
+(Of course, a combination of RSpec and Cucumber tests is required to achieve 100%)
+
+```bash
+rake coverage            # Run all tests with combined coverage report
+open coverage/index.html # View detailed coverage report
+```
+
+Coverage from RSpec and Cucumber is automatically merged. After implementing a feature:
+
+1. Check that coverage has increased (or stayed at 100%)
+2. If coverage dropped, add tests for uncovered lines
+3. Only skip coverage for code with a very good reason (document why)
+
+Exceptions (must be documented in code):
+- Dead code that will be removed
+- Platform-specific code that can't run in tests
+- Emergency fallbacks that are intentionally unreachable
+
+Try to fix all rubocop warnings without editing `.rubocop.yml`.
+
+## Feature-First Development (BDD)
+
+This project uses Cucumber with Gherkin for Behavior-Driven Development. The feature files in `features/` serve as both documentation and executable specifications.
+
+### Development Workflow for New Features
+
+1. **Plan & Write Feature**: Before implementing, create or update a Gherkin feature file
+2. **Ask for Approval**: Present the feature to the user for review and approval
+3. **Implement**: Use the feature as a guide to implement the functionality
+4. **Verify**: Run `bundle exec cucumber` to ensure all scenarios pass
+
+### Feature File Structure
+
+```gherkin
+Feature: Post Management
+  As a site owner
+  I want to create and manage blog posts
+  So that I can publish content on my website
+
+  Background:
+    Given I am logged in
+    And I have a site "My Blog"
+
+  Scenario: Create a new post
+    When I go to the posts page for "My Blog"
+    And I click "New Post"
+    And I enter the title "My First Post"
+    And I click "Save"
+    Then the post "My First Post" should exist
+```
+
+### When to Write Features
+
+- **New functionality**: Always write the feature first
+- **Bug fixes**: Use the fastest appropriate test level:
+  - Prefer RSpec unit tests for model/service bugs
+  - Only add Cucumber scenarios if they document important behavior
+  - Delete bug-reproducing scenarios after fix if they don't aid understanding
+- **Refactoring**: Ensure existing features still pass
+
+### Choosing the Right Test Level
+
+| Situation | Test Type | Reason |
+|-----------|-----------|--------|
+| New user-facing feature | Cucumber | Documents behavior |
+| Model validation bug | RSpec model spec | Fast, focused |
+| Service logic bug | RSpec unit spec | Fast, isolated |
+| UI workflow bug | Cucumber (if documents feature) | May delete after fix |
+| Edge case regression | RSpec | Fast, no feature value |
+
+### Feature Files Location
+
+```
+features/
+├── authentication.feature      # Login, logout, tokens
+├── site_management.feature     # Site CRUD
+├── posts.feature               # Blog posts
+├── pages.feature               # Static pages
+├── navigation.feature          # Navigation menu
+├── books.feature               # Book catalog
+├── images.feature              # Image management
+├── user_invitations.feature    # User collaboration
+├── deployment.feature          # Hugo build & deploy
+├── social_media_links.feature  # Social links
+├── preview.feature             # Site preview
+├── step_definitions/           # Step implementations
+└── support/                    # Helpers & config
+```
+
+### Running Cucumber Tests
+
+```bash
+bundle exec cucumber                           # Run all features
+bundle exec cucumber features/posts.feature    # Run specific feature
+bundle exec cucumber --tags "@javascript"      # Run JavaScript tests only
+bundle exec cucumber --tags "not @javascript"  # Skip JavaScript tests
+```
 
 ## Rails Best Practices
 
@@ -226,22 +325,27 @@ end
 - Use slots for flexible content areas
 - Prefer composition over inheritance
 
-## Testing with RSpec
+## Testing Strategy
 
-### File Structure
+This project uses a two-tier testing approach:
+
+1. **Cucumber** for acceptance/integration tests (user-facing behavior)
+2. **RSpec** for unit tests (models, services, components)
+
+### RSpec for Unit Tests
 
 ```
 spec/
-├── models/
-├── controllers/
-├── components/
-├── requests/
-├── system/
+├── models/           # Model validations, scopes, methods
+├── components/       # ViewComponent tests
+├── interactions/     # Service object tests
 ├── support/
 └── factories/
 ```
 
-### Writing Tests
+**Note**: Feature specs (system tests) are handled by Cucumber. Do not create new RSpec feature specs.
+
+### Writing Unit Tests
 
 ```ruby
 # spec/models/post_spec.rb
@@ -274,6 +378,7 @@ end
 - One assertion per test when possible
 - Use descriptive context and it blocks
 - Test behavior, not implementation
+- Use Cucumber for end-to-end user journeys, RSpec for isolated unit tests
 
 ## Git Commit Guidelines
 
@@ -342,20 +447,27 @@ bundle exec rubocop -A
    bundle install
    ```
 
-2. **During development**:
-   - Write tests first (TDD) when possible
-   - Run `bundle exec rspec` frequently
+2. **Plan the feature**:
+   - Create or update a Gherkin feature file in `features/`
+   - Present the feature to the user for approval
+   - Only proceed after approval
+
+3. **During development**:
+   - Use the feature scenarios as your implementation guide
+   - Write unit tests (RSpec) for models and services
+   - Run `bundle exec cucumber features/your_feature.feature` frequently
    - Run `bundle exec rubocop -A` to fix style issues
 
-3. **Before committing**:
+4. **Before committing**:
    ```bash
    bundle exec rubocop -A
    bundle exec rspec
+   bundle exec cucumber
    git add -p  # Review changes
    git commit
    ```
 
-4. **Commit message**:
+5. **Commit message**:
    - Use the format described above
    - Reference issues if applicable
 
@@ -381,8 +493,10 @@ Before every commit, verify:
 
 - [ ] `bundle exec rubocop -A` passes
 - [ ] `bundle exec rspec` passes
+- [ ] `bundle exec cucumber` passes
 - [ ] Commit message follows format
 - [ ] Changes are atomic and focused
 - [ ] No debugging code left behind
 - [ ] I18n used for user-facing text
 - [ ] ViewComponents used for reusable UI
+- [ ] Feature file updated if behavior changed
