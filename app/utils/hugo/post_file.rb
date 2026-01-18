@@ -10,7 +10,7 @@ module Hugo
 
     private
 
-    def front_matter # rubocop:disable Metrics/AbcSize
+    def front_matter # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       front_matter = { date: object.publish_at.strftime('%Y-%m-%d') }
 
       front_matter[:url] = object.slug if object.slug.present?
@@ -18,7 +18,26 @@ module Hugo
       front_matter[:title] = object.title if object.title.present?
       front_matter[:emoji] = object.emoji if object.emoji.present?
       front_matter[:header_image] = header_image_data if object.header_image.present?
+      front_matter[:book] = book_data if object.book.present?
       front_matter
+    end
+
+    def book_data
+      book = object.book
+      data = {
+        title: book.title,
+        author: book.author
+      }
+      data[:emoji] = book.emoji if book.emoji.present?
+      data[:rating] = book.rating if book.rating.present?
+      data[:cover] = book_cover_url(book) if book.cover_image&.file&.attached?
+      data
+    end
+
+    def book_cover_url(book)
+      return unless book.cover_image&.file&.attached?
+
+      "/images/#{book.cover_image.public_id}/mobile_x1.webp"
     end
 
     def header_image_data

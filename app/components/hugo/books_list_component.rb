@@ -39,5 +39,19 @@ module Hugo
 
       "/images/#{book.cover_image.public_id}_mobile_x1.webp"
     end
+
+    def review_url(book)
+      return nil unless book.post.present? && book.post.title.present?
+
+      "/posts/#{book.post.public_id.downcase}/"
+    end
+
+    def rating_stars(rating)
+      return nil unless rating.present?
+
+      filled = "★" * rating
+      empty = "☆" * (5 - rating)
+      filled + empty
+    end
   end
 end

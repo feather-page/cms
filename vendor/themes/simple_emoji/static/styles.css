@@ -144,6 +144,57 @@ hr {
   font-size: 0.9em;
 }
 
+/* Book card in post list */
+.post-book-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .post-book-card {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.post-book-cover {
+  width: 50px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.post-book-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.post-book-info {
+  flex-grow: 1;
+}
+
+.post-book-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+.post-book-author {
+  font-size: 0.85rem;
+  color: grey;
+  margin-bottom: 0.25rem;
+}
+
+.post-book-rating {
+  color: #f5a623;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+}
+
 .post-shortBody {
   display: flex;
 }
@@ -202,6 +253,64 @@ table.books {
   text-align: center;
 }
 
+/* Book card in single post view */
+main > .book-card {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  main > .book-card {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+main > .book-card .book-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+main > .book-card .book-cover {
+  width: 80px;
+  max-width: 80px;
+  flex-shrink: 0;
+}
+
+main > .book-card .book-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+main > .book-card .book-info {
+  flex-grow: 1;
+}
+
+main > .book-card .book-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+main > .book-card .book-author {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+main > .book-card .book-rating {
+  color: #f5a623;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
 .book-cover {
   width: 100%;
   max-width: 120px;
@@ -235,6 +344,20 @@ table.books {
 .book-date {
   font-size: 0.8rem;
   color: grey;
+}
+
+.book-rating {
+  color: #f5a623;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+a.book-title {
+  text-decoration: none;
+}
+
+a.book-title:hover {
+  text-decoration: underline;
 }
 
 @media only screen and (max-width: 600px) {
