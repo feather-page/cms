@@ -32,12 +32,12 @@ gem 'view_component'
 
 group :development, :test do
   gem 'debug', platforms: %i[mri windows]
+  gem 'factory_bot_rails'
+  gem 'faker'
 end
 
 group :development do
   gem 'brakeman'
-  gem 'factory_bot_rails'
-  gem 'faker'
   gem 'foreman'
   gem 'kamal', '~> 2.10.1', require: false
   gem 'rack-mini-profiler'
@@ -54,7 +54,10 @@ end
 
 group :test do
   gem 'capybara'
+  gem 'cucumber-rails', require: false
   gem 'cuprite'
+  gem 'database_cleaner-active_record'
+  gem 'rack_session_access'
   gem 'simplecov', require: false
   gem 'simplecov-lcov', require: false
   gem 'webmock'

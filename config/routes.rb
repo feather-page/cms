@@ -20,6 +20,9 @@ Rails.application.routes.draw do
         get :search
       end
     end
+    resources :books, only: [] do
+      resource :review, only: %i[new create edit update destroy]
+    end
     resources :pages do
       member do
         put :add_to_navigation
@@ -45,6 +48,13 @@ Rails.application.routes.draw do
         post :from_url
       end
     end
+
+    resources :unsplash_images, only: [] do
+      collection do
+        get :search
+        post :create
+      end
+    end
   end
 
   resources :navigation_items, only: %i[create destroy] do
@@ -53,6 +63,9 @@ Rails.application.routes.draw do
       patch :move_down
     end
   end
+
+  get 'preview/:deployment_target_id', to: 'previews#show', as: :preview_root
+  get 'preview/:deployment_target_id/*path', to: 'previews#show', as: :preview
 
   root 'sites#index'
 

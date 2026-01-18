@@ -1,20 +1,18 @@
 <%= turbo_frame_tag(:form) do %>
   <%= form_for([current_site, page], class: 'mb-4') do |form| %>
+    <%= component('form/header_image_picker', form:) %>
     <%= component('form/title_and_slug', form:) %>
     <%= component('form/editor', form:, attribute: :content) %>
 
     <div class="row">
-      <div class="col-1">
-        <%= component('form/text_field', form:, attribute: :emoji) %>
-      </div>
-      <div class="col-3">
+      <div class="col-auto">
         <%= component(
               'form/select',
               form:, attribute: :page_type,
               options: Page.page_types.map{ |key, value| [t("activerecord.attributes.page.page_types.#{key}"), key]}) %>
       </div>
-      <div class="col-8">
-          <%= component('form/datetime_field', form:, attribute: :created_at) %>
+      <div class="col">
+        <%= component('form/datetime_field', form:, attribute: :created_at) %>
       </div>
     </div>
 

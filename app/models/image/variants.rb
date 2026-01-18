@@ -10,7 +10,15 @@ class Image
     FORMAT = "webp".freeze
 
     def self.keys
-      SIZES.map { |name, _| :"#{name}_#{FORMAT}" }.flatten + [:desktop_x1_jpg]
+      @keys ||= (SIZES.keys.map { |name| :"#{name}_#{FORMAT}" } + [:desktop_x1_jpg]).freeze
+    end
+
+    def self.key?(variant_key)
+      keys.include?(variant_key)
+    end
+
+    def self.each_key(&)
+      keys.each(&)
     end
 
     def self.options(size:, format:)

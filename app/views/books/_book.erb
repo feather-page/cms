@@ -5,11 +5,27 @@
     <% elsif book.emoji.present? %>
       <span style="font-size: 1.5rem;"><%= book.emoji %></span>
     <% end %>
+    <% if book.rating.present? %>
+      <br><small class="text-warning"><%= '★' * book.rating %><%= '☆' * (5 - book.rating) %></small>
+    <% end %>
   </td>
   <td><%= book.title %></td>
   <td><%= book.author %></td>
   <td><%= book.read_at ? l(book.read_at.to_date) : '-' %></td>
   <td class="text-end">
+    <% if book.review? %>
+      <%= link_to(
+            t('reviews.edit_review'),
+            edit_site_book_review_path(book.site, book),
+            title: t('reviews.edit_review'),
+            class: 'btn btn-outline-primary btn-sm') %>
+    <% else %>
+      <%= link_to(
+            t('reviews.write_review'),
+            new_site_book_review_path(book.site, book),
+            title: t('reviews.write_review'),
+            class: 'btn btn-outline-primary btn-sm') %>
+    <% end %>
     <%= link_to(
           icon('pencil'),
           edit_book_path(book),

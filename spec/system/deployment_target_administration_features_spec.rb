@@ -28,8 +28,8 @@ describe 'Administration of deployment targets' do
         visit site_deployment_targets_path(site)
 
         expect do
-          click_on 'Deploy'
-        end.to have_enqueued_job(Hugo::BuildJob)
+          click_on "Deploy"
+        end.to have_enqueued_job(StaticSite::ExportJob)
       end
     end
   end

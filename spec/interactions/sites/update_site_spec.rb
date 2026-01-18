@@ -6,24 +6,22 @@ describe Sites::UpdateSite do
       language_code:,
       domain:,
       current_user:,
-      theme_id:,
       copyright:,
       site:
     )
   end
 
-  let(:site) { build(:site, theme_id: create(:theme, hugo_theme: 'foobar').id) }
+  let(:site) { create(:site) }
   let(:current_user) { build(:user) }
-  let(:theme_id) { site.theme.id }
 
-  describe '#execute' do
-    let(:title) { 'New title' }
-    let(:language_code) { 'fr' }
-    let(:domain) { 'example.example.com' }
-    let(:emoji) { '🎉' }
-    let(:copyright) { '© 2021' }
+  describe "#execute" do
+    let(:title) { "New title" }
+    let(:language_code) { "fr" }
+    let(:domain) { "example.example.com" }
+    let(:emoji) { "\u{1F389}" }
+    let(:copyright) { "\u00a9 2021" }
 
-    it 'updates the site' do
+    it "updates the site" do
       expect(outcome).to be_success
       expect(outcome.site.title).to eql(title)
       expect(outcome.site.copyright).to eql(copyright)

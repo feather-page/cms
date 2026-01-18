@@ -39,12 +39,12 @@ export default class extends Controller {
   }
 
   saveTheme (theme) {
-    localStorage.setItem(THEME_KEY, theme)
+    window.localStorage.setItem(THEME_KEY, theme)
   }
 
   get currentTheme () {
     // Check localStorage first
-    const saved = localStorage.getItem(THEME_KEY)
+    const saved = window.localStorage.getItem(THEME_KEY)
     if (saved) return saved
 
     // Fall back to system preference

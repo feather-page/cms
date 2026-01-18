@@ -17,7 +17,7 @@ class DeploymentTarget < ApplicationRecord
   scope :interal, -> { where(provider: :internal) }
 
   def deploy
-    Hugo::BuildJob.perform_later(self)
+    StaticSite::ExportJob.perform_later(self)
   end
 
   def config
@@ -29,7 +29,7 @@ class DeploymentTarget < ApplicationRecord
   end
 
   def build_path
-    Rails.root.join("tmp", "hugo", id).to_s
+    Rails.root.join("storage", "hugo", id).to_s
   end
 
   def source_dir

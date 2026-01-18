@@ -24,7 +24,6 @@ module Sites
         language_code: context.language_code,
         domain: context.domain
       )
-      context.site.theme = Theme.find_by(hugo_theme: 'simple_emoji')
       context.fail_and_return!(context.site.errors.full_messages.to_sentence) unless context.site.save
     end
   end

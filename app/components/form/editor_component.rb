@@ -21,8 +21,7 @@ module Form
 
     def path_params
       params = { authenticity_token: helpers.form_authenticity_token }
-
-      params.merge(site_id: params[:site_id])
+      params[:site_id] = site_id
 
       if @form.object.persisted?
         params[:imageable_type] = @form.object.class.name
@@ -30,6 +29,10 @@ module Form
       end
 
       params
+    end
+
+    def site_id
+      helpers.params[:site_id] || @form.object.site&.public_id
     end
   end
 end

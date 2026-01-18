@@ -3,7 +3,7 @@
 [![RSpec](https://github.com/feather-page/cms/actions/workflows/rspec.yml/badge.svg)](https://github.com/feather-page/cms/actions/workflows/rspec.yml)
 [![Coverage Status](https://coveralls.io/repos/github/feather-page/cms/badge.svg?branch=main)](https://coveralls.io/github/feather-page/cms?branch=main)
 
-Feather-Page CMS is a Ruby on Rails application that provides a web interface for managing small static websites. It leverages Hugo to build static sites and provides a simple management UI.
+Feather-Page CMS is a Ruby on Rails application that provides a web interface for managing small static websites. It generates static sites directly using Rails ERB templates and provides a simple management UI.
 
 ## Design Goals
 
@@ -20,7 +20,6 @@ Feather-Page CMS is a Ruby on Rails application that provides a web interface fo
 *   **Ruby**: 4.0.1 (as specified in `Gemfile`)
 *   **Node.js & npm**: Required for JavaScript assets and Jest tests.
 *   **System Dependencies**:
-    *   `hugo`: The static site generator.
     *   `rclone`: Used for syncing files to deployment targets.
     *   `libvips`: Image processing library.
     *   `PostgreSQL`: Database.
@@ -29,7 +28,7 @@ Feather-Page CMS is a Ruby on Rails application that provides a web interface fo
 
 1.  **Install system dependencies**:
     ```bash
-    brew install rclone hugo libvips postgresql
+    brew install rclone libvips postgresql
     ```
 
 2.  **Install Ruby dependencies**:
@@ -80,6 +79,31 @@ rails s
 | `SMTP_ADDRESS` | Mail server address | `localhost` |
 | `SMTP_PORT` | Mail server port | `1025` |
 | `STAGING_SITES_PATH` | Path where staging sites are built | (Defined in Kamal/Production) |
+| `UNSPLASH_ACCESS_KEY` | Unsplash API access key (optional) | Get from https://unsplash.com/developers |
+
+## Unsplash Integration (Optional)
+
+The CMS supports header images with Unsplash integration for posts and pages.
+
+### Setup
+
+1. Create an account at https://unsplash.com/developers
+2. Create a new application (select "Demo" for testing)
+3. Copy your Access Key
+4. Configure credentials:
+   ```bash
+   EDITOR=nano rails credentials:edit
+   ```
+5. Add your Unsplash access key:
+   ```yaml
+   unsplash:
+     access_key: YOUR_ACCESS_KEY_HERE
+   ```
+6. Save and close the editor
+
+Alternatively, you can set the `UNSPLASH_ACCESS_KEY` environment variable in your `.env` file.
+
+**Note**: Without Unsplash credentials, users can still upload header images manually - they just won't be able to search Unsplash.
 
 ## Scripts
 

@@ -25,6 +25,9 @@
 # Ignore uploaded files in development.
 /storage/*
 !/storage/.keep
+!/storage/hugo/
+/storage/hugo/*
+!/storage/hugo/.keep
 /tmp/storage/*
 !/tmp/storage/
 !/tmp/storage/.keep
@@ -45,3 +48,7 @@ coverage
 .nova
 
 node_modules
+
+# Ignore key files for decrypting credentials and more.
+/config/*.key
+

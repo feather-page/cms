@@ -1,18 +1,5 @@
-require 'simplecov'
-require 'simplecov-lcov'
-
-SimpleCov::Formatter::LcovFormatter.config.report_with_single_file = true
-
-SimpleCov::Formatter::LcovFormatter.config do |c|
-  c.report_with_single_file = true
-  c.lcov_file_name = 'lcov.info'
-  c.single_report_path = 'coverage/lcov.info'
-end
-SimpleCov.formatters = [
-  SimpleCov::Formatter::HTMLFormatter,
-  SimpleCov::Formatter::LcovFormatter
-]
-SimpleCov.start 'rails'
+ENV['TEST_SUITE'] = 'rspec'
+require File.expand_path('../config/simplecov_config', __dir__)
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

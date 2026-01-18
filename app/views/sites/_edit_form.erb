@@ -2,10 +2,6 @@
   <%= form_for(current_site, as: :site, url: current_site, method: :patch, class: 'mb-4') do |form| %>
     <%= component('form/text_field', form:, attribute: :title, placeholder: t('sites.title_placeholder')) %>
 
-    <%= component('form/select', form:, attribute: :theme_id, options:
-      options_from_collection_for_select(Theme.all, 'id', 'name', site.theme_id))
-    %>
-
     <div class="row">
       <div class="col-2">
         <%= component('form/text_field', form:, attribute: :emoji) %>

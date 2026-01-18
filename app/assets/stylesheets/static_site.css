@@ -1,0 +1,420 @@
+:root {
+  --body-color: rgb(55, 53, 47);
+  --body-background-color: #fff;
+  --decoration-color: rgba(55, 53, 47, 0.424)
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --body-color: #d8d4cf;
+    --body-background-color: #131516;
+    --decoration-color: #e8e6e3;
+  }
+}
+
+html {
+  margin: 0;
+  margin-top: 0;
+}
+
+body {
+  color: var(--body-color);
+  background-color: var(--body-background-color);
+  font-family: BlinkMacSystemFont, -apple-system, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    "Helvetica", "Arial", sans-serif;
+  line-height: 1.5;
+}
+
+a {
+  color: var(--body-color);
+  text-decoration: underline;
+  text-decoration-color: var(--decoration-color);
+}
+
+
+h1 {
+  margin: 1rem 0 1rem;
+  font-weight: 700;
+  font-size: 3rem;
+  color: var(--body-color);
+  line-height: 1.2;
+}
+
+.emoji {
+  font-size: 5rem;
+  line-height: 1;
+}
+
+nav {
+  padding: 0.5rem 1rem;
+  margin: 0 auto 1rem;
+  max-width: 50rem;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  position: sticky;
+  top: 0;
+  background-color: var(--body-background-color);
+  z-index: 1;
+}
+
+nav a {
+  text-decoration: none;
+}
+
+nav .divider {
+  color: rgba(55, 53, 47, 0.424);
+  font-size: 0.9em;
+}
+
+main {
+  margin: 0 auto 1rem;
+  max-width: 50rem;
+  min-height: calc(100vh - 200px);
+  padding: 25px 25px 50px;
+}
+
+@media only screen and (max-width: 600px) {
+  main {
+    padding: 25px 10px 50px;
+  }
+}
+
+main img {
+  max-width: 100%;
+  height: auto;
+}
+
+figure {
+  margin: 0;
+  padding: 0;
+}
+
+pre {
+  padding: 10px;
+  font-size: 1.15em;
+  overflow-x: scroll;
+  overflow: auto;
+}
+
+footer {
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1em;
+}
+
+hr {
+  border: none;
+  border-top: 2px dotted #bbb;
+  margin: 3rem 0;
+}
+
+.columns {
+  display: flex;
+}
+
+.column {
+  flex-grow: 1;
+}
+
+.page-list {
+  list-style: none;
+  padding: 0;
+  margin: 2em 0;
+}
+
+.page-link {
+  font-weight: 500;
+}
+
+.post:last-child {
+  border-bottom: none
+}
+
+.post-title {
+  font-size: 1.25em;
+  font-weight: 500;
+}
+
+.post-date {
+  clear: both;
+  color: grey;
+
+  font-size: 0.9em;
+}
+
+/* Book card in post list */
+.post-book-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .post-book-card {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.post-book-cover {
+  width: 50px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.post-book-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+
+.post-book-info {
+  flex-grow: 1;
+}
+
+.post-book-title {
+  font-weight: 600;
+  font-size: 1rem;
+  margin-bottom: 0.15rem;
+}
+
+.post-book-author {
+  font-size: 0.85rem;
+  color: grey;
+  margin-bottom: 0.25rem;
+}
+
+.post-book-rating {
+  color: #f5a623;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+}
+
+.post-shortBody {
+  display: flex;
+}
+
+.post-emoji {
+  font-size: 2.5rem;
+  line-height: 1em;
+  margin: 1.5rem 0.5rem 0 0
+}
+
+table.books {
+  width: 100%;
+}
+
+
+.socialLink {
+  text-decoration: none;
+  padding: 0 5px;
+}
+
+.socialLink svg {
+  width: 24px;
+  height: 24px;
+}
+
+@media only screen and (max-width: 600px) {
+  .columns {
+    flex-direction: column;
+  }
+
+  .column>ul {
+    margin: 0;
+  }
+}
+
+.countries {
+  list-style: none;
+  padding-left: 0;
+}
+
+.books {
+  width: 100%;
+}
+
+.books-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.book-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* Book card in single post view */
+main > .book-card {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: left;
+  gap: 1rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  main > .book-card {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+main > .book-card .book-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+main > .book-card .book-cover {
+  width: 80px;
+  max-width: 80px;
+  flex-shrink: 0;
+}
+
+main > .book-card .book-emoji {
+  font-size: 3rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+main > .book-card .book-info {
+  flex-grow: 1;
+}
+
+main > .book-card .book-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+main > .book-card .book-author {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+
+main > .book-card .book-rating {
+  color: #f5a623;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.book-cover {
+  width: 100%;
+  max-width: 120px;
+  height: auto;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  margin-bottom: 0.5rem;
+}
+
+.book-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.book-emoji {
+  font-size: 1.5rem;
+}
+
+.book-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.book-author {
+  font-size: 0.85rem;
+  color: grey;
+}
+
+.book-date {
+  font-size: 0.8rem;
+  color: grey;
+}
+
+.book-rating {
+  color: #f5a623;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+}
+
+a.book-title {
+  text-decoration: none;
+}
+
+a.book-title:hover {
+  text-decoration: underline;
+}
+
+@media only screen and (max-width: 600px) {
+  .no-sm {
+    display: none;
+  }
+
+  .books-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 1rem;
+  }
+}
+
+/* Header Image Styles */
+.header-image-container {
+  margin: -25px -25px 0 -25px;
+  position: relative;
+  padding-bottom: 2.5rem;
+}
+
+.header-image {
+  width: 100%;
+  height: 30vh;
+  min-height: 180px;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.header-image-container .emoji {
+  position: absolute;
+  bottom: 0;
+  left: 25px;
+  font-size: 4.5rem;
+}
+
+.photo-credit {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--decoration-color);
+  font-size: 0.85rem;
+  color: grey;
+}
+
+@media only screen and (max-width: 600px) {
+  .header-image-container {
+    margin: -25px -10px 0 -10px;
+  }
+
+  .header-image {
+    height: 25vh;
+    min-height: 150px;
+    max-height: 200px;
+  }
+
+  .header-image-container .emoji {
+    left: 10px;
+    font-size: 4rem;
+  }
+}

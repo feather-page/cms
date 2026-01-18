@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="<%= @site.language_code %>">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= @page_title %></title>
+    <style><%= static_site_inline_css.html_safe %></style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22><%= @page_emoji || @site.emoji %></text></svg>">
+    <% if @rss_url.present? %>
+      <link rel="alternate" type="application/rss+xml" href="<%= @rss_url %>" title="<%= @site.title %>" />
+    <% end %>
+  </head>
+  <body>
+    <nav>
+      <%= @site.emoji %> <a href="/"><%= @site.title %></a><% unless @is_home %><span class="divider">/</span> <%= @page_emoji %> <%= @page_title %><% end %>
+    </nav>
+    <main>
+      <% if @header_image&.file&.attached? %>
+        <div class="header-image-container">
+          <img src="<%= static_site_header_image_url(@header_image) %>"
+               srcset="<%= static_site_header_image_srcset(@header_image) %>"
+               sizes="100vw"
+               alt="<%= @page_title %>"
+               class="header-image">
+          <% if @page_emoji %><div class="emoji"><%= @page_emoji %></div><% end %>
+        </div>
+      <% elsif @page_emoji && !@is_home %>
+        <div class="emoji"><%= @page_emoji %></div>
+      <% end %>
+      <h1><%= @page_title %></h1>
+      <%= yield %>
+      <% if @header_image&.unsplash? %>
+        <div class="photo-credit">
+          Photo by <a href="<%= @header_image.unsplash_photographer_url %>" target="_blank" rel="noopener"><%= @header_image.unsplash_photographer_name %></a> on <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
+        </div>
+      <% end %>
+    </main>
+    <footer>
+      <hr />
+      <p>
+        <% @site.social_media_links.each do |link| %>
+          <a href="<%= link.url %>" title="<%= link.name %>" class="socialLink">
+            <%= link.svg.html_safe %>
+          </a>
+        <% end %>
+      </p>
+      <p><%= static_site_copyright(@site).html_safe %></p>
+    </footer>
+  </body>
+</html>

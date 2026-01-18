@@ -18,8 +18,8 @@ module Editable
     Blocks.from_content(content)
   end
 
-  def hugo_html
-    Blocks::Renderer::HugoHtml.render(blocks)
+  def static_site_html
+    Blocks::Renderer::StaticSiteHtml.render(blocks)
   end
 
   def content_html

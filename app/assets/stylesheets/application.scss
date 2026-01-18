@@ -132,6 +132,11 @@ body {
 .content {
   overflow: hidden;
 
+  // Allow EditorJS toolbar and menus to overflow
+  &.editorjs {
+    overflow: visible;
+  }
+
   figure {
     margin: 1em 0 !important;
 
@@ -214,6 +219,15 @@ body {
     }
   }
 
+  // Reset any nav styles that might leak from other CSS
+  > nav {
+    background-color: transparent;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    position: static;
+  }
+
   .nav-pills {
     .nav-link {
       color: var(--color-text-muted);
@@ -280,7 +294,10 @@ body {
 // ============================================
 // Main Navbar
 // ============================================
-.navbar-main {
+nav.navbar-main {
+  // Ensure navbar isn't constrained by any rogue nav max-width
+  max-width: none !important;
+
   background-color: var(--color-navbar-bg) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease;
