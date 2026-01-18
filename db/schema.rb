@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_18_102827) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_18_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -269,12 +269,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_18_102827) do
     t.string "emoji", limit: 4, default: "🌐"
     t.string "language_code", default: "en", null: false
     t.string "public_id", limit: 21, null: false
-    t.uuid "theme_id", null: false
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["domain"], name: "index_sites_on_domain", unique: true
     t.index ["public_id"], name: "index_sites_on_public_id", unique: true
-    t.index ["theme_id"], name: "index_sites_on_theme_id"
   end
 
   create_table "social_media_links", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -297,16 +295,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_18_102827) do
     t.index ["channel"], name: "index_solid_cable_messages_on_channel"
     t.index ["channel_hash"], name: "index_solid_cable_messages_on_channel_hash"
     t.index ["created_at"], name: "index_solid_cable_messages_on_created_at"
-  end
-
-  create_table "themes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
-    t.datetime "created_at", null: false
-    t.string "description"
-    t.string "hugo_theme", null: false
-    t.string "name", null: false
-    t.string "public_id", limit: 21, null: false
-    t.datetime "updated_at", null: false
-    t.index ["public_id"], name: "index_themes_on_public_id", unique: true
   end
 
   create_table "user_invitations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -350,7 +338,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_18_102827) do
   add_foreign_key "posts", "sites"
   add_foreign_key "site_users", "sites"
   add_foreign_key "site_users", "users"
-  add_foreign_key "sites", "themes"
   add_foreign_key "social_media_links", "sites"
   add_foreign_key "user_invitations", "sites"
   add_foreign_key "user_invitations", "users", column: "inviting_user_id"

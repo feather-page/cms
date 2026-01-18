@@ -1,0 +1,24 @@
+<% if @post.book.present? %>
+  <div class="book-card">
+    <div class="book-card-header">
+      <% if static_site_image_url(@post.book.cover_image, :mobile_x1) %>
+        <img src="<%= static_site_image_url(@post.book.cover_image, :mobile_x1) %>" alt="<%= @post.book.title %>" class="book-cover">
+      <% elsif @post.book.emoji.present? %>
+        <span class="book-emoji"><%= @post.book.emoji %></span>
+      <% end %>
+      <div class="book-info">
+        <div class="book-title"><%= @post.book.title %></div>
+        <div class="book-author"><%= @post.book.author %></div>
+        <% if @post.book.rating.present? %>
+          <div class="book-rating" aria-label="<%= @post.book.rating %> out of 5 stars">
+            <%= static_site_rating_stars(@post.book.rating) %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%= static_site_content_html(@post.static_site_html) %>
+
+<div class="post-date"><%= l(@post.publish_at.to_date, format: :long) %></div>

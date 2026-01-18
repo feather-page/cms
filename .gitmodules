@@ -1,3 +1,0 @@
-[submodule "vendor/themes/ink"]
-	path = vendor/themes/ink
-	url = https://github.com/feather-page/hugo-ink.git

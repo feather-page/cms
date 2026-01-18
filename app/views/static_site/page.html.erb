@@ -1,0 +1,5 @@
+<%= static_site_content_html(@page.static_site_html) %>
+
+<% if @page.page_type_books? %>
+  <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered) %>
+<% end %>

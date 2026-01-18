@@ -17,7 +17,7 @@ class DeploymentTarget < ApplicationRecord
   scope :interal, -> { where(provider: :internal) }
 
   def deploy
-    Hugo::BuildJob.perform_later(self)
+    StaticSite::ExportJob.perform_later(self)
   end
 
   def config

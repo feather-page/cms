@@ -127,24 +127,23 @@ Then("I should see a review for {string} in the posts list") do |book_title|
   expect(book.post).to be_present
 end
 
-# Hugo build assertions
-When("the site is built with Hugo") do
-  # This would trigger the Hugo build, but for testing we just verify the data
+# Preview assertions
+When("I view the site preview") do
   @site = Site.first
-  @site.publish
+  deployment_target = @site.deployment_targets.first || create(:deployment_target, :staging, site: @site)
+  visit preview_root_path(deployment_target)
 end
 
-Then("the generated post should display {int} stars") do |stars|
+Then("the post should display {int} stars") do |stars|
   @book&.reload
   book = @book || Book.joins(:post).order(created_at: :desc).first
   expect(book.rating).to eq(stars)
+  # Also verify stars are visible in the preview
+  expect(page).to have_content("\u2605" * stars)
 end
 
 Then("the stars should be visible as {string}") do |star_display|
-  # This verifies the star display format
-  expected_filled = star_display.count("★")
-  expected_empty = star_display.count("☆")
-  expect(expected_filled + expected_empty).to eq(5)
+  expect(page).to have_content(star_display)
 end
 
 # Confirm deletion

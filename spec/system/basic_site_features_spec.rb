@@ -29,10 +29,6 @@ describe 'Basic Site features' do
 
   describe 'creating a site as registed user' do
     context 'when user provides a title' do
-      before do
-        create(:theme, :simple_emoji)
-      end
-
       it 'creates a new site' do
         as_user do
           visit new_site_path

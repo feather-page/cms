@@ -10,8 +10,6 @@ class Site < ApplicationRecord
   has_many :navigations, dependent: :destroy
   has_many :user_invitations, dependent: :destroy
 
-  belongs_to :theme
-
   validates :title, presence: true
   validates :language_code, presence: true, inclusion: { in: Form::LanguageSelectComponent::Codes::ISO_CODES }
   validates :domain, presence: true, format: { with: /\A[a-zA-Z0-9\-.]+\z/ }

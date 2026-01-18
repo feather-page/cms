@@ -1,0 +1,57 @@
+<ul class="page-list">
+  <% @site.main_navigation.navigation_items.each do |item| %>
+    <li>
+      <%= item.emoji %> <a class="page-link" href="<%= item.slug %>"><%= item.title %></a>
+    </li>
+  <% end %>
+</ul>
+
+<%= static_site_content_html(@page&.static_site_html.to_s) %>
+
+<hr />
+
+<h2>Blogposts</h2>
+
+<div class="page-list">
+  <% @site.posts.published.order(publish_at: :desc).each do |post| %>
+    <article>
+      <% if post.title.blank? %>
+        <%# Short post without title %>
+        <% if post.book.present? %>
+          <div class="post-book-card">
+            <% if static_site_image_url(post.book.cover_image, :mobile_x1) %>
+              <img src="<%= static_site_image_url(post.book.cover_image, :mobile_x1) %>" alt="<%= post.book.title %>" class="post-book-cover">
+            <% elsif post.book.emoji.present? %>
+              <span class="post-book-emoji"><%= post.book.emoji %></span>
+            <% end %>
+            <div class="post-book-info">
+              <div class="post-book-title"><%= post.book.title %></div>
+              <div class="post-book-author"><%= post.book.author %></div>
+              <% if post.book.rating.present? %>
+                <div class="post-book-rating"><%= static_site_rating_stars(post.book.rating) %></div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        <div class="post-shortBody">
+          <% if post.emoji.present? && post.book.blank? %>
+            <div class="post-emoji"><%= post.emoji %></div>
+          <% end %>
+          <div class="post-content"><%= static_site_content_html(post.static_site_html) %></div>
+        </div>
+        <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
+      <% else %>
+        <%# Long post with title %>
+        <% if post.emoji.present? %><%= post.emoji %><% end %>
+        <a class="post-title" href="/posts/<%= post.public_id.downcase %>/"><%= post.title %></a>
+        <% if post.book&.rating.present? %>
+          <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
+            <%= static_site_rating_stars(post.book.rating) %>
+          </span>
+        <% end %>
+        <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
+      <% end %>
+    </article>
+    <hr />
+  <% end %>
+</div>

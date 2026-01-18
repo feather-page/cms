@@ -487,6 +487,30 @@ Nach der Implementierung (oder idealerweise während - TDD):
    - Wenn unklar, warum ein Fehler auftritt: Frage den Menschen
    - Wenn ein Linter-Fehler wirklich falsch ist: Frage den Menschen, ob die Konfiguration angepasst werden soll
 
+5. **NIEMALS `rubocop:disable` Kommentare verwenden**:
+   - ❌ **VERBOTEN**: `# rubocop:disable Metrics/MethodLength` oder ähnliche Kommentare
+   - ✅ **STATTDESSEN**: Code refaktorieren um das Problem zu lösen
+   - Bei zu langen Methoden: In kleinere Methoden extrahieren
+   - Bei zu hoher Komplexität: Logic in Concerns, Service Objects, oder Helper-Klassen auslagern
+   - Bei zu langen Klassen: In Module/Concerns aufteilen
+
+   **Beispiel:**
+   ```ruby
+   # ❌ FALSCH - Problem verstecken
+   # rubocop:disable Metrics/ClassLength
+   class BigController < ApplicationController
+     # 200 Zeilen Code...
+   end
+   # rubocop:enable Metrics/ClassLength
+
+   # ✅ RICHTIG - Problem lösen durch Refactoring
+   class SmallController < ApplicationController
+     include RoutingConcern
+     include ImageServingConcern
+     # Jetzt nur noch 50 Zeilen
+   end
+   ```
+
 **Beispiel-Workflow:**
 ```bash
 # Nach Implementierung

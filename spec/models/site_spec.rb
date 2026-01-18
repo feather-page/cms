@@ -7,7 +7,7 @@ describe Site do
 
         site.publish
 
-        expect(Hugo::BuildJob).to have_been_enqueued.with(deployment_target)
+        expect(StaticSite::ExportJob).to have_been_enqueued.with(deployment_target)
       end
     end
   end

@@ -1,7 +1,7 @@
 # ADR-004: Hugo Theme Feature Parity
 
 ## Status
-**Accepted**
+**Superseded** by [ADR-005: Replace Hugo with Rails-Native Rendering](005-replace-hugo-with-rails-rendering.md)
 
 ## Date
 2026-01-18

@@ -11,7 +11,7 @@ When("I visit the login page") do
 end
 
 When("I enter my email address {string}") do |email|
-  fill_in 'email', with: email
+  fill_in "email", with: email
 end
 
 # Token generation
@@ -57,16 +57,14 @@ Given("I am logged in as {string}") do |email|
 end
 
 Given("I have a site to access") do
-  @theme ||= create(:theme)
-  @site = create(:site, theme: @theme)
+  @site = create(:site)
   @user.sites << @site unless @user.sites.include?(@site)
   assign_current_site(@site)
 end
 
 Given("I am logged in") do
   @user = create(:user)
-  @theme = create(:theme) unless Theme.exists?
-  @site = create(:site, theme: @theme || Theme.first)
+  @site = create(:site)
   @user.sites << @site
   login_as(@user)
   assign_current_site(@site)

@@ -82,8 +82,8 @@ Feature: Book Reviews
     Then I should not see "Write Review" for "Clean Code"
     And I should see "Edit Review" for "Clean Code"
 
-  Scenario: Star rating is displayed on generated website
+  Scenario: Star rating is displayed on preview
     Given a review "Amazing Book" with 4 stars exists for "Clean Code"
-    When the site is built with Hugo
-    Then the generated post should display 4 stars
+    When I view the site preview
+    Then the post should display 4 stars
     And the stars should be visible as "★★★★☆"
