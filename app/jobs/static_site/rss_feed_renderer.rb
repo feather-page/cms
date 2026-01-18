@@ -1,3 +1,5 @@
+require "builder"
+
 module StaticSite
   class RssFeedRenderer
     def initialize(site:, base_url:)
