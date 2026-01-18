@@ -20,6 +20,9 @@ Rails.application.routes.draw do
         get :search
       end
     end
+    resources :books, only: [] do
+      resource :review, only: %i[new create edit update destroy]
+    end
     resources :pages do
       member do
         put :add_to_navigation

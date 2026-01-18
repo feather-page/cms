@@ -52,6 +52,7 @@ en:
         read_at: Read at
         reading_status: Reading Status
         isbn: ISBN
+        rating: Rating
   cancel: Cancel
   deployment_target:
     types:
@@ -203,3 +204,17 @@ en:
       reading: "Currently Reading"
       finished: "Finished Reading"
   edit: "Edit"
+  reviews:
+    write_review: "Write Review"
+    edit_review: "Edit Review"
+    create_review: "Create Review"
+    update_review: "Update Review"
+    delete: "Delete Review"
+    new_title: "Write Review for %{book}"
+    edit_title: "Edit Review for %{book}"
+    create:
+      notice: "Review was successfully created."
+    update:
+      notice: "Review was successfully updated."
+    destroy:
+      notice: "Review was successfully deleted."

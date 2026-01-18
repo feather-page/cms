@@ -1,5 +1,5 @@
 <div class="mb-3" data-controller="slug"
-data-post_form-target="titleAndSlug" data-slug-url-value="<%= slugs_path %>">
+data-post_form-target="titleAndSlug" data-slug-url-value="<%= slugs_path %>"<%= raw(" data-default-title=\"#{ERB::Util.html_escape(default_title)}\"") if default_title %>>
   <%= helpers.component(
     'form/text_field',
     form:, attribute: :title,

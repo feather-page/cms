@@ -530,13 +530,6 @@ Nach erfolgreichen Tests und Linting:
    | 003 | File Export Strategy | report-export, data-export |
    ```
 
-4. **Update Änderungshistorie**:
-   ```markdown
-   | Datum | Feature | Aktion |
-   |-------|---------|--------|
-   | 2024-01-XX | report-export | Created |
-   ```
-
 **Wichtig:**
 - Pflege-Dateien müssen aktuell bleiben: `docs/features/README.md`, `docs/architecture/README.md`
 - Diese sind Pflichtlektüre für AI-Agenten - veraltete Infos führen zu Problemen
@@ -749,4 +742,12 @@ Sieht das so sinnvoll aus? Gibt es Anpassungen?"
 ---
 
 ## Notizen
-_(Platz für projektspezifische Ergänzungen)_
+
+### Keine Änderungshistorie in Dokumenten
+**Entscheidung:** Es wird keine Änderungshistorie in Dokumenten unter `docs/` geführt - und auch nirgendwo sonst im Code.
+
+Das bedeutet:
+- ❌ Keine "Changelog"-Abschnitte in Markdown-Dateien
+- ❌ Keine "History" oder "Revision"-Tabellen in Dokumenten
+- ❌ Keine Änderungsdaten am Datei-Ende
+- ✅ Git-History ist die einzige Quelle für Änderungshistorie

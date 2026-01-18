@@ -1,0 +1,40 @@
+<%= turbo_frame_tag(:form) do %>
+  <%= form_for(post, url: form_url, method: form_method, class: "mb-4", data: { controller: 'post_form' }) do |form| %>
+    <div class="mb-3">
+      <label class="form-label"><%= t('activerecord.attributes.book.rating') %></label>
+      <div class="star-rating" data-controller="star-rating" data-star-rating-value-value="<%= @book.rating || 0 %>">
+        <% (1..5).each do |star| %>
+          <button type="button"
+                  class="btn btn-link p-0 star-btn"
+                  data-action="click->star-rating#select"
+                  data-star-rating-target="star"
+                  data-value="<%= star %>">
+            <span class="star <%= 'filled' if @book.rating && star <= @book.rating %>"
+                  style="font-size: 1.5rem; color: <%= (@book.rating && star <= @book.rating) ? '#ffc107' : '#ddd' %>;">
+              ★
+            </span>
+          </button>
+        <% end %>
+        <input type="hidden" name="rating" value="<%= @book.rating %>" data-star-rating-target="input">
+      </div>
+    </div>
+
+    <%= component('form/header_image_picker', form:) %>
+    <%= component('form/title_and_slug', form:, default_title: @book.review_title_suggestion) %>
+    <%= component('form/editor', form:, attribute: :content) %>
+    <%= component('form/datetime_field', form:, attribute: :publish_at, placeholder: Time.current) %>
+    <%= component('form/checkbox', form:, attribute: :draft) %>
+
+    <div class="d-flex gap-2">
+      <%= form.submit(post.persisted? ? t('reviews.update_review') : t('reviews.create_review'), class: "btn btn-primary") %>
+      <%= link_to(t('cancel'), site_books_path(@book.site), "data-turbo-frame": '_top', class: "btn btn-outline-primary") %>
+      <% if post.persisted? %>
+        <%= link_to(t('reviews.delete'),
+                    site_book_review_path(@book.site, @book),
+                    method: :delete,
+                    data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') },
+                    class: "btn btn-outline-danger ms-auto") %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

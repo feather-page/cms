@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_17_121306) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_18_102827) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -58,6 +58,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_17_121306) do
     t.string "open_library_key"
     t.uuid "post_id"
     t.string "public_id"
+    t.integer "rating"
     t.datetime "read_at"
     t.integer "reading_status", default: 2, null: false
     t.uuid "site_id", null: false

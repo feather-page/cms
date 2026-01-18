@@ -176,11 +176,3 @@ graph LR
 2. Identifiziere relevante ADRs → Tabelle oben
 3. Lies nur relevante ADRs → decisions/
 ```
-
----
-
-## Änderungshistorie
-
-| Datum | Änderung | Autor |
-|-------|----------|-------|
-| 2026-01-18 | Aktualisiert mit tatsächlicher Architektur und ADRs | Claude |

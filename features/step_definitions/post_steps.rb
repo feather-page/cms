@@ -127,7 +127,8 @@ end
 Then("the post should have publish date {string}") do |date|
   # Use the @post we edited
   post = @post&.reload || current_site.posts.order(updated_at: :desc).first
-  expect(post&.publish_at&.to_date&.to_s).to eq(date)
+  publish_date = post&.publish_at&.to_date
+  expect(publish_date&.to_s).to eq(date)
 end
 
 Then("the post should have a header image") do

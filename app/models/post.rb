@@ -3,6 +3,7 @@ class Post < ApplicationRecord
 
   belongs_to :site
   belongs_to :header_image, class_name: "Image", optional: true
+  has_one :book, dependent: :nullify
 
   before_validation :normalize_slug
   before_validation :set_publish_at

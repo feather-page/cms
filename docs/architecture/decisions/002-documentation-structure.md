@@ -135,11 +135,3 @@ docs/
 ## References
 - AGENTS.md - Workflow-Dokumentation
 - [Architecture Decision Records](https://adr.github.io/)
-
----
-
-## Change History
-
-| Date | Author | Change | Reason |
-|------|--------|--------|--------|
-| 2026-01-18 | Claude | Created | Document existing structure |

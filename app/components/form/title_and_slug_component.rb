@@ -1,9 +1,10 @@
 module Form
   class TitleAndSlugComponent < ViewComponent::Base
-    attr_reader :form
+    attr_reader :form, :default_title
 
-    def initialize(form:)
+    def initialize(form:, default_title: nil)
       @form = form
+      @default_title = default_title
     end
 
     def slugs_path

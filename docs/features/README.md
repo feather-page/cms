@@ -14,6 +14,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 | Posts | Blog-Posts erstellen, bearbeiten, veröffentlichen | `posts.feature` |
 | Pages | Statische Seiten verwalten | `pages.feature` |
 | Books | Buchkatalog verwalten | `books.feature` |
+| Book Reviews | Buchrezensionen mit Sterne-Bewertung | `book_reviews.feature` |
 
 ---
 
@@ -26,6 +27,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 - [posts.feature](posts.feature) - Blog-Posts
 - [pages.feature](pages.feature) - Statische Seiten
 - [books.feature](books.feature) - Buchkatalog
+- [book_reviews.feature](book_reviews.feature) - Buchrezensionen
 
 ### Site Administration
 - [site_management.feature](site_management.feature) - Website-Verwaltung
@@ -66,11 +68,3 @@ features/
 1. Erstelle eine neue `.feature` Datei in `docs/features/`
 2. Implementiere Step Definitions in `features/step_definitions/`
 3. Aktualisiere diesen Index
-
----
-
-## Änderungshistorie
-
-| Datum | Feature | Aktion |
-|-------|---------|--------|
-| 2026-01-18 | Alle | Feature-Dateien nach docs/features/ verschoben |

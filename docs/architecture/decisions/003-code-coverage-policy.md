@@ -129,11 +129,3 @@ open coverage/index.html
 ## References
 - [SimpleCov](https://github.com/simplecov-ruby/simplecov)
 - AGENTS.md - Test-Anforderungen
-
----
-
-## Change History
-
-| Date | Author | Change | Reason |
-|------|--------|--------|--------|
-| 2026-01-18 | Claude | Created | Document coverage policy |

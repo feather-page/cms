@@ -15,7 +15,11 @@ end
 # Form actions
 When("I enter the book title {string}") do |title|
   # Wait for form to load
-  find('h1', text: /New Book|Edit Book/i, wait: 5) rescue nil
+  begin
+    find('h1', text: /New Book|Edit Book/i, wait: 5)
+  rescue StandardError
+    nil
+  end
   fill_in 'book_title', with: title
 end
 

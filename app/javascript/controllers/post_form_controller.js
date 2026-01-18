@@ -35,5 +35,16 @@ export default class extends Controller {
 
   unhide () {
     this.titleAndSlugTarget.classList.remove('d-none')
+    this.applyDefaultTitle()
+  }
+
+  applyDefaultTitle () {
+    const defaultTitle = this.titleAndSlugTarget.dataset.defaultTitle
+    if (!defaultTitle) return
+
+    const titleInput = this.titleAndSlugTarget.querySelector('input[name*="title"]')
+    if (titleInput && !titleInput.value) {
+      titleInput.value = defaultTitle
+    }
   }
 }
