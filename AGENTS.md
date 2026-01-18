@@ -1,5 +1,31 @@
 # Anweisungen für KI-Agenten
 
+## ⛔ UNVERHANDELBARE REGELN
+
+Diese Regeln gelten IMMER und dürfen NIEMALS übersprungen werden:
+
+1. **ALLE Tests ausführen** – Vor jedem Commit MÜSSEN alle Tests grün sein
+2. **100% Coverage für neuen Code** – Coverage darf NIEMALS sinken
+3. **Zeige Test-Output** – Präsentiere dem Menschen die Test-Ergebnisse VOR dem Commit
+4. **Keine Linter-Disables** – Niemals `rubocop:disable` oder ähnliche Kommentare
+
+### Validierungs-Checkpoint (VOR jedem Commit):
+```bash
+# 1. Alle Tests ausführen / Coverage prüfen
+rake coverage
+
+# Coverage für neue Dateien: 100%
+# Gesamt-Coverage: darf nicht sinken
+
+# 2. Brakeman und rubocop Analyse
+* Warning nicht ignorieren/muten. Das Problem lösen.
+* Falls das nicht sinnvoll ist den Mensch um Erlaubnis fragen.
+# 3. Zeige validierungsoutput dem Menschen
+```
+
+**STOP!** Wenn einer dieser Punkte fehlschlägt → Der task ist nicht abgeschlossen Problem lösen.
+
+
 ## Übersicht
 Dieses Dokument enthält Richtlinien für KI-Agenten, die an diesem Projekt arbeiten.
 

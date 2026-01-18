@@ -1,4 +1,4 @@
-name: RSpec
+name: Tests
 on: [push]
 jobs:
   run-rspec-tests:
@@ -25,6 +25,13 @@ jobs:
           bundle exec rails db:create
           bundle exec rails db:setup
           bundle exec rspec
+        env:
+          HTTPS: false
+          BASE_HOSTNAME_AND_PORT: localhost:3000
+          HEADLESS: true
+          STAGING_SITES_PATH: /tmp/staging_sites
+      - name: Run cucumber tests
+        run: bundle exec cucumber
         env:
           HTTPS: false
           BASE_HOSTNAME_AND_PORT: localhost:3000
