@@ -9,78 +9,111 @@ Schneller Überblick über die System-Architektur für Menschen und AI-Agenten. 
 
 ```mermaid
 graph TB
-    subgraph "Frontend"
-        UI[User Interface]
+    subgraph "Browser"
+        UI[Rails Views + Stimulus]
     end
 
-    subgraph "Backend"
-        API[API Layer]
-        Business[Business Logic]
-        Data[Data Access]
+    subgraph "Rails Application"
+        Controllers[Controllers]
+        Models[Models]
+        Components[ViewComponents]
+        Services[Services]
     end
 
-    subgraph "External"
-        DB[(Database)]
-        Cache[(Cache)]
-        External[External Services]
+    subgraph "Build Pipeline"
+        Hugo[Hugo Static Site Generator]
     end
 
-    UI --> API
-    API --> Business
-    Business --> Data
-    Data --> DB
-    Business --> Cache
-    Business --> External
+    subgraph "Storage"
+        DB[(SQLite/PostgreSQL)]
+        Storage[File Storage]
+    end
+
+    subgraph "Output"
+        Static[Static Website Files]
+    end
+
+    UI --> Controllers
+    Controllers --> Models
+    Controllers --> Components
+    Controllers --> Services
+    Models --> DB
+    Services --> Hugo
+    Hugo --> Static
+    Static --> Storage
 ```
-
-_Ersetze dieses Diagramm mit der tatsächlichen System-Architektur_
 
 ---
 
 ## Technologie-Stack
 
 ### Frontend
-- Framework: _[React/Vue/Angular/etc.]_
-- State Management: _[Redux/Vuex/etc.]_
-- UI Library: _[Material-UI/etc.]_
+- Framework: Rails Views (ERB)
+- JavaScript: Stimulus (Hotwire)
+- CSS: Tailwind CSS
+- Components: ViewComponents
 
 ### Backend
-- Language: _[Ruby/Node.js/Python/etc.]_
-- Framework: _[Rails/Express/Django/etc.]_
-- API Style: _[REST/GraphQL/gRPC]_
+- Language: Ruby 3.x
+- Framework: Ruby on Rails 7
+- API Style: Server-rendered HTML (Hotwire)
 
 ### Database
-- Primary: _[PostgreSQL/MySQL/MongoDB/etc.]_
-- Cache: _[Redis/Memcached/etc.]_
+- Development: SQLite
+- Production: PostgreSQL
 
-### Infrastructure
-- Hosting: _[AWS/Azure/GCP/Heroku/etc.]_
-- CI/CD: _[GitHub Actions/Jenkins/etc.]_
+### Static Site Generation
+- Engine: Hugo
+- Output: Statische HTML/CSS/JS Dateien
+
+### Testing
+- Unit Tests: RSpec
+- Acceptance Tests: Cucumber (Gherkin)
+- Coverage: SimpleCov
 
 ---
 
 ## Wichtige Architektur-Prinzipien
 
-1. **Separation of Concerns**
-   - _Beschreibung wie dies umgesetzt wird_
+1. **Feature-First Development (BDD)**
+   - Gherkin-Scenarios vor Implementierung
+   - Siehe ADR-001
 
-2. **DRY (Don't Repeat Yourself)**
-   - _Beschreibung_
+2. **Sandi Metz's Rules**
+   - Klassen max 100 Zeilen
+   - Methoden max 5 Zeilen
+   - Max 4 Parameter
 
-3. **SOLID Principles**
-   - _Welche sind besonders wichtig im Projekt?_
+3. **Clean Code (Robert Martin)**
+   - Sprechende Namen
+   - Kleine Funktionen
+   - Command-Query Separation
+
+4. **ViewComponents statt Partials**
+   - Wiederverwendbare UI-Bausteine
+   - Testbar in Isolation
 
 ---
 
 ## Verzeichnisstruktur
 
 ```
-project/
-├── frontend/           # Frontend-Code
-├── backend/            # Backend-Code
-├── docs/               # Dokumentation
-├── tests/              # Tests
-└── infrastructure/     # Infrastructure as Code
+cms/
+├── app/
+│   ├── components/       # ViewComponents
+│   ├── controllers/      # Rails Controllers
+│   ├── models/           # ActiveRecord Models
+│   ├── services/         # Service Objects
+│   └── views/            # ERB Templates
+├── docs/
+│   ├── features/         # Gherkin Feature-Dateien
+│   ├── architecture/     # Architektur-Docs & ADRs
+│   └── GLOSSARY.md       # Domänensprache
+├── features/
+│   ├── step_definitions/ # Cucumber Steps
+│   └── support/          # Cucumber Config
+├── spec/                 # RSpec Tests
+└── AGENTS.md             # Workflow für AI-Agenten
 ```
 
 ---
@@ -93,87 +126,56 @@ Siehe: `decisions/` für vollständige ADRs
 
 | ADR | Titel | Status | Datum |
 |-----|-------|--------|-------|
-| 001 | _Authentication Method_ | _Accepted_ | _YYYY-MM-DD_ |
-| 002 | _Database Choice_ | _Accepted_ | _YYYY-MM-DD_ |
+| 001 | BDD Feature-First Development | Accepted | 2026-01-18 |
+| 002 | Dokumentationsstruktur | Accepted | 2026-01-18 |
+| 003 | Code Coverage Policy | Accepted | 2026-01-18 |
 
 ---
 
-## Datenfluss
-
-_Füge hier ein High-Level Datenfluss-Diagramm ein, wenn relevant_
+## Datenfluss: Content-Erstellung bis Deployment
 
 ```mermaid
 graph LR
-    User --> Frontend
-    Frontend --> API
-    API --> Database
-    Database --> API
-    API --> Frontend
-    Frontend --> User
+    User[Benutzer] --> CMS[Rails CMS]
+    CMS --> DB[(Database)]
+    CMS --> Hugo[Hugo Build]
+    Hugo --> Static[Statische Files]
+    Static --> Deploy[Deployment]
+    Deploy --> Website[Live Website]
 ```
 
 ---
 
 ## Security Considerations
 
-- Authentication: _[JWT/Session/OAuth/etc.]_
-- Authorization: _[RBAC/ABAC/etc.]_
-- Data Encryption: _[At rest/In transit]_
-- Input Validation: _[Where/How]_
-
----
-
-## Performance Considerations
-
-- Caching Strategy: _[Beschreibung]_
-- Database Indexing: _[Strategie]_
-- Load Balancing: _[Wenn relevant]_
+- Authentication: Token-basiert (Magic Links)
+- Authorization: User-Site-Ownership
+- Input Validation: Rails Strong Parameters
+- XSS Prevention: Rails Auto-Escaping
+- CSRF Protection: Rails Authenticity Token
 
 ---
 
 ## Navigation
 
-### Für Menschen 👤
+### Für Menschen
 - **Übersicht**: Diese Datei zeigt die wichtigsten Architektur-Aspekte
 - **Entscheidungen**: `decisions/` Ordner für alle ADRs
-- **Details**: `system-overview.md` und `data-flow.md` für tiefere Einblicke
+- **Workflow**: `AGENTS.md` im Root-Verzeichnis
 
-### Für AI-Agenten 🤖
+### Für AI-Agenten
 
-**⚡ Wann diese Datei lesen:**
-
-✅ **Immer lesen bei:**
+**Wann diese Datei lesen:**
 - Beginn eines neuen Features
 - Architektur-Fragen
 - Technologie-Auswahl
 
-**📋 Weitere Dateien (nur bei Bedarf):**
-- `system-overview.md` → Detail-Architektur
-- `data-flow.md` → Datenfluss-Details
-- `decisions/XXX-*.md` → Nur relevante ADRs
-
-**🔍 Token-sparender Workflow:**
+**Token-sparender Workflow:**
 ```
 1. Lies diese Datei (README.md) → Übersicht
 2. Identifiziere relevante ADRs → Tabelle oben
 3. Lies nur relevante ADRs → decisions/
-4. Detail-Dateien nur bei Bedarf
 ```
-
----
-
-## Wartung
-
-### Beim Hinzufügen einer neuen ADR:
-1. Erstelle ADR in `decisions/`
-2. Aktualisiere Tabelle oben
-3. Verlinke von relevanten Features
-
-### Bei Architektur-Änderungen:
-1. Aktualisiere diese Übersicht
-2. Erstelle ADR für die Änderung
-3. Aktualisiere betroffene Feature-Dokumentationen
-4. Aktualisiere `GLOSSARY.md` wenn neue Begriffe entstehen
 
 ---
 
@@ -181,4 +183,4 @@ graph LR
 
 | Datum | Änderung | Autor |
 |-------|----------|-------|
-| _YYYY-MM-DD_ | _Initial creation_ | _Name/Agent_ |
+| 2026-01-18 | Aktualisiert mit tatsächlicher Architektur und ADRs | Claude |
