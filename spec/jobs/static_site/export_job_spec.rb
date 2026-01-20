@@ -114,11 +114,11 @@ RSpec.describe StaticSite::ExportJob do
 
         # Add pages to navigation - they get positions 1, 2, 3 in creation order
         navigation.add(page_c)
-        navigation.add(page_a)
+        nav_item_a = navigation.add(page_a)
         navigation.add(page_b)
 
         # Reorder: move page_a to position 1 (first)
-        page_a.navigation_items.first.move_up
+        nav_item_a.move_up
 
         # Expected order now: Page A, Page C, Page B
 
