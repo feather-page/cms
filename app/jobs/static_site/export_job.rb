@@ -2,6 +2,8 @@ module StaticSite
   class ExportJob < ApplicationJob
     include OutputPaths
 
+    THREAD_COUNT = 4
+
     queue_as :default
 
     def perform(deployment_target)
@@ -37,23 +39,27 @@ module StaticSite
     end
 
     def export_posts
-      site.posts.published.find_each do |post|
-        write_file(post_output_path(post), renderer.render_post(site: site, post: post))
+      posts = site.posts.published.to_a
+      ParallelProcessor.new(posts, thread_count: THREAD_COUNT).process do |post|
+        thread_renderer = PageRenderer.new
+        write_file(post_output_path(post), thread_renderer.render_post(site: site, post: post))
       end
     end
 
     def export_pages
-      site.pages.where.not(slug: "/").find_each do |page|
-        write_file(page_output_path(page), renderer.render_page(site: site, page: page))
+      pages = site.pages.where.not(slug: "/").to_a
+      ParallelProcessor.new(pages, thread_count: THREAD_COUNT).process do |page|
+        thread_renderer = PageRenderer.new
+        write_file(page_output_path(page), thread_renderer.render_page(site: site, page: page))
       end
     end
 
     def export_images
-      ImageCollector.new(site).to_a.each { |image| export_image_variants(image) }
-    end
-
-    def export_image_variants(image)
-      Image::Variants.each_key { |key| copy_image_variant(image, key) }
+      images = ImageCollector.new(site).to_a
+      image_variants = images.flat_map { |img| Image::Variants.keys.map { |key| [img, key] } }
+      ParallelProcessor.new(image_variants, thread_count: THREAD_COUNT).process do |(image, variant_key)|
+        copy_image_variant(image, variant_key)
+      end
     end
 
     def copy_image_variant(image, variant_key)

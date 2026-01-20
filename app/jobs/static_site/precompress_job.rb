@@ -3,10 +3,13 @@ require "zlib"
 
 module StaticSite
   class PrecompressJob < ApplicationJob
+    THREAD_COUNT = 4
+
     queue_as :default
 
     def perform(static_website_path)
-      text_files(static_website_path).each do |file|
+      files = text_files(static_website_path)
+      ParallelProcessor.new(files, thread_count: THREAD_COUNT).process do |file|
         gzip_compress(file)
         brotli_compress(file)
       end
