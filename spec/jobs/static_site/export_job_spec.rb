@@ -102,5 +102,39 @@ RSpec.describe StaticSite::ExportJob do
         expect(content).to include("\u2605\u2605\u2605\u2605\u2606")
       end
     end
+
+    context "with navigation items" do
+      it "exports navigation links in the correct order" do
+        navigation = site.main_navigation
+
+        # Create pages in a specific order
+        page_c = create(:page, site:, title: "Page C", slug: "/page-c")
+        page_a = create(:page, site:, title: "Page A", slug: "/page-a")
+        page_b = create(:page, site:, title: "Page B", slug: "/page-b")
+
+        # Add pages to navigation - they get positions 1, 2, 3 in creation order
+        navigation.add(page_c)
+        nav_item_a = navigation.add(page_a)
+        navigation.add(page_b)
+
+        # Reorder: move page_a to position 1 (first)
+        nav_item_a.move_up
+
+        # Expected order now: Page A, Page C, Page B
+
+        described_class.perform_now(deployment_target)
+
+        index_path = File.join(deployment_target.source_dir, "index.html")
+        content = File.read(index_path)
+
+        # Verify the order by checking that Page A appears before Page C, and Page C before Page B
+        page_a_pos = content.index("Page A")
+        page_c_pos = content.index("Page C")
+        page_b_pos = content.index("Page B")
+
+        expect(page_a_pos).to be < page_c_pos, "Page A should appear before Page C"
+        expect(page_c_pos).to be < page_b_pos, "Page C should appear before Page B"
+      end
+    end
   end
 end
