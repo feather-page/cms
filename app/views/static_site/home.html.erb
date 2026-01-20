@@ -1,5 +1,5 @@
 <ul class="page-list">
-  <% @site.main_navigation.navigation_items.each do |item| %>
+  <% @site.main_navigation.navigation_items.ordered.each do |item| %>
     <li>
       <%= item.emoji %> <a class="page-link" href="<%= item.slug %>"><%= item.title %></a>
     </li>
