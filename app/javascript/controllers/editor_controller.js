@@ -10,12 +10,14 @@ import ImageTool from '@editorjs/image'
 import Header from '@editorjs/header'
 // @ts-ignore
 import CodeTool from '@editorjs/code'
+import LinkAutocomplete from '@editorjs/link-autocomplete'
 
 export default class extends Controller {
   static values = {
     editorId: String,
     imageEndpoint: String,
-    imageFromUrlEndpoint: String
+    imageFromUrlEndpoint: String,
+    linkSearchEndpoint: String
   }
 
   static targets = ['jsonOutput']
@@ -33,7 +35,7 @@ export default class extends Controller {
   }
 
   toolsConfig () {
-    return {
+    const tools = {
       header: { class: Header, config: { levels: [2, 3, 4], defaultLevel: 2 } },
       image: {
         class: ImageTool,
@@ -77,6 +79,18 @@ export default class extends Controller {
         }
       }
     }
+
+    if (this.hasLinkSearchEndpointValue) {
+      tools.link = {
+        class: LinkAutocomplete,
+        config: {
+          endpoint: this.linkSearchEndpointValue,
+          queryParam: 'search'
+        }
+      }
+    }
+
+    return tools
   }
 
   loadData () {

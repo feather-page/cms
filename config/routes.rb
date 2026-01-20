@@ -4,6 +4,7 @@ Rails.application.routes.draw do
   namespace :api do
     resources :sites, only: [] do
       resources :slugs, only: [:create]
+      resources :links, only: [:index]
     end
 
     resources :caddy, only: [] do

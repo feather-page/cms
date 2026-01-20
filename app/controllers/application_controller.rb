@@ -13,6 +13,8 @@ class ApplicationController < ActionController::Base
 
   def current_site
     set_site
+    Current.site = @set_site
+    @set_site
   end
 
   def current_user

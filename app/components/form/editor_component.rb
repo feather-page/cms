@@ -19,6 +19,10 @@ module Form
       helpers.from_url_site_images_path(path_params)
     end
 
+    def link_search_path
+      helpers.api_site_links_path(site_id:)
+    end
+
     def path_params
       params = { authenticity_token: helpers.form_authenticity_token }
       params[:site_id] = site_id

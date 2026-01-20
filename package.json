@@ -32,5 +32,8 @@
     "globals": [
       "Turbo"
     ]
+  },
+  "dependencies": {
+    "@editorjs/link-autocomplete": "^0.1.0"
   }
 }
