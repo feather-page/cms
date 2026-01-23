@@ -18,6 +18,7 @@ Rails.application.routes.draw do
     resources :books, except: [:show], shallow: true do
       collection do
         get :search
+        get :lookup
       end
     end
     resources :books, only: [] do

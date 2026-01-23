@@ -15,6 +15,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 | Pages | Statische Seiten verwalten | `pages.feature` |
 | Books | Buchkatalog verwalten | `books.feature` |
 | Book Reviews | Buchrezensionen mit Sterne-Bewertung | `book_reviews.feature` |
+| Book Block | Bücher aus Katalog in Posts einbetten | `book_block.feature` |
 
 ---
 
@@ -28,6 +29,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 - [pages.feature](pages.feature) - Statische Seiten
 - [books.feature](books.feature) - Buchkatalog
 - [book_reviews.feature](book_reviews.feature) - Buchrezensionen
+- [book_block.feature](book_block.feature) - Bücher in Posts einbetten
 
 ### Site Administration
 - [site_management.feature](site_management.feature) - Website-Verwaltung

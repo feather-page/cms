@@ -14,4 +14,8 @@ class BookPolicy < ApplicationPolicy
       super_admin? || site_user?(record.site)
     end
   end
+
+  def lookup?
+    super_admin? || site_user?(record)
+  end
 end

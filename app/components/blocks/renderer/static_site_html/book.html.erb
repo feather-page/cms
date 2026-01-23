@@ -1,0 +1,11 @@
+<% if book.present? %>
+  <div class="book-card book-card--detail">
+    <div class="book-card-header">
+      <%= cover_or_emoji %>
+      <div class="book-info">
+        <div class="book-title"><%= book.title %></div>
+        <div class="book-author"><%= book.author %></div>
+      </div>
+    </div>
+  </div>
+<% end %>
