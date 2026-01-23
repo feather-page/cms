@@ -11,19 +11,34 @@ module StaticSite
       return if @items.empty?
       return @items.each(&) if @thread_count <= 1
 
-      queue = Queue.new
-      @items.each { |item| queue << item }
-      @thread_count.times { queue << :done }
+      process_in_parallel(&)
+    end
 
-      threads = @thread_count.times.map do
-        Thread.new do
-          while (item = queue.pop) != :done
-            yield(item)
-          end
+    private
+
+    def process_in_parallel(&)
+      queue = build_queue
+      threads = spawn_workers(queue, &)
+      threads.each(&:join)
+    end
+
+    def build_queue
+      Queue.new.tap do |queue|
+        @items.each { |item| queue << item }
+        @thread_count.times { queue << :done }
+      end
+    end
+
+    def spawn_workers(queue, &block)
+      Array.new(@thread_count) { create_worker(queue, &block) }
+    end
+
+    def create_worker(queue)
+      Thread.new do
+        while (item = queue.pop) != :done
+          yield(item)
         end
       end
-
-      threads.each(&:join)
     end
   end
 end

@@ -66,5 +66,36 @@ describe BooksController do
       expect(response).to be_successful
       expect(response.parsed_body).to eq([])
     end
+
+    context 'without search query' do
+      it 'returns the 5 most recent books ordered by read_at and created_at' do
+        get lookup_site_books_path(site)
+
+        expect(response).to be_successful
+        expect(response.parsed_body.length).to be <= 5
+      end
+
+      it 'limits results to 5 books' do
+        10.times { |i| create(:book, site:, title: "Book #{i}") }
+
+        get lookup_site_books_path(site)
+
+        expect(response).to be_successful
+        expect(response.parsed_body.length).to eq(5)
+      end
+    end
+
+    context 'with cover image' do
+      it 'returns the cover_url when book has a cover image' do
+        book_with_cover = create(:book, site:, title: 'Book With Cover')
+        create(:image, site:, imageable: book_with_cover)
+
+        get lookup_site_books_path(site), params: { q: 'Book With Cover' }
+
+        expect(response).to be_successful
+        book_json = response.parsed_body.first
+        expect(book_json['cover_url']).to be_present
+      end
+    end
   end
 end
