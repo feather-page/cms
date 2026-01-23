@@ -1,0 +1,6 @@
+# This directory stores project-specific memories for Claude
+#
+# Suggested files:
+# - decisions.md    : Architectural decisions and rationale
+# - patterns.md     : Project-specific patterns and conventions
+# - gotchas.md      : Edge cases and things to watch out for

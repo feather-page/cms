@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bundle exec rspec*)",
+      "Bash(bundle exec rubocop*)",
+      "Bash(bundle exec brakeman*)",
+      "Bash(bin/rails db:migrate*)",
+      "Bash(bin/rails db:rollback*)",
+      "Bash(bin/rails db:seed*)",
+      "Bash(bin/rails generate*)",
+      "Bash(bin/rails destroy*)",
+      "Bash(bin/rails routes*)",
+      "Bash(bin/rails console*)",
+      "Bash(bin/rails runner*)",
+      "Bash(bundle install*)",
+      "Bash(bundle update*)",
+      "Bash(bundle audit*)",
+      "Bash(yarn *)",
+      "Bash(npm *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git show*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(app/**)",
+      "Write(spec/**)",
+      "Write(config/**)",
+      "Write(db/migrate/**)",
+      "Write(lib/**)",
+      "Write(.claude/memories/**)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(DROP DATABASE*)",
+      "Bash(rails db:drop*)",
+      "Write(.env*)",
+      "Write(config/credentials*)",
+      "Write(config/master.key)"
+    ]
+  },
+  "model": "claude-sonnet-4-20250514",
+  "contextPaths": [
+    "CLAUDE.md",
+    "memories/"
+  ]
+}
