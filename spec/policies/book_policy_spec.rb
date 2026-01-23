@@ -36,4 +36,40 @@ describe BookPolicy do
       end
     end
   end
+
+  permissions :lookup? do
+    let(:site) { book.site }
+
+    context 'for a super admin' do
+      let(:user) { build(:user, :superadmin) }
+
+      it 'permits' do
+        expect(policy).to permit(user, site)
+      end
+    end
+
+    context 'for a user that is part of the site' do
+      let(:user) { create(:user, sites: [site]) }
+
+      it 'permits' do
+        expect(policy).to permit(user, site)
+      end
+    end
+
+    context 'for a user that is not part of the site' do
+      let(:user) { create(:user) }
+
+      it 'denies' do
+        expect(policy).not_to permit(user, site)
+      end
+    end
+
+    context 'for an anonymous user' do
+      let(:user) { nil }
+
+      it 'denies' do
+        expect(policy).not_to permit(user, site)
+      end
+    end
+  end
 end

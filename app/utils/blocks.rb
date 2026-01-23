@@ -1,5 +1,6 @@
 module Blocks
   MAPPING = {
+    'book' => Book,
     'code' => Code,
     'header' => Header,
     'image' => Image,

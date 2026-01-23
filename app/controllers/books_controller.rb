@@ -40,7 +40,31 @@ class BooksController < ApplicationController
     render json: results.map(&:to_h)
   end
 
+  def lookup
+    authorize current_site, :lookup?, policy_class: BookPolicy
+    books = current_site.books
+                        .where("title ILIKE :q OR author ILIKE :q", q: "%#{params[:q]}%")
+                        .limit(10)
+    render json: books.map { |b| book_lookup_json(b) }
+  end
+
   private
+
+  def book_lookup_json(book)
+    {
+      public_id: book.public_id,
+      title: book.title,
+      author: book.author,
+      cover_url: book_cover_url(book),
+      emoji: book.emoji
+    }
+  end
+
+  def book_cover_url(book)
+    return unless book.cover_image&.file&.attached?
+
+    helpers.url_for(book.cover_image.file.variant(:mobile_x1_webp))
+  end
 
   def set_site
     @book&.site || super

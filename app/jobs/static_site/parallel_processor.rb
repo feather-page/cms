@@ -7,9 +7,9 @@ module StaticSite
       @thread_count = [thread_count, @items.size].min
     end
 
-    def process(&block)
+    def process(&)
       return if @items.empty?
-      return @items.each(&block) if @thread_count <= 1
+      return @items.each(&) if @thread_count <= 1
 
       queue = Queue.new
       @items.each { |item| queue << item }
@@ -18,7 +18,7 @@ module StaticSite
       threads = @thread_count.times.map do
         Thread.new do
           while (item = queue.pop) != :done
-            block.call(item)
+            yield(item)
           end
         end
       end

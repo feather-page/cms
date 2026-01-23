@@ -1,5 +1,5 @@
 <% if @post.book.present? %>
-  <div class="book-card">
+  <div class="book-card book-card--detail">
     <div class="book-card-header">
       <% if static_site_image_url(@post.book.cover_image, :mobile_x1) %>
         <img src="<%= static_site_image_url(@post.book.cover_image, :mobile_x1) %>" alt="<%= @post.book.title %>" class="book-cover">

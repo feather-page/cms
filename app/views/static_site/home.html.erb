@@ -18,18 +18,20 @@
       <% if post.title.blank? %>
         <%# Short post without title %>
         <% if post.book.present? %>
-          <div class="post-book-card">
-            <% if static_site_image_url(post.book.cover_image, :mobile_x1) %>
-              <img src="<%= static_site_image_url(post.book.cover_image, :mobile_x1) %>" alt="<%= post.book.title %>" class="post-book-cover">
-            <% elsif post.book.emoji.present? %>
-              <span class="post-book-emoji"><%= post.book.emoji %></span>
-            <% end %>
-            <div class="post-book-info">
-              <div class="post-book-title"><%= post.book.title %></div>
-              <div class="post-book-author"><%= post.book.author %></div>
-              <% if post.book.rating.present? %>
-                <div class="post-book-rating"><%= static_site_rating_stars(post.book.rating) %></div>
+          <div class="book-card book-card--detail">
+            <div class="book-card-header">
+              <% if static_site_image_url(post.book.cover_image, :mobile_x1) %>
+                <img src="<%= static_site_image_url(post.book.cover_image, :mobile_x1) %>" alt="<%= post.book.title %>" class="book-cover">
+              <% elsif post.book.emoji.present? %>
+                <span class="book-emoji"><%= post.book.emoji %></span>
               <% end %>
+              <div class="book-info">
+                <div class="book-title"><%= post.book.title %></div>
+                <div class="book-author"><%= post.book.author %></div>
+                <% if post.book.rating.present? %>
+                  <div class="book-rating" aria-label="<%= post.book.rating %> out of 5 stars"><%= static_site_rating_stars(post.book.rating) %></div>
+                <% end %>
+              </div>
             </div>
           </div>
         <% end %>

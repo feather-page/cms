@@ -10,12 +10,15 @@ import ImageTool from '@editorjs/image'
 import Header from '@editorjs/header'
 // @ts-ignore
 import CodeTool from '@editorjs/code'
+// @ts-ignore
+import BookTool from '@editorjs/book'
 
 export default class extends Controller {
   static values = {
     editorId: String,
     imageEndpoint: String,
-    imageFromUrlEndpoint: String
+    imageFromUrlEndpoint: String,
+    bookLookupEndpoint: String
   }
 
   static targets = ['jsonOutput']
@@ -74,6 +77,12 @@ export default class extends Controller {
             xml: 'XML',
             yaml: 'YAML'
           }
+        }
+      },
+      book: {
+        class: BookTool,
+        config: {
+          lookupEndpoint: this.bookLookupEndpointValue
         }
       }
     }
