@@ -67,6 +67,21 @@ export default class BookTool {
 
     this.searchInput = searchInput
     this.resultsContainer = resultsContainer
+
+    // Load recent books initially
+    this._loadRecentBooks()
+  }
+
+  async _loadRecentBooks () {
+    try {
+      const response = await fetch(this.lookupEndpoint)
+      const books = await response.json()
+      if (books.length > 0) {
+        this._renderResults(books)
+      }
+    } catch (error) {
+      console.error('Failed to load recent books:', error)
+    }
   }
 
   _renderPreview () {
@@ -138,6 +153,11 @@ export default class BookTool {
 
   _handleSearch (query) {
     clearTimeout(this.searchTimeout)
+
+    if (query.length === 0) {
+      this._loadRecentBooks()
+      return
+    }
 
     if (query.length < 2) {
       this.resultsContainer.style.display = 'none'

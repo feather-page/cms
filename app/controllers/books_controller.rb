@@ -42,9 +42,9 @@ class BooksController < ApplicationController
 
   def lookup
     authorize current_site, :lookup?, policy_class: BookPolicy
-    books = current_site.books
-                        .where("title ILIKE :q OR author ILIKE :q", q: "%#{params[:q]}%")
-                        .limit(10)
+    books = current_site.books.order(read_at: :desc, created_at: :desc)
+    books = books.where("title ILIKE :q OR author ILIKE :q", q: "%#{params[:q]}%") if params[:q].present?
+    books = books.limit(params[:q].present? ? 10 : 5)
     render json: books.map { |b| book_lookup_json(b) }
   end
 
