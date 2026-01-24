@@ -1,5 +1,8 @@
 <div class="projects-list">
-  <% @projects.each do |project| %>
+  <% @projects.each_with_index do |project, index| %>
     <%= render StaticSite::ProjectCardComponent.new(project: project, base_url: base_url) %>
+    <% unless index == @projects.size - 1 %>
+      <hr />
+    <% end %>
   <% end %>
 </div>

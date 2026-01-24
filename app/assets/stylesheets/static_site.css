@@ -380,16 +380,12 @@ a.book-title:hover {
 
 .project-item {
   padding: 1.5rem 0;
-  border-bottom: 1px solid var(--decoration-color);
 }
 
 .project-item:first-child {
   padding-top: 0;
 }
 
-.project-item:last-child {
-  border-bottom: none;
-}
 
 .project-header {
   display: flex;
