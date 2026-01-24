@@ -16,6 +16,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 | Books | Buchkatalog verwalten | `books.feature` |
 | Book Reviews | Buchrezensionen mit Sterne-Bewertung | `book_reviews.feature` |
 | Book Block | Bücher aus Katalog in Posts einbetten | `book_block.feature` |
+| Projects | Entwicklungsprojekte für Portfolio-Websites verwalten | `projects/feature.gherkin` |
 
 ---
 
@@ -30,6 +31,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 - [books.feature](books.feature) - Buchkatalog
 - [book_reviews.feature](book_reviews.feature) - Buchrezensionen
 - [book_block.feature](book_block.feature) - Bücher in Posts einbetten
+- [projects/feature.gherkin](projects/feature.gherkin) - Entwicklungsprojekte für Portfolio
 
 ### Site Administration
 - [site_management.feature](site_management.feature) - Website-Verwaltung

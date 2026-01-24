@@ -28,6 +28,7 @@ module StaticSite
     def export_content
       export_home
       export_posts
+      export_projects
       export_pages
       export_images
       export_rss_feed
@@ -43,6 +44,14 @@ module StaticSite
       ParallelProcessor.new(posts, thread_count: THREAD_COUNT).process do |post|
         thread_renderer = PageRenderer.new
         write_file(post_output_path(post), thread_renderer.render_post(site: site, post: post))
+      end
+    end
+
+    def export_projects
+      projects = site.projects.ordered.to_a
+      ParallelProcessor.new(projects, thread_count: THREAD_COUNT).process do |project|
+        thread_renderer = PageRenderer.new
+        write_file(project_output_path(project), thread_renderer.render_project(site: site, project: project))
       end
     end
 

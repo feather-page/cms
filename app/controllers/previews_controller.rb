@@ -8,10 +8,11 @@ class PreviewsController < ApplicationController
     authorize deployment_target, :show?, policy_class: PreviewPolicy
 
     case preview_route_type
-    when :home  then render_home
-    when :post  then render_post
-    when :page  then render_page
-    when :image then serve_preview_image
+    when :home    then render_home
+    when :project then render_project
+    when :post    then render_post
+    when :page    then render_page
+    when :image   then serve_preview_image
     else head(:not_found)
     end
   end
@@ -36,6 +37,16 @@ class PreviewsController < ApplicationController
     @rss_url = "/feed.xml"
 
     render template: "static_site/home", layout: "static_site"
+  end
+
+  def render_project
+    @project = find_project_by_path
+    return head(:not_found) unless @project
+
+    assign_site_context(page_title: @project.title, page_emoji: @project.emoji)
+    @header_image = @project.header_image
+
+    render template: "static_site/project", layout: "static_site"
   end
 
   def render_post
@@ -63,6 +74,6 @@ class PreviewsController < ApplicationController
     @page_title = page_title
     @page_emoji = page_emoji
     @is_home = is_home
-    @base_url = "/preview/#{deployment_target.id}/"
+    @base_url = "/preview/#{deployment_target.public_id}/"
   end
 end

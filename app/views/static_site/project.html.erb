@@ -1,0 +1,39 @@
+<div class="project-detail">
+  <div class="project-metadata">
+    <div class="project-meta-row">
+      <span class="badge badge-<%= @project.status_badge_class %>">
+        <%= @project.status.titleize %>
+      </span>
+      <% if @project.company.present? %>
+        <span class="project-company"><%= @project.company %></span>
+      <% end %>
+      <span class="project-period"><%= @project.display_period %></span>
+    </div>
+    <% if @project.role.present? %>
+      <div class="project-role"><%= @project.role %></div>
+    <% end %>
+  </div>
+
+  <% if @project.short_description.present? %>
+    <div class="project-summary">
+      <%= simple_format(@project.short_description) %>
+    </div>
+  <% end %>
+</div>
+
+<%= static_site_content_html(@project.static_site_html) %>
+
+<% if @project.links&.any? { |link| link['url'].present? } %>
+  <div class="project-links">
+    <h3>Links</h3>
+    <div class="links-list">
+      <% @project.links.each do |link| %>
+        <% if link['url'].present? %>
+          <a href="<%= link['url'] %>" target="_blank" rel="noopener noreferrer" class="project-link">
+            🔗 <%= link['label'].present? ? link['label'] : link['url'] %>
+          </a>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,24 @@
+<div class="project-item">
+  <div class="project-header">
+    <% if project.emoji.present? %>
+      <span class="project-emoji"><%= project.emoji %></span>
+    <% end %>
+    <a href="<%= project_url %>" class="project-title"><%= project.title %></a>
+  </div>
+  <div class="project-meta">
+    <% if project.company.present? %>
+      <span class="project-company"><%= project.company %></span>
+    <% end %>
+    <span class="project-period"><%= project.display_period %></span>
+    <% if project.role.present? %>
+      <span class="project-role"><%= project.role %></span>
+    <% end %>
+  </div>
+  <div class="project-badges">
+    <span class="badge <%= status_badge_class %>"><%= project.status.titleize %></span>
+    <span class="badge badge-outline"><%= project_type_label %></span>
+  </div>
+  <% if project.short_description.present? %>
+    <p class="project-description"><%= project.short_description %></p>
+  <% end %>
+</div>

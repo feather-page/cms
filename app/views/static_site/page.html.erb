@@ -3,3 +3,7 @@
 <% if @page.page_type_books? %>
   <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered) %>
 <% end %>
+
+<% if @page.page_type_projects? %>
+  <%= render StaticSite::ProjectsListComponent.new(projects: @page.site.projects.ordered, base_url: @base_url || "/") %>
+<% end %>

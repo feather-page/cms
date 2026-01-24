@@ -1,0 +1,158 @@
+Feature: Developer Project Portfolio
+  As a developer
+  I want to showcase my projects on my portfolio website
+  So that potential employers and clients can see my experience
+
+  Background:
+    Given I am logged in as a site owner
+    And I have a site "My Portfolio"
+
+  # ─────────────────────────────────────────────────────────────
+  # CRUD Operations (Admin)
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Creating a new project
+    When I navigate to the projects section
+    And I click "New Project"
+    And I fill in the project form with:
+      | Title             | Backend Refactoring gutefrage.net     |
+      | Company           | gutefrage.net                         |
+      | Period            | March 2019 - August 2020              |
+      | Started at        | 2019-03-01                            |
+      | Ended at          | 2020-08-31                            |
+      | Status            | Completed                             |
+      | Role              | Senior Backend Developer              |
+      | Short description | Complete API overhaul with Rails 6... |
+      | Project type      | Professional                          |
+    And I add a header image
+    And I write detailed content using the editor
+    And I add links:
+      | Label   | URL                          |
+      | Website | https://www.gutefrage.net    |
+    And I click "Save"
+    Then I should see "Project created successfully"
+    And the project should appear in the projects list
+    And the project slug should be "backend-refactoring-gutefrage-net"
+
+  Scenario: Editing an existing project
+    Given I have a project "Old API Client"
+    When I edit the project
+    And I change the title to "Modern API Client"
+    And I change the status to "Abandoned"
+    And I click "Save"
+    Then I should see "Project updated successfully"
+    And the project should show "Modern API Client" in the list
+    And the project slug should be updated to "modern-api-client"
+
+  Scenario: Deleting a project
+    Given I have a project "Test Project"
+    When I delete the project "Test Project"
+    And I confirm the deletion
+    Then the project should no longer appear in the list
+
+  Scenario: Creating an ongoing project
+    When I create a new project with:
+      | Title      | Side Project Tracker |
+      | Started at | 2024-01-15           |
+      | Status     | Ongoing              |
+    And I leave "Ended at" empty
+    Then the project period should display as "January 2024 - ongoing"
+
+  # ─────────────────────────────────────────────────────────────
+  # Project Types and Statuses
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Creating projects with different types
+    When I create projects with the following types:
+      | Title              | Type         | Company        |
+      | Crypto Tracker     | Personal     |                |
+      | Yigg Optimization  | Professional | yigg.de        |
+      | WP Plugin          | Open Source  |                |
+      | Startup MVP        | Freelance    | TechCorp GmbH  |
+    Then all projects should appear in the list
+    And each project should display its type correctly
+
+  Scenario: Project status transitions
+    Given I have an ongoing project "Active Development"
+    When I edit the project
+    And I change the status from "Ongoing" to "Paused"
+    Then the project should show status "Paused"
+    When I edit the project again
+    And I change the status to "Abandoned"
+    Then the project should show status "Abandoned"
+
+  # ─────────────────────────────────────────────────────────────
+  # Projects List Page (Frontend)
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Projects page displays all projects
+    Given I have the following projects:
+      | Title           | Started at | Status    |
+      | Latest Project  | 2024-06-01 | Ongoing   |
+      | Middle Project  | 2023-01-15 | Completed |
+      | Old Project     | 2020-03-01 | Completed |
+    And I have a page "Portfolio" with page type "projects"
+    When a visitor views the "Portfolio" page
+    Then they should see projects in reverse chronological order:
+      | 1. Latest Project  |
+      | 2. Middle Project  |
+      | 3. Old Project     |
+
+  Scenario: Empty projects page
+    Given I have no projects
+    And I have a page "Portfolio" with page type "projects"
+    When a visitor views the "Portfolio" page
+    Then they should see a message "No projects yet"
+
+  # ─────────────────────────────────────────────────────────────
+  # Project Detail Pages (Frontend)
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Project detail page with full content
+    Given I have a project "gutefrage Backend" with:
+      | Company           | gutefrage.net              |
+      | Period            | 2019 - 2020                |
+      | Role              | Senior Developer           |
+      | Status            | Completed                  |
+      | Short description | API modernization project  |
+      | Content           | Detailed EditorJS content  |
+      | Links             | Website: gutefrage.net     |
+    When a visitor navigates to "/projects/gutefrage-backend/"
+    Then they should see the project title "gutefrage Backend"
+    And they should see the company "gutefrage.net"
+    And they should see the role "Senior Developer"
+    And they should see the period "2019 - 2020"
+    And they should see the status badge "Completed"
+    And they should see the detailed content
+    And they should see the project links
+
+  Scenario: Project detail page SEO
+    Given I have a project "My Awesome Project" with:
+      | Short description | A great project description |
+      | Header image      | project-screenshot.jpg      |
+    When a visitor views the project detail page
+    Then the page title should contain "My Awesome Project"
+    And the meta description should contain "A great project description"
+    And the og:image should be set to the header image
+
+  # ─────────────────────────────────────────────────────────────
+  # Static Site Generation
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Static site includes project pages
+    Given I have projects:
+      | Title     | Slug      |
+      | Project A | project-a |
+      | Project B | project-b |
+    When the static site is generated
+    Then the following files should exist:
+      | projects/project-a/index.html |
+      | projects/project-b/index.html |
+    And the files should contain valid HTML without external resources
+
+  Scenario: Projects list on static page
+    Given I have a page "Work" with page type "projects"
+    And I have 3 projects
+    When the static site is generated
+    Then the "work/index.html" file should contain the projects list
+    And each project card should link to its detail page

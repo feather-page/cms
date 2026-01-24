@@ -3,6 +3,7 @@ class Site < ApplicationRecord
   has_many :pages, dependent: :destroy
   has_many :images, dependent: :destroy
   has_many :books, dependent: :destroy
+  has_many :projects, dependent: :destroy
   has_many :site_users, dependent: :destroy
   has_many :social_media_links, dependent: :destroy
   has_many :users, through: :site_users

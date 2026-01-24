@@ -1,7 +1,7 @@
 <ul class="page-list">
   <% @site.main_navigation.navigation_items.ordered.each do |item| %>
     <li>
-      <%= item.emoji %> <a class="page-link" href="<%= item.slug %>"><%= item.title %></a>
+      <%= item.emoji %> <a class="page-link" href="<%= @base_url %><%= item.slug.sub(%r{^/}, '') %>/"><%= item.title %></a>
     </li>
   <% end %>
 </ul>

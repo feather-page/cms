@@ -1,0 +1,5 @@
+<div class="projects-list">
+  <% @projects.each do |project| %>
+    <%= render StaticSite::ProjectCardComponent.new(project: project, base_url: base_url) %>
+  <% end %>
+</div>

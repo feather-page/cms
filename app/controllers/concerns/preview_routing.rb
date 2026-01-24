@@ -6,6 +6,7 @@ module PreviewRouting
   def preview_route_type
     return :home if home_path?
     return :image if image_path?
+    return :project if project_path?
     return :post if post_path?
     return :page if page_path?
     return :post if slug_matches_post?
@@ -21,6 +22,10 @@ module PreviewRouting
     requested_path.start_with?("images/")
   end
 
+  def project_path?
+    requested_path.start_with?("projects/") && find_project_by_path.present?
+  end
+
   def post_path?
     requested_path.start_with?("posts/") && find_post_by_path.present?
   end
@@ -31,6 +36,14 @@ module PreviewRouting
 
   def slug_matches_post?
     find_post_by_slug.present?
+  end
+
+  def find_project_by_path
+    return unless requested_path.start_with?("projects/")
+
+    slug = requested_path.sub(%r{^projects/}, "").sub(%r{/$}, "")
+    # Try both with and without leading slash since slugs may be stored either way
+    site.projects.find_by(slug: slug) || site.projects.find_by(slug: "/#{slug}")
   end
 
   def find_post_by_path

@@ -42,5 +42,16 @@ module Form
       classes << 'is-invalid' if errors.any?
       classes.join(' ')
     end
+
+    def required?
+      return false unless form.object.class.respond_to?(:validators_on)
+
+      form.object.class.validators_on(attribute).any?(ActiveRecord::Validations::PresenceValidator)
+    end
+
+    def label_text
+      label = form.object.class.human_attribute_name(attribute)
+      required? ? "#{label} *" : label
+    end
   end
 end
