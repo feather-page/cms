@@ -1,0 +1,42 @@
+---
+de:
+  activerecord:
+    attributes:
+      page:
+        page_types:
+          books: Bücher
+          default: Standard
+          projects: Projekte
+      project:
+        title: Titel
+        slug: URL-Slug
+        company: Unternehmen
+        period: Zeitraum
+        started_at: Beginn
+        ended_at: Ende
+        status: Status
+        role: Rolle
+        short_description: Kurzbeschreibung
+        project_type: Projekttyp
+        emoji: Emoji
+        content: Inhalt
+        links: Links
+        statuses:
+          ongoing: Laufend
+          completed: Abgeschlossen
+          paused: Pausiert
+          abandoned: Aufgegeben
+        project_types:
+          professional: Beruflich
+          personal: Privat
+          open_source: Open Source
+          freelance: Freiberuflich
+  projects:
+    create:
+      notice: "Das Projekt wurde erfolgreich erstellt."
+    update:
+      notice: "Das Projekt wurde erfolgreich aktualisiert."
+    destroy:
+      notice: "Das Projekt wurde erfolgreich gelöscht."
+    new_project: "Neues Projekt"
+  edit: "Bearbeiten"

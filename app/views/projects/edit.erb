@@ -1,0 +1,6 @@
+<%= turbo_frame_tag(:content) do %>
+  <div class="page-header">
+    <h1 class="h4"><%= icon('pencil') %> Edit Project</h1>
+  </div>
+  <%= render "form", project: @project %>
+<% end %>

@@ -2,7 +2,6 @@ class PostsController < ApplicationController
   include Paginatable
 
   before_action :set_post, only: %i[edit update destroy]
-  after_action :publish_current_site, only: %i[create update destroy]
 
   def index
     @pagy, @posts = pagy(current_site.posts.latest)

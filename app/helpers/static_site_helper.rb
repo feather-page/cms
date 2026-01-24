@@ -50,6 +50,11 @@ module StaticSiteHelper
     "#{static_site_base_url}#{path}"
   end
 
+  def static_site_project_url(project)
+    slug = project.slug.sub(%r{^/}, "")
+    "#{static_site_base_url}projects/#{slug}/"
+  end
+
   private
 
   def static_site_base_url

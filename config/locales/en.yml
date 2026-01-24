@@ -39,6 +39,7 @@ en:
         page_types:
           books: Books
           default: Default
+          projects: Projects
       social_media_link:
         icon: Icon
         name: Name
@@ -53,6 +54,30 @@ en:
         reading_status: Reading Status
         isbn: ISBN
         rating: Rating
+      project:
+        title: Title
+        slug: Slug
+        company: Company
+        period: Period
+        started_at: Started at
+        ended_at: Ended at
+        status: Status
+        role: Role
+        short_description: Short description
+        project_type: Project type
+        emoji: Emoji
+        content: Content
+        links: Links
+        statuses:
+          ongoing: Ongoing
+          completed: Completed
+          paused: Paused
+          abandoned: Abandoned
+        project_types:
+          professional: Professional
+          personal: Personal
+          open_source: Open Source
+          freelance: Freelance
   cancel: Cancel
   deployment_target:
     types:
@@ -111,12 +136,13 @@ en:
     url_placeholder: https://acme.social/@woody
   site_navigation:
     blogposts: Blogposts
+    books: Books
     deployments: Deployments
-    users: Users
     pages: Pages
     preview: Preview
+    projects: Projects
     setting: Settings
-    books: "Books"
+    users: Users
   navigation:
     add_page: Add to navigation
     remove_page: Remove from navigation
@@ -203,6 +229,14 @@ en:
       want_to_read: "Want to Read"
       reading: "Currently Reading"
       finished: "Finished Reading"
+  projects:
+    create:
+      notice: "The project was successfully created."
+    update:
+      notice: "The project was successfully updated."
+    destroy:
+      notice: "The project was successfully deleted."
+    new_project: "New Project"
   edit: "Edit"
   reviews:
     write_review: "Write Review"

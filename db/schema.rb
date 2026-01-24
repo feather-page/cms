@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_18_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_01_24_073922) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -250,6 +250,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_18_150000) do
     t.index ["slug", "site_id"], name: "index_posts_on_slug_and_site_id", unique: true
   end
 
+  create_table "projects", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "company"
+    t.json "content"
+    t.datetime "created_at", null: false
+    t.string "emoji"
+    t.date "ended_at"
+    t.uuid "header_image_id"
+    t.json "links"
+    t.string "period"
+    t.integer "project_type"
+    t.string "public_id", limit: 21, null: false
+    t.string "role"
+    t.text "short_description", null: false
+    t.uuid "site_id", null: false
+    t.string "slug", null: false
+    t.date "started_at", null: false
+    t.integer "status", default: 0
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["header_image_id"], name: "index_projects_on_header_image_id"
+    t.index ["public_id"], name: "index_projects_on_public_id", unique: true
+    t.index ["site_id"], name: "index_projects_on_site_id"
+    t.index ["slug", "site_id"], name: "index_projects_on_slug_and_site_id", unique: true
+    t.index ["started_at"], name: "index_projects_on_started_at"
+  end
+
   create_table "site_users", force: :cascade do |t|
     t.string "public_id", limit: 21, null: false
     t.string "role", default: "editor", null: false
@@ -336,6 +362,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_18_150000) do
   add_foreign_key "pages", "sites"
   add_foreign_key "posts", "images", column: "header_image_id"
   add_foreign_key "posts", "sites"
+  add_foreign_key "projects", "images", column: "header_image_id"
+  add_foreign_key "projects", "sites"
   add_foreign_key "site_users", "sites"
   add_foreign_key "site_users", "users"
   add_foreign_key "social_media_links", "sites"

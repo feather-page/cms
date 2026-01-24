@@ -1,0 +1,37 @@
+<%= turbo_frame_tag(project) do %>
+  <article class="post-card">
+    <div class="d-flex align-items-start gap-3">
+      <div class="flex-shrink-0 text-center" style="width: 50px;">
+        <% if project.header_image&.file&.attached? %>
+          <%= image_tag project.header_image.file.variant(:mobile_x1_webp), style: 'max-height: 50px; max-width: 50px; object-fit: cover;', class: 'rounded' %>
+        <% elsif project.emoji.present? %>
+          <span style="font-size: 2rem;"><%= project.emoji %></span>
+        <% else %>
+          <span class="text-muted fs-2"><%= icon('rocket') %></span>
+        <% end %>
+      </div>
+      <div class="flex-grow-1">
+        <div class="post-card-title"><%= project.title %></div>
+        <% if project.short_description.present? %>
+          <div class="text-muted small mb-2"><%= truncate(project.short_description, length: 100) %></div>
+        <% end %>
+        <div class="post-card-meta d-flex flex-wrap gap-2 align-items-center">
+          <span class="badge bg-<%= project.status_badge_class %>">
+            <%= t("activerecord.attributes.project.statuses.#{project.status}") %>
+          </span>
+          <span class="badge bg-secondary">
+            <%= t("activerecord.attributes.project.project_types.#{project.project_type}") %>
+          </span>
+          <% if project.company.present? %>
+            <small class="text-muted"><%= project.company %></small>
+          <% end %>
+          <small class="text-muted"><%= project.display_period %></small>
+        </div>
+      </div>
+    </div>
+    <div class="post-card-actions">
+      <%= link_to(t('edit'), edit_site_project_path(project.site, project), data: { turbo_frame: "_top" }, class: 'btn btn-outline-secondary btn-sm') %>
+      <%= link_to(t('delete'), site_project_path(project.site, project), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }, class: 'btn btn-outline-danger btn-sm') %>
+    </div>
+  </article>
+<% end %>

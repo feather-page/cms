@@ -12,6 +12,10 @@ module StaticSite
       render_template("static_site/page", page_assigns(site, page))
     end
 
+    def render_project(site:, project:)
+      render_template("static_site/project", project_assigns(site, project))
+    end
+
     private
 
     def render_template(template, assigns)
@@ -36,6 +40,13 @@ module StaticSite
       base_assigns(site, page.title, page.emoji, false).merge(
         page: page,
         header_image: page.header_image
+      )
+    end
+
+    def project_assigns(site, project)
+      base_assigns(site, project.title, project.emoji, false).merge(
+        project: project,
+        header_image: project.header_image
       )
     end
 

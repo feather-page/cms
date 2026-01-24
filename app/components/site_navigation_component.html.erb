@@ -16,6 +16,7 @@
       <%= navigation_item(t('site_navigation.blogposts'), helpers.site_posts_path(current_site), icon: :pen) %>
       <%= navigation_item(t('site_navigation.pages'), helpers.site_pages_path(current_site), icon: :"file-text") %>
       <%= navigation_item(t('site_navigation.books'), helpers.site_books_path(current_site), icon: :book) %>
+      <%= navigation_item(t('site_navigation.projects'), helpers.site_projects_path(current_site), icon: :rocket) %>
     </ul>
     <ul class="nav nav-pills">
       <%= navigation_item(t('site_navigation.settings'), helpers.edit_site_path(current_site), icon: :gear) %>

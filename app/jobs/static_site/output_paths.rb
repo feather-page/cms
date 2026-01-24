@@ -12,6 +12,10 @@ module StaticSite
       "#{page.slug.sub(%r{^/}, '')}/index.html"
     end
 
+    def project_output_path(project)
+      "projects/#{project.slug}/index.html"
+    end
+
     def image_output_path(image, variant_key)
       extension = variant_key.to_s.split("_").last
       variant_name = variant_key.to_s.sub(/_#{extension}$/, "")

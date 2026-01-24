@@ -1,0 +1,106 @@
+<%= turbo_frame_tag(:form) do %>
+  <%= form_with(model: project,
+                url: project.persisted? ? site_project_path(current_site, project) : site_projects_path(current_site),
+                class: 'mb-4') do |form| %>
+
+    <%= component('form/header_image_picker', form:, attribute: :header_image_id, emoji_attribute: :emoji) %>
+    <%= component('form/title_and_slug', form:) %>
+
+    <div class="row">
+      <div class="col">
+        <%= component('form/text_field', form:, attribute: :company) %>
+      </div>
+      <div class="col">
+        <%= component('form/text_field', form:, attribute: :role) %>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <%= form.label :period, class: 'form-label' %>
+      <%= form.text_field :period, class: 'form-control' %>
+      <small class="form-text text-muted">Optional. If empty, dates below are used for display.</small>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <%= component('form/date_field', form:, attribute: :started_at) %>
+      </div>
+      <div class="col">
+        <%= form.label :ended_at, class: 'form-label' %>
+        <%= form.date_field :ended_at, class: 'form-control' %>
+        <small class="form-text text-muted">Leave empty if ongoing</small>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <%= component('form/select',
+              form:,
+              attribute: :status,
+              options: Project.statuses.keys.map { |s| [t("activerecord.attributes.project.statuses.#{s}"), s] }) %>
+      </div>
+      <div class="col">
+        <%= component('form/select',
+              form:,
+              attribute: :project_type,
+              options: Project.project_types.keys.map { |s| [t("activerecord.attributes.project.project_types.#{s}"), s] }) %>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <%= form.label :short_description, "#{Project.human_attribute_name(:short_description)} *", class: 'form-label' %>
+      <%= form.text_area :short_description, class: 'form-control' %>
+      <small class="form-text text-muted">2-3 sentences for the overview. Shown on project cards.</small>
+    </div>
+
+    <div class="mb-3">
+      <%= component('form/editor', form:, attribute: :content) %>
+    </div>
+
+    <div class="mb-3">
+      <%= form.label :links, 'Links', class: 'form-label' %>
+      <div id="links-container">
+        <% (project.links || []).each_with_index do |link, index| %>
+          <div class="row mb-2">
+            <div class="col-4">
+              <%= text_field_tag "project[links][][label]", link["label"], class: 'form-control', placeholder: 'Label' %>
+            </div>
+            <div class="col-6">
+              <%= url_field_tag "project[links][][url]", link["url"], class: 'form-control', placeholder: 'URL' %>
+            </div>
+            <div class="col-2">
+              <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.row').remove()">Remove</button>
+            </div>
+          </div>
+        <% end %>
+        <div class="row mb-2" id="link-template" style="display: none;">
+          <div class="col-4">
+            <%= text_field_tag "project[links][][label]", '', class: 'form-control', placeholder: 'Label' %>
+          </div>
+          <div class="col-6">
+            <%= url_field_tag "project[links][][url]", '', class: 'form-control', placeholder: 'URL' %>
+          </div>
+          <div class="col-2">
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="this.closest('.row').remove()">Remove</button>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addLink()">Add Link</button>
+    </div>
+
+    <script>
+      function addLink() {
+        const template = document.getElementById('link-template');
+        const clone = template.cloneNode(true);
+        clone.style.display = 'flex';
+        clone.id = '';
+        document.getElementById('links-container').insertBefore(clone, template);
+      }
+    </script>
+
+    <div class="d-flex gap-2">
+      <%= form.submit(class: 'btn btn-primary') %>
+      <%= link_to t('form.cancel'), site_projects_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+    </div>
+  <% end %>
+<% end %>

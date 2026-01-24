@@ -1,0 +1,6 @@
+<%= turbo_frame_tag(:new_project) do %>
+  <div class="page-header">
+    <h1 class="h4"><%= icon('briefcase') %> New Project</h1>
+  </div>
+  <%= render "form", project: @project %>
+<% end %>
