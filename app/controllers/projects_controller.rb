@@ -1,6 +1,5 @@
 class ProjectsController < ApplicationController
   before_action :set_project, only: %i[edit update destroy]
-  after_action :publish_current_site, only: %i[create update destroy]
 
   def index
     @projects = current_site.projects.ordered

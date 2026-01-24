@@ -1,6 +1,5 @@
 class ReviewsController < ApplicationController
   before_action :set_book
-  after_action :publish_current_site, only: %i[create update destroy]
 
   def new
     @post = @book.site.posts.new

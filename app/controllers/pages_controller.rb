@@ -2,7 +2,6 @@ class PagesController < ApplicationController
   include Paginatable
 
   before_action :set_page, only: %i[edit update destroy]
-  after_action :publish_current_site, only: %i[create update destroy]
 
   def index
     pages = current_site.pages.not_in_navigation

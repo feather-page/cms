@@ -1,6 +1,5 @@
 class BooksController < ApplicationController
   before_action :set_book, only: %i[edit update destroy]
-  after_action :publish_current_site, only: %i[create update destroy]
 
   def index
     @books = current_site.books.by_status(status_filter).ordered
