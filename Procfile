@@ -1,3 +1,3 @@
 web: unset PORT && bundle exec rails s
-sidekiq: bundle exec good_job start
+jobs: bundle exec rake solid_queue:start
 mails: mailhog

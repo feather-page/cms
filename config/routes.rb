@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => '/cable'
+
   get 'up' => 'rails/health#show'
 
   namespace :api do
@@ -75,6 +77,4 @@ Rails.application.routes.draw do
   post 'login', to: 'sessions#create'
   get 'login/:token', to: 'sessions#show', as: :login_token
   delete 'logout', to: 'sessions#destroy', as: :logout
-
-  mount GoodJob::Engine => 'good_job', constraints: SuperAdminConstraint.new
 end

@@ -8,7 +8,7 @@ gem 'bootsnap', require: false
 gem 'brotli', '~> 0.7.0'
 gem 'dotenv-rails', require: 'dotenv/load'
 gem 'faraday'
-gem 'good_job'
+gem 'solid_queue'
 gem 'image_processing'
 gem 'importmap-rails'
 gem 'jbuilder'

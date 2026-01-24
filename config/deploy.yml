@@ -10,7 +10,15 @@ registry:
   password:
     - KAMAL_REGISTRY_PASSWORD
 
+env:
+  clear:
+    PGGSSENCMODE: disable
+
 servers:
   web:
     hosts:
       - 0.0.0.0
+  job:
+    hosts:
+      - 0.0.0.0
+    cmd: bundle exec rake solid_queue:start
