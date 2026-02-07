@@ -73,6 +73,12 @@ $link-hover-color: $warm-terracotta-dark;
   --color-danger-bg: rgba(181, 68, 68, 0.15);
   --color-info-bg: rgba(212, 160, 58, 0.15);
 
+  // Override Bootstrap utility backgrounds with warm palette
+  --bs-tertiary-bg: #f5f0e8;
+  --bs-tertiary-bg-rgb: 245, 240, 232;
+  --bs-secondary-bg: #e8e0d5;
+  --bs-secondary-bg-rgb: 232, 224, 213;
+
   color-scheme: light;
 }
 
@@ -116,15 +122,22 @@ $link-hover-color: $warm-terracotta-dark;
 
   // Override Bootstrap CSS variables with warm palette
   --bs-body-bg: #1a1816;
+  --bs-body-bg-rgb: 26, 24, 22;
   --bs-body-color: #f5f0e8;
+  --bs-body-color-rgb: 245, 240, 232;
   --bs-border-color: #3d3832;
   --bs-tertiary-bg: #2d2a27;
+  --bs-tertiary-bg-rgb: 45, 42, 39;
   --bs-secondary-bg: #252220;
+  --bs-secondary-bg-rgb: 37, 34, 32;
   --bs-emphasis-color: #f5f0e8;
+  --bs-emphasis-color-rgb: 245, 240, 232;
   --bs-secondary-color: #c4bdb4;
   --bs-tertiary-color: #9a938a;
   --bs-primary: #e07055;
+  --bs-primary-rgb: 224, 112, 85;
   --bs-link-color: #e07055;
+  --bs-link-color-rgb: 224, 112, 85;
   --bs-link-hover-color: #c45d3e;
   --bs-heading-color: #f5f0e8;
   --bs-card-bg: #252220;
