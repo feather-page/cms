@@ -1,0 +1,780 @@
+openapi: 3.1.0
+info:
+  title: CMS Content API
+  description: |
+    REST API for managing CMS content programmatically.
+    Designed for AI-assisted content import from static site generators (Jekyll, Hugo, etc.).
+
+    ## Authentication
+    All endpoints require a Bearer token in the Authorization header:
+    ```
+    Authorization: Bearer <your-api-token>
+    ```
+
+    ## Content Blocks
+    Content is stored as an array of typed blocks. Each block has a `type` field
+    that determines which additional fields are available. See the Schema endpoint
+    for machine-readable block definitions.
+  version: "1.0"
+
+servers:
+  - url: /api/v1
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
+  schemas:
+    # --- Block Types ---
+
+    ParagraphBlock:
+      type: object
+      required: [type, text]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          description: Unique block identifier. Auto-generated if omitted.
+        type:
+          type: string
+          const: paragraph
+        text:
+          type: string
+          description: "HTML content. Allowed tags: b, i, u, a, code."
+
+    HeaderBlock:
+      type: object
+      required: [type, text, level]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: header
+        text:
+          type: string
+          description: "Header text. Allowed tags: b, i, u, a, code."
+        level:
+          type: integer
+          enum: [2, 3, 4]
+          description: Header level (H2, H3, or H4).
+
+    CodeBlock:
+      type: object
+      required: [type, code]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: code
+        code:
+          type: string
+          description: Source code content.
+        language:
+          type: string
+          default: plaintext
+          description: Programming language for syntax highlighting.
+
+    ImageBlock:
+      type: object
+      required: [type, image_id]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: image
+        image_id:
+          type: string
+          description: Public ID of an uploaded image.
+        caption:
+          type: string
+          default: ""
+          description: Optional image caption.
+
+    QuoteBlock:
+      type: object
+      required: [type, text, caption]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: quote
+        text:
+          type: string
+          description: Quote text.
+        caption:
+          type: string
+          description: Attribution or source.
+
+    ListBlock:
+      type: object
+      required: [type, items]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: list
+        style:
+          type: string
+          enum: [ul, ol]
+          default: ul
+          description: List style (unordered or ordered).
+        items:
+          type: array
+          items:
+            type: string
+          description: List items as HTML strings.
+
+    TableBlock:
+      type: object
+      required: [type, content]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: table
+        content:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+          description: 2D array of cell contents. First row is header if with_headings is true.
+        with_headings:
+          type: boolean
+          default: false
+
+    BookBlock:
+      type: object
+      required: [type, book_public_id]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: book
+        book_public_id:
+          type: string
+          description: Public ID of a book from the catalog.
+        title:
+          type: string
+        author:
+          type: string
+        cover_url:
+          type: string
+        emoji:
+          type: string
+
+    Block:
+      oneOf:
+        - $ref: "#/components/schemas/ParagraphBlock"
+        - $ref: "#/components/schemas/HeaderBlock"
+        - $ref: "#/components/schemas/CodeBlock"
+        - $ref: "#/components/schemas/ImageBlock"
+        - $ref: "#/components/schemas/QuoteBlock"
+        - $ref: "#/components/schemas/ListBlock"
+        - $ref: "#/components/schemas/TableBlock"
+        - $ref: "#/components/schemas/BookBlock"
+      discriminator:
+        propertyName: type
+        mapping:
+          paragraph: "#/components/schemas/ParagraphBlock"
+          header: "#/components/schemas/HeaderBlock"
+          code: "#/components/schemas/CodeBlock"
+          image: "#/components/schemas/ImageBlock"
+          quote: "#/components/schemas/QuoteBlock"
+          list: "#/components/schemas/ListBlock"
+          table: "#/components/schemas/TableBlock"
+          book: "#/components/schemas/BookBlock"
+
+    ContentBlocks:
+      type: array
+      items:
+        $ref: "#/components/schemas/Block"
+
+    # --- Resource Schemas ---
+
+    PostAttributes:
+      type: object
+      properties:
+        title:
+          type: string
+        slug:
+          type: ["string", "null"]
+          pattern: "^/[a-z0-9-]+$"
+          description: URL slug. Must start with / and contain only lowercase alphanumeric characters and hyphens.
+        emoji:
+          type: ["string", "null"]
+        draft:
+          type: boolean
+          default: false
+        publish_at:
+          type: ["string", "null"]
+          format: date-time
+        content:
+          $ref: "#/components/schemas/ContentBlocks"
+        header_image_id:
+          type: ["string", "null"]
+          description: Public ID of an uploaded image to use as header.
+
+    PostResponse:
+      type: object
+      required: [id, title, draft, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          description: Public ID.
+        title:
+          type: ["string", "null"]
+        slug:
+          type: ["string", "null"]
+        emoji:
+          type: ["string", "null"]
+        draft:
+          type: boolean
+        publish_at:
+          type: ["string", "null"]
+          format: date-time
+        content:
+          $ref: "#/components/schemas/ContentBlocks"
+        header_image_id:
+          type: ["string", "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PageAttributes:
+      type: object
+      required: [slug]
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+          description: URL slug. Use "/" for homepage.
+        emoji:
+          type: ["string", "null"]
+        page_type:
+          type: string
+          enum: [default, books, projects]
+          default: default
+        content:
+          $ref: "#/components/schemas/ContentBlocks"
+        header_image_id:
+          type: ["string", "null"]
+
+    PageResponse:
+      type: object
+      required: [id, slug, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        title:
+          type: ["string", "null"]
+        slug:
+          type: string
+        emoji:
+          type: ["string", "null"]
+        page_type:
+          type: string
+          enum: [default, books, projects]
+        content:
+          $ref: "#/components/schemas/ContentBlocks"
+        header_image_id:
+          type: ["string", "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ImageResponse:
+      type: object
+      required: [id, created_at]
+      properties:
+        id:
+          type: string
+        source_url:
+          type: ["string", "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    # --- Error Schema ---
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message.
+        details:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Field-level validation errors.
+
+    # --- Wrapper Schemas ---
+
+    PostListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PostResponse"
+
+    PostDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PostResponse"
+
+    PageListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PageResponse"
+
+    PageDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PageResponse"
+
+    ImageDetailResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ImageResponse"
+
+paths:
+  /sites/{site_id}/posts:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Public ID of the site.
+
+    get:
+      summary: List all posts
+      operationId: listPosts
+      tags: [Posts]
+      responses:
+        "200":
+          description: List of posts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostListResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a post
+      operationId: createPost
+      tags: [Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [post]
+              properties:
+                post:
+                  $ref: "#/components/schemas/PostAttributes"
+      responses:
+        "201":
+          description: Post created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDetailResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/posts/{id}:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: Public ID of the post.
+
+    get:
+      summary: Show a post
+      operationId: showPost
+      tags: [Posts]
+      responses:
+        "200":
+          description: Post details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDetailResponse"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    patch:
+      summary: Update a post
+      operationId: updatePost
+      tags: [Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [post]
+              properties:
+                post:
+                  $ref: "#/components/schemas/PostAttributes"
+      responses:
+        "200":
+          description: Post updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostDetailResponse"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a post
+      operationId: deletePost
+      tags: [Posts]
+      responses:
+        "200":
+          description: Post deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/pages:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: List all pages
+      operationId: listPages
+      tags: [Pages]
+      responses:
+        "200":
+          description: List of pages.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageListResponse"
+        "401":
+          description: Unauthorized.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a page
+      operationId: createPage
+      tags: [Pages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [page]
+              properties:
+                page:
+                  $ref: "#/components/schemas/PageAttributes"
+      responses:
+        "201":
+          description: Page created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDetailResponse"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/pages/{id}:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: Show a page
+      operationId: showPage
+      tags: [Pages]
+      responses:
+        "200":
+          description: Page details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDetailResponse"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    patch:
+      summary: Update a page
+      operationId: updatePage
+      tags: [Pages]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [page]
+              properties:
+                page:
+                  $ref: "#/components/schemas/PageAttributes"
+      responses:
+        "200":
+          description: Page updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageDetailResponse"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      summary: Delete a page
+      operationId: deletePage
+      tags: [Pages]
+      responses:
+        "200":
+          description: Page deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message:
+                    type: string
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/images:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    post:
+      summary: Create image from URL
+      operationId: createImage
+      tags: [Images]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Public URL to download the image from.
+      responses:
+        "201":
+          description: Image created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageDetailResponse"
+        "422":
+          description: Image creation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/images/{id}:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: Show image metadata
+      operationId: showImage
+      tags: [Images]
+      responses:
+        "200":
+          description: Image metadata.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImageDetailResponse"
+        "404":
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /sites/{site_id}/schema/blocks:
+    parameters:
+      - name: site_id
+        in: path
+        required: true
+        schema:
+          type: string
+
+    get:
+      summary: Get block type schemas
+      operationId: getBlockSchemas
+      description: |
+        Returns JSON Schema definitions for all available block types.
+        AI clients should read this endpoint to understand the expected
+        content block format before creating posts or pages.
+      tags: [Schema]
+      responses:
+        "200":
+          description: Block schemas.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [block_types]
+                properties:
+                  block_types:
+                    type: object
+                    additionalProperties:
+                      type: object
+                    description: Map of block type name to its JSON Schema definition.

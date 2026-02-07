@@ -1,0 +1,158 @@
+Feature: Content API
+  As an API consumer (e.g. an AI import tool)
+  I want to manage posts, pages, and images via a REST API
+  So that I can import content from external sources like Jekyll
+
+  Background:
+    Given I have a valid API token
+    And I have a site "My Blog"
+
+  # ─────────────────────────────────────────────────────────────
+  # Authentication
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Authenticating with a valid Bearer token
+    When I send a request with a valid Bearer token
+    Then I should receive a successful response
+
+  Scenario: Rejecting requests without authentication
+    When I send a request without an Authorization header
+    Then I should receive a 401 Unauthorized response
+
+  Scenario: Rejecting requests with an invalid token
+    When I send a request with an invalid Bearer token
+    Then I should receive a 401 Unauthorized response
+
+  Scenario: Accessing only authorized sites
+    Given I do not have access to site "Other Blog"
+    When I try to access posts for "Other Blog"
+    Then I should receive a 404 Not Found response
+
+  # ─────────────────────────────────────────────────────────────
+  # Posts CRUD
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Listing all posts for a site
+    Given the site has 3 published posts
+    When I GET /api/v1/sites/:site_id/posts
+    Then I should receive a list of 3 posts
+    And each post should match the OpenAPI schema
+
+  Scenario: Creating a post with block content
+    When I POST /api/v1/sites/:site_id/posts with:
+      | title   | My Imported Post                          |
+      | content | [{"type":"paragraph","text":"Hello"}]     |
+    Then I should receive a 201 Created response
+    And the post should have validated block content
+    And the response should match the OpenAPI schema
+
+  Scenario: Creating a post with invalid block content
+    When I POST /api/v1/sites/:site_id/posts with invalid content:
+      | title   | Bad Post                                  |
+      | content | [{"type":"unknown_type"}]                 |
+    Then I should receive a 422 Unprocessable Content response
+    And the error should list valid block types
+
+  Scenario: Updating a post
+    Given I have a post "Old Title"
+    When I PATCH /api/v1/sites/:site_id/posts/:id with:
+      | title | New Title |
+    Then the post title should be updated to "New Title"
+    And the response should match the OpenAPI schema
+
+  Scenario: Updating only post content
+    Given I have a post with title "Keep This"
+    When I PATCH with only new content blocks
+    Then the content should be updated
+    And the title should remain "Keep This"
+
+  Scenario: Deleting a post
+    Given I have a post "To Delete"
+    When I DELETE /api/v1/sites/:site_id/posts/:id
+    Then I should receive a success message
+    And the post should no longer exist
+
+  # ─────────────────────────────────────────────────────────────
+  # Pages CRUD
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Listing all pages for a site
+    Given the site has 2 pages
+    When I GET /api/v1/sites/:site_id/pages
+    Then I should receive a list of 2 pages
+
+  Scenario: Creating a page with block content
+    When I POST /api/v1/sites/:site_id/pages with:
+      | title     | About Me                                  |
+      | page_type | default                                   |
+      | content   | [{"type":"paragraph","text":"About..."}]  |
+    Then I should receive a 201 Created response
+
+  Scenario: Updating a page
+    Given I have a page "Old Page"
+    When I PATCH /api/v1/sites/:site_id/pages/:id with:
+      | title | Updated Page |
+    Then the page title should be updated
+
+  Scenario: Deleting a page
+    Given I have a page "Unwanted"
+    When I DELETE /api/v1/sites/:site_id/pages/:id
+    Then the page should be removed
+
+  # ─────────────────────────────────────────────────────────────
+  # Images
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Uploading an image from a URL
+    When I POST /api/v1/sites/:site_id/images with:
+      | url | https://example.com/photo.jpg |
+    Then I should receive a 201 Created response
+    And the image should be downloaded and stored
+
+  Scenario: Viewing an image
+    Given the site has an image
+    When I GET /api/v1/sites/:site_id/images/:id
+    Then I should receive the image metadata
+
+  Scenario: Rejecting an invalid image URL
+    When I POST /api/v1/sites/:site_id/images with an invalid URL
+    Then I should receive a 422 Unprocessable Content response
+    And the error should explain what went wrong
+
+  # ─────────────────────────────────────────────────────────────
+  # Block Content Validation
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Validating block content against OpenAPI schema
+    When I create a post with content blocks
+    Then each block is validated against its JSON Schema from the OpenAPI spec
+    And blocks without an ID get an auto-generated ID
+
+  Scenario: AI-friendly error messages for invalid blocks
+    When I send a block with a missing required field
+    Then the error message should specify:
+      | block index | which block failed          |
+      | block type  | which type was expected      |
+      | field       | which field is missing/wrong  |
+    So that an AI client can self-correct and retry
+
+  Scenario: Supported block types
+    Then the following block types should be available:
+      | paragraph | Text content with optional formatting   |
+      | header    | Heading with configurable level (1-6)   |
+      | code      | Code block with language specification  |
+      | image     | Image reference with caption            |
+      | quote     | Blockquote with attribution             |
+      | list      | Ordered or unordered list               |
+      | table     | Table with header row option            |
+      | book      | Book reference from catalog             |
+
+  # ─────────────────────────────────────────────────────────────
+  # OpenAPI Schema Endpoint
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Retrieving the OpenAPI specification
+    When I GET /api/v1/schema
+    Then I should receive the full OpenAPI 3.1.0 specification
+    And it should include all block type definitions
+    And it should include all endpoint definitions
