@@ -19,7 +19,6 @@ Rails.application.routes.draw do
         resources :posts, only: %i[index show create update destroy]
         resources :pages, only: %i[index show create update destroy]
         resources :images, only: %i[show create]
-        get "schema/blocks", to: "schema#blocks"
       end
     end
   end

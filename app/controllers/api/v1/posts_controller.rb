@@ -4,13 +4,10 @@ module Api
       before_action :set_post, only: %i[show update destroy]
 
       def index
-        posts = current_site.posts.latest
-        render json: { data: posts.map { |post| serialize_post(post) } }
+        @posts = current_site.posts.latest
       end
 
-      def show
-        render json: { data: serialize_post(@post) }
-      end
+      def show; end
 
       def create
         content = validate_and_normalize_content!(extract_content(:post))
@@ -20,7 +17,7 @@ module Api
         @post.content = content
 
         if @post.save
-          render json: { data: serialize_post(@post) }, status: :created
+          render :show, status: :created
         else
           render_validation_errors(@post)
         end
@@ -36,7 +33,7 @@ module Api
         end
         return render_validation_errors(@post) unless @post.update(post_params)
 
-        render json: { data: serialize_post(@post) }
+        render :show
       end
 
       def destroy

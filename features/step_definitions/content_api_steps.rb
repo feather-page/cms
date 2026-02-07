@@ -138,14 +138,6 @@ When("I send a GET request to the image endpoint") do
 end
 
 # ─────────────────────────────────────────────────────────────
-# Schema
-# ─────────────────────────────────────────────────────────────
-
-When("I send a GET request to the schema endpoint") do
-  api.json_request(:get, "/api/v1/sites/#{@current_site.public_id}/schema/blocks")
-end
-
-# ─────────────────────────────────────────────────────────────
 # Response Assertions
 # ─────────────────────────────────────────────────────────────
 
@@ -209,19 +201,6 @@ Then("the error should specify block type {string}") do |type|
   details = api_json.dig("details", "content")
   expect(details).to be_present
   expect(details.first).to include("(#{type})")
-end
-
-Then("the response should contain block type schemas") do
-  expect(api_json).to have_key("block_types")
-  expect(api_json["block_types"]).to be_a(Hash)
-  expect(api_json["block_types"]).not_to be_empty
-end
-
-Then(/^the block types should include (.+)$/) do |type_list|
-  types = type_list.scan(/"([^"]+)"/).flatten
-  types.each do |type|
-    expect(api_json["block_types"]).to have_key(type), "Expected block type '#{type}'"
-  end
 end
 
 # ─────────────────────────────────────────────────────────────

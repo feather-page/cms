@@ -141,12 +141,3 @@ Feature: Content API
     And the error should specify block index 0
     And the error should specify block type "header"
 
-  # ─────────────────────────────────────────────────────────────
-  # OpenAPI Schema Endpoint
-  # ─────────────────────────────────────────────────────────────
-
-  Scenario: Retrieving block type schemas
-    When I send a GET request to the schema endpoint
-    Then the response status should be 200
-    And the response should contain block type schemas
-    And the block types should include "paragraph", "header", "code", "image", "quote", "list", "table", "book"

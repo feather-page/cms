@@ -1,14 +1,20 @@
 module Api
   module V1
     class BaseController < ActionController::API
+      include ActionView::Layouts
       include Pundit::Authorization
 
+      before_action :force_json_format
       before_action :authenticate_api_token!
 
       rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
       rescue_from Pundit::NotAuthorizedError, with: :render_forbidden
 
       private
+
+      def force_json_format
+        request.format = :json
+      end
 
       def current_user
         @current_user ||= @api_token&.user
@@ -71,38 +77,6 @@ module Api
         end
 
         validator.normalized_content
-      end
-
-      def serialize_post(post)
-        {
-          id: post.public_id, title: post.title,
-          slug: post.slug, emoji: post.emoji, draft: post.draft,
-          publish_at: post.publish_at&.iso8601,
-          content: post.content.presence || [],
-          header_image_id: post.header_image&.public_id,
-          created_at: post.created_at.iso8601,
-          updated_at: post.updated_at.iso8601
-        }
-      end
-
-      def serialize_page(page)
-        {
-          id: page.public_id, title: page.title,
-          slug: page.slug, emoji: page.emoji,
-          page_type: page.page_type,
-          content: page.content.presence || [],
-          header_image_id: page.header_image&.public_id,
-          created_at: page.created_at.iso8601,
-          updated_at: page.updated_at.iso8601
-        }
-      end
-
-      def serialize_image(image)
-        {
-          id: image.public_id, source_url: image.source_url,
-          created_at: image.created_at.iso8601,
-          updated_at: image.updated_at.iso8601
-        }
       end
     end
   end
