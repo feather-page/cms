@@ -1,4 +1,4 @@
-<nav class="navbar navbar-expand-lg fixed-top navbar-main" data-controller="theme">
+<nav class="navbar navbar-expand-lg fixed-top navbar-main">
   <div class="container">
     <%= link_to(root_path, class: "navbar-brand fs-4 d-flex align-items-center gap-2") do %>
       <span>🪶</span>
@@ -17,11 +17,6 @@
         <% else %>
           <li class="nav-item"><%= link_to("Login", login_path, class: "nav-link") %></li>
         <% end %>
-        <li class="nav-item">
-          <button class="theme-toggle" data-action="click->theme#toggle" aria-label="Toggle dark mode">
-            <i class="bi bi-moon" data-theme-target="icon"></i>
-          </button>
-        </li>
       </ul>
     </div>
   </div>

@@ -23,7 +23,7 @@ describe Blocks::Renderer::Html::Book do
 
       it 'renders with Bootstrap classes' do
         expect(book_html).to include('d-flex')
-        expect(book_html).to include('bg-light')
+        expect(book_html).to include('bg-body-tertiary')
         expect(book_html).to include('rounded')
       end
     end
