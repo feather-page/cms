@@ -6,7 +6,7 @@ RSpec.describe "Api::V1::Images" do
   let(:user) { create(:user) }
   let(:site) { create(:site, users: [user]) }
   let(:api_token) { create(:api_token, user: user) }
-  let(:headers) { api_headers(token: api_token.token) }
+  let(:headers) { api_headers(token: api_token.plain_token) }
 
   describe "GET /api/v1/sites/:site_id/images/:id" do
     let(:image) { create(:image, site: site) }
