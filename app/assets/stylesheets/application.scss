@@ -366,25 +366,7 @@ nav.navbar-main {
     }
   }
 
-  // Theme toggle button
-  .theme-toggle {
-    background: none;
-    border: none;
-    color: var(--color-navbar-text);
-    padding: 0.5rem;
-    cursor: pointer;
-    transition: color 0.2s ease;
-    display: flex;
-    align-items: center;
 
-    &:hover {
-      color: var(--color-accent);
-    }
-
-    .bi {
-      font-size: 1.25rem;
-    }
-  }
 }
 
 // ============================================

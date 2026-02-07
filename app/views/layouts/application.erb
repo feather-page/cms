@@ -6,13 +6,10 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <%# Apply theme immediately to prevent flash %>
+    <%# Apply theme based on system preference %>
     <script>
       (function() {
-        var theme = localStorage.getItem('feather-theme');
-        if (!theme) {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
+        var theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         document.documentElement.setAttribute('data-bs-theme', theme);
       })();
     </script>
