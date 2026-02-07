@@ -1,4 +1,5 @@
 class User < ApplicationRecord
+  has_many :api_tokens, dependent: :destroy
   has_many :site_users, dependent: :destroy
   has_many :sites, through: :site_users
 
