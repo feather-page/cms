@@ -79,7 +79,7 @@ $link-hover-color: $warm-terracotta-dark;
 // ============================================
 // Dark Mode Theme
 // ============================================
-[data-theme="dark"] {
+[data-bs-theme="dark"] {
   // Brand colors (slightly brighter for dark mode)
   --color-primary: #e07055;
   --color-primary-dark: #c45d3e;
@@ -721,7 +721,7 @@ hr {
   }
 }
 
-[data-theme="dark"] .editorjs {
+[data-bs-theme="dark"] .editorjs {
   .ce-popover {
     background-color: var(--color-bg-elevated);
     border-color: var(--color-border);
