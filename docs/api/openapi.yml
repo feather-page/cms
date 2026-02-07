@@ -13,8 +13,8 @@ info:
 
     ## Content Blocks
     Content is stored as an array of typed blocks. Each block has a `type` field
-    that determines which additional fields are available. See the Schema endpoint
-    for machine-readable block definitions.
+    that determines which additional fields are available. See the block type
+    schemas in this specification for details.
   version: "1.0"
 
 servers:
@@ -747,34 +747,3 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
-  /sites/{site_id}/schema/blocks:
-    parameters:
-      - name: site_id
-        in: path
-        required: true
-        schema:
-          type: string
-
-    get:
-      summary: Get block type schemas
-      operationId: getBlockSchemas
-      description: |
-        Returns JSON Schema definitions for all available block types.
-        AI clients should read this endpoint to understand the expected
-        content block format before creating posts or pages.
-      tags: [Schema]
-      responses:
-        "200":
-          description: Block schemas.
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [block_types]
-                properties:
-                  block_types:
-                    type: object
-                    additionalProperties:
-                      type: object
-                    description: Map of block type name to its JSON Schema definition.

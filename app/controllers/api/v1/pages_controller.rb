@@ -4,13 +4,10 @@ module Api
       before_action :set_page, only: %i[show update destroy]
 
       def index
-        pages = current_site.pages
-        render json: { data: pages.map { |page| serialize_page(page) } }
+        @pages = current_site.pages
       end
 
-      def show
-        render json: { data: serialize_page(@page) }
-      end
+      def show; end
 
       def create
         content = validate_and_normalize_content!(extract_content(:page))
@@ -20,7 +17,7 @@ module Api
         @page.content = content
 
         if @page.save
-          render json: { data: serialize_page(@page) }, status: :created
+          render :show, status: :created
         else
           render_validation_errors(@page)
         end
@@ -36,7 +33,7 @@ module Api
         end
         return render_validation_errors(@page) unless @page.update(page_params)
 
-        render json: { data: serialize_page(@page) }
+        render :show
       end
 
       def destroy
