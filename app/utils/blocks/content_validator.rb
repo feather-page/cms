@@ -36,8 +36,7 @@ module Blocks
     end
 
     def validate_against_schema(block, type)
-      schemer = JSONSchemer.schema(schema_for(type))
-      schemer.validate(block).to_a
+      SchemaValidator.validate(block, schema_for(type))
     end
 
     def add_unknown_type_error(index, type)
