@@ -1,0 +1,143 @@
+@api
+Feature: Content API
+  As an API consumer (e.g. an AI import tool)
+  I want to manage posts, pages, and images via a REST API
+  So that I can import content from external sources like Jekyll
+
+  Background:
+    Given I have a user with an API token
+    And the user has a site "My Blog"
+
+  # ─────────────────────────────────────────────────────────────
+  # Authentication
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Authenticating with a valid Bearer token
+    When I send a GET request to the posts endpoint
+    Then the response status should be 200
+
+  Scenario: Rejecting requests without authentication
+    When I send a GET request to the posts endpoint without authentication
+    Then the response status should be 401
+    And the response should contain error "Unauthorized"
+
+  Scenario: Rejecting requests with an invalid token
+    When I send a GET request to the posts endpoint with an invalid token
+    Then the response status should be 401
+
+  Scenario: Accessing only authorized sites
+    Given another user has a site "Other Blog"
+    When I try to access posts for site "Other Blog"
+    Then the response status should be 404
+
+  # ─────────────────────────────────────────────────────────────
+  # Posts CRUD
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Listing all posts
+    Given the site has 3 posts
+    When I send a GET request to the posts endpoint
+    Then the response status should be 200
+    And the response should contain 3 posts
+    And the response should match the OpenAPI schema for "GET /sites/{site_id}/posts" with status 200
+
+  Scenario: Creating a post with block content
+    When I create a post with title "My Imported Post" and content:
+      """json
+      [{"type": "paragraph", "text": "Hello world"}]
+      """
+    Then the response status should be 201
+    And the response should contain post title "My Imported Post"
+    And the post content should have validated blocks
+    And the response should match the OpenAPI schema for "POST /sites/{site_id}/posts" with status 201
+
+  Scenario: Creating a post with invalid block content
+    When I create a post with title "Bad Post" and content:
+      """json
+      [{"type": "unknown_type"}]
+      """
+    Then the response status should be 422
+    And the response should contain error "Content validation failed"
+    And the error details should list valid block types
+
+  Scenario: Updating a post title
+    Given the site has a post "Old Title"
+    When I update the post with title "New Title"
+    Then the response status should be 200
+    And the response should contain post title "New Title"
+    And the response should match the OpenAPI schema for "PATCH /sites/{site_id}/posts/{id}" with status 200
+
+  Scenario: Updating only post content without changing title
+    Given the site has a post "Keep This Title"
+    When I update the post with content:
+      """json
+      [{"type": "paragraph", "text": "New content"}]
+      """
+    Then the response status should be 200
+    And the response should contain post title "Keep This Title"
+
+  Scenario: Deleting a post
+    Given the site has a post "To Delete"
+    When I delete the post
+    Then the response status should be 200
+    And the response should contain message "Post deleted"
+    And the post should no longer exist
+
+  # ─────────────────────────────────────────────────────────────
+  # Pages CRUD
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Listing all pages
+    Given the site has 2 pages
+    When I send a GET request to the pages endpoint
+    Then the response status should be 200
+    And the response should contain 2 pages
+
+  Scenario: Creating a page with block content
+    When I create a page with title "About Me" and content:
+      """json
+      [{"type": "paragraph", "text": "About me..."}]
+      """
+    Then the response status should be 201
+    And the response should contain page title "About Me"
+
+  Scenario: Updating a page
+    Given the site has a page "Old Page"
+    When I update the page with title "Updated Page"
+    Then the response status should be 200
+    And the response should contain page title "Updated Page"
+
+  Scenario: Deleting a page
+    Given the site has a page "Unwanted"
+    When I delete the page
+    Then the response status should be 200
+    And the response should contain message "Page deleted"
+
+  # ─────────────────────────────────────────────────────────────
+  # Images
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Viewing an image
+    Given the site has an image
+    When I send a GET request to the image endpoint
+    Then the response status should be 200
+    And the response should match the OpenAPI schema for "GET /sites/{site_id}/images/{id}" with status 200
+
+  # ─────────────────────────────────────────────────────────────
+  # Block Content Validation
+  # ─────────────────────────────────────────────────────────────
+
+  Scenario: Validating all supported block types
+    When I create a post with all supported block types
+    Then the response status should be 201
+    And the response content should contain 8 blocks
+
+  Scenario: AI-friendly error messages for invalid blocks
+    When I create a post with title "Bad" and content:
+      """json
+      [{"type": "header", "text": "Missing level"}]
+      """
+    Then the response status should be 422
+    And the error should specify block index 0
+    And the error should specify block type "header"
+
