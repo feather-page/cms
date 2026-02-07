@@ -46,8 +46,7 @@ module ApiHelpers
 
   def validate_response_schema!(path, method, status)
     schema = schema_for_response(path, method, status)
-    schemer = JSONSchemer.schema(schema)
-    errors = schemer.validate(json_response).to_a
+    errors = SchemaValidator.validate(json_response, schema)
 
     return if errors.empty?
 

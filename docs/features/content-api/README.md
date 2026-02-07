@@ -50,6 +50,7 @@ Content is stored as an array of typed blocks. Each block is validated against i
 | `app/controllers/api/v1/pages_controller.rb` | Pages CRUD |
 | `app/controllers/api/v1/images_controller.rb` | Image creation from URL |
 | `app/controllers/api/v1/schema_controller.rb` | Serves OpenAPI spec |
+| `app/utils/schema_validator.rb` | Lightweight JSON Schema validator (no external gem) |
 | `app/utils/blocks/content_validator.rb` | Validates blocks against OpenAPI schemas |
 | `app/models/api_token.rb` | Bearer token model |
 | `app/policies/api_token_policy.rb` | Token authorization policy |
@@ -58,7 +59,7 @@ Content is stored as an array of typed blocks. Each block is validated against i
 ## Architecture Decisions
 
 - **OpenAPI as single source of truth**: Block schemas defined once in `openapi.yml`, used by both validation and tests
-- **`json_schemer` gem**: Validates content blocks against JSON Schema at runtime
+- **No external gem for validation**: Custom `SchemaValidator` (~130 LOC) validates against JSON Schema subset used by block types, avoiding external dependency
 - **`policy_scope` filtering**: Unauthorized sites return 404 (not 403) to avoid leaking resource existence
 - **Content extracted outside strong params**: `ActionController::Parameters` cannot handle arrays of heterogeneous hashes, so content is extracted directly from raw params via `params.dig(:post, :content)`
 - **Auto-generated block IDs**: Blocks without an `id` field get a random 10-character alphanumeric ID assigned during validation
