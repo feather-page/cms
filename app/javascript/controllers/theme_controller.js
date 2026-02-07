@@ -20,8 +20,10 @@ export default class extends Controller {
   applyTheme (theme) {
     if (theme === DARK) {
       document.documentElement.setAttribute('data-theme', DARK)
+      document.documentElement.setAttribute('data-bs-theme', DARK)
     } else {
       document.documentElement.removeAttribute('data-theme')
+      document.documentElement.removeAttribute('data-bs-theme')
     }
     this.updateIcon(theme)
   }

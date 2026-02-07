@@ -12,6 +12,7 @@
         var theme = localStorage.getItem('feather-theme');
         if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.setAttribute('data-theme', 'dark');
+          document.documentElement.setAttribute('data-bs-theme', 'dark');
         }
       })();
     </script>

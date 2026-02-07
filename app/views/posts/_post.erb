@@ -6,7 +6,7 @@
       <div class="content"><%= post.content_html %></div>
     <% end %>
     <% if post.book.present? %>
-      <div class="post-card-book d-flex align-items-center gap-2 my-2 p-2 bg-light rounded">
+      <div class="post-card-book d-flex align-items-center gap-2 my-2 p-2 bg-body-tertiary rounded">
         <% if post.book.cover_image&.file&.attached? %>
           <%= image_tag post.book.cover_image.file.variant(:mobile_x1_webp), style: 'max-height: 40px;', class: 'rounded' %>
         <% elsif post.book.emoji.present? %>

@@ -6,7 +6,7 @@
         <%= component('form/text_field', form:, attribute: :name, placeholder: t('social_media_links.name_placeholder'), data: { 'SocialMediaForm-target': 'nameInput' }) %>
         <%= component('form/text_field', form:, attribute: :url, placeholder: t('social_media_links.url_placeholder'), data: { 'SocialMediaForm-target': 'urlInput' }) %>
       </div>
-      <div class="card-footer bg-light">
+      <div class="card-footer bg-body-tertiary">
         <div class="d-flex gap-2">
           <%= form.submit(t('social_media_links.create_link'), class: 'btn btn-primary') %>
           <a data-action="modal#close" class="btn btn-outline-primary" type="button"><%= t('cancel') %></a>
