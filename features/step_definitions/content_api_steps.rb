@@ -7,7 +7,7 @@
 Given("I have a user with an API token") do
   @current_user = create(:user)
   @api_token = create(:api_token, user: @current_user)
-  api.auth_header(@api_token.token)
+  api.auth_header(@api_token.plain_token)
 end
 
 Given("the user has a site {string}") do |site_title|

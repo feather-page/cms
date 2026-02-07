@@ -30,7 +30,7 @@ module Api
 
       def authenticate_api_token!
         token_string = request.headers["Authorization"]&.delete_prefix("Bearer ")
-        @api_token = ApiToken.find_by(token: token_string) if token_string.present?
+        @api_token = ApiToken.authenticate(token_string)
         render_unauthorized unless @api_token
       end
 

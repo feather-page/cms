@@ -11,7 +11,7 @@ RSpec.describe "Api::V1 Authentication" do
       api_token = create(:api_token, user: user)
 
       get "/api/v1/sites/#{site.public_id}/posts",
-          headers: api_headers(token: api_token.token)
+          headers: api_headers(token: api_token.plain_token)
 
       expect(response).to have_http_status(:ok)
     end
@@ -40,7 +40,7 @@ RSpec.describe "Api::V1 Authentication" do
 
   describe "Site authorization" do
     let(:api_token) { create(:api_token, user: user) }
-    let(:headers) { api_headers(token: api_token.token) }
+    let(:headers) { api_headers(token: api_token.plain_token) }
 
     it "allows access to user's site" do
       get "/api/v1/sites/#{site.public_id}/posts", headers: headers
@@ -65,7 +65,7 @@ RSpec.describe "Api::V1 Authentication" do
     context "with super admin" do
       let(:admin) { create(:user, :superadmin) }
       let(:admin_token) { create(:api_token, user: admin) }
-      let(:admin_headers) { api_headers(token: admin_token.token) }
+      let(:admin_headers) { api_headers(token: admin_token.plain_token) }
 
       it "allows access to any site" do
         other_site = create(:site)

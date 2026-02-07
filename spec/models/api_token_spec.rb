@@ -20,20 +20,64 @@ RSpec.describe ApiToken do
   end
 
   describe "token generation" do
-    it "auto-generates a token on create" do
+    it "exposes plain_token only after creation" do
       user = create(:user)
       token = described_class.create!(user: user, name: "test")
 
-      expect(token.token).to be_present
-      expect(token.token.length).to eq(64)
+      expect(token.plain_token).to be_present
+      expect(token.plain_token.length).to eq(64)
     end
 
-    it "generates unique tokens" do
+    it "stores a SHA256 digest, not the plain token" do
+      user = create(:user)
+      token = described_class.create!(user: user, name: "test")
+      expected_digest = Digest::SHA256.hexdigest(token.plain_token)
+
+      expect(token.token_digest).to eq(expected_digest)
+      expect(token.token_digest).not_to eq(token.plain_token)
+    end
+
+    it "stores the first 8 characters as token_prefix" do
+      user = create(:user)
+      token = described_class.create!(user: user, name: "test")
+
+      expect(token.token_prefix).to eq(token.plain_token[0, 8])
+    end
+
+    it "does not expose plain_token when loaded from database" do
+      user = create(:user)
+      token = described_class.create!(user: user, name: "test")
+      found = described_class.find(token.id)
+
+      expect(found.plain_token).to be_nil
+    end
+
+    it "generates unique digests" do
       user = create(:user)
       token1 = described_class.create!(user: user, name: "first")
       token2 = described_class.create!(user: user, name: "second")
 
-      expect(token1.token).not_to eq(token2.token)
+      expect(token1.token_digest).not_to eq(token2.token_digest)
+    end
+  end
+
+  describe ".authenticate" do
+    it "finds a token by plain token value" do
+      user = create(:user)
+      token = described_class.create!(user: user, name: "test")
+
+      found = described_class.authenticate(token.plain_token)
+
+      expect(found).to eq(token)
+    end
+
+    it "returns nil for invalid token" do
+      expect(described_class.authenticate("invalid")).to be_nil
+    end
+
+    it "returns nil for blank token" do
+      expect(described_class.authenticate("")).to be_nil
+      expect(described_class.authenticate(nil)).to be_nil
     end
   end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_07_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_07_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -47,11 +47,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_100000) do
     t.datetime "created_at", null: false
     t.string "name"
     t.string "public_id", limit: 21, null: false
-    t.string "token", null: false
+    t.string "token_digest", null: false
+    t.string "token_prefix", limit: 8, null: false
     t.datetime "updated_at", null: false
     t.uuid "user_id", null: false
     t.index ["public_id"], name: "index_api_tokens_on_public_id", unique: true
-    t.index ["token"], name: "index_api_tokens_on_token", unique: true
+    t.index ["token_digest"], name: "index_api_tokens_on_token_digest", unique: true
     t.index ["user_id"], name: "index_api_tokens_on_user_id"
   end
 
