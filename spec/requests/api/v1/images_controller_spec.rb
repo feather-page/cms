@@ -27,42 +27,80 @@ RSpec.describe "Api::V1::Images" do
   end
 
   describe "POST /api/v1/sites/:site_id/images" do
-    let(:image_url) { "https://example.com/photo.jpg" }
-    let(:image_body) { Rails.root.join("spec/fixtures/files/15x15.jpg").read }
+    let(:endpoint) { "/api/v1/sites/#{site.public_id}/images" }
 
-    before do
-      stub_request(:get, image_url).to_return(
-        status: 200,
-        body: image_body,
-        headers: { "Content-Type" => "image/jpeg" }
-      )
+    context "with file upload" do
+      let(:multipart_headers) { api_headers_multipart(token: api_token.plain_token) }
+
+      it "creates an image from an uploaded file" do
+        file = fixture_file_upload("15x15.jpg", "image/jpeg")
+
+        post endpoint, params: { file: file }, headers: multipart_headers
+
+        expect(response).to have_http_status(:created)
+        expect(json_response.dig("data", "id")).to be_present
+        validate_response_schema!("/sites/{site_id}/images", "post", 201)
+      end
+
+      it "returns 422 for a non-image file" do
+        file = fixture_file_upload("text.txt", "text/plain")
+
+        post endpoint, params: { file: file }, headers: multipart_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response["error"]).to eq("Validation failed")
+      end
     end
 
-    it "creates an image from URL" do
-      post "/api/v1/sites/#{site.public_id}/images",
-           params: { url: image_url }.to_json,
-           headers: headers
+    context "with URL" do
+      let(:image_url) { "https://example.com/photo.jpg" }
+      let(:image_body) { Rails.root.join("spec/fixtures/files/15x15.jpg").read }
 
-      expect(response).to have_http_status(:created)
-      expect(json_response.dig("data", "id")).to be_present
-      expect(json_response.dig("data", "source_url")).to eq(image_url)
-      validate_response_schema!("/sites/{site_id}/images", "post", 201)
+      before do
+        stub_request(:get, image_url).to_return(
+          status: 200,
+          body: image_body,
+          headers: { "Content-Type" => "image/jpeg" }
+        )
+      end
+
+      it "creates an image from URL" do
+        post endpoint,
+             params: { url: image_url }.to_json,
+             headers: headers
+
+        expect(response).to have_http_status(:created)
+        expect(json_response.dig("data", "id")).to be_present
+        expect(json_response.dig("data", "source_url")).to eq(image_url)
+        validate_response_schema!("/sites/{site_id}/images", "post", 201)
+      end
+
+      it "returns 422 for invalid URL" do
+        post endpoint,
+             params: { url: "ftp://invalid.com/file.jpg" }.to_json,
+             headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
+
+      it "returns 422 for localhost URL" do
+        post endpoint,
+             params: { url: "http://localhost/image.jpg" }.to_json,
+             headers: headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+      end
     end
 
-    it "returns 422 for invalid URL" do
-      post "/api/v1/sites/#{site.public_id}/images",
-           params: { url: "ftp://invalid.com/file.jpg" }.to_json,
-           headers: headers
+    context "without file or URL" do
+      it "returns 422" do
+        post endpoint,
+             params: {}.to_json,
+             headers: headers
 
-      expect(response).to have_http_status(:unprocessable_content)
-    end
-
-    it "returns 422 for localhost URL" do
-      post "/api/v1/sites/#{site.public_id}/images",
-           params: { url: "http://localhost/image.jpg" }.to_json,
-           headers: headers
-
-      expect(response).to have_http_status(:unprocessable_content)
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(json_response["error"]).to eq("Either file or url parameter is required")
+      end
     end
   end
 end

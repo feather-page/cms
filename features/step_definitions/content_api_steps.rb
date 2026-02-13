@@ -137,6 +137,30 @@ When("I send a GET request to the image endpoint") do
   api.json_request(:get, "#{site_images_path}/#{@current_image.public_id}")
 end
 
+When("I upload an image file") do
+  file = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/15x15.jpg"), "image/jpeg")
+  api.multipart_upload(site_images_path, file)
+end
+
+When("I upload a non-image file") do
+  file = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/text.txt"), "text/plain")
+  api.multipart_upload(site_images_path, file)
+end
+
+When("I create an image from URL {string}") do |url|
+  image_body = Rails.root.join("spec/fixtures/files/15x15.jpg").read
+  stub_request(:get, url).to_return(
+    status: 200,
+    body: image_body,
+    headers: { "Content-Type" => "image/jpeg" }
+  )
+  api.json_request(:post, site_images_path, { url: url })
+end
+
+Then("the response should contain an image ID") do
+  expect(api_json.dig("data", "id")).to be_present
+end
+
 # ─────────────────────────────────────────────────────────────
 # Response Assertions
 # ─────────────────────────────────────────────────────────────

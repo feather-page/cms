@@ -688,12 +688,25 @@ paths:
           type: string
 
     post:
-      summary: Create image from URL
+      summary: Create an image
+      description: |
+        Upload an image file or create from a remote URL.
+        Use multipart/form-data with a `file` parameter for direct uploads,
+        or application/json with a `url` parameter for remote URL imports.
       operationId: createImage
       tags: [Images]
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Image file to upload (JPEG, PNG, GIF, WebP).
           application/json:
             schema:
               type: object

@@ -5,6 +5,12 @@ module ApiHelpers
     headers
   end
 
+  def api_headers_multipart(token: nil)
+    headers = {}
+    headers["Authorization"] = "Bearer #{token}" if token
+    headers
+  end
+
   def json_response
     JSON.parse(response.body)
   end

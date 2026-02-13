@@ -22,6 +22,13 @@ class CucumberApiClient
     last_response
   end
 
+  def multipart_upload(path, file)
+    header("Content-Type", nil)
+    post(path, file: file)
+    @last_json = JSON.parse(last_response.body)
+    last_response
+  end
+
   def clear_auth
     header("Authorization", "")
   end

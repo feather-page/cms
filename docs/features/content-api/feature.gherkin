@@ -123,6 +123,21 @@ Feature: Content API
     Then the response status should be 200
     And the response should match the OpenAPI schema for "GET /sites/{site_id}/images/{id}" with status 200
 
+  Scenario: Uploading an image file
+    When I upload an image file
+    Then the response status should be 201
+    And the response should contain an image ID
+    And the response should match the OpenAPI schema for "POST /sites/{site_id}/images" with status 201
+
+  Scenario: Uploading a non-image file returns error
+    When I upload a non-image file
+    Then the response status should be 422
+
+  Scenario: Creating an image from URL
+    When I create an image from URL "https://example.com/photo.jpg"
+    Then the response status should be 201
+    And the response should contain an image ID
+
   # ─────────────────────────────────────────────────────────────
   # Block Content Validation
   # ─────────────────────────────────────────────────────────────
