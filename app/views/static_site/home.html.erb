@@ -51,6 +51,9 @@
             <%= static_site_rating_stars(post.book.rating) %>
           </span>
         <% end %>
+        <% if post.content.present? %>
+          <div class="post-excerpt"><%= post.content_excerpt %></div>
+        <% end %>
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
         <% if post.tag_list.any? %>
           <div class="post-tags">

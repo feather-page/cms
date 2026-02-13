@@ -138,6 +138,10 @@ hr {
   font-weight: 500;
 }
 
+.post-excerpt {
+  margin: 1rem 0;
+}
+
 .post-date {
   clear: both;
   color: grey;

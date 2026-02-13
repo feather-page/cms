@@ -2,6 +2,9 @@
   <article class="post-card">
     <% if post.title.present? %>
       <div class="post-card-title"><%= post.emoji %> <%= post.title %></div>
+      <% if post.content.present? %>
+        <div class="my-2 text-muted"><%= post.content_excerpt %></div>
+      <% end %>
     <% else %>
       <div class="content"><%= post.content_html %></div>
     <% end %>
