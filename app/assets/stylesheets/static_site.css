@@ -466,6 +466,13 @@ a.book-title:hover {
   border: 1px solid var(--decoration-color);
 }
 
+.post-tags, .page-tags, .project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
 .project-description {
   color: var(--body-color);
   font-size: 0.95rem;

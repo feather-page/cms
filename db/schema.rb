@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_07_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_072612) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -146,6 +146,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_110000) do
     t.string "public_id", limit: 21, null: false
     t.uuid "site_id", null: false
     t.string "slug"
+    t.string "tags"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["header_image_id"], name: "index_pages_on_header_image_id"
@@ -164,6 +165,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_110000) do
     t.datetime "publish_at"
     t.uuid "site_id", null: false
     t.string "slug"
+    t.string "tags"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["draft"], name: "index_posts_on_draft"
@@ -191,6 +193,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_110000) do
     t.string "slug", null: false
     t.date "started_at", null: false
     t.integer "status", default: 0
+    t.string "tags"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["header_image_id"], name: "index_projects_on_header_image_id"

@@ -233,6 +233,9 @@ components:
         header_image_id:
           type: ["string", "null"]
           description: Public ID of an uploaded image to use as header.
+        tags:
+          type: ["string", "null"]
+          description: Comma-separated tags, e.g. "ruby, rails, web".
 
     PostResponse:
       type: object
@@ -252,6 +255,11 @@ components:
         publish_at:
           type: ["string", "null"]
           format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags as array of strings.
         content:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:
@@ -282,6 +290,9 @@ components:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:
           type: ["string", "null"]
+        tags:
+          type: ["string", "null"]
+          description: Comma-separated tags, e.g. "travel, photos".
 
     PageResponse:
       type: object
@@ -298,6 +309,11 @@ components:
         page_type:
           type: string
           enum: [default, books, projects]
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags as array of strings.
         content:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:

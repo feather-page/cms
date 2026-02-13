@@ -26,6 +26,9 @@
             <small class="text-muted"><%= project.company %></small>
           <% end %>
           <small class="text-muted"><%= project.display_period %></small>
+          <% project.tag_list.each do |tag| %>
+            <span class="badge bg-light text-dark"><%= tag %></span>
+          <% end %>
         </div>
       </div>
     </div>

@@ -52,6 +52,13 @@
           </span>
         <% end %>
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
+        <% if post.tag_list.any? %>
+          <div class="post-tags">
+            <% post.tag_list.each do |tag| %>
+              <span class="badge badge-outline"><%= tag %></span>
+            <% end %>
+          </div>
+        <% end %>
       <% end %>
     </article>
     <hr />

@@ -53,6 +53,8 @@
       <small class="form-text text-muted">2-3 sentences for the overview. Shown on project cards.</small>
     </div>
 
+    <%= component('form/text_field', form:, attribute: :tags) %>
+
     <div class="mb-3">
       <%= component('form/editor', form:, attribute: :content) %>
     </div>

@@ -2,6 +2,7 @@
   <%= form_for([current_site, page], class: 'mb-4') do |form| %>
     <%= component('form/header_image_picker', form:) %>
     <%= component('form/title_and_slug', form:) %>
+    <%= component('form/text_field', form:, attribute: :tags) %>
     <%= component('form/editor', form:, attribute: :content) %>
 
     <div class="row">

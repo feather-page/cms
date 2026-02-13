@@ -41,6 +41,6 @@ class PostsController < ApplicationController
   end
 
   def post_params
-    params.expect(post: %i[title slug draft emoji content publish_at header_image_id])
+    params.expect(post: %i[title slug draft emoji content publish_at header_image_id tags])
   end
 end

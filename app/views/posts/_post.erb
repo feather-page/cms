@@ -23,6 +23,9 @@
     <% end %>
     <div class="post-card-meta">
       <span class="badge bg-secondary"><%= l(post.created_at, format: :long) %></span>
+      <% post.tag_list.each do |tag| %>
+        <span class="badge bg-light text-dark"><%= tag %></span>
+      <% end %>
     </div>
     <div class="post-card-actions">
       <%= link_to('Edit', edit_site_post_path(current_site, post), data: { turbo_frame: :content }, class: 'btn btn-outline-secondary btn-sm') %>

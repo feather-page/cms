@@ -3,6 +3,7 @@ json.title page.title
 json.slug page.slug
 json.emoji page.emoji
 json.page_type page.page_type
+json.tags page.tag_list
 json.content page.content.presence || []
 json.header_image_id page.header_image&.public_id
 json.created_at page.created_at.iso8601

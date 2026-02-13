@@ -45,6 +45,14 @@ RSpec.describe "Api::V1::Pages" do
       validate_response_schema!("/sites/{site_id}/pages/{id}", "get", 200)
     end
 
+    it "returns tags as an array" do
+      page_record.update!(tags: "travel, photos")
+
+      get "/api/v1/sites/#{site.public_id}/pages/#{page_record.public_id}", headers: headers
+
+      expect(json_response.dig("data", "tags")).to eq(%w[travel photos])
+    end
+
     it "returns 404 for unknown page" do
       get "/api/v1/sites/#{site.public_id}/pages/nonexistent", headers: headers
 
@@ -74,6 +82,15 @@ RSpec.describe "Api::V1::Pages" do
       expect(json_response.dig("data", "title")).to eq("About Me")
       expect(json_response.dig("data", "slug")).to eq("about")
       validate_response_schema!("/sites/{site_id}/pages", "post", 201)
+    end
+
+    it "creates a page with tags" do
+      post "/api/v1/sites/#{site.public_id}/pages",
+           params: { page: { title: "Tagged", slug: "tagged", tags: "travel, photos" } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "tags")).to eq(%w[travel photos])
     end
 
     it "creates a homepage with slug /" do
@@ -124,6 +141,15 @@ RSpec.describe "Api::V1::Pages" do
       expect(response).to have_http_status(:ok)
       expect(json_response.dig("data", "title")).to eq("Updated")
       validate_response_schema!("/sites/{site_id}/pages/{id}", "patch", 200)
+    end
+
+    it "updates tags" do
+      patch "/api/v1/sites/#{site.public_id}/pages/#{page_record.public_id}",
+            params: { page: { tags: "travel, photos" } }.to_json,
+            headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response.dig("data", "tags")).to eq(%w[travel photos])
     end
 
     it "updates content blocks" do

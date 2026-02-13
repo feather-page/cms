@@ -15,6 +15,10 @@ FactoryBot.define do
     slug { Faker::Lorem.sentence.parameterize }
     site
 
+    trait :tagged do
+      tags { "ruby, rails, web" }
+    end
+
     trait :ongoing do
       status { :ongoing }
       ended_at { nil }

@@ -49,7 +49,7 @@ module Api
 
       def post_params
         post = params.require(:post)
-        post.permit(:title, :slug, :draft, :emoji, :publish_at, :header_image_id)
+        post.permit(:title, :slug, :draft, :emoji, :publish_at, :header_image_id, :tags)
       end
     end
   end

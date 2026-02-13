@@ -53,6 +53,20 @@ RSpec.describe "Api::V1::Posts" do
       validate_response_schema!("/sites/{site_id}/posts/{id}", "get", 200)
     end
 
+    it "returns tags as an array" do
+      post_record.update!(tags: "ruby, rails")
+
+      get "/api/v1/sites/#{site.public_id}/posts/#{post_record.public_id}", headers: headers
+
+      expect(json_response.dig("data", "tags")).to eq(%w[ruby rails])
+    end
+
+    it "returns empty array when no tags" do
+      get "/api/v1/sites/#{site.public_id}/posts/#{post_record.public_id}", headers: headers
+
+      expect(json_response.dig("data", "tags")).to eq([])
+    end
+
     it "returns 404 for unknown post" do
       get "/api/v1/sites/#{site.public_id}/posts/nonexistent", headers: headers
 
@@ -93,6 +107,15 @@ RSpec.describe "Api::V1::Posts" do
 
       expect(response).to have_http_status(:created)
       validate_response_schema!("/sites/{site_id}/posts", "post", 201)
+    end
+
+    it "creates a post with tags" do
+      post "/api/v1/sites/#{site.public_id}/posts",
+           params: { post: { title: "Tagged", tags: "ruby, rails" } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "tags")).to eq(%w[ruby rails])
     end
 
     it "creates a post as draft" do
@@ -146,6 +169,15 @@ RSpec.describe "Api::V1::Posts" do
       expect(response).to have_http_status(:ok)
       expect(json_response.dig("data", "title")).to eq("Updated")
       validate_response_schema!("/sites/{site_id}/posts/{id}", "patch", 200)
+    end
+
+    it "updates tags" do
+      patch "/api/v1/sites/#{site.public_id}/posts/#{post_record.public_id}",
+            params: { post: { tags: "ruby, web" } }.to_json,
+            headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response.dig("data", "tags")).to eq(%w[ruby web])
     end
 
     it "updates content blocks" do

@@ -1,5 +1,6 @@
 class Page < ApplicationRecord
   include Editable
+  include Taggable
 
   enum :page_type, { default: 0, books: 1, projects: 2 }, prefix: true
 

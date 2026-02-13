@@ -1,13 +1,27 @@
 ---
 de:
   activerecord:
-    attributes:
+    help:
+      post:
+        tags:
+          html: "Kommagetrennt, z.B. <b>ruby, rails, web</b>"
       page:
+        tags:
+          html: "Kommagetrennt, z.B. <b>reisen, fotos</b>"
+      project:
+        tags:
+          html: "Kommagetrennt, z.B. <b>ruby, rails, web</b>"
+    attributes:
+      post:
+        tags: Tags
+      page:
+        tags: Tags
         page_types:
           books: Bücher
           default: Standard
           projects: Projekte
       project:
+        tags: Tags
         title: Titel
         slug: URL-Slug
         company: Unternehmen

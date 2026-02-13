@@ -56,7 +56,7 @@ class ProjectsController < ApplicationController
       project: [
         :title, :slug, :company, :period, :started_at, :ended_at, :status,
         :role, :short_description, :project_type, :emoji, :header_image_id,
-        :content, { links: [%i[label url]] }
+        :content, :tags, { links: [%i[label url]] }
       ]
     )
   end

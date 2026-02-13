@@ -2,6 +2,7 @@
   <%= form_for([current_site, post], class: "mb-4", data: { controller: 'post_form' }) do |form| %>
     <%= component('form/header_image_picker', form:) %>
     <%= component('form/title_and_slug', form:) %>
+    <%= component('form/text_field', form:, attribute: :tags) %>
     <%= component('form/editor', form:, attribute: :content) %>
     <%= component('form/datetime_field', form:, attribute: :publish_at, placeholder: Time.current) %>
     <%= component('form/checkbox', form:, attribute: :draft) %>

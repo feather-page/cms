@@ -4,5 +4,9 @@ FactoryBot.define do
     title { Faker::Lorem.sentence }
     content { nil }
     site
+
+    trait :tagged do
+      tags { "ruby, rails, web" }
+    end
   end
 end

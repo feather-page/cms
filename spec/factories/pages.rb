@@ -5,6 +5,10 @@ FactoryBot.define do
     site
     slug { Faker::Lorem.sentence.parameterize }
 
+    trait :tagged do
+      tags { "travel, photos" }
+    end
+
     trait :books do
       page_type { 'books' }
     end
