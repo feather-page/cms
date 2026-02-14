@@ -378,6 +378,33 @@ a.book-title:hover {
   }
 }
 
+/* Post Thumbnail Styles */
+.post-long-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.post-thumbnail img {
+  width: 240px;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.project-thumbnail {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+@media only screen and (max-width: 600px) {
+  .post-long-body {
+    flex-direction: column;
+  }
+}
+
 /* Projects List Styles */
 .projects-list {
   margin: 2rem 0;
