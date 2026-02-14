@@ -16,6 +16,11 @@
 
     <%= component('form/text_field', form:, attribute: :copyright) %>
 
+    <div class="mb-3">
+      <%= form.label :theme_id, t('sites.theme'), class: 'form-label' %>
+      <%= form.collection_select :theme_id, Theme.all, :id, :name, {}, class: 'form-select' %>
+    </div>
+
     <div class="d-flex gap-2">
       <%= form.submit(t('.update'), class: 'btn btn-primary') %>
       <%= link_to t('form.cancel'), current_site, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>

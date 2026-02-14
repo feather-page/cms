@@ -1,0 +1,58 @@
+{{ define "main" }}
+  <ul class="page-list">
+  {{- range .Site.Menus.main }}
+    <li>
+      {{ .Params.Emoji }} <a class="page-link" href="{{ .URL }}">{{ .Name }}</a>
+    </li>
+  {{- end }}
+  </ul>
+
+  {{ .Content | replaceRE `/images/` (print $.Site.BaseURL `images/`) | safeHTML }}
+  <hr />
+
+  <h2>Blogposts</h2>
+
+  <div class="page-list">
+    {{ range sort (where .Site.RegularPages "Type" "posts") ".Params.date" "desc" }}
+      <article>
+        {{ if isset .Params "short" }}
+          {{/* Short post without title */}}
+          {{ with .Params.book }}
+            <div class="book-card book-card--detail">
+              <div class="book-card-header">
+                {{ if .cover }}
+                  <img src="{{ .cover | replaceRE `^/images/` (print $.Site.BaseURL `images/`) }}" alt="{{ .title }}" class="book-cover">
+                {{ else if .emoji }}
+                  <span class="book-emoji">{{ .emoji }}</span>
+                {{ end }}
+                <div class="book-info">
+                  <div class="book-title">{{ .title }}</div>
+                  <div class="book-author">{{ .author }}</div>
+                  {{ with .rating_stars }}
+                    <div class="book-rating" aria-label="{{ $.Params.book.rating }} out of 5 stars">{{ . }}</div>
+                  {{ end }}
+                </div>
+              </div>
+            </div>
+          {{ end }}
+          <div class="post-shortBody">
+            {{ if and (isset .Params "emoji") (not .Params.book) }}
+              <div class="post-emoji">{{ .Params.emoji }}</div>
+            {{ end }}
+            <div class="post-content">{{ .Content | replaceRE `/images/` (print $.Site.BaseURL `images/`) | safeHTML }}</div>
+          </div>
+          <div class="post-date">{{ .Date | time.Format ":date_medium" }}</div>
+        {{ else }}
+          {{/* Long post with title */}}
+          {{ with .Params.emoji }}{{ . }}{{ end }}
+          <a class="post-title" href="{{ .Permalink }}">{{ .Title }}</a>
+          {{ with .Params.book }}{{ with .rating_stars }}
+            <span class="rating" aria-label="rating">{{ . }}</span>
+          {{ end }}{{ end }}
+          <div class="post-date">{{ .Date | time.Format ":date_medium" }}</div>
+        {{ end }}
+      </article>
+      <hr />
+    {{ end }}
+  </div>
+{{ end }}

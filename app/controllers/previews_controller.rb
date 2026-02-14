@@ -1,20 +1,15 @@
-class PreviewsController < ApplicationController
-  include PreviewRouting
-  include PreviewImageServing
+# frozen_string_literal: true
 
+class PreviewsController < ApplicationController
   skip_after_action :verify_pundit_checked
 
   def show
     authorize deployment_target, :show?, policy_class: PreviewPolicy
 
-    case preview_route_type
-    when :home    then render_home
-    when :project then render_project
-    when :post    then render_post
-    when :page    then render_page
-    when :image   then serve_preview_image
-    else head(:not_found)
-    end
+    file_path = resolve_file_path
+    return head(:not_found) unless file_path && File.exist?(file_path)
+
+    send_file(file_path, type: content_type_for(file_path), disposition: :inline)
   end
 
   private
@@ -23,57 +18,48 @@ class PreviewsController < ApplicationController
     @deployment_target ||= DeploymentTarget.find(params[:deployment_target_id])
   end
 
-  def site
-    @site ||= deployment_target.site
-  end
-
   def requested_path
     @requested_path ||= params[:path].to_s
   end
 
-  def render_home
-    assign_site_context(page_title: site.title, page_emoji: site.emoji, is_home: true)
-    @page = site.pages.find_by(slug: "/")
-    @rss_url = "/feed.xml"
-
-    render template: "static_site/home", layout: "static_site"
+  def source_dir
+    deployment_target.source_dir
   end
 
-  def render_project
-    @project = find_project_by_path
-    return head(:not_found) unless @project
+  def resolve_file_path
+    path = requested_path.presence || "index.html"
 
-    assign_site_context(page_title: @project.title, page_emoji: @project.emoji)
-    @header_image = @project.header_image
+    # Try the exact path first
+    full_path = safe_join(source_dir, path)
+    return full_path if full_path && File.file?(full_path)
 
-    render template: "static_site/project", layout: "static_site"
+    # Try with index.html appended (directory-style URLs)
+    index_path = safe_join(source_dir, "#{path.chomp('/')}/index.html")
+    return index_path if index_path && File.file?(index_path)
+
+    nil
   end
 
-  def render_post
-    @post = find_post_by_path || find_post_by_slug
-    return head(:not_found) unless @post
+  def safe_join(base, relative)
+    joined = File.expand_path(relative, base)
+    return nil unless joined.start_with?(File.expand_path(base))
 
-    assign_site_context(page_title: @post.title.presence || site.title, page_emoji: @post.emoji)
-    @header_image = @post.header_image
-
-    render template: "static_site/post", layout: "static_site"
+    joined
   end
 
-  def render_page
-    @page = find_page_by_path
-    return head(:not_found) unless @page
-
-    assign_site_context(page_title: @page.title, page_emoji: @page.emoji)
-    @header_image = @page.header_image
-
-    render template: "static_site/page", layout: "static_site"
-  end
-
-  def assign_site_context(page_title:, page_emoji:, is_home: false)
-    @site = site
-    @page_title = page_title
-    @page_emoji = page_emoji
-    @is_home = is_home
-    @base_url = "/preview/#{deployment_target.public_id}/"
+  def content_type_for(path)
+    case File.extname(path).downcase
+    when ".html" then "text/html; charset=utf-8"
+    when ".css" then "text/css; charset=utf-8"
+    when ".js" then "application/javascript; charset=utf-8"
+    when ".xml" then "application/xml; charset=utf-8"
+    when ".json" then "application/json; charset=utf-8"
+    when ".webp" then "image/webp"
+    when ".jpg", ".jpeg" then "image/jpeg"
+    when ".png" then "image/png"
+    when ".svg" then "image/svg+xml"
+    when ".txt" then "text/plain; charset=utf-8"
+    else "application/octet-stream"
+    end
   end
 end

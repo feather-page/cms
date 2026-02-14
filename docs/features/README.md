@@ -17,6 +17,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 | Book Reviews | Buchrezensionen mit Sterne-Bewertung | `book_reviews.feature` |
 | Book Block | Bücher aus Katalog in Posts einbetten | `book_block.feature` |
 | Projects | Entwicklungsprojekte für Portfolio-Websites verwalten | `projects/feature.gherkin` |
+| Hugo Multi-Theme | Hugo-basierte Multi-Theme Unterstützung für statische Sites | `hugo-multi-theme/README.md` |
 
 ---
 

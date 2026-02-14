@@ -120,6 +120,7 @@ en:
       update: Update Site
     new_form:
       create: Create Site
+    theme: Theme
     title_placeholder: Timon's Blog
     update:
       notice: Site was successfully updated.

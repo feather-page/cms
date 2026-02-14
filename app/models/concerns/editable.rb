@@ -22,6 +22,10 @@ module Editable
     Blocks::Renderer::StaticSiteHtml.render(blocks)
   end
 
+  def hugo_html
+    Blocks::Renderer::HugoHtml.render(blocks)
+  end
+
   def content_html
     Blocks::Renderer::Html.render(blocks)
   end

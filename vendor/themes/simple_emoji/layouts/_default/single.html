@@ -1,0 +1,24 @@
+{{ define "main" }}
+  {{ with .Params.book }}
+    <div class="book-card book-card--detail">
+      <div class="book-card-header">
+        {{ if .cover }}
+          <img src="{{ .cover | replaceRE `^/images/` (print $.Site.BaseURL `images/`) }}" alt="{{ .title }}" class="book-cover">
+        {{ else if .emoji }}
+          <span class="book-emoji">{{ .emoji }}</span>
+        {{ end }}
+        <div class="book-info">
+          <div class="book-title">{{ .title }}</div>
+          <div class="book-author">{{ .author }}</div>
+          {{ with .rating_stars }}
+            <div class="book-rating" aria-label="{{ $.Params.book.rating }} out of 5 stars">{{ . }}</div>
+          {{ end }}
+        </div>
+      </div>
+    </div>
+  {{ end }}
+
+  {{ .Content | replaceRE `/images/` (print .Site.BaseURL `images/`) | safeHTML }}
+
+  <div class="post-date">{{ .Date | time.Format ":date_medium" }}</div>
+{{ end }}

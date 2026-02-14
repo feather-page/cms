@@ -1,0 +1,3 @@
+{{ define "main" }}
+  {{ .Content | replaceRE `/images/` (print .Site.BaseURL `images/`) | safeHTML }}
+{{ end }}
