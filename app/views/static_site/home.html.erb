@@ -13,7 +13,7 @@
 <h2>Blogposts</h2>
 
 <div class="page-list">
-  <% @site.posts.published.order(publish_at: :desc).each do |post| %>
+  <% @posts.each do |post| %>
     <article>
       <% if post.title.blank? %>
         <%# Short post without title %>
@@ -80,3 +80,23 @@
     <hr />
   <% end %>
 </div>
+
+<% if @total_pages > 1 %>
+  <nav class="pagination" aria-label="Pagination">
+    <% if @current_page > 1 %>
+      <a href="<%= @current_page == 2 ? "#{@base_url}" : "#{@base_url}page/#{@current_page - 1}/" %>" class="pagination-link">&larr;</a>
+    <% end %>
+    <% pagination_page_numbers(@current_page, @total_pages).each do |page| %>
+      <% if page == :gap %>
+        <span class="pagination-gap">&hellip;</span>
+      <% elsif page == @current_page %>
+        <span class="pagination-current"><%= page %></span>
+      <% else %>
+        <a href="<%= page == 1 ? "#{@base_url}" : "#{@base_url}page/#{page}/" %>" class="pagination-link"><%= page %></a>
+      <% end %>
+    <% end %>
+    <% if @current_page < @total_pages %>
+      <a href="<%= @base_url %>page/<%= @current_page + 1 %>/" class="pagination-link">&rarr;</a>
+    <% end %>
+  </nav>
+<% end %>

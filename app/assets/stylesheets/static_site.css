@@ -640,3 +640,46 @@ a.book-title:hover {
     font-size: 1.5rem;
   }
 }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  font-size: 0.95rem;
+}
+
+.pagination-link,
+.pagination-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+}
+
+.pagination-link {
+  text-decoration: none;
+}
+
+.pagination-link:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pagination-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.pagination-current {
+  font-weight: 700;
+}
+
+.pagination-gap {
+  color: grey;
+}

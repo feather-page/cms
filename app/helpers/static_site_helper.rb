@@ -55,6 +55,27 @@ module StaticSiteHelper
     "#{static_site_base_url}projects/#{slug}/"
   end
 
+  def pagination_page_numbers(current_page, total_pages)
+    return (1..total_pages).to_a if total_pages <= 7
+
+    visible = Set.new([1, total_pages, current_page])
+    visible << current_page - 1 if current_page > 1
+    visible << current_page + 1 if current_page < total_pages
+
+    if current_page <= 3
+      (1..4).each { |p| visible << p }
+    elsif current_page >= total_pages - 2
+      ((total_pages - 3)..total_pages).each { |p| visible << p }
+    end
+
+    pages = []
+    visible.sort.each do |page|
+      pages << :gap if pages.last.is_a?(Integer) && page > pages.last + 1
+      pages << page
+    end
+    pages
+  end
+
   private
 
   def static_site_base_url

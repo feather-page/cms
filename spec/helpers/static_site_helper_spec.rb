@@ -101,6 +101,31 @@ describe StaticSiteHelper do
     end
   end
 
+  describe "#pagination_page_numbers" do
+    it "returns all pages when total is small" do
+      expect(helper_instance.pagination_page_numbers(1, 5)).to eq([1, 2, 3, 4, 5])
+    end
+
+    it "returns all pages when total is 7" do
+      expect(helper_instance.pagination_page_numbers(4, 7)).to eq([1, 2, 3, 4, 5, 6, 7])
+    end
+
+    it "adds gap after start when current page is near the end" do
+      result = helper_instance.pagination_page_numbers(15, 16)
+      expect(result).to eq([1, :gap, 13, 14, 15, 16])
+    end
+
+    it "adds gap before end when current page is near the start" do
+      result = helper_instance.pagination_page_numbers(1, 16)
+      expect(result).to eq([1, 2, 3, 4, :gap, 16])
+    end
+
+    it "adds gaps on both sides when current page is in the middle" do
+      result = helper_instance.pagination_page_numbers(8, 16)
+      expect(result).to eq([1, :gap, 7, 8, 9, :gap, 16])
+    end
+  end
+
   describe "#static_site_content_html" do
     context "without base_url (static site export)" do
       it "preserves image paths" do
