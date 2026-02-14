@@ -381,8 +381,14 @@ a.book-title:hover {
 /* Post Thumbnail Styles */
 .post-long-body {
   display: flex;
+  align-items: flex-start;
+}
+
+.post-long-content {
+  display: flex;
   gap: 1rem;
   align-items: flex-start;
+  flex-grow: 1;
 }
 
 .post-thumbnail {
