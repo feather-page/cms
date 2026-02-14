@@ -385,10 +385,13 @@ a.book-title:hover {
   align-items: flex-start;
 }
 
+.post-thumbnail {
+  flex-shrink: 0;
+}
+
 .post-thumbnail img {
   width: 240px;
-  height: 240px;
-  object-fit: cover;
+  height: auto;
   border-radius: 6px;
 }
 
@@ -402,6 +405,11 @@ a.book-title:hover {
 @media only screen and (max-width: 600px) {
   .post-long-body {
     flex-direction: column;
+  }
+
+  .post-thumbnail img {
+    width: 160px;
+    height: auto;
   }
 }
 

@@ -2,7 +2,9 @@
   <article class="post-card">
     <div class="d-flex align-items-start gap-3">
       <div class="flex-shrink-0 text-center" style="width: 50px;">
-        <% if project.header_image&.file&.attached? %>
+        <% if project.thumbnail_image&.file&.attached? %>
+          <%= image_tag project.thumbnail_image.file.variant(:mobile_x1_webp), style: 'max-height: 50px; max-width: 50px; object-fit: cover;', class: 'rounded' %>
+        <% elsif project.header_image&.file&.attached? %>
           <%= image_tag project.header_image.file.variant(:mobile_x1_webp), style: 'max-height: 50px; max-width: 50px; object-fit: cover;', class: 'rounded' %>
         <% elsif project.emoji.present? %>
           <span style="font-size: 2rem;"><%= project.emoji %></span>

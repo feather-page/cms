@@ -2,9 +2,16 @@
   <article class="post-card">
     <% if post.title.present? %>
       <div class="post-card-title"><%= post.emoji %> <%= post.title %></div>
-      <% if post.content.present? %>
-        <div class="my-2 text-muted"><%= post.content_excerpt %></div>
-      <% end %>
+      <div class="d-flex align-items-start gap-2">
+        <% if post.thumbnail_image&.file&.attached? %>
+          <div class="flex-shrink-0">
+            <%= image_tag post.thumbnail_image.file.variant(:mobile_x1_webp), style: 'width: 120px; height: auto; border-radius: 6px;' %>
+          </div>
+        <% end %>
+        <% if post.content.present? %>
+          <div class="flex-grow-1 text-muted"><%= post.content_excerpt %></div>
+        <% end %>
+      </div>
     <% else %>
       <div class="content"><%= post.content_html %></div>
     <% end %>
@@ -25,7 +32,7 @@
       </div>
     <% end %>
     <div class="post-card-meta">
-      <span class="badge bg-secondary"><%= l(post.created_at, format: :long) %></span>
+      <span class="badge bg-secondary"><%= l(post.publish_at, format: :long) %></span>
       <% post.tag_list.each do |tag| %>
         <span class="badge bg-light text-dark"><%= tag %></span>
       <% end %>

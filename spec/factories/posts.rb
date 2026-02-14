@@ -8,5 +8,12 @@ FactoryBot.define do
     trait :tagged do
       tags { "ruby, rails, web" }
     end
+
+    trait :with_thumbnail_image do
+      after(:create) do |post|
+        image = create(:image, imageable: post, site: post.site)
+        post.update!(thumbnail_image: image)
+      end
+    end
   end
 end

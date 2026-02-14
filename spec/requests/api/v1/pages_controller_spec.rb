@@ -53,6 +53,20 @@ RSpec.describe "Api::V1::Pages" do
       expect(json_response.dig("data", "tags")).to eq(%w[travel photos])
     end
 
+    it "returns thumbnail_image_id when set" do
+      page_with_thumb = create(:page, :with_thumbnail_image, site: site)
+
+      get "/api/v1/sites/#{site.public_id}/pages/#{page_with_thumb.public_id}", headers: headers
+
+      expect(json_response.dig("data", "thumbnail_image_id")).to eq(page_with_thumb.thumbnail_image.public_id)
+    end
+
+    it "returns null thumbnail_image_id when not set" do
+      get "/api/v1/sites/#{site.public_id}/pages/#{page_record.public_id}", headers: headers
+
+      expect(json_response.dig("data", "thumbnail_image_id")).to be_nil
+    end
+
     it "returns 404 for unknown page" do
       get "/api/v1/sites/#{site.public_id}/pages/nonexistent", headers: headers
 

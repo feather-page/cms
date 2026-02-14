@@ -46,6 +46,13 @@ FactoryBot.define do
       project_type { :freelance }
     end
 
+    trait :with_thumbnail_image do
+      after(:create) do |project|
+        image = create(:image, imageable: project, site: project.site)
+        project.update!(thumbnail_image: image)
+      end
+    end
+
     trait :with_header_image do
       after(:create) do |project|
         create(:image, imageable: project, site: project.site)

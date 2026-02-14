@@ -1,4 +1,9 @@
 <tr id="<%= dom_id(page) %>" is="turbo-frame">
+  <td>
+    <% if page.thumbnail_image&.file&.attached? %>
+      <%= image_tag page.thumbnail_image.file.variant(:mobile_x1_webp), style: 'width: 40px; height: 40px; object-fit: cover; border-radius: 4px;' %>
+    <% end %>
+  </td>
   <td><%= page.title %></td>
   <td><%= page.slug %></td>
   <td>

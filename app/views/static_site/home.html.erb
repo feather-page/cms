@@ -44,16 +44,25 @@
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
       <% else %>
         <%# Long post with title %>
-        <% if post.emoji.present? %><%= post.emoji %><% end %>
-        <a class="post-title" href="<%= static_site_post_url(post) %>"><%= post.title %></a>
-        <% if post.book&.rating.present? %>
-          <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
-            <%= static_site_rating_stars(post.book.rating) %>
-          </span>
-        <% end %>
-        <% if post.content.present? %>
-          <div class="post-excerpt"><%= post.content_excerpt %></div>
-        <% end %>
+        <div>
+          <% if post.emoji.present? %><%= post.emoji %><% end %>
+          <a class="post-title" href="<%= static_site_post_url(post) %>"><%= post.title %></a>
+          <% if post.book&.rating.present? %>
+            <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
+              <%= static_site_rating_stars(post.book.rating) %>
+            </span>
+          <% end %>
+        </div>
+        <div class="post-long-body">
+          <% if post.thumbnail_image&.file&.attached? %>
+            <div class="post-thumbnail">
+              <img src="<%= static_site_image_url(post.thumbnail_image, :mobile_x1) %>" alt="">
+            </div>
+          <% end %>
+          <% if post.content.present? %>
+            <div class="post-excerpt"><%= post.content_excerpt %></div>
+          <% end %>
+        </div>
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
         <% if post.tag_list.any? %>
           <div class="post-tags">

@@ -67,6 +67,20 @@ RSpec.describe "Api::V1::Posts" do
       expect(json_response.dig("data", "tags")).to eq([])
     end
 
+    it "returns thumbnail_image_id when set" do
+      post_with_thumb = create(:post, :with_thumbnail_image, site: site)
+
+      get "/api/v1/sites/#{site.public_id}/posts/#{post_with_thumb.public_id}", headers: headers
+
+      expect(json_response.dig("data", "thumbnail_image_id")).to eq(post_with_thumb.thumbnail_image.public_id)
+    end
+
+    it "returns null thumbnail_image_id when not set" do
+      get "/api/v1/sites/#{site.public_id}/posts/#{post_record.public_id}", headers: headers
+
+      expect(json_response.dig("data", "thumbnail_image_id")).to be_nil
+    end
+
     it "returns 404 for unknown post" do
       get "/api/v1/sites/#{site.public_id}/posts/nonexistent", headers: headers
 

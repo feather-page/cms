@@ -1,6 +1,8 @@
 <div class="project-item">
   <div class="project-header">
-    <% if project.emoji.present? %>
+    <% if thumbnail_image_path %>
+      <img src="<%= thumbnail_image_path %>" alt="" class="project-thumbnail">
+    <% elsif project.emoji.present? %>
       <span class="project-emoji"><%= project.emoji %></span>
     <% end %>
     <a href="<%= project_url %>" class="project-title"><%= project.title %></a>

@@ -2,7 +2,7 @@ class ProjectsController < ApplicationController
   before_action :set_project, only: %i[edit update destroy]
 
   def index
-    @projects = current_site.projects.ordered
+    @projects = current_site.projects.includes(thumbnail_image: { file_attachment: :blob }).ordered
   end
 
   def new
@@ -56,7 +56,7 @@ class ProjectsController < ApplicationController
       project: [
         :title, :slug, :company, :period, :started_at, :ended_at, :status,
         :role, :short_description, :project_type, :emoji, :header_image_id,
-        :content, :tags, { links: [%i[label url]] }
+        :thumbnail_image_id, :content, :tags, { links: [%i[label url]] }
       ]
     )
   end

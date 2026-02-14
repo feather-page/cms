@@ -84,16 +84,24 @@ module JekyllImporter
     end
 
     WP_CONTENT_PATTERN = %r{https?://[^"'\s<>]+/wp-content/uploads/(?:sites/\d+/)?(\d{4}/\d{2}/[^"'\s<>]+\.(?:jpe?g|png|gif|webp))}i
+    CDN_PATH_PATTERN = %r{(\d{4}/\d{2}/[^"'\s<>?#]+\.(?:jpe?g|png|gif|webp))}i
 
     def resolve_thumbnail(front_matter)
-      url = front_matter.dig("thumbnail")&.first
+      url = front_matter.dig("thumbnail")&.first || front_matter["image"]
       return nil unless url
 
       src = url.gsub(WP_CONTENT_PATTERN, '/assets/\1')
+      unless src.start_with?("/assets/")
+        path_match = url.match(CDN_PATH_PATTERN)
+        src = "/assets/#{path_match[1]}" if path_match
+      end
       return nil unless src.start_with?("/assets/")
 
       result = @image_resolver.resolve_and_upload(src)
-      result[:image_id]
+      public_id = result[:image_id]
+      return nil unless public_id
+
+      Image.find_by(public_id: public_id)&.id
     end
 
     def upload_image(file_path)

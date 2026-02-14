@@ -4,16 +4,27 @@
      data-header-image-picker-create-url-value="<%= create_url %>"
      data-header-image-picker-upload-url-value="<%= upload_url %>">
 
-  <%= form.hidden_field attribute %>
+  <%= form.hidden_field attribute, data: { header_image_picker_target: "coverInput" } %>
+  <%= form.hidden_field thumbnail_attribute, data: { header_image_picker_target: "thumbnailInput" } %>
   <%= form.hidden_field emoji_attribute, data: { header_image_picker_target: "emojiInput" } %>
 
-  <!-- Notion-style Preview -->
-  <div data-header-image-picker-target="preview" class="header-preview mb-3" style="<%= 'display: none;' unless current_image || current_emoji.present? %>">
+  <!-- Preview Area -->
+  <div data-header-image-picker-target="preview" class="header-preview mb-3" style="<%= 'display: none;' unless current_image || current_thumbnail || current_emoji.present? %>">
+    <!-- Thumbnail Preview -->
+    <div class="thumbnail-preview" data-header-image-picker-target="thumbnailContainer" style="<%= 'display: none;' unless current_thumbnail %>">
+      <% if current_thumbnail %>
+        <%= image_tag current_thumbnail.file %>
+      <% end %>
+    </div>
+
+    <!-- Cover Preview -->
     <div class="header-preview-image" data-header-image-picker-target="imageContainer" style="<%= 'display: none;' unless current_image %>">
       <% if current_image %>
         <%= image_tag current_image.file %>
       <% end %>
     </div>
+
+    <!-- Emoji Preview -->
     <% if current_emoji.present? %>
       <button type="button"
               class="header-preview-emoji"
@@ -27,17 +38,57 @@
 
   <!-- Action Buttons -->
   <div class="d-flex gap-2 flex-wrap mb-3 position-relative">
+    <!-- Icon Button (standalone) -->
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm"
+            data-action="header-image-picker#openEmojiPicker"
+            data-header-image-picker-target="addIconButton">
+      😀 Add icon
+    </button>
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            data-action="header-image-picker#removeEmoji"
+            data-header-image-picker-target="removeEmojiButton"
+            style="<%= 'display: none;' unless current_emoji.present? %>">
+      Remove icon
+    </button>
+
+    <!-- Thumbnail Button Group -->
     <div class="btn-group" role="group">
       <button type="button"
               class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openEmojiPicker"
-              data-header-image-picker-target="addIconButton">
-        😀 Add icon
+              data-action="header-image-picker#openUnsplashForThumbnail">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-image me-1" viewBox="0 0 16 16">
+          <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
+          <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z"/>
+        </svg>
+        Thumbnail
       </button>
 
       <button type="button"
               class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUnsplashModal">
+              data-action="header-image-picker#openUploadForThumbnail">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
+          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
+          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
+        </svg>
+        Upload
+      </button>
+    </div>
+
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            data-action="header-image-picker#removeThumbnail"
+            data-header-image-picker-target="removeThumbnailButton"
+            style="<%= 'display: none;' unless current_thumbnail %>">
+      Remove thumbnail
+    </button>
+
+    <!-- Cover Button Group -->
+    <div class="btn-group" role="group">
+      <button type="button"
+              class="btn btn-outline-secondary btn-sm"
+              data-action="header-image-picker#openUnsplashForCover">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-image me-1" viewBox="0 0 16 16">
           <path d="M6.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0"/>
           <path d="M2.002 1a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V3a2 2 0 0 0-2-2zm12 1a1 1 0 0 1 1 1v6.5l-3.777-1.947a.5.5 0 0 0-.577.093l-3.71 3.71-2.66-1.772a.5.5 0 0 0-.63.062L1.002 12V3a1 1 0 0 1 1-1z"/>
@@ -47,30 +98,22 @@
 
       <button type="button"
               class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUploadModal">
+              data-action="header-image-picker#openUploadForCover">
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-upload me-1" viewBox="0 0 16 16">
           <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5"/>
           <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708z"/>
         </svg>
         Upload
       </button>
-
-      <button type="button"
-              class="btn btn-outline-danger btn-sm"
-              data-action="header-image-picker#removeEmoji"
-              data-header-image-picker-target="removeEmojiButton"
-              style="<%= 'display: none;' unless current_emoji.present? %>">
-        Remove icon
-      </button>
-
-      <button type="button"
-              class="btn btn-outline-danger btn-sm"
-              data-action="header-image-picker#remove"
-              data-header-image-picker-target="removeButton"
-              style="<%= 'display: none;' unless current_image %>">
-        Remove cover
-      </button>
     </div>
+
+    <button type="button"
+            class="btn btn-outline-danger btn-sm"
+            data-action="header-image-picker#remove"
+            data-header-image-picker-target="removeButton"
+            style="<%= 'display: none;' unless current_image %>">
+      Remove cover
+    </button>
 
     <!-- Emoji Picker Popover -->
     <div data-header-image-picker-target="emojiPicker" class="emoji-picker" style="display: none;">
@@ -177,6 +220,20 @@
   }
 
   .header-preview-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .thumbnail-preview {
+    width: 80px;
+    height: 80px;
+    overflow: hidden;
+    border-radius: 6px;
+    margin-bottom: 8px;
+  }
+
+  .thumbnail-preview img {
     width: 100%;
     height: 100%;
     object-fit: cover;

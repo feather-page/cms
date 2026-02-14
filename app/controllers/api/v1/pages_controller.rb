@@ -49,7 +49,7 @@ module Api
 
       def page_params
         page = params.require(:page)
-        page.permit(:title, :slug, :emoji, :page_type, :header_image_id, :tags)
+        page.permit(:title, :slug, :emoji, :page_type, :header_image_id, :thumbnail_image_id, :tags)
       end
     end
   end

@@ -136,8 +136,21 @@ components:
         items:
           type: array
           items:
-            type: string
-          description: List items as HTML strings.
+            $ref: "#/components/schemas/ListItem"
+          description: List items in EditorJS NestedList format.
+
+    ListItem:
+      type: object
+      required: [content, items]
+      properties:
+        content:
+          type: string
+          description: "HTML content of the list item."
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ListItem"
+          description: Nested sub-items.
 
     TableBlock:
       type: object
@@ -159,6 +172,36 @@ components:
         with_headings:
           type: boolean
           default: false
+
+    EmbedBlock:
+      type: object
+      required: [type, service, source, embed]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: embed
+        service:
+          type: string
+          description: "Embed service name (e.g. youtube, vimeo)."
+        source:
+          type: string
+          description: "Original URL of the embedded content."
+        embed:
+          type: string
+          description: "Embed URL for the iframe."
+        width:
+          type: ["integer", "null"]
+          description: "Embed width in pixels. Optional — theme decides if omitted."
+        height:
+          type: ["integer", "null"]
+          description: "Embed height in pixels. Optional — theme decides if omitted."
+        caption:
+          type: string
+          default: ""
+          description: "Optional caption."
 
     BookBlock:
       type: object
@@ -191,6 +234,7 @@ components:
         - $ref: "#/components/schemas/QuoteBlock"
         - $ref: "#/components/schemas/ListBlock"
         - $ref: "#/components/schemas/TableBlock"
+        - $ref: "#/components/schemas/EmbedBlock"
         - $ref: "#/components/schemas/BookBlock"
       discriminator:
         propertyName: type
@@ -202,6 +246,7 @@ components:
           quote: "#/components/schemas/QuoteBlock"
           list: "#/components/schemas/ListBlock"
           table: "#/components/schemas/TableBlock"
+          embed: "#/components/schemas/EmbedBlock"
           book: "#/components/schemas/BookBlock"
 
     ContentBlocks:
@@ -233,6 +278,9 @@ components:
         header_image_id:
           type: ["string", "null"]
           description: Public ID of an uploaded image to use as header.
+        thumbnail_image_id:
+          type: ["string", "null"]
+          description: Public ID of an uploaded image to use as thumbnail.
         tags:
           type: ["string", "null"]
           description: Comma-separated tags, e.g. "ruby, rails, web".
@@ -264,6 +312,8 @@ components:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:
           type: ["string", "null"]
+        thumbnail_image_id:
+          type: ["string", "null"]
         created_at:
           type: string
           format: date-time
@@ -290,6 +340,9 @@ components:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:
           type: ["string", "null"]
+        thumbnail_image_id:
+          type: ["string", "null"]
+          description: Public ID of an uploaded image to use as thumbnail.
         tags:
           type: ["string", "null"]
           description: Comma-separated tags, e.g. "travel, photos".
@@ -317,6 +370,8 @@ components:
         content:
           $ref: "#/components/schemas/ContentBlocks"
         header_image_id:
+          type: ["string", "null"]
+        thumbnail_image_id:
           type: ["string", "null"]
         created_at:
           type: string

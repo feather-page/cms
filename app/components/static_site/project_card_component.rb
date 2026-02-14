@@ -22,6 +22,12 @@ module StaticSite
       "/images/#{project.header_image.public_id}/mobile_x1.webp"
     end
 
+    def thumbnail_image_path
+      return nil unless project.thumbnail_image&.file&.attached?
+
+      "/images/#{project.thumbnail_image.public_id}/mobile_x1.webp"
+    end
+
     def project_url
       slug = project.slug.sub(%r{^/}, "")
       "#{base_url}projects/#{slug}/"

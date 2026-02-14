@@ -6,7 +6,8 @@ export default class extends Controller {
     'preview', 'searchInput', 'results', 'loading',
     'unsplashModal', 'uploadModal', 'fileInput', 'removeButton',
     'emojiInput', 'emojiDisplay', 'imageContainer', 'emojiPicker',
-    'removeEmojiButton', 'addIconButton'
+    'removeEmojiButton', 'addIconButton',
+    'coverInput', 'thumbnailInput', 'thumbnailContainer', 'removeThumbnailButton'
   ]
 
   static values = {
@@ -19,15 +20,37 @@ export default class extends Controller {
     this.searchTimeout = null
     this.apiClient = new ApiClient()
     this.handleClickOutside = this.handleClickOutside.bind(this)
+    this.currentMode = 'cover'
   }
 
   disconnect () {
     document.removeEventListener('click', this.handleClickOutside)
   }
 
-  openUnsplashModal (event) {
+  // --- Mode-based openers ---
+
+  openUnsplashForCover (event) {
     event.preventDefault()
+    this.currentMode = 'cover'
     this.unsplashModalTarget.showModal()
+  }
+
+  openUnsplashForThumbnail (event) {
+    event.preventDefault()
+    this.currentMode = 'thumbnail'
+    this.unsplashModalTarget.showModal()
+  }
+
+  openUploadForCover (event) {
+    event.preventDefault()
+    this.currentMode = 'cover'
+    this.uploadModalTarget.showModal()
+  }
+
+  openUploadForThumbnail (event) {
+    event.preventDefault()
+    this.currentMode = 'thumbnail'
+    this.uploadModalTarget.showModal()
   }
 
   closeUnsplashModal (event) {
@@ -35,15 +58,12 @@ export default class extends Controller {
     this.unsplashModalTarget.close()
   }
 
-  openUploadModal (event) {
-    event.preventDefault()
-    this.uploadModalTarget.showModal()
-  }
-
   closeUploadModal (event) {
     event.preventDefault()
     this.uploadModalTarget.close()
   }
+
+  // --- Emoji ---
 
   openEmojiPicker (event) {
     event.preventDefault()
@@ -112,10 +132,15 @@ export default class extends Controller {
     const hasImage = this.hasImageContainerTarget &&
       this.imageContainerTarget.style.display !== 'none' &&
       this.imageContainerTarget.innerHTML.trim() !== ''
+    const hasThumbnail = this.hasThumbnailContainerTarget &&
+      this.thumbnailContainerTarget.style.display !== 'none' &&
+      this.thumbnailContainerTarget.innerHTML.trim() !== ''
     const hasEmoji = this.hasEmojiInputTarget && this.emojiInputTarget.value
 
-    this.previewTarget.style.display = (hasImage || hasEmoji) ? '' : 'none'
+    this.previewTarget.style.display = (hasImage || hasThumbnail || hasEmoji) ? '' : 'none'
   }
+
+  // --- Search ---
 
   search () {
     clearTimeout(this.searchTimeout)
@@ -179,6 +204,8 @@ export default class extends Controller {
     `
   }
 
+  // --- Select & Upload ---
+
   async selectUnsplash (event) {
     const card = event.currentTarget.closest('[data-unsplash-id]')
     const unsplashId = card.dataset.unsplashId
@@ -237,11 +264,15 @@ export default class extends Controller {
     }
   }
 
+  // --- Remove ---
+
   remove (event) {
     event.preventDefault()
 
     if (window.confirm('Are you sure you want to remove the cover image?')) {
-      this.updateHiddenField('')
+      if (this.hasCoverInputTarget) {
+        this.coverInputTarget.value = ''
+      }
       if (this.hasImageContainerTarget) {
         this.imageContainerTarget.innerHTML = ''
         this.imageContainerTarget.style.display = 'none'
@@ -251,24 +282,62 @@ export default class extends Controller {
     }
   }
 
+  removeThumbnail (event) {
+    event.preventDefault()
+
+    if (window.confirm('Are you sure you want to remove the thumbnail?')) {
+      if (this.hasThumbnailInputTarget) {
+        this.thumbnailInputTarget.value = ''
+      }
+      if (this.hasThumbnailContainerTarget) {
+        this.thumbnailContainerTarget.innerHTML = ''
+        this.thumbnailContainerTarget.style.display = 'none'
+      }
+      if (this.hasRemoveThumbnailButtonTarget) {
+        this.removeThumbnailButtonTarget.style.display = 'none'
+      }
+      this.updatePreviewVisibility()
+    }
+  }
+
+  // --- Mode-aware helpers ---
+
   updatePreview (url) {
-    if (this.hasImageContainerTarget) {
-      this.imageContainerTarget.innerHTML = `<img src="${url}">`
-      this.imageContainerTarget.style.display = ''
+    if (this.currentMode === 'thumbnail') {
+      if (this.hasThumbnailContainerTarget) {
+        this.thumbnailContainerTarget.innerHTML = `<img src="${url}">`
+        this.thumbnailContainerTarget.style.display = ''
+      }
+    } else {
+      if (this.hasImageContainerTarget) {
+        this.imageContainerTarget.innerHTML = `<img src="${url}">`
+        this.imageContainerTarget.style.display = ''
+      }
     }
     this.updatePreviewVisibility()
   }
 
   updateHiddenField (value) {
-    const input = this.element.querySelector('input[type="hidden"]')
-    if (input) {
-      input.value = value
+    if (this.currentMode === 'thumbnail') {
+      if (this.hasThumbnailInputTarget) {
+        this.thumbnailInputTarget.value = value
+      }
+    } else {
+      if (this.hasCoverInputTarget) {
+        this.coverInputTarget.value = value
+      }
     }
   }
 
   showRemoveButton () {
-    if (this.hasRemoveButtonTarget) {
-      this.removeButtonTarget.style.display = ''
+    if (this.currentMode === 'thumbnail') {
+      if (this.hasRemoveThumbnailButtonTarget) {
+        this.removeThumbnailButtonTarget.style.display = ''
+      }
+    } else {
+      if (this.hasRemoveButtonTarget) {
+        this.removeButtonTarget.style.display = ''
+      }
     }
   }
 
