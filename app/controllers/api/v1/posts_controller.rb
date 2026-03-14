@@ -37,8 +37,11 @@ module Api
       end
 
       def destroy
-        @post.destroy!
-        render json: { message: "Post deleted" }
+        if @post.destroy
+          render json: { message: "Post deleted" }
+        else
+          render json: { error: @post.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
       end
 
       private

@@ -3,8 +3,6 @@ class Post < ApplicationRecord
   include Taggable
 
   belongs_to :site
-  belongs_to :header_image, class_name: "Image", optional: true
-  belongs_to :thumbnail_image, class_name: "Image", optional: true
   has_one :book, dependent: :nullify
 
   before_validation :normalize_slug

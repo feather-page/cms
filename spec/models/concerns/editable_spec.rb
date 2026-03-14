@@ -22,4 +22,20 @@ describe Editable do
       expect(imageable.images.to_a).to eq([image])
     end
   end
+
+  describe 'destroy with image references' do
+    it 'destroys a post that has a thumbnail image' do
+      post = create(:post, :with_thumbnail_image)
+
+      expect { post.destroy! }.to change(Post, :count).by(-1)
+    end
+
+    it 'destroys a post that has a header image' do
+      post = create(:post)
+      image = create(:image, imageable: post, site: post.site)
+      post.update!(header_image: image)
+
+      expect { post.destroy! }.to change(Post, :count).by(-1)
+    end
+  end
 end

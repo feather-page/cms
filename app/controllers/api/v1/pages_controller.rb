@@ -37,8 +37,11 @@ module Api
       end
 
       def destroy
-        @page.destroy!
-        render json: { message: "Page deleted" }
+        if @page.destroy
+          render json: { message: "Page deleted" }
+        else
+          render json: { error: @page.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
       end
 
       private

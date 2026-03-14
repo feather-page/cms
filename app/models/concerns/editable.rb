@@ -2,6 +2,11 @@ module Editable
   extend ActiveSupport::Concern
 
   included do
+    belongs_to :header_image, class_name: "Image", optional: true
+    belongs_to :thumbnail_image, class_name: "Image", optional: true
+
+    before_destroy :nullify_image_references
+
     has_many :images, as: :imageable, dependent: :destroy
     after_save :assign_images
 
@@ -35,6 +40,10 @@ module Editable
 
   def parse_content
     self.content = Blocks.from_editor_js(JSON.parse(content)) if content.is_a?(String)
+  end
+
+  def nullify_image_references
+    update_columns(header_image_id: nil, thumbnail_image_id: nil)
   end
 
   def assign_images

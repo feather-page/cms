@@ -5,10 +5,14 @@ module JekyllImporter
   class ApiClient
     class ApiError < StandardError; end
 
+    # 300 requests per 5 minutes = 1 req/s, use 1.1s to stay safely under the limit
+    REQUEST_INTERVAL = 1.1
+
     def initialize(base_url:, token:, site_id:)
       @base_url = base_url.chomp("/")
       @token = token
       @site_id = site_id
+      @last_request_at = nil
     end
 
     def upload_image(file_path)
@@ -34,6 +38,22 @@ module JekyllImporter
       json_request(:post, pages_uri, { page: params })
     end
 
+    def list_posts(page: 1)
+      get_request(URI("#{posts_uri}?api_page=#{page}"))
+    end
+
+    def list_pages(page: 1)
+      get_request(URI("#{pages_uri}?api_page=#{page}"))
+    end
+
+    def delete_post(public_id)
+      delete_request(URI("#{posts_uri}/#{public_id}"))
+    end
+
+    def delete_page(public_id)
+      delete_request(URI("#{pages_uri}/#{public_id}"))
+    end
+
     private
 
     def images_uri = URI("#{@base_url}/api/v1/sites/#{@site_id}/images")
@@ -54,6 +74,18 @@ module JekyllImporter
       build_multipart_body(boundary, file_data, filename, mime_type_for(filename))
     end
 
+    def get_request(uri)
+      request = Net::HTTP::Get.new(uri)
+      request["Authorization"] = "Bearer #{@token}"
+      parse_response(execute(uri, request))
+    end
+
+    def delete_request(uri)
+      request = Net::HTTP::Delete.new(uri)
+      request["Authorization"] = "Bearer #{@token}"
+      parse_response(execute(uri, request))
+    end
+
     def json_request(method, uri, body)
       request = method == :post ? Net::HTTP::Post.new(uri) : Net::HTTP::Patch.new(uri)
       request["Authorization"] = "Bearer #{@token}"
@@ -63,11 +95,20 @@ module JekyllImporter
     end
 
     def execute(uri, request)
+      throttle
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == "https"
       http.open_timeout = 30
       http.read_timeout = 120
       http.request(request)
+    end
+
+    def throttle
+      if @last_request_at
+        elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - @last_request_at
+        sleep(REQUEST_INTERVAL - elapsed) if elapsed < REQUEST_INTERVAL
+      end
+      @last_request_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     def parse_response(response)
