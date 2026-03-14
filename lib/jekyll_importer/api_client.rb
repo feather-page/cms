@@ -19,6 +19,13 @@ module JekyllImporter
       parse_response(execute(uri, request)).dig("data", "id")
     end
 
+    def find_image(public_id)
+      uri = URI("#{images_uri}/#{public_id}")
+      request = Net::HTTP::Get.new(uri)
+      request["Authorization"] = "Bearer #{@token}"
+      parse_response(execute(uri, request))
+    end
+
     def create_post(params)
       json_request(:post, posts_uri, { post: params })
     end

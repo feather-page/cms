@@ -4,7 +4,7 @@ module Api
       before_action :set_page, only: %i[show update destroy]
 
       def index
-        @pages = current_site.pages
+        @pagy, @pages = pagy(current_site.pages, **API_PAGY_DEFAULTS)
       end
 
       def show; end
@@ -13,7 +13,7 @@ module Api
         content = validate_and_normalize_content!(extract_content(:page))
         return unless content
 
-        @page = current_site.pages.new(page_params)
+        @page = current_site.pages.new(resolve_image_ids!(page_params))
         @page.content = content
 
         if @page.save
@@ -31,7 +31,7 @@ module Api
 
           @page.content = validated
         end
-        return render_validation_errors(@page) unless @page.update(page_params)
+        return render_validation_errors(@page) unless @page.update(resolve_image_ids!(page_params))
 
         render :show
       end

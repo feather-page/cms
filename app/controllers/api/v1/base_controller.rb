@@ -3,6 +3,9 @@ module Api
     class BaseController < ActionController::API
       include ActionView::Layouts
       include Pundit::Authorization
+      include Pagy::Method
+
+      API_PAGY_DEFAULTS = { page_key: :p }.freeze
 
       before_action :force_json_format
       before_action :authenticate_api_token!
@@ -54,6 +57,16 @@ module Api
       def render_content_errors(errors)
         render json: { error: "Content validation failed", details: { content: errors } },
                status: :unprocessable_content
+      end
+
+      def resolve_image_ids!(permitted_params)
+        %i[header_image_id thumbnail_image_id].each do |key|
+          next if permitted_params[key].blank?
+
+          image = current_site.images.find_by(public_id: permitted_params[key])
+          permitted_params[key] = image&.id
+        end
+        permitted_params
       end
 
       def extract_content(resource_key)

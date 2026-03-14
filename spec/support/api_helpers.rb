@@ -24,12 +24,17 @@ module ApiHelpers
     openapi_spec.dig(*path)
   end
 
-  def resolve_schema(schema)
-    return resolve_ref(schema["$ref"]).then { |s| resolve_schema(s) } if schema["$ref"]
-    return resolve_one_of(schema) if schema["oneOf"]
-    return resolve_items(schema) if schema["items"]
-    return resolve_properties(schema) if schema["properties"]
-    return resolve_additional(schema) if schema["additionalProperties"].is_a?(Hash)
+  def resolve_schema(schema, visited = Set.new)
+    if schema["$ref"]
+      return schema if visited.include?(schema["$ref"])
+
+      visited = visited | [schema["$ref"]]
+      return resolve_ref(schema["$ref"]).then { |s| resolve_schema(s, visited) }
+    end
+    return resolve_one_of(schema, visited) if schema["oneOf"]
+    return resolve_items(schema, visited) if schema["items"]
+    return resolve_properties(schema, visited) if schema["properties"]
+    return resolve_additional(schema, visited) if schema["additionalProperties"].is_a?(Hash)
 
     schema
   end
@@ -64,19 +69,19 @@ module ApiHelpers
 
   private
 
-  def resolve_one_of(schema)
-    schema.merge("oneOf" => schema["oneOf"].map { |s| resolve_schema(s) })
+  def resolve_one_of(schema, visited)
+    schema.merge("oneOf" => schema["oneOf"].map { |s| resolve_schema(s, visited) })
   end
 
-  def resolve_items(schema)
-    schema.merge("items" => resolve_schema(schema["items"]))
+  def resolve_items(schema, visited)
+    schema.merge("items" => resolve_schema(schema["items"], visited))
   end
 
-  def resolve_properties(schema)
-    schema.merge("properties" => schema["properties"].transform_values { |v| resolve_schema(v) })
+  def resolve_properties(schema, visited)
+    schema.merge("properties" => schema["properties"].transform_values { |v| resolve_schema(v, visited) })
   end
 
-  def resolve_additional(schema)
-    schema.merge("additionalProperties" => resolve_schema(schema["additionalProperties"]))
+  def resolve_additional(schema, visited)
+    schema.merge("additionalProperties" => resolve_schema(schema["additionalProperties"], visited))
   end
 end

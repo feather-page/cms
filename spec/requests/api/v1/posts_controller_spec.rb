@@ -132,6 +132,28 @@ RSpec.describe "Api::V1::Posts" do
       expect(json_response.dig("data", "tags")).to eq(%w[ruby rails])
     end
 
+    it "creates a post with thumbnail_image_id" do
+      image = create(:image, site: site)
+
+      post "/api/v1/sites/#{site.public_id}/posts",
+           params: { post: { title: "With Thumb", thumbnail_image_id: image.public_id } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "thumbnail_image_id")).to eq(image.public_id)
+    end
+
+    it "creates a post with header_image_id" do
+      image = create(:image, site: site)
+
+      post "/api/v1/sites/#{site.public_id}/posts",
+           params: { post: { title: "With Header", header_image_id: image.public_id } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "header_image_id")).to eq(image.public_id)
+    end
+
     it "creates a post as draft" do
       post "/api/v1/sites/#{site.public_id}/posts",
            params: { post: { title: "Draft", draft: true } }.to_json,
@@ -183,6 +205,17 @@ RSpec.describe "Api::V1::Posts" do
       expect(response).to have_http_status(:ok)
       expect(json_response.dig("data", "title")).to eq("Updated")
       validate_response_schema!("/sites/{site_id}/posts/{id}", "patch", 200)
+    end
+
+    it "updates thumbnail_image_id" do
+      image = create(:image, site: site)
+
+      patch "/api/v1/sites/#{site.public_id}/posts/#{post_record.public_id}",
+            params: { post: { thumbnail_image_id: image.public_id } }.to_json,
+            headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(json_response.dig("data", "thumbnail_image_id")).to eq(image.public_id)
     end
 
     it "updates tags" do

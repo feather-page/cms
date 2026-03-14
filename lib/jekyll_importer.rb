@@ -101,7 +101,7 @@ module JekyllImporter
       public_id = result[:image_id]
       return nil unless public_id
 
-      Image.find_by(public_id: public_id)&.id
+      public_id
     end
 
     def upload_image(file_path)

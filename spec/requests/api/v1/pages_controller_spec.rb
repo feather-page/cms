@@ -107,6 +107,28 @@ RSpec.describe "Api::V1::Pages" do
       expect(json_response.dig("data", "tags")).to eq(%w[travel photos])
     end
 
+    it "creates a page with thumbnail_image_id" do
+      image = create(:image, site: site)
+
+      post "/api/v1/sites/#{site.public_id}/pages",
+           params: { page: { title: "With Thumb", slug: "thumb", thumbnail_image_id: image.public_id } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "thumbnail_image_id")).to eq(image.public_id)
+    end
+
+    it "creates a page with header_image_id" do
+      image = create(:image, site: site)
+
+      post "/api/v1/sites/#{site.public_id}/pages",
+           params: { page: { title: "With Header", slug: "header", header_image_id: image.public_id } }.to_json,
+           headers: headers
+
+      expect(response).to have_http_status(:created)
+      expect(json_response.dig("data", "header_image_id")).to eq(image.public_id)
+    end
+
     it "creates a homepage with slug /" do
       post "/api/v1/sites/#{site.public_id}/pages",
            params: { page: { title: "Home", slug: "/" } }.to_json,

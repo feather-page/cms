@@ -64,3 +64,5 @@ group :test do
 end
 
 gem "bootstrap", "~> 5.3"
+
+gem "rack-attack", "~> 6.8"

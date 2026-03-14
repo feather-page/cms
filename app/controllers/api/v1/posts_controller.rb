@@ -4,7 +4,7 @@ module Api
       before_action :set_post, only: %i[show update destroy]
 
       def index
-        @posts = current_site.posts.latest
+        @pagy, @posts = pagy(current_site.posts.latest, **API_PAGY_DEFAULTS)
       end
 
       def show; end
@@ -13,7 +13,7 @@ module Api
         content = validate_and_normalize_content!(extract_content(:post))
         return unless content
 
-        @post = current_site.posts.new(post_params)
+        @post = current_site.posts.new(resolve_image_ids!(post_params))
         @post.content = content
 
         if @post.save
@@ -31,7 +31,7 @@ module Api
 
           @post.content = validated
         end
-        return render_validation_errors(@post) unless @post.update(post_params)
+        return render_validation_errors(@post) unless @post.update(resolve_image_ids!(post_params))
 
         render :show
       end
