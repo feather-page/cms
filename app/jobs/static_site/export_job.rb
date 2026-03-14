@@ -3,6 +3,7 @@ module StaticSite
     include OutputPaths
 
     THREAD_COUNT = 4
+    POSTS_PER_PAGE = 25
 
     queue_as :default
 
@@ -36,7 +37,15 @@ module StaticSite
     end
 
     def export_home
-      write_file("index.html", renderer.render_home(site: site))
+      posts = site.posts.published.order(publish_at: :desc).to_a
+      total_pages = [(posts.length / POSTS_PER_PAGE.to_f).ceil, 1].max
+
+      (1..total_pages).each do |page_number|
+        page_posts = posts.slice((page_number - 1) * POSTS_PER_PAGE, POSTS_PER_PAGE) || []
+        html = renderer.render_home(site: site, posts: page_posts, current_page: page_number, total_pages: total_pages)
+        path = page_number == 1 ? "index.html" : "page/#{page_number}/index.html"
+        write_file(path, html)
+      end
     end
 
     def export_posts

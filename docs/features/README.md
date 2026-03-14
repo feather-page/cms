@@ -17,6 +17,7 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 | Book Reviews | Buchrezensionen mit Sterne-Bewertung | `book_reviews.feature` |
 | Book Block | Bücher aus Katalog in Posts einbetten | `book_block.feature` |
 | Projects | Entwicklungsprojekte für Portfolio-Websites verwalten | `projects/feature.gherkin` |
+| Content API | REST API für Posts, Pages, Images (Import/Integration) | `content-api/feature.gherkin` |
 
 ---
 
@@ -32,6 +33,9 @@ Diese Datei bietet einen schnellen Überblick über alle Cucumber Features im Pr
 - [book_reviews.feature](book_reviews.feature) - Buchrezensionen
 - [book_block.feature](book_block.feature) - Bücher in Posts einbetten
 - [projects/feature.gherkin](projects/feature.gherkin) - Entwicklungsprojekte für Portfolio
+
+### API & Integration
+- [content-api/feature.gherkin](content-api/feature.gherkin) - REST API für Content-Import
 
 ### Site Administration
 - [site_management.feature](site_management.feature) - Website-Verwaltung

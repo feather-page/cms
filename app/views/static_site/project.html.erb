@@ -8,6 +8,9 @@
         <span class="project-company"><%= @project.company %></span>
       <% end %>
       <span class="project-period"><%= @project.display_period %></span>
+      <% @project.tag_list.each do |tag| %>
+        <span class="badge badge-outline"><%= tag %></span>
+      <% end %>
     </div>
     <% if @project.role.present? %>
       <div class="project-role"><%= @project.role %></div>

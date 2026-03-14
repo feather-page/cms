@@ -36,6 +36,11 @@ class PreviewsController < ApplicationController
     @page = site.pages.find_by(slug: "/")
     @rss_url = "/feed.xml"
 
+    all_posts = site.posts.published.order(publish_at: :desc)
+    @current_page = current_page_number
+    @total_pages = [(all_posts.count / StaticSite::ExportJob::POSTS_PER_PAGE.to_f).ceil, 1].max
+    @posts = all_posts.offset((@current_page - 1) * StaticSite::ExportJob::POSTS_PER_PAGE).limit(StaticSite::ExportJob::POSTS_PER_PAGE)
+
     render template: "static_site/home", layout: "static_site"
   end
 
@@ -67,6 +72,11 @@ class PreviewsController < ApplicationController
     @header_image = @page.header_image
 
     render template: "static_site/page", layout: "static_site"
+  end
+
+  def current_page_number
+    match = requested_path.match(%r{^page/(\d+)})
+    match ? match[1].to_i : 1
   end
 
   def assign_site_context(page_title:, page_emoji:, is_home: false)

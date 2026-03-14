@@ -1,5 +1,6 @@
 class Page < ApplicationRecord
   include Editable
+  include Taggable
 
   enum :page_type, { default: 0, books: 1, projects: 2 }, prefix: true
 
@@ -13,6 +14,7 @@ class Page < ApplicationRecord
 
   belongs_to :site
   belongs_to :header_image, class_name: "Image", optional: true
+  belongs_to :thumbnail_image, class_name: "Image", optional: true
 
   after_initialize do
     self[:add_to_navigation] = in_navigation? if persisted?

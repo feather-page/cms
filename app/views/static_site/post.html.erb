@@ -2,7 +2,7 @@
   <div class="book-card book-card--detail">
     <div class="book-card-header">
       <% if static_site_image_url(@post.book.cover_image, :mobile_x1) %>
-        <img src="<%= static_site_image_url(@post.book.cover_image, :mobile_x1) %>" alt="<%= @post.book.title %>" class="book-cover">
+        <img src="<%= static_site_image_url(@post.book.cover_image, :mobile_x1) %>" alt="<%= @post.book.title %>" class="book-cover" loading="lazy">
       <% elsif @post.book.emoji.present? %>
         <span class="book-emoji"><%= @post.book.emoji %></span>
       <% end %>
@@ -22,3 +22,11 @@
 <%= static_site_content_html(@post.static_site_html) %>
 
 <div class="post-date"><%= l(@post.publish_at.to_date, format: :long) %></div>
+
+<% if @post.tag_list.any? %>
+  <div class="post-tags">
+    <% @post.tag_list.each do |tag| %>
+      <span class="badge badge-outline"><%= tag %></span>
+    <% end %>
+  </div>
+<% end %>

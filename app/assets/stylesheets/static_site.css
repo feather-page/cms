@@ -138,6 +138,10 @@ hr {
   font-weight: 500;
 }
 
+.post-excerpt {
+  margin: 1rem 0;
+}
+
 .post-date {
   clear: both;
   color: grey;
@@ -374,6 +378,47 @@ a.book-title:hover {
   }
 }
 
+/* Post Thumbnail Styles */
+.post-long-body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.post-long-content {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-grow: 1;
+}
+
+.post-thumbnail {
+  flex-shrink: 0;
+}
+
+.post-thumbnail img {
+  width: 240px;
+  height: auto;
+  border-radius: 6px;
+}
+
+.project-thumbnail {
+  width: 28px;
+  height: 28px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+@media only screen and (max-width: 600px) {
+  .post-long-body {
+    flex-direction: column;
+  }
+
+  .post-thumbnail img {
+    width: 160px;
+    height: auto;
+  }
+}
+
 /* Projects List Styles */
 .projects-list {
   margin: 2rem 0;
@@ -464,6 +509,13 @@ a.book-title:hover {
 .badge-outline {
   background: transparent;
   border: 1px solid var(--decoration-color);
+}
+
+.post-tags, .page-tags, .project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .project-description {
@@ -587,4 +639,47 @@ a.book-title:hover {
   .project-title-wrapper .project-title {
     font-size: 1.5rem;
   }
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 2rem 0;
+  font-size: 0.95rem;
+}
+
+.pagination-link,
+.pagination-current {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+}
+
+.pagination-link {
+  text-decoration: none;
+}
+
+.pagination-link:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+@media (prefers-color-scheme: dark) {
+  .pagination-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+}
+
+.pagination-current {
+  font-weight: 700;
+}
+
+.pagination-gap {
+  color: grey;
 }

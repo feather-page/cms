@@ -1,9 +1,11 @@
 class Project < ApplicationRecord
   include PublicIdable
   include Editable
+  include Taggable
 
   belongs_to :site
   belongs_to :header_image, class_name: "Image", optional: true
+  belongs_to :thumbnail_image, class_name: "Image", optional: true
 
   enum :status, {
     ongoing: 0,

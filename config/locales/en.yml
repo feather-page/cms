@@ -13,6 +13,15 @@ en:
         copyright: Copyright notice
   activerecord:
     help:
+      post:
+        tags:
+          html: "Comma-separated, e.g. <b>ruby, rails, web</b>"
+      page:
+        tags:
+          html: "Comma-separated, e.g. <b>travel, photos</b>"
+      project:
+        tags:
+          html: "Comma-separated, e.g. <b>ruby, rails, web</b>"
       site:
         copyright:
           html: >
@@ -40,6 +49,10 @@ en:
           books: Books
           default: Default
           projects: Projects
+      post:
+        tags: Tags
+      page:
+        tags: Tags
       social_media_link:
         icon: Icon
         name: Name
@@ -55,6 +68,7 @@ en:
         isbn: ISBN
         rating: Rating
       project:
+        tags: Tags
         title: Title
         slug: Slug
         company: Company

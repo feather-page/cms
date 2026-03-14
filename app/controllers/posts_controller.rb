@@ -4,7 +4,7 @@ class PostsController < ApplicationController
   before_action :set_post, only: %i[edit update destroy]
 
   def index
-    @pagy, @posts = pagy(current_site.posts.latest)
+    @pagy, @posts = pagy(current_site.posts.includes(thumbnail_image: { file_attachment: :blob }).latest)
   end
 
   def new
@@ -41,6 +41,6 @@ class PostsController < ApplicationController
   end
 
   def post_params
-    params.expect(post: %i[title slug draft emoji content publish_at header_image_id])
+    params.expect(post: %i[title slug draft emoji content publish_at header_image_id thumbnail_image_id tags])
   end
 end

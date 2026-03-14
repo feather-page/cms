@@ -15,7 +15,7 @@ module PreviewRouting
   end
 
   def home_path?
-    requested_path.blank? || requested_path == "index.html" || requested_path == "index"
+    requested_path.blank? || requested_path == "index.html" || requested_path == "index" || requested_path.match?(%r{^page/\d+/?$})
   end
 
   def image_path?

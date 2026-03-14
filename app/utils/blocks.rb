@@ -2,6 +2,7 @@ module Blocks
   MAPPING = {
     'book' => Book,
     'code' => Code,
+    'embed' => Embed,
     'header' => Header,
     'image' => Image,
     'list' => List,

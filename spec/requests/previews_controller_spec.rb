@@ -38,6 +38,18 @@ describe PreviewsController do
 
           expect(response.body).to include("Hello World")
         end
+
+        it "paginates posts" do
+          26.times do |i|
+            create(:post, site:, title: "Post #{i + 1}", publish_at: (26 - i).days.ago)
+          end
+
+          get preview_path(deployment_target, path: "page/2")
+
+          expect(response).to be_successful
+          expect(response.body).to include("Post 1")
+          expect(response.body).not_to include("Post 26")
+        end
       end
 
       describe "post pages" do

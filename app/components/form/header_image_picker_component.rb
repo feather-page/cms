@@ -1,15 +1,21 @@
 module Form
   class HeaderImagePickerComponent < BaseInputComponent
-    def initialize(form:, attribute: :header_image_id, emoji_attribute: :emoji)
+    def initialize(form:, attribute: :header_image_id, thumbnail_attribute: :thumbnail_image_id,
+                   emoji_attribute: :emoji)
       super(form:, attribute:, data: {})
       @form = form
       @emoji_attribute = emoji_attribute
+      @thumbnail_attribute = thumbnail_attribute
     end
 
-    attr_reader :emoji_attribute
+    attr_reader :emoji_attribute, :thumbnail_attribute
 
     def current_image
       @form.object.header_image
+    end
+
+    def current_thumbnail
+      @form.object.thumbnail_image
     end
 
     def current_emoji

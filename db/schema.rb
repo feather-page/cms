@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_13_080551) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -41,6 +41,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.uuid "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "api_tokens", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name"
+    t.string "public_id", limit: 21, null: false
+    t.string "token_digest", null: false
+    t.string "token_prefix", limit: 8, null: false
+    t.datetime "updated_at", null: false
+    t.uuid "user_id", null: false
+    t.index ["public_id"], name: "index_api_tokens_on_public_id", unique: true
+    t.index ["token_digest"], name: "index_api_tokens_on_token_digest", unique: true
+    t.index ["user_id"], name: "index_api_tokens_on_user_id"
   end
 
   create_table "authors_books", id: false, force: :cascade do |t|
@@ -133,12 +146,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.string "public_id", limit: 21, null: false
     t.uuid "site_id", null: false
     t.string "slug"
+    t.string "tags"
+    t.uuid "thumbnail_image_id"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["header_image_id"], name: "index_pages_on_header_image_id"
     t.index ["public_id"], name: "index_pages_on_public_id", unique: true
     t.index ["site_id"], name: "index_pages_on_site_id"
     t.index ["slug", "site_id"], name: "index_pages_on_slug_and_site_id", unique: true
+    t.index ["thumbnail_image_id"], name: "index_pages_on_thumbnail_image_id"
   end
 
   create_table "posts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -151,6 +167,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.datetime "publish_at"
     t.uuid "site_id", null: false
     t.string "slug"
+    t.string "tags"
+    t.uuid "thumbnail_image_id"
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["draft"], name: "index_posts_on_draft"
@@ -159,6 +177,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.index ["publish_at"], name: "index_posts_on_publish_at"
     t.index ["site_id"], name: "index_posts_on_site_id"
     t.index ["slug", "site_id"], name: "index_posts_on_slug_and_site_id", unique: true
+    t.index ["thumbnail_image_id"], name: "index_posts_on_thumbnail_image_id"
   end
 
   create_table "projects", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -178,6 +197,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.string "slug", null: false
     t.date "started_at", null: false
     t.integer "status", default: 0
+    t.string "tags"
+    t.uuid "thumbnail_image_id"
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["header_image_id"], name: "index_projects_on_header_image_id"
@@ -185,6 +206,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
     t.index ["site_id"], name: "index_projects_on_site_id"
     t.index ["slug", "site_id"], name: "index_projects_on_slug_and_site_id", unique: true
     t.index ["started_at"], name: "index_projects_on_started_at"
+    t.index ["thumbnail_image_id"], name: "index_projects_on_thumbnail_image_id"
   end
 
   create_table "site_users", force: :cascade do |t|
@@ -383,6 +405,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "api_tokens", "users"
   add_foreign_key "books", "posts"
   add_foreign_key "books", "sites"
   add_foreign_key "deployment_targets", "sites"
@@ -391,10 +414,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_24_133523) do
   add_foreign_key "navigation_items", "pages"
   add_foreign_key "navigations", "sites"
   add_foreign_key "pages", "images", column: "header_image_id"
+  add_foreign_key "pages", "images", column: "thumbnail_image_id"
   add_foreign_key "pages", "sites"
   add_foreign_key "posts", "images", column: "header_image_id"
+  add_foreign_key "posts", "images", column: "thumbnail_image_id"
   add_foreign_key "posts", "sites"
   add_foreign_key "projects", "images", column: "header_image_id"
+  add_foreign_key "projects", "images", column: "thumbnail_image_id"
   add_foreign_key "projects", "sites"
   add_foreign_key "site_users", "sites"
   add_foreign_key "site_users", "users"

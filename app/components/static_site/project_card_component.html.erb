@@ -1,6 +1,8 @@
 <div class="project-item">
   <div class="project-header">
-    <% if project.emoji.present? %>
+    <% if thumbnail_image_path %>
+      <img src="<%= thumbnail_image_path %>" alt="" class="project-thumbnail">
+    <% elsif project.emoji.present? %>
       <span class="project-emoji"><%= project.emoji %></span>
     <% end %>
     <a href="<%= project_url %>" class="project-title"><%= project.title %></a>
@@ -17,6 +19,9 @@
   <div class="project-badges">
     <span class="badge <%= status_badge_class %>"><%= project.status.titleize %></span>
     <span class="badge badge-outline"><%= project_type_label %></span>
+    <% project.tag_list.each do |tag| %>
+      <span class="badge badge-outline"><%= tag %></span>
+    <% end %>
   </div>
   <% if project.short_description.present? %>
     <p class="project-description"><%= project.short_description %></p>

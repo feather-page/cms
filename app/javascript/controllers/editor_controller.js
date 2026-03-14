@@ -8,6 +8,7 @@ import Table from '@editorjs/table'
 import InlineCode from '@editorjs/inline-code'
 import ImageTool from '@editorjs/image'
 import Header from '@editorjs/header'
+import Embed from '@editorjs/embed'
 // @ts-ignore
 import CodeTool from '@editorjs/code'
 // @ts-ignore
@@ -79,6 +80,7 @@ export default class extends Controller {
           }
         }
       },
+      embed: { class: Embed },
       book: {
         class: BookTool,
         config: {

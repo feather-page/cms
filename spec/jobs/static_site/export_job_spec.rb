@@ -28,6 +28,28 @@ RSpec.describe StaticSite::ExportJob do
       expect(File.read(index_path)).to include(ERB::Util.html_escape(site.title))
     end
 
+    context "with pagination" do
+      it "paginates posts across multiple pages" do
+        create_list(:post, 26, site:, publish_at: 1.day.ago)
+
+        described_class.perform_now(deployment_target)
+
+        page1_path = File.join(deployment_target.source_dir, "index.html")
+        page2_path = File.join(deployment_target.source_dir, "page", "2", "index.html")
+        expect(File.exist?(page1_path)).to be true
+        expect(File.exist?(page2_path)).to be true
+      end
+
+      it "does not create page/2 when posts fit on one page" do
+        create_list(:post, 3, site:, publish_at: 1.day.ago)
+
+        described_class.perform_now(deployment_target)
+
+        page2_path = File.join(deployment_target.source_dir, "page", "2", "index.html")
+        expect(File.exist?(page2_path)).to be false
+      end
+    end
+
     it "exports posts" do
       post = create(:post, site:, title: "Test Post", slug: nil, publish_at: 1.day.ago)
 

@@ -1,6 +1,16 @@
 <tr id="<%= dom_id(page) %>" is="turbo-frame">
+  <td>
+    <% if page.thumbnail_image&.file&.attached? %>
+      <%= image_tag page.thumbnail_image.file.variant(:mobile_x1_webp), style: 'width: 40px; height: 40px; object-fit: cover; border-radius: 4px;' %>
+    <% end %>
+  </td>
   <td><%= page.title %></td>
   <td><%= page.slug %></td>
+  <td>
+    <% page.tag_list.each do |tag| %>
+      <span class="badge bg-light text-dark"><%= tag %></span>
+    <% end %>
+  </td>
   <td class="text-end">
     <%= link_to 'Edit', edit_site_page_path(current_site, page), class: 'btn btn-outline-secondary btn-sm' %>
     <%= link_to 'Delete', site_page_path(current_site, page), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }, class: 'btn btn-outline-danger btn-sm' %>

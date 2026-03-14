@@ -13,7 +13,7 @@
 <h2>Blogposts</h2>
 
 <div class="page-list">
-  <% @site.posts.published.order(publish_at: :desc).each do |post| %>
+  <% @posts.each do |post| %>
     <article>
       <% if post.title.blank? %>
         <%# Short post without title %>
@@ -21,7 +21,7 @@
           <div class="book-card book-card--detail">
             <div class="book-card-header">
               <% if static_site_image_url(post.book.cover_image, :mobile_x1) %>
-                <img src="<%= static_site_image_url(post.book.cover_image, :mobile_x1) %>" alt="<%= post.book.title %>" class="book-cover">
+                <img src="<%= static_site_image_url(post.book.cover_image, :mobile_x1) %>" alt="<%= post.book.title %>" class="book-cover" loading="lazy">
               <% elsif post.book.emoji.present? %>
                 <span class="book-emoji"><%= post.book.emoji %></span>
               <% end %>
@@ -44,16 +44,59 @@
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
       <% else %>
         <%# Long post with title %>
-        <% if post.emoji.present? %><%= post.emoji %><% end %>
-        <a class="post-title" href="<%= static_site_post_url(post) %>"><%= post.title %></a>
-        <% if post.book&.rating.present? %>
-          <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
-            <%= static_site_rating_stars(post.book.rating) %>
-          </span>
-        <% end %>
+        <div>
+          <a class="post-title" href="<%= static_site_post_url(post) %>"><%= post.title %></a>
+          <% if post.book&.rating.present? %>
+            <span class="rating" aria-label="<%= post.book.rating %> out of 5 stars">
+              <%= static_site_rating_stars(post.book.rating) %>
+            </span>
+          <% end %>
+        </div>
+        <div class="post-long-body">
+          <% if post.emoji.present? %>
+            <div class="post-emoji"><%= post.emoji %></div>
+          <% end %>
+          <div class="post-long-content">
+            <% if post.thumbnail_image&.file&.attached? %>
+              <div class="post-thumbnail">
+                <img src="<%= static_site_image_url(post.thumbnail_image, :mobile_x1) %>" alt="" loading="lazy">
+              </div>
+            <% end %>
+            <% if post.content.present? %>
+              <div class="post-excerpt"><%= post.content_excerpt %></div>
+            <% end %>
+          </div>
+        </div>
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
+        <% if post.tag_list.any? %>
+          <div class="post-tags">
+            <% post.tag_list.each do |tag| %>
+              <span class="badge badge-outline"><%= tag %></span>
+            <% end %>
+          </div>
+        <% end %>
       <% end %>
     </article>
     <hr />
   <% end %>
 </div>
+
+<% if @total_pages > 1 %>
+  <nav class="pagination" aria-label="Pagination">
+    <% if @current_page > 1 %>
+      <a href="<%= @current_page == 2 ? "#{@base_url}" : "#{@base_url}page/#{@current_page - 1}/" %>" class="pagination-link">&larr;</a>
+    <% end %>
+    <% pagination_page_numbers(@current_page, @total_pages).each do |page| %>
+      <% if page == :gap %>
+        <span class="pagination-gap">&hellip;</span>
+      <% elsif page == @current_page %>
+        <span class="pagination-current"><%= page %></span>
+      <% else %>
+        <a href="<%= page == 1 ? "#{@base_url}" : "#{@base_url}page/#{page}/" %>" class="pagination-link"><%= page %></a>
+      <% end %>
+    <% end %>
+    <% if @current_page < @total_pages %>
+      <a href="<%= @base_url %>page/<%= @current_page + 1 %>/" class="pagination-link">&rarr;</a>
+    <% end %>
+  </nav>
+<% end %>

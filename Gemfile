@@ -8,7 +8,6 @@ gem 'bootsnap', require: false
 gem 'brotli', '~> 0.7.0'
 gem 'dotenv-rails', require: 'dotenv/load'
 gem 'faraday'
-gem 'solid_queue'
 gem 'image_processing'
 gem 'importmap-rails'
 gem 'jbuilder'
@@ -24,6 +23,7 @@ gem 'pundit'
 gem 'rails', '~> 8.1.2'
 gem 'sassc-rails'
 gem 'solid_cable', '~> 3.0'
+gem 'solid_queue'
 gem 'stimulus-rails'
 gem 'thruster', require: false
 gem 'turbo-rails'
@@ -64,3 +64,5 @@ group :test do
 end
 
 gem "bootstrap", "~> 5.3"
+
+gem "rack-attack", "~> 6.8"

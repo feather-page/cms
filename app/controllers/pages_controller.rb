@@ -4,7 +4,7 @@ class PagesController < ApplicationController
   before_action :set_page, only: %i[edit update destroy]
 
   def index
-    pages = current_site.pages.not_in_navigation
+    pages = current_site.pages.includes(thumbnail_image: { file_attachment: :blob }).not_in_navigation
     @pagy, @pages = pagy(pages)
   end
 
@@ -45,6 +45,7 @@ class PagesController < ApplicationController
   end
 
   def page_params
-    params.expect(page: %i[add_to_navigation title page_type slug emoji content created_at header_image_id])
+    params.expect(page: %i[add_to_navigation title page_type slug emoji content created_at header_image_id
+                           thumbnail_image_id tags])
   end
 end

@@ -1,7 +1,7 @@
 module StaticSite
   class PageRenderer
-    def render_home(site:)
-      render_template("static_site/home", home_assigns(site))
+    def render_home(site:, posts:, current_page:, total_pages:)
+      render_template("static_site/home", home_assigns(site, posts, current_page, total_pages))
     end
 
     def render_post(site:, post:)
@@ -22,10 +22,13 @@ module StaticSite
       ApplicationController.render(template: template, layout: "static_site", assigns: assigns)
     end
 
-    def home_assigns(site)
+    def home_assigns(site, posts, current_page, total_pages)
       base_assigns(site, site.title, site.emoji, true).merge(
         page: site.pages.find_by(slug: "/"),
-        rss_url: "/feed.xml"
+        rss_url: "/feed.xml",
+        posts: posts,
+        current_page: current_page,
+        total_pages: total_pages
       )
     end
 

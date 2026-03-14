@@ -15,6 +15,10 @@ FactoryBot.define do
     slug { Faker::Lorem.sentence.parameterize }
     site
 
+    trait :tagged do
+      tags { "ruby, rails, web" }
+    end
+
     trait :ongoing do
       status { :ongoing }
       ended_at { nil }
@@ -40,6 +44,13 @@ FactoryBot.define do
 
     trait :freelance do
       project_type { :freelance }
+    end
+
+    trait :with_thumbnail_image do
+      after(:create) do |project|
+        image = create(:image, imageable: project, site: project.site)
+        project.update!(thumbnail_image: image)
+      end
     end
 
     trait :with_header_image do

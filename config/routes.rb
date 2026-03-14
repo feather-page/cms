@@ -13,6 +13,14 @@ Rails.application.routes.draw do
         get :check_domain
       end
     end
+
+    namespace :v1 do
+      resources :sites, only: [] do
+        resources :posts, only: %i[index show create update destroy]
+        resources :pages, only: %i[index show create update destroy]
+        resources :images, only: %i[show create]
+      end
+    end
   end
 
   resources :sites, except: [:show] do
