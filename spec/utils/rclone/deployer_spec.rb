@@ -36,6 +36,8 @@ describe Rclone::Deployer do
 
   describe '#deploy' do
     it 'picks the right provider and deploys' do
+      skip 'Requires STAGING_SITES_PATH' unless ENV.key?('STAGING_SITES_PATH')
+
       target = create(:deployment_target, provider: 'internal')
       described_class.deploy(target, rclone:)
 

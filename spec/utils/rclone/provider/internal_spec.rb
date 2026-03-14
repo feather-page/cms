@@ -5,6 +5,8 @@ describe Rclone::Provider::Internal do
 
   describe '#rclone_target' do
     it 'returns a target matching the config file' do
+      skip 'Requires STAGING_SITES_PATH' unless ENV.key?('STAGING_SITES_PATH')
+
       static_site_path = ENV.fetch('STAGING_SITES_PATH')
       expect(target.rclone_target).to eq "internal:/#{static_site_path}/#{deployment_target.public_hostname}"
     end

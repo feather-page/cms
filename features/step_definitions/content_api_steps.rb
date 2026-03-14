@@ -28,12 +28,12 @@ end
 
 When("I send a GET request to the posts endpoint without authentication") do
   api.clear_auth
-  api.json_request(:get, site_posts_path)
+  api.json_request(:get, api_posts_path)
 end
 
 When("I send a GET request to the posts endpoint with an invalid token") do
   api.auth_header("invalid-token-value")
-  api.json_request(:get, site_posts_path)
+  api.json_request(:get, api_posts_path)
 end
 
 When("I try to access posts for site {string}") do |site_title|
@@ -54,12 +54,12 @@ Given("the site has a post {string}") do |title|
 end
 
 When("I send a GET request to the posts endpoint") do
-  api.json_request(:get, site_posts_path)
+  api.json_request(:get, api_posts_path)
 end
 
 When("I create a post with title {string} and content:") do |title, content_json|
   body = { post: { title: title, content: JSON.parse(content_json) } }
-  api.json_request(:post, site_posts_path, body)
+  api.json_request(:post, api_posts_path, body)
 end
 
 When("I create a post with all supported block types") do
@@ -75,22 +75,22 @@ When("I create a post with all supported block types") do
     { type: "book", book_public_id: "abc123" }
   ]
   body = { post: { title: "All Block Types", content: content } }
-  api.json_request(:post, site_posts_path, body)
+  api.json_request(:post, api_posts_path, body)
 end
 
 When("I update the post with title {string}") do |title|
-  path = "#{site_posts_path}/#{@current_post.public_id}"
+  path = "#{api_posts_path}/#{@current_post.public_id}"
   api.json_request(:patch, path, { post: { title: title } })
 end
 
 When("I update the post with content:") do |content_json|
-  path = "#{site_posts_path}/#{@current_post.public_id}"
+  path = "#{api_posts_path}/#{@current_post.public_id}"
   api.json_request(:patch, path, { post: { content: JSON.parse(content_json) } })
 end
 
 When("I delete the post") do
   @deleted_post_id = @current_post.id
-  path = "#{site_posts_path}/#{@current_post.public_id}"
+  path = "#{api_posts_path}/#{@current_post.public_id}"
   api.json_request(:delete, path)
 end
 
@@ -107,21 +107,21 @@ Given("the site has a page {string}") do |title|
 end
 
 When("I send a GET request to the pages endpoint") do
-  api.json_request(:get, site_pages_path)
+  api.json_request(:get, api_pages_path)
 end
 
 When("I create a page with title {string} and content:") do |title, content_json|
   body = { page: { title: title, slug: title.parameterize, page_type: "default", content: JSON.parse(content_json) } }
-  api.json_request(:post, site_pages_path, body)
+  api.json_request(:post, api_pages_path, body)
 end
 
 When("I update the page with title {string}") do |title|
-  path = "#{site_pages_path}/#{@current_page.public_id}"
+  path = "#{api_pages_path}/#{@current_page.public_id}"
   api.json_request(:patch, path, { page: { title: title } })
 end
 
 When("I delete the page") do
-  path = "#{site_pages_path}/#{@current_page.public_id}"
+  path = "#{api_pages_path}/#{@current_page.public_id}"
   api.json_request(:delete, path)
 end
 
@@ -134,17 +134,17 @@ Given("the site has an image") do
 end
 
 When("I send a GET request to the image endpoint") do
-  api.json_request(:get, "#{site_images_path}/#{@current_image.public_id}")
+  api.json_request(:get, "#{api_images_path}/#{@current_image.public_id}")
 end
 
 When("I upload an image file") do
   file = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/15x15.jpg"), "image/jpeg")
-  api.multipart_upload(site_images_path, file)
+  api.multipart_upload(api_images_path, file)
 end
 
 When("I upload a non-image file") do
   file = Rack::Test::UploadedFile.new(Rails.root.join("spec/fixtures/files/text.txt"), "text/plain")
-  api.multipart_upload(site_images_path, file)
+  api.multipart_upload(api_images_path, file)
 end
 
 When("I create an image from URL {string}") do |url|
@@ -154,7 +154,7 @@ When("I create an image from URL {string}") do |url|
     body: image_body,
     headers: { "Content-Type" => "image/jpeg" }
   )
-  api.json_request(:post, site_images_path, { url: url })
+  api.json_request(:post, api_images_path, { url: url })
 end
 
 Then("the response should contain an image ID") do

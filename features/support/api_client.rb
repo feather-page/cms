@@ -47,15 +47,15 @@ module ApiWorld
     api.last_json
   end
 
-  def site_posts_path
+  def api_posts_path
     "/api/v1/sites/#{@current_site.public_id}/posts"
   end
 
-  def site_pages_path
+  def api_pages_path
     "/api/v1/sites/#{@current_site.public_id}/pages"
   end
 
-  def site_images_path
+  def api_images_path
     "/api/v1/sites/#{@current_site.public_id}/images"
   end
 end
