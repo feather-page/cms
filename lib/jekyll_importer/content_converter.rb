@@ -24,6 +24,7 @@ module JekyllImporter
       [/\A\[table\]/i, :convert_table_shortcode],
       [/\A<[uo]l[\s>]/i, :convert_html_list],
       [/\A<embed\s/i, :convert_embed],
+      [/\A<iframe\s/i, :convert_embed],
       [/\A\#{1,6}\s/, :convert_header],
       [/\A\d+\.\s/, :convert_ordered_list],
       [/\A\s{0,3}[*-]\s?/, :convert_unordered_list]
@@ -98,6 +99,12 @@ module JekyllImporter
     def convert_element(element)
       return nil if element.blank?
 
+      # Check for YouTube links in paragraphs
+      if element.match?(YOUTUBE_PATTERN) && !element.match?(/\A</) && !element.match?(/\A[#*\-\d]/)
+        video_id = element.match(YOUTUBE_PATTERN)[1]
+        return [youtube_block(video_id)]
+      end
+
       # Check for Vimeo links in paragraphs
       if element.match?(VIMEO_PATTERN) && !element.match?(/\A</) && !element.match?(/\A[#*\-\d]/)
         vimeo_result = convert_vimeo_link(element.strip)
@@ -148,7 +155,9 @@ module JekyllImporter
         return block
       end
 
-      nil if src.match?(EXTERNAL_IMAGE_PATTERN)
+      if src.match?(EXTERNAL_IMAGE_PATTERN)
+        return { type: "paragraph", text: "<i>[Externes Bild: <a href=\"#{src}\">#{src}</a>]</i>" }
+      end
     end
   end
 end

@@ -112,10 +112,11 @@ module JekyllImporter
     end
 
     def parse_response(response)
-      parsed = JSON.parse(response.body)
-      raise ApiError, parsed["error"] || "HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+      body = response.body.to_s.strip
+      raise ApiError, "HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+      return {} if body.empty?
 
-      parsed
+      JSON.parse(body)
     end
 
     def build_multipart_body(boundary, file_data, filename, content_type)

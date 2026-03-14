@@ -124,10 +124,13 @@ RSpec.describe JekyllImporter::ContentConverter do
         expect(result).to eq([{ type: "paragraph", text: "<i>[Missing image: /assets/2020/02/missing.jpg]</i>" }])
       end
 
-      it "silently omits external image URLs" do
+      it "converts external image URLs to fallback paragraph" do
         content = '<img src="http://example.com/photo.jpg" />'
         result = converter.convert(content)
-        expect(result).to be_empty
+        expect(result).to eq([
+                               { type: "paragraph",
+                                 text: '<i>[Externes Bild: <a href="http://example.com/photo.jpg">http://example.com/photo.jpg</a>]</i>' }
+                             ])
       end
 
       it "deduplicates image uploads via the uploader" do
@@ -427,10 +430,12 @@ RSpec.describe JekyllImporter::ContentConverter do
                              ])
       end
 
-      it "unwraps linked external image, omitting external image and keeping link" do
+      it "unwraps linked external image, showing fallback paragraph and link" do
         content = '[<img src="http://example.com/photo.jpg" />](http://example.com/photo.jpg)'
         result = converter.convert(content)
         expect(result).to eq([
+                               { type: "paragraph",
+                                 text: '<i>[Externes Bild: <a href="http://example.com/photo.jpg">http://example.com/photo.jpg</a>]</i>' },
                                { type: "paragraph",
                                  text: '<a href="http://example.com/photo.jpg">http://example.com/photo.jpg</a>' }
                              ])
