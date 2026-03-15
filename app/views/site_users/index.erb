@@ -1,43 +1,23 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('people-fill') %> Users</h1>
-</div>
+<%= render PageHeaderComponent.new(title: "Users") do %>
+  <%= render ButtonComponent.new(label: t('.invite_user'), variant: :primary, icon: "user-plus", href: new_site_invitation_path(current_site)) %>
+<% end %>
 
-<div class="table-responsive">
-  <table class="table table-bordered w-100">
-    <thead>
-      <tr>
-        <th><%= t('.email') %></th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      <%= render @users %>
-    </tbody>
-  </table>
-</div>
+<%= render TableComponent.new(headers: ["Email", ""]) do %>
+  <%= render @users %>
+<% end %>
 
 <div class="labeled-divider">
   <span><%= t('.pending_invitations') %></span>
 </div>
-<%= link_to t('.invite_user'), new_site_invitation_path(current_site), class: "btn btn-primary mb-4" %>
 
 <% if @user_invitations.none? %>
-  <div class="alert alert-secondary" role="alert">
-    <h5 class="alert-heading mb-2"><%= t('.no_invitations') %></h5>
-    <div><%= t('.no_invitations_message.html') %></div>
-  </div>
+  <%= render EmptyStateComponent.new(
+        icon: "mail",
+        message: t('.no_invitations'),
+        action_label: t('.invite_user'),
+        action_href: new_site_invitation_path(current_site)) %>
 <% else %>
-  <div class="table-responsive">
-    <table class="table table-bordered w-100">
-      <thead>
-        <tr>
-          <th><%= t('.email') %></th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <%= render @user_invitations %>
-      </tbody>
-    </table>
-  </div>
+  <%= render TableComponent.new(headers: ["Email", ""]) do %>
+    <%= render @user_invitations %>
+  <% end %>
 <% end %>

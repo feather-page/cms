@@ -2,8 +2,8 @@
   <%= form_for(user_invitation, url: site_invitations_path(current_site), class: "mb-4") do |form| %>
     <%= component('form/email_field', form:, attribute: :email, placeholder: 'john@example.org') %>
     <div class="d-flex gap-2">
-      <%= form.submit(t('.submit'), class: "btn btn-primary") %>
-      <%= link_to("Cancel", site_users_path(current_site), "data-turbo-frame": '_top', class: "btn btn-outline-primary") %>
+      <%= render ButtonComponent.new(label: t('.submit'), variant: :primary, type: "submit") %>
+      <%= render ButtonComponent.new(label: "Cancel", variant: :ghost, href: site_users_path(current_site), "data-turbo-frame": '_top') %>
     </div>
   <% end %>
 <% end %>

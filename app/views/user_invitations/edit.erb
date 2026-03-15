@@ -1,12 +1,10 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('envelope-check') %> <%= t('.title') %></h1>
-</div>
+<%= render PageHeaderComponent.new(title: t('.title')) %>
 
 <div class="alert alert-secondary" role="alert">
-  <%= t('.info.html', site: @user_invitation.site.title, inviting_user: @user_invitation.inviting_user.email)  %>
+  <%= t('.info.html', site: @user_invitation.site.title, inviting_user: @user_invitation.inviting_user.email) %>
 </div>
 
 <div class="d-flex gap-2">
-  <%= link_to t('.submit'), invitation_path(params[:id]), data: { turbo_method: :put }, class: 'btn btn-primary' %>
-  <%= link_to(t('.cancel'), root_path, "data-turbo-frame": '_top', class: "btn btn-outline-secondary") %>
+  <%= render ButtonComponent.new(label: t('.submit'), variant: :primary, href: invitation_path(params[:id]), data: { turbo_method: :put }) %>
+  <%= render ButtonComponent.new(label: t('.cancel'), variant: :ghost, href: root_path, "data-turbo-frame": '_top') %>
 </div>
