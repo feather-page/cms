@@ -1,0 +1,6 @@
+<div class="alert alert--<%= @variant %>" role="alert">
+  <div class="alert__content"><%= content %></div>
+  <% if dismissible? %>
+    <button type="button" class="alert__dismiss" aria-label="Dismiss">&times;</button>
+  <% end %>
+</div>

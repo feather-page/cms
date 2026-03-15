@@ -1,0 +1,14 @@
+<div class="table-wrapper">
+  <table class="table">
+    <thead>
+      <tr>
+        <% @headers.each do |header| %>
+          <th><%= header %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <%= content %>
+    </tbody>
+  </table>
+</div>
