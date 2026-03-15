@@ -1,7 +1,6 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('book') %> <%= Book.model_name.human.pluralize %></h1>
-  <%= link_to t('books.new_book'), new_site_book_path, data: { turbo_frame: "new_book" }, class: 'btn btn-primary' %>
-</div>
+<%= render PageHeaderComponent.new(title: Book.model_name.human.pluralize) do %>
+  <%= render ButtonComponent.new(label: t('books.new_book'), variant: :primary, icon: "plus", href: new_site_book_path, data: { turbo_frame: "new_book" }) %>
+<% end %>
 
 <ul class="nav nav-tabs mb-3">
   <% Book.reading_statuses.keys.each do |status| %>
@@ -15,19 +14,20 @@
 
 <%= turbo_frame_tag(:new_book) %>
 
-<div class="table-responsive">
-<table class="table table-bordered w-100">
-  <thead>
-    <tr>
-      <th style="width: 60px;"></th>
-      <th><%= t('activerecord.attributes.book.title') %></th>
-      <th><%= t('activerecord.attributes.book.author') %></th>
-      <th><%= t('activerecord.attributes.book.read_at') %></th>
-      <th class="w-auto"></th>
-    </tr>
-  </thead>
-  <tbody>
+<% if @books.empty? %>
+  <%= render EmptyStateComponent.new(
+        icon: "book",
+        message: t("books.reading_statuses.#{params[:status].presence || 'finished'}"),
+        action_label: t('books.new_book'),
+        action_href: new_site_book_path) %>
+<% else %>
+  <%= render TableComponent.new(headers: [
+        "",
+        t('activerecord.attributes.book.title'),
+        t('activerecord.attributes.book.author'),
+        t('activerecord.attributes.book.read_at'),
+        ""
+      ]) do %>
     <%= render @books %>
-  </tbody>
-</table>
-</div>
+  <% end %>
+<% end %>

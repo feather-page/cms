@@ -1,16 +1,23 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('files') %> Pages</h1>
-  <%= link_to "New Page", new_site_page_path, data: { turbo_frame: "new_page" }, class: 'btn btn-primary' %>
-</div>
+<%= turbo_frame_tag(:content) do %>
+  <%= render PageHeaderComponent.new(title: "Pages") do %>
+    <%= render ButtonComponent.new(label: "New Page", variant: :primary, icon: "plus", href: new_site_page_path) %>
+  <% end %>
 
-<div class="labeled-divider">
-  <span><%= t('.pages_in_navigation') %></span>
-</div>
-<%= component('Navigation', navigation: current_site.main_navigation) %>
+  <div class="labeled-divider">
+    <span><%= t('.pages_in_navigation') %></span>
+  </div>
+  <%= component('Navigation', navigation: current_site.main_navigation) %>
 
-<div class="labeled-divider">
-  <span><%= t('.other_pages') %></span>
-</div>
-<%= render 'pages', pages: @pages %>
+  <div class="labeled-divider">
+    <span><%= t('.other_pages') %></span>
+  </div>
 
-<%= render('layouts/pagination') %>
+  <%= turbo_frame_tag(:pages) do %>
+    <% if @pages.empty? %>
+      <%= component('empty_state', icon: "file", message: "No other pages yet", action_label: "Create your first page", action_href: new_site_page_path) %>
+    <% else %>
+      <%= render 'pages', pages: @pages %>
+      <%= render('layouts/pagination') %>
+    <% end %>
+  <% end %>
+<% end %>

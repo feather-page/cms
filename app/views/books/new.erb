@@ -1,6 +1,4 @@
 <%= turbo_frame_tag(:new_book) do %>
-  <div class="page-header">
-    <h1 class="h4"><%= icon('book') %> New Book</h1>
-  </div>
+  <%= render PageHeaderComponent.new(title: t('books.new_book')) %>
   <%= render "form", book: @book %>
 <% end %>

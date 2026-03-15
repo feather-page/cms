@@ -7,7 +7,7 @@ module ApplicationHelper
     render(component_class.new(*, **))
   end
 
-  def icon(name)
-    component(:icon, name:)
+  def icon(name, **kwargs)
+    component(:icon, name:, **kwargs)
   end
 end
