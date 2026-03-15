@@ -124,6 +124,8 @@ en:
       notice: Post was successfully created.
     update:
       notice: Post was successfully updated.
+    destroy:
+      notice: Post was successfully deleted.
   sites:
     create:
       notice: Site was successfully created.
@@ -236,6 +238,8 @@ en:
       notice: "The book was successfully added."
     update:
       notice: "The book was successfully updated."
+    destroy:
+      notice: "The book was successfully deleted."
     new_book: "New Book"
     edit_book: "Edit Book"
     search_openlibrary: "Search OpenLibrary"

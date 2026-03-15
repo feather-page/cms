@@ -1,25 +1,5 @@
-<table id="<%= dom_id(navigation) %>" is="turbo-frame" class="table table-bordered">
-  <thead>
-    <tr>
-      <th>Title</th>
-      <th>Path</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <% navigation_items.ordered.each do |item| %>
-      <tr id="<%= dom_id(item) %>" is="turbo-frame">
-        <td><%= item_title(item) %></td>
-        <td><%= item_path(item) %></td>
-        <td class="text-end">
-          <%= edit_link(item) %>
-          <%= delete_link(item) %>
-          <%= up_link(item) %>
-          <%= down_link(item) %>
-          <%= remove_link(item) %>
-        </td>
-      </tr>
+<div id="<%= dom_id(navigation) %>">
+  <% navigation_items.ordered.each do |item| %>
+    <%= render NavigationItemRowComponent.new(item: item, site: navigation.site) %>
   <% end %>
-  </tbody>
-</table>
-
+</div>

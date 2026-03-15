@@ -28,6 +28,7 @@ class PostsController < ApplicationController
 
   def destroy
     @post.destroy
+    redirect_to_index(t('.notice'))
   end
 
   private

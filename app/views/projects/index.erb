@@ -5,11 +5,11 @@
 
   <%= turbo_frame_tag(:projects) do %>
     <% if @projects.empty? %>
-      <%= render EmptyStateComponent.new(icon: "rocket", message: "No projects yet", action_label: t('projects.new_project'), action_href: new_site_project_path) %>
+      <%= render EmptyStateComponent.new(emoji: "🏗️", message: "Keine Projekte", subtitle: "Zeige deine Arbeit und Projekte.", action_label: t('projects.new_project'), action_href: new_site_project_path) %>
     <% else %>
-      <div class="projects-list">
-        <%= render @projects %>
-      </div>
+      <% @projects.each do |project| %>
+        <%= render ProjectListItemComponent.new(project: project, site: current_site) %>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

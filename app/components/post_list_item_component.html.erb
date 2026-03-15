@@ -1,0 +1,41 @@
+<div class="list-row">
+  <%= link_to edit_path, class: "list-row__link", data: { turbo_frame: :content } do %>
+    <div class="list-row__icon">
+      <%= icon_content %>
+    </div>
+    <div class="list-row__content">
+      <div class="list-row__title <%= 'list-row__title--short' if short_post? %>">
+        <%= display_text %>
+      </div>
+      <div class="list-row__meta">
+        <span><%= formatted_date %></span>
+        <span class="list-row__badge <%= status_badge_class %>"><%= status_label %></span>
+      </div>
+    </div>
+    <% if @post.tag_list.any? %>
+      <div class="list-row__tags">
+        <% @post.tag_list.first(3).each do |tag| %>
+          <span class="list-row__tag"><%= tag %></span>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+  <div class="list-row__actions">
+    <%= render ButtonComponent.new(
+          label: helpers.icon("pencil"),
+          variant: :ghost,
+          size: :sm,
+          href: edit_path,
+          data: { turbo_frame: :content },
+          title: "Edit",
+          aria: { label: "Edit" }) %>
+    <%= render ButtonComponent.new(
+          label: helpers.icon("trash"),
+          variant: :ghost,
+          size: :sm,
+          href: helpers.site_post_path(@site, @post),
+          data: { turbo_method: :delete, turbo_confirm: "Are you sure?" },
+          title: "Delete",
+          aria: { label: "Delete" }) %>
+  </div>
+</div>
