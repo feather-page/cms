@@ -53,3 +53,4 @@ node_modules
 /config/*.key
 .claude/
 .worktrees/
+.superpowers/
