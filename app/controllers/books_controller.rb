@@ -2,7 +2,7 @@ class BooksController < ApplicationController
   before_action :set_book, only: %i[edit update destroy]
 
   def index
-    @books = current_site.books.by_status(status_filter).ordered
+    @books = current_site.books.includes(cover_image: { file_attachment: :blob })
   end
 
   def new

@@ -1,0 +1,59 @@
+<% if empty? %>
+  <%= render EmptyStateComponent.new(
+    emoji: "📚",
+    message: "Dein Bücherregal ist leer",
+    subtitle: "Füge dein erstes Buch hinzu.",
+    action_label: "Neues Buch",
+    action_href: new_book_path
+  ) %>
+<% else %>
+  <% if currently_reading.any? %>
+    <div class="bookshelf__section">
+      <div class="bookshelf__section-header">
+        <span class="bookshelf__dot bookshelf__dot--reading"></span>
+        Currently Reading · <%= currently_reading.size %>
+      </div>
+      <div class="bookshelf__grid">
+        <% currently_reading.each do |book| %>
+          <%= render BookCoverComponent.new(book: book) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if want_to_read.any? %>
+    <div class="bookshelf__section">
+      <div class="bookshelf__section-header">
+        <span class="bookshelf__dot bookshelf__dot--want"></span>
+        Want to Read · <%= want_to_read.size %>
+      </div>
+      <div class="bookshelf__grid">
+        <% want_to_read.each do |book| %>
+          <%= render BookCoverComponent.new(book: book) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <% finished_by_year.each_with_index do |(year, books), index| %>
+    <div class="bookshelf__year" data-controller="toggle" data-toggle-open-value="<%= index == 0 %>">
+      <div class="bookshelf__year-header" data-action="click->toggle#toggle">
+        <div class="bookshelf__year-title">
+          <span class="bookshelf__chevron" data-toggle-target="icon">▶</span>
+          <%= year || "Unbekannt" %>
+        </div>
+        <span class="bookshelf__year-stats">
+          <%= books.size %> <%= books.size == 1 ? "Buch" : "Bücher" %>
+          <% if (avg = average_rating(books)) %>
+            · ⌀ <%= avg %>
+          <% end %>
+        </span>
+      </div>
+      <div class="bookshelf__grid" data-toggle-target="content">
+        <% books.each do |book| %>
+          <%= render BookCoverComponent.new(book: book) %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+<% end %>

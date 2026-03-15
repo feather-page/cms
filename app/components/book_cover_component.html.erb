@@ -1,0 +1,14 @@
+<%= link_to edit_path, class: "book-cover", title: "#{@book.title} – #{@book.author}" do %>
+  <div class="book-cover__image">
+    <% if cover_image? %>
+      <%= image_tag @book.cover_image.file.variant(:mobile_x1_webp), class: "book-cover__img" %>
+    <% else %>
+      <span class="book-cover__emoji"><%= emoji_or_fallback %></span>
+    <% end %>
+  </div>
+  <div class="book-cover__title"><%= truncate(@book.title, length: 30) %></div>
+  <div class="book-cover__author"><%= truncate(@book.author, length: 25) %></div>
+  <% if show_rating? %>
+    <div class="book-cover__rating"><%= star_rating %></div>
+  <% end %>
+<% end %>
