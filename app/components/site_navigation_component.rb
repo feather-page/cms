@@ -7,7 +7,9 @@ class SiteNavigationComponent < ViewComponent::Base
 
   def navigation_item(label, path, icon:, external: false)
     link_content = helpers.icon(icon) + "&nbsp;".html_safe + label
-    link_options = { class: "nav-link" }
+    active = helpers.current_page?(path)
+    link_options = { class: ["nav-link", ("active" if active)].compact.join(" ") }
+    link_options[:"aria-current"] = "page" if active
     link_options[:target] = "_blank" if external
 
     helpers.content_tag(:li, class: "nav-item") do

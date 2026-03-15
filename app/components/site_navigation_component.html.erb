@@ -11,14 +11,14 @@
     <% end %>
   </div>
 
-  <nav class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-    <ul class="nav nav-pills">
+  <nav class="site-nav">
+    <ul class="nav nav-pills site-nav__group">
       <%= navigation_item(t('site_navigation.blogposts'), helpers.site_posts_path(current_site), icon: :pen) %>
       <%= navigation_item(t('site_navigation.pages'), helpers.site_pages_path(current_site), icon: :"file-text") %>
       <%= navigation_item(t('site_navigation.books'), helpers.site_books_path(current_site), icon: :book) %>
       <%= navigation_item(t('site_navigation.projects'), helpers.site_projects_path(current_site), icon: :rocket) %>
     </ul>
-    <ul class="nav nav-pills">
+    <ul class="nav nav-pills site-nav__group site-nav__group--secondary">
       <%= navigation_item(t('site_navigation.settings'), helpers.edit_site_path(current_site), icon: :gear) %>
       <%= navigation_item(t('site_navigation.users'), helpers.site_users_path(current_site), icon: :"people-fill") %>
       <%= navigation_item(t('site_navigation.deployments'), helpers.site_deployment_targets_path(current_site), icon: :"box-seam-fill") %>

@@ -101,8 +101,8 @@
     </script>
 
     <div class="d-flex gap-2">
-      <%= form.submit(class: 'btn btn-primary') %>
-      <%= link_to t('form.cancel'), site_projects_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+      <%= render ButtonComponent.new(label: project.persisted? ? "Update Project" : "Create Project", variant: :primary, type: "submit") %>
+      <%= render ButtonComponent.new(label: t('form.cancel'), variant: :ghost, href: site_projects_path(current_site), "data-turbo-frame": "_top") %>
     </div>
   <% end %>
 <% end %>

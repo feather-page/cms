@@ -1,0 +1,65 @@
+// =============================================================================
+// Utility / Helper Classes
+// =============================================================================
+
+.content {
+  overflow: hidden;
+
+  // Allow EditorJS toolbar and menus to overflow
+  &.editorjs {
+    overflow: visible;
+  }
+
+  figure {
+    margin: 1em 0 !important;
+
+    img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+  }
+
+  img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+}
+
+.labeled-divider {
+  border-bottom: 1px dotted var(--color-border-primary);
+  line-height: 0;
+  margin: var(--space-6) 0;
+  text-align: center;
+}
+
+.labeled-divider span {
+  background-color: var(--color-bg-primary);
+  padding: 0 var(--space-4);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.login-container {
+  max-width: 400px;
+  margin: var(--space-8) auto;
+  padding: var(--space-8);
+  background-color: var(--color-bg-primary);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border-primary);
+
+  h1 {
+    text-align: center;
+    margin-bottom: var(--space-6);
+    color: var(--color-text-primary);
+  }
+
+  .login-subtitle {
+    text-align: center;
+    color: var(--color-text-secondary);
+    margin-bottom: var(--space-6);
+  }
+}

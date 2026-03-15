@@ -1,1 +1,4 @@
-<%= render 'form', deployment_target: @deployment_target %>
+<%= turbo_frame_tag(:content) do %>
+  <%= render PageHeaderComponent.new(title: "Edit Deployment Target") %>
+  <%= render "form", deployment_target: @deployment_target %>
+<% end %>

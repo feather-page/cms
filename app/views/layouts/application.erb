@@ -6,15 +6,8 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
-    <%# Apply theme based on system preference %>
-    <script>
-      (function() {
-        var theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-bs-theme', theme);
-      })();
-    </script>
-
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "components", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
 
     <meta name="turbo-refresh-method" content="morph">
@@ -22,7 +15,7 @@
   <body>
     <%= render 'layouts/top_navigation' %>
     <div class="container mt-5">
-      <% if current_site %>
+      <% if respond_to?(:current_site) && current_site %>
         <%= component('SiteNavigation', current_site:) %>
       <% end %>
       <%= render 'layouts/notices' %>

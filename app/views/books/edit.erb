@@ -1,4 +1,4 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('pencil') %> Edit Book</h1>
-</div>
-<%= render "form", book: @book %>
+<%= turbo_frame_tag(:content) do %>
+  <%= render PageHeaderComponent.new(title: t('books.edit_book')) %>
+  <%= render "form", book: @book %>
+<% end %>

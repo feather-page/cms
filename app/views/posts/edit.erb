@@ -1,6 +1,4 @@
 <%= turbo_frame_tag(:content) do %>
-  <div class="page-header">
-    <h1 class="h4"><%= icon('pencil') %> Edit Post</h1>
-  </div>
+  <%= render PageHeaderComponent.new(title: "Edit Post") %>
   <%= render "form", post: @post %>
 <% end %>

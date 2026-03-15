@@ -27,7 +27,7 @@ describe Sites::CreateSite do
           created_site.deployment_targets.pluck(:public_hostname, :type, :provider)
         ).to include(
           [
-            "#{created_site.public_id.downcase}.stage.#{ENV.fetch('BASE_HOSTNAME_AND_PORT')}",
+            "#{created_site.public_id.downcase}.stage.#{ENV.fetch('BASE_HOSTNAME_AND_PORT', 'localhost:3000')}",
             "staging", "internal"
           ]
         )

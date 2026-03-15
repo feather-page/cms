@@ -1,0 +1,123 @@
+.header-preview {
+  position: relative;
+  border-radius: var(--radius-md);
+  min-height: 60px;
+  overflow: visible;
+}
+
+.header-preview-image {
+  width: 100%;
+  height: 240px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.header-preview-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnail-preview {
+  width: 80px;
+  height: 80px;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-2);
+}
+
+.thumbnail-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header-preview-emoji {
+  position: absolute;
+  bottom: -8px;
+  left: var(--space-4);
+  font-size: 4rem;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.header-preview-emoji:hover {
+  transform: scale(1.1);
+}
+
+.header-preview:has(.header-preview-image[style*="display: none"]) {
+  min-height: 60px;
+}
+
+.header-preview:has(.header-preview-image[style*="display: none"]) .header-preview-emoji {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  margin: var(--space-2) 0;
+}
+
+/* Button section labels */
+.header-image-picker-section-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Emoji picker popover */
+.emoji-picker {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: var(--space-1);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2);
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+  width: 100%;
+  max-width: 500px;
+}
+
+.emoji-picker-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.emoji-category {
+  margin-bottom: var(--space-2);
+}
+
+.emoji-category-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+  padding-left: 2px;
+}
+
+.emoji-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+}
+
+.emoji-option {
+  background: none;
+  border: none;
+  padding: 3px;
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.emoji-option:hover {
+  background-color: var(--color-bg-tertiary);
+}

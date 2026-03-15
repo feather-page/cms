@@ -1,0 +1,7 @@
+<%
+  post = Post.new
+  post.errors.add(:title, "can't be blank")
+%>
+<%= form_with(model: post, url: "#") do |f| %>
+  <%= render Form::TextFieldComponent.new(form: f, attribute: :title) %>
+<% end %>

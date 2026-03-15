@@ -1,0 +1,7 @@
+<%
+  options = [["Draft", "draft"], ["Published", "published"], ["Archived", "archived"]]
+%>
+<%= form_with(model: Post.new, url: "#") do |f| %>
+  <%= render Form::SelectComponent.new(form: f, attribute: :title,
+        options: options_for_select(options, "published")) %>
+<% end %>

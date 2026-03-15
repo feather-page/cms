@@ -1,0 +1,3 @@
+<%= form_with(model: User.new(email: "alice@example.com"), url: "#") do |f| %>
+  <%= render Form::EmailFieldComponent.new(form: f, attribute: :email) %>
+<% end %>

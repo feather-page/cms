@@ -1,0 +1,67 @@
+.site-navigation {
+  background-color: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.site-navigation .site-header {
+  color: var(--color-text-primary);
+}
+
+.site-navigation .site-header .icon {
+  color: var(--color-text-accent);
+}
+
+/* -------------------------------------------------------------------------
+   Sub-navigation bar
+   On larger screens: two groups, main items left / utility items right.
+   On mobile: single horizontal scroll row — no wrapping, no 3-row layout.
+   ------------------------------------------------------------------------- */
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+}
+
+.site-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.site-nav__group {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+/* Push the secondary group (Settings/Users/Deployments) to the right
+   on screens wide enough to show both groups without scrolling. */
+@media (min-width: 768px) {
+  .site-nav {
+    justify-content: space-between;
+    overflow-x: visible;
+  }
+}
+
+/* Active & hover states for nav links */
+.site-navigation .nav-pills .nav-link {
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-md);
+  transition: background-color var(--duration-normal) ease,
+              color var(--duration-normal) ease;
+  white-space: nowrap;
+}
+
+.site-navigation .nav-pills .nav-link:hover {
+  background-color: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+}
+
+.site-navigation .nav-pills .nav-link.active {
+  background-color: var(--color-bg-accent);
+  color: var(--color-text-on-accent);
+}

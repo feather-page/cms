@@ -1,0 +1,3 @@
+<%= form_with(model: SocialMediaLink.new, url: "#") do |f| %>
+  <%= render Form::SocialMediaPickerComponent.new(form: f, attribute: :icon) %>
+<% end %>

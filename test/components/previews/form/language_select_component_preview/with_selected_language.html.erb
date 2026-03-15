@@ -1,0 +1,3 @@
+<%= form_with(model: Site.new(language_code: "de"), url: "#") do |f| %>
+  <%= render Form::LanguageSelectComponent.new(form: f, attribute: :language_code) %>
+<% end %>

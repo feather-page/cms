@@ -45,7 +45,7 @@ module Sites
 
     executed do |context|
       context.site.deployment_targets.create!(
-        public_hostname: "#{context.site.public_id}.stage.#{ENV.fetch('BASE_HOSTNAME_AND_PORT')}",
+        public_hostname: "#{context.site.public_id}.stage.#{ENV.fetch('BASE_HOSTNAME_AND_PORT', 'localhost:3000')}",
         type: :staging, provider: :internal
       )
     end

@@ -40,6 +40,7 @@ group :development do
   gem 'brakeman'
   gem 'foreman'
   gem 'kamal', '~> 2.10.1', require: false
+  gem 'lookbook'
   gem 'rack-mini-profiler'
   gem 'rspec-rails'
   gem 'rubocop'

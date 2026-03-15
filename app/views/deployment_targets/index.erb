@@ -1,5 +1,11 @@
-<div class="page-header">
-  <h1 class="h4"><%= icon('box-seam-fill') %> Deployment Targets</h1>
-</div>
+<%= turbo_frame_tag(:content) do %>
+  <%= render PageHeaderComponent.new(title: "Deployment Targets") %>
 
-<%= render('deployment_targets', deployment_targets: @deployment_targets) %>
+  <% if @deployment_targets.empty? %>
+    <%= render EmptyStateComponent.new(icon: "box-seam", message: "No deployment targets configured") %>
+  <% else %>
+    <%= render TableComponent.new(headers: ["URL", "Type", ""]) do %>
+      <%= render @deployment_targets %>
+    <% end %>
+  <% end %>
+<% end %>

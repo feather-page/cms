@@ -1,0 +1,7 @@
+<div class="empty-state">
+  <div class="empty-state__icon"><%= helpers.icon(@icon, size: 48) %></div>
+  <p class="empty-state__message"><%= @message %></p>
+  <% if render_action? %>
+    <%= render ButtonComponent.new(label: @action_label, href: @action_href, variant: :primary, size: :sm) %>
+  <% end %>
+</div>

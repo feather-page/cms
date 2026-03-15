@@ -1,0 +1,7 @@
+<%
+  project = Project.new
+  project.errors.add(:started_at, "can't be blank")
+%>
+<%= form_with(model: project, url: "#") do |f| %>
+  <%= render Form::DateFieldComponent.new(form: f, attribute: :started_at) %>
+<% end %>

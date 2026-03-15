@@ -1,8 +1,11 @@
-<div class="d-flex align-items-center justify-content-between mb-4">
-  <h1 class="h1 m-0"><%= icon('houses') %> Sites</h1>
-  <%= link_to('New Site', new_site_path, class: 'btn btn-primary') %>
-</div>
+<%= render PageHeaderComponent.new(title: "Sites") do %>
+  <%= render ButtonComponent.new(label: "New Site", variant: :primary, icon: "plus", href: new_site_path) %>
+<% end %>
 
-<div class="site-cards">
-  <%= render @sites %>
-</div>
+<% if @sites.empty? %>
+  <%= render EmptyStateComponent.new(icon: "house", message: "No sites yet", action_label: "Create your first site", action_href: new_site_path) %>
+<% else %>
+  <div class="site-cards">
+    <%= render @sites %>
+  </div>
+<% end %>

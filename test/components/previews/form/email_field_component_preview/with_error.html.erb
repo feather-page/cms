@@ -1,0 +1,7 @@
+<%
+  user = User.new
+  user.errors.add(:email, "can't be blank")
+%>
+<%= form_with(model: user, url: "#") do |f| %>
+  <%= render Form::EmailFieldComponent.new(form: f, attribute: :email) %>
+<% end %>

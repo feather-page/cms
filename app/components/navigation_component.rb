@@ -17,26 +17,30 @@ class NavigationComponent < ViewComponent::Base
 
   def edit_link(item)
     helpers.link_to(
-      t('edit'),
+      helpers.icon('pencil'),
       helpers.edit_site_page_path(navigation.site, item.page),
+      title: t('edit'), aria: { label: t('edit') },
       class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
   def delete_link(item)
     helpers.link_to(
-      t('delete'),
+      helpers.icon('trash'),
       helpers.site_page_path(navigation.site, item.page),
-      data: { turbo_method: :delete },
+      title: t('delete'), aria: { label: t('delete') },
+      data: { turbo_method: :delete, turbo_confirm: I18n.t('are_you_sure') },
       class: 'btn btn-sm btn-outline-secondary'
     )
   end
 
   def remove_link(item)
     helpers.link_to(
-      t('navigation.remove_page'),
+      helpers.icon('minus'),
       helpers.navigation_item_path(item),
-      data: { turbo_method: :delete }, class: 'btn btn-sm btn-outline-secondary'
+      title: t('navigation.remove_page'), aria: { label: t('navigation.remove_page') },
+      data: { turbo_method: :delete },
+      class: 'btn btn-sm btn-outline-secondary'
     )
   end
 

@@ -1,0 +1,13 @@
+<dialog id="<%= @id %>" class="modal" data-controller="modal" data-modal-target="modal">
+  <div class="modal__container">
+    <% if title? %>
+      <div class="modal__header">
+        <h2 class="modal__title"><%= @title %></h2>
+        <button type="button" class="modal__close" aria-label="Close" data-action="click->modal#close">&times;</button>
+      </div>
+    <% end %>
+    <div class="modal__body">
+      <%= content %>
+    </div>
+  </div>
+</dialog>

@@ -14,28 +14,22 @@
   <td><%= book.read_at ? l(book.read_at.to_date) : '-' %></td>
   <td class="text-end">
     <% if book.review? %>
-      <%= link_to(
-            t('reviews.edit_review'),
-            edit_site_book_review_path(book.site, book),
-            title: t('reviews.edit_review'),
-            class: 'btn btn-outline-primary btn-sm') %>
+      <%= render ButtonComponent.new(label: t('reviews.edit_review'), variant: :secondary, size: :sm, href: edit_site_book_review_path(book.site, book)) %>
     <% else %>
-      <%= link_to(
-            t('reviews.write_review'),
-            new_site_book_review_path(book.site, book),
-            title: t('reviews.write_review'),
-            class: 'btn btn-outline-primary btn-sm') %>
+      <%= render ButtonComponent.new(label: t('reviews.write_review'), variant: :secondary, size: :sm, href: new_site_book_review_path(book.site, book)) %>
     <% end %>
-    <%= link_to(
-          icon('pencil'),
-          edit_book_path(book),
-          title: t('edit'),
-          class: 'btn btn-outline-secondary btn-sm') %>
-    <%= link_to(
-          icon('trash'),
-          book_path(book),
-          title: t('delete'),
-          class: 'btn btn-outline-danger btn-sm',
+    <%= render ButtonComponent.new(
+          label: icon('pencil'),
+          variant: :secondary,
+          size: :sm,
+          href: edit_book_path(book),
+          aria: { label: t('edit') }) %>
+    <%= render ButtonComponent.new(
+          label: icon('trash'),
+          variant: :danger,
+          size: :sm,
+          href: book_path(book),
+          aria: { label: t('delete') },
           data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
   </td>
 </tr>

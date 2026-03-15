@@ -20,8 +20,8 @@
     <%= component('form/checkbox', form:, attribute: :add_to_navigation) %>
 
     <div class="d-flex gap-2">
-      <%= form.submit(class: 'btn btn-primary') %>
-      <%= link_to 'Cancel', site_pages_path, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+      <%= render ButtonComponent.new(label: page.persisted? ? "Update Page" : "Create Page", variant: :primary, type: "submit") %>
+      <%= render ButtonComponent.new(label: "Cancel", variant: :ghost, href: site_pages_path, "data-turbo-frame": "_top") %>
     </div>
   <% end %>
 <% end %>

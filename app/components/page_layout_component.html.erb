@@ -1,0 +1,10 @@
+<div class="page-layout">
+  <% if title? %>
+    <%= render PageHeaderComponent.new(title: @title) do %>
+      <%= actions %>
+    <% end %>
+  <% end %>
+  <div class="page-layout__content">
+    <%= content %>
+  </div>
+</div>

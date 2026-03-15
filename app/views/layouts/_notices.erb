@@ -1,6 +1,8 @@
+<% if respond_to?(:current_site) && current_site %>
 <div data-turbo-permanent id="notices-stream-subscription">
   <%= turbo_stream_from(current_site, "notices") %>
 </div>
+<% end %>
 
 <%= turbo_frame_tag "notices" do %>
   <%- if notice %>

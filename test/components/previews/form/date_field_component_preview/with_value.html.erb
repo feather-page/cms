@@ -1,0 +1,3 @@
+<%= form_with(model: Project.new(started_at: Date.new(2024, 1, 15)), url: "#") do |f| %>
+  <%= render Form::DateFieldComponent.new(form: f, attribute: :started_at) %>
+<% end %>

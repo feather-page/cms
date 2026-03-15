@@ -18,25 +18,25 @@
           <div class="text-muted small mb-2"><%= truncate(project.short_description, length: 100) %></div>
         <% end %>
         <div class="post-card-meta d-flex flex-wrap gap-2 align-items-center">
-          <span class="badge bg-<%= project.status_badge_class %>">
-            <%= t("activerecord.attributes.project.statuses.#{project.status}") %>
-          </span>
-          <span class="badge bg-secondary">
-            <%= t("activerecord.attributes.project.project_types.#{project.project_type}") %>
-          </span>
+          <%= render BadgeComponent.new(
+                label: t("activerecord.attributes.project.statuses.#{project.status}"),
+                variant: project.status_badge_variant) %>
+          <%= render BadgeComponent.new(
+                label: t("activerecord.attributes.project.project_types.#{project.project_type}"),
+                variant: :neutral) %>
           <% if project.company.present? %>
             <small class="text-muted"><%= project.company %></small>
           <% end %>
           <small class="text-muted"><%= project.display_period %></small>
           <% project.tag_list.each do |tag| %>
-            <span class="badge bg-light text-dark"><%= tag %></span>
+            <%= render BadgeComponent.new(label: tag, variant: :neutral) %>
           <% end %>
         </div>
       </div>
     </div>
     <div class="post-card-actions">
-      <%= link_to(t('edit'), edit_site_project_path(project.site, project), data: { turbo_frame: "_top" }, class: 'btn btn-outline-secondary btn-sm') %>
-      <%= link_to(t('delete'), site_project_path(project.site, project), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }, class: 'btn btn-outline-danger btn-sm') %>
+      <%= render ButtonComponent.new(label: t('edit'), variant: :secondary, size: :sm, href: edit_site_project_path(project.site, project), data: { turbo_frame: "_top" }) %>
+      <%= render ButtonComponent.new(label: t('delete'), variant: :danger, size: :sm, href: site_project_path(project.site, project), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
     </div>
   </article>
 <% end %>
