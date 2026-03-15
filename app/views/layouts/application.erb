@@ -14,7 +14,7 @@
   <body>
     <%= render 'layouts/top_navigation' %>
     <div class="container mt-5">
-      <% if current_site %>
+      <% if respond_to?(:current_site) && current_site %>
         <%= component('SiteNavigation', current_site:) %>
       <% end %>
       <%= render 'layouts/notices' %>
