@@ -27,7 +27,8 @@ class IconComponent < ViewComponent::Base
     "star" => "star",
     "trash" => "trash-2",
     "image" => "image",
-    "upload" => "upload"
+    "upload" => "upload",
+    "file-text" => "file-text"
   }.freeze
 
   # Lucide SVG path data (24x24 viewBox, stroke-based).
@@ -194,6 +195,15 @@ class IconComponent < ViewComponent::Base
         "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3",
         "M12 17h.01"
       ]
+    },
+    "file-text" => {
+      paths: [
+        "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z",
+        "M14 2v4a2 2 0 0 0 2 2h4",
+        "M10 9H8",
+        "M16 13H8",
+        "M16 17H8"
+      ]
     }
   }.freeze
 
@@ -251,11 +261,15 @@ class IconComponent < ViewComponent::Base
     return render_lucide_svg("globe") unless svg_path.exist?
 
     raw_svg = svg_path.read
+    escaped_size = CGI.escapeHTML(@size.to_s)
+    escaped_classes = CGI.escapeHTML(css_classes)
     # Update width/height to match our size and add our CSS classes
     raw_svg = raw_svg
-      .gsub(/width="[^"]*"/, %(width="#{@size}"))
-      .gsub(/height="[^"]*"/, %(height="#{@size}"))
-      .gsub(/class="[^"]*"/, %(class="#{css_classes}"))
+      .gsub(/width="[^"]*"/, %(width="#{escaped_size}"))
+      .gsub(/height="[^"]*"/, %(height="#{escaped_size}"))
+      .gsub(/class="[^"]*"/, %(class="#{escaped_classes}"))
+    # Add aria-hidden to the SVG element
+    raw_svg = raw_svg.sub(/<svg\b/, '<svg aria-hidden="true"')
 
     raw_svg.html_safe
   end
