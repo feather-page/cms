@@ -12,8 +12,8 @@
     <% end %>
   </td>
   <td class="text-end">
-    <%= render ButtonComponent.new(label: "Edit", variant: :secondary, size: :sm, href: edit_site_page_path(current_site, page), data: { turbo_frame: :content }) %>
-    <%= render ButtonComponent.new(label: "Delete", variant: :danger, size: :sm, href: site_page_path(current_site, page), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
+    <%= render ButtonComponent.new(label: icon("pencil"), variant: :ghost, size: :sm, href: edit_site_page_path(current_site, page), data: { turbo_frame: :content }, title: t('edit'), aria: { label: t('edit') }) %>
+    <%= render ButtonComponent.new(label: icon("trash"), variant: :ghost, size: :sm, href: site_page_path(current_site, page), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }, title: t('delete'), aria: { label: t('delete') }) %>
     <%= render ButtonComponent.new(label: icon("plus"), variant: :ghost, size: :sm, href: navigation_items_path(site_id: current_site, page_id: page), data: { turbo_method: :post }, title: t('navigation.add_page'), aria: { label: t('navigation.add_page') }) %>
   </td>
 </tr>
