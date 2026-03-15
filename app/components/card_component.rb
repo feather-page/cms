@@ -7,7 +7,7 @@ class CardComponent < ViewComponent::Base
   end
 
   def call
-    css = class_names("card", { "card--hover" => @hover }, @html_options.delete(:class))
-    content_tag(:div, content, **@html_options.merge(class: css))
+    css = class_names("card", { "card--hover" => @hover }, @html_options[:class])
+    content_tag(:div, content, **@html_options.except(:class).merge(class: css))
   end
 end

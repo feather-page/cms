@@ -1,6 +1,6 @@
-<div class="alert alert--<%= @variant %>" role="alert">
+<div class="alert alert--<%= @variant %>" role="alert"<%= dismissible? ? ' data-controller="notice"' : '' %>>
   <div class="alert__content"><%= content %></div>
   <% if dismissible? %>
-    <button type="button" class="alert__dismiss" aria-label="Dismiss">&times;</button>
+    <button type="button" class="alert__dismiss" aria-label="Dismiss" data-action="click->notice#close">&times;</button>
   <% end %>
 </div>

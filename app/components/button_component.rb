@@ -15,8 +15,8 @@ class ButtonComponent < ViewComponent::Base
   end
 
   def call
-    css = class_names("btn", "btn--#{@variant}", "btn--#{@size}", @html_options.delete(:class))
-    opts = @html_options.merge(class: css)
+    css = class_names("btn", "btn--#{@variant}", "btn--#{@size}", @html_options[:class])
+    opts = @html_options.except(:class).merge(class: css)
 
     inner = safe_join([icon_tag, @label].compact)
 

@@ -34,7 +34,8 @@
 }
 
 .alert--success {
-  border-left-color: var(--color-text-primary);
+  border-left-color: var(--color-text-success);
+  color: var(--color-text-success);
 }
 
 .alert--danger {
