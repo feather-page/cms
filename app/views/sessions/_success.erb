@@ -1,5 +1,5 @@
-<div class="alert alert-success" role="alert">
-  <h4 class="alert-heading">We sent you an email with a link to login.</h4>
+<%= render AlertComponent.new(variant: :success) do %>
+  <strong>We sent you an email with a link to login.</strong>
   <p class="mb-0">Please check your inbox and click on the link.</p>
   <p class="mb-0">Feel free to close this page.</p>
-</div>
+<% end %>

@@ -1,5 +1,5 @@
 <div class="login-container">
-  <h1 class="h1">Login</h1>
+  <h1>Login</h1>
 
   <%= turbo_frame_tag('login') do %>
     <p class="login-subtitle">Enter your email and we'll send you a link to login.</p>
@@ -10,9 +10,9 @@
         <%= f.email_field(:email, placeholder: 'name@example.com', class: "form-control", required: true) %>
       </div>
 
-      <div class="d-grid gap-2">
-        <%= f.submit "Continue", class: "btn btn-primary" %>
-        <%= link_to("Cancel", root_path, "data-turbo-frame": '_top', class: "btn btn-outline-secondary") %>
+      <div class="d-flex gap-2">
+        <%= render ButtonComponent.new(label: "Continue", variant: :primary, type: "submit") %>
+        <%= render ButtonComponent.new(label: "Cancel", variant: :ghost, href: root_path, "data-turbo-frame": "_top") %>
       </div>
     <% end %>
   <% end %>
