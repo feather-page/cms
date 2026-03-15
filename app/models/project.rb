@@ -31,8 +31,8 @@ class Project < ApplicationRecord
   def display_period
     return period if period.present?
 
-    start_str = started_at.strftime("%B %Y")
-    end_str = ended_at&.strftime("%B %Y") || "ongoing"
+    start_str = started_at.strftime("%m.%Y")
+    end_str = ended_at&.strftime("%m.%Y") || "ongoing"
     "#{start_str} - #{end_str}"
   end
 

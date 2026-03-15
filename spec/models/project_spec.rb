@@ -145,7 +145,7 @@ RSpec.describe Project do
                           period: nil,
                           started_at: Date.new(2019, 3, 1),
                           ended_at: Date.new(2020, 8, 31))
-          expect(project.display_period).to eq("March 2019 - August 2020")
+          expect(project.display_period).to eq("03.2019 - 08.2020")
         end
       end
 
@@ -155,7 +155,7 @@ RSpec.describe Project do
                           period: nil,
                           started_at: Date.new(2019, 3, 1),
                           ended_at: nil)
-          expect(project.display_period).to eq("March 2019 - ongoing")
+          expect(project.display_period).to eq("03.2019 - ongoing")
         end
       end
     end

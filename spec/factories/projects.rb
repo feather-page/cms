@@ -2,7 +2,7 @@ FactoryBot.define do
   factory :project do
     title { "#{Faker::Company.name} #{%w[Refactoring Migration Development Optimization].sample}" }
     company { Faker::Company.name }
-    period { "#{Faker::Date.between(from: 5.years.ago, to: 2.years.ago).strftime('%B %Y')} - #{Faker::Date.between(from: 2.years.ago, to: Time.zone.today).strftime('%B %Y')}" }
+    period { "#{Faker::Date.between(from: 5.years.ago, to: 2.years.ago).strftime('%m.%Y')} - #{Faker::Date.between(from: 2.years.ago, to: Time.zone.today).strftime('%m.%Y')}" }
     started_at { Faker::Date.between(from: 5.years.ago, to: 2.years.ago) }
     ended_at { Faker::Date.between(from: 2.years.ago, to: Time.zone.today) }
     status { :completed }
