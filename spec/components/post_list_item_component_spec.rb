@@ -25,7 +25,7 @@ RSpec.describe PostListItemComponent, type: :component do
 
     it "renders formatted date" do
       render_inline(described_class.new(post: post, site: site))
-      expect(page).to have_text("14. Feb 2026")
+      expect(page).to have_text("14.02.2026")
     end
 
     it "shows published badge" do

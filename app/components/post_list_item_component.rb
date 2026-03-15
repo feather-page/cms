@@ -43,6 +43,6 @@ class PostListItemComponent < ViewComponent::Base
   end
 
   def formatted_date
-    @post.publish_at&.strftime("%-d. %b %Y")
+    helpers.format_date(@post.publish_at)
   end
 end
