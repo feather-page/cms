@@ -1,24 +1,24 @@
-import { Controller } from "@hotwired/stimulus"
+import { Controller } from '@hotwired/stimulus'
 
 export default class extends Controller {
-  static targets = ["content", "icon"]
+  static targets = ['content', 'icon']
   static values = { open: { type: Boolean, default: true } }
 
-  connect() {
+  connect () {
     this.render()
   }
 
-  toggle() {
+  toggle () {
     this.openValue = !this.openValue
     this.render()
   }
 
-  render() {
+  render () {
     if (this.hasContentTarget) {
-      this.contentTarget.style.display = this.openValue ? "flex" : "none"
+      this.contentTarget.style.display = this.openValue ? 'flex' : 'none'
     }
     if (this.hasIconTarget) {
-      this.iconTarget.textContent = this.openValue ? "▼" : "▶"
+      this.iconTarget.textContent = this.openValue ? '▼' : '▶'
     }
   }
 }
