@@ -124,3 +124,20 @@
   gap: var(--space-1);
   flex-shrink: 0;
 }
+
+@media (max-width: 576px) {
+  .list-row__actions {
+    display: none;
+  }
+
+  .list-row__icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 18px;
+  }
+
+  .list-row__tags {
+    display: none;
+  }
+}

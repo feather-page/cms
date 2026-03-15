@@ -107,3 +107,11 @@
   background: var(--color-border-primary);
   margin: 0 var(--space-1);
 }
+
+@media (max-width: 576px) {
+  .card-row__action-btn--danger,
+  .card-row__action-btn--success,
+  .card-row__separator {
+    display: none;
+  }
+}
