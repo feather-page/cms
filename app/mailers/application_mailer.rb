@@ -7,9 +7,9 @@ class ApplicationMailer < ActionMailer::Base
   private
 
   def set_default_url_options
-    protocol = ENV.fetch('HTTPS') == 'true' ? 'https' : 'http'
+    protocol = ENV.fetch('HTTPS', 'false') == 'true' ? 'https' : 'http'
     self.default_url_options = {
-      host: "#{protocol}://#{ENV.fetch('BASE_HOSTNAME_AND_PORT')}"
+      host: "#{protocol}://#{ENV.fetch('BASE_HOSTNAME_AND_PORT', 'localhost:3000')}"
     }
   end
 
