@@ -13,8 +13,8 @@
     </div>
 
     <div class="d-flex gap-2">
-      <%= form.submit(t('.create'), class: 'btn btn-primary') %>
-      <%= link_to 'Cancel', sites_path, 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+      <%= form.submit(t('.create'), class: 'btn btn--primary btn--md') %>
+      <%= render ButtonComponent.new(label: 'Cancel', variant: :secondary, href: sites_path, data: { turbo_frame: '_top' }) %>
     </div>
   <% end %>
 <% end %>
