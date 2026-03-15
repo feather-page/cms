@@ -6,6 +6,7 @@
   border-radius: var(--radius-md);
   border-left: 4px solid transparent;
   background-color: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: 1.5;
@@ -30,14 +31,19 @@
 }
 
 .alert--info {
-  border-left-color: var(--color-border-focus);
+  background-color: var(--color-bg-info-subtle);
+  border-left-color: var(--color-text-accent);
+  color: var(--color-text-accent);
 }
 
 .alert--success {
+  background-color: var(--color-bg-success-subtle);
   border-left-color: var(--color-text-success);
   color: var(--color-text-success);
 }
 
 .alert--danger {
+  background-color: var(--color-bg-danger-subtle);
   border-left-color: var(--color-text-danger);
+  color: var(--color-text-danger);
 }

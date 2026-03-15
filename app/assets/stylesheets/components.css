@@ -1,0 +1,15 @@
+/*
+ * Component sidecar styles
+ * Auto-included in application layout alongside application.css
+ */
+@import url("/assets/button_component.css");
+@import url("/assets/badge_component.css");
+@import url("/assets/alert_component.css");
+@import url("/assets/empty_state_component.css");
+@import url("/assets/card_component.css");
+@import url("/assets/table_component.css");
+@import url("/assets/page_header_component.css");
+@import url("/assets/page_layout_component.css");
+@import url("/assets/modal_component.css");
+@import url("/assets/site_navigation_component.css");
+@import url("/assets/form/header_image_picker_component.css");

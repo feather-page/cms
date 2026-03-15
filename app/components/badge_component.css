@@ -21,11 +21,11 @@
 }
 
 .badge--success {
-  background-color: var(--color-bg-success);
+  background-color: var(--color-bg-success-subtle);
   color: var(--color-text-success);
 }
 
 .badge--danger {
-  background-color: var(--color-bg-danger);
-  color: var(--color-text-on-accent);
+  background-color: var(--color-bg-danger-subtle);
+  color: var(--color-text-danger);
 }
