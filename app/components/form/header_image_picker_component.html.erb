@@ -37,67 +37,78 @@
   </div>
 
   <!-- Action Buttons -->
-  <div class="d-flex gap-2 flex-wrap mb-3 position-relative">
-    <!-- Icon Button (standalone) -->
-    <button type="button"
-            class="btn btn-outline-secondary btn-sm"
-            data-action="header-image-picker#openEmojiPicker"
-            data-header-image-picker-target="addIconButton">
-      😀 Add icon
-    </button>
-    <button type="button"
-            class="btn btn-outline-danger btn-sm"
-            data-action="header-image-picker#removeEmoji"
-            data-header-image-picker-target="removeEmojiButton"
-            style="<%= 'display: none;' unless current_emoji.present? %>">
-      Remove icon
-    </button>
-
-    <!-- Thumbnail Button Group -->
-    <div class="btn-group" role="group">
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUnsplashForThumbnail">
-        <%= helpers.icon("image", css_class: "me-1") %> Thumbnail
-      </button>
-
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUploadForThumbnail">
-        <%= helpers.icon("upload", css_class: "me-1") %> Upload
-      </button>
+  <div class="d-flex gap-3 flex-wrap mb-3 position-relative align-items-start">
+    <!-- Icon Section -->
+    <div class="d-flex flex-column gap-1">
+      <span class="header-image-picker-section-label">Icon</span>
+      <div class="d-flex gap-1">
+        <button type="button"
+                class="btn btn-outline-secondary btn-sm"
+                data-action="header-image-picker#openEmojiPicker"
+                data-header-image-picker-target="addIconButton">
+          😀 Add icon
+        </button>
+        <button type="button"
+                class="btn btn-outline-danger btn-sm"
+                data-action="header-image-picker#removeEmoji"
+                data-header-image-picker-target="removeEmojiButton"
+                style="<%= 'display: none;' unless current_emoji.present? %>">
+          Remove
+        </button>
+      </div>
     </div>
 
-    <button type="button"
-            class="btn btn-outline-danger btn-sm"
-            data-action="header-image-picker#removeThumbnail"
-            data-header-image-picker-target="removeThumbnailButton"
-            style="<%= 'display: none;' unless current_thumbnail %>">
-      Remove thumbnail
-    </button>
-
-    <!-- Cover Button Group -->
-    <div class="btn-group" role="group">
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUnsplashForCover">
-        <%= helpers.icon("image", css_class: "me-1") %> Cover
-      </button>
-
-      <button type="button"
-              class="btn btn-outline-secondary btn-sm"
-              data-action="header-image-picker#openUploadForCover">
-        <%= helpers.icon("upload", css_class: "me-1") %> Upload
-      </button>
+    <!-- Thumbnail Section -->
+    <div class="d-flex flex-column gap-1">
+      <span class="header-image-picker-section-label">Thumbnail</span>
+      <div class="d-flex gap-1">
+        <div class="btn-group" role="group">
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  data-action="header-image-picker#openUnsplashForThumbnail">
+            <%= helpers.icon("image", css_class: "me-1") %> Search
+          </button>
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  data-action="header-image-picker#openUploadForThumbnail">
+            <%= helpers.icon("upload", css_class: "me-1") %> Upload
+          </button>
+        </div>
+        <button type="button"
+                class="btn btn-outline-danger btn-sm"
+                data-action="header-image-picker#removeThumbnail"
+                data-header-image-picker-target="removeThumbnailButton"
+                style="<%= 'display: none;' unless current_thumbnail %>">
+          Remove
+        </button>
+      </div>
     </div>
 
-    <button type="button"
-            class="btn btn-outline-danger btn-sm"
-            data-action="header-image-picker#remove"
-            data-header-image-picker-target="removeButton"
-            style="<%= 'display: none;' unless current_image %>">
-      Remove cover
-    </button>
+    <!-- Cover Section -->
+    <div class="d-flex flex-column gap-1">
+      <span class="header-image-picker-section-label">Cover</span>
+      <div class="d-flex gap-1">
+        <div class="btn-group" role="group">
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  data-action="header-image-picker#openUnsplashForCover">
+            <%= helpers.icon("image", css_class: "me-1") %> Search
+          </button>
+          <button type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  data-action="header-image-picker#openUploadForCover">
+            <%= helpers.icon("upload", css_class: "me-1") %> Upload
+          </button>
+        </div>
+        <button type="button"
+                class="btn btn-outline-danger btn-sm"
+                data-action="header-image-picker#remove"
+                data-header-image-picker-target="removeButton"
+                style="<%= 'display: none;' unless current_image %>">
+          Remove
+        </button>
+      </div>
+    </div>
 
     <!-- Emoji Picker Popover -->
     <div data-header-image-picker-target="emojiPicker" class="emoji-picker" style="display: none;">
@@ -187,132 +198,3 @@
     </div>
   </dialog>
 </div>
-
-<style>
-  .header-preview {
-    position: relative;
-    border-radius: 6px;
-    min-height: 60px;
-    overflow: visible;
-  }
-
-  .header-preview-image {
-    width: 100%;
-    height: 240px;
-    overflow: hidden;
-    border-radius: 6px;
-  }
-
-  .header-preview-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .thumbnail-preview {
-    width: 80px;
-    height: 80px;
-    overflow: hidden;
-    border-radius: 6px;
-    margin-bottom: 8px;
-  }
-
-  .thumbnail-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .header-preview-emoji {
-    position: absolute;
-    bottom: -8px;
-    left: 16px;
-    font-size: 4rem;
-    line-height: 1;
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-  }
-
-  .header-preview-emoji:hover {
-    transform: scale(1.1);
-  }
-
-  .header-preview:has(.header-preview-image[style*="display: none"]) {
-    min-height: 60px;
-  }
-
-  .header-preview:has(.header-preview-image[style*="display: none"]) .header-preview-emoji {
-    position: relative;
-    bottom: auto;
-    left: auto;
-    margin: 8px 0;
-  }
-
-  .emoji-picker {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
-    background: var(--bs-body-bg, #fff);
-    border: 1px solid rgba(0,0,0,0.15);
-    border-radius: 8px;
-    padding: 8px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 1000;
-    width: 100%;
-    max-width: 500px;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .emoji-picker {
-      background: #2a2a2a;
-      border-color: rgba(255,255,255,0.15);
-    }
-  }
-
-  .emoji-picker-scroll {
-    max-height: 280px;
-    overflow-y: auto;
-  }
-
-  .emoji-category {
-    margin-bottom: 8px;
-  }
-
-  .emoji-category-label {
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #888;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-    padding-left: 2px;
-  }
-
-  .emoji-picker-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1px;
-  }
-
-  .emoji-option {
-    background: none;
-    border: none;
-    padding: 3px;
-    font-size: 1.25rem;
-    line-height: 1;
-    cursor: pointer;
-    border-radius: 4px;
-  }
-
-  .emoji-option:hover {
-    background-color: rgba(0, 0, 0, 0.1);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .emoji-option:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
-  }
-</style>
