@@ -24,8 +24,10 @@ class BooksController < ApplicationController
   end
 
   def update
+    @cover_url = params[:cover_url]
     return unless @book.update(book_params)
 
+    download_cover_if_present
     turbo_redirect_to(site_books_path(current_site), notice: t(".notice"))
   end
 
