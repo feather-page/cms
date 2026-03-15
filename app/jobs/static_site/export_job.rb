@@ -7,14 +7,30 @@ module StaticSite
 
     queue_as :default
 
-    def perform(deployment_target)
+    def perform(deployment_target, deployer: Rclone::Deployer, noticer: Noticer)
       @deployment_target = deployment_target
+      @deployer = deployer
+      @noticer = noticer
+      @lock_acquired = false
+
+      unless deployment_target.acquire_deploy_lock!
+        if executions < 60
+          return retry_job(wait: 5.seconds)
+        else
+          Rails.logger.warn("Deploy lock for target #{deployment_target.id} stuck — giving up after 60 retries")
+          return
+        end
+      end
+
+      @lock_acquired = true
       @site = deployment_target.site
 
       cleanup
       export_content
       precompress
-      deploy
+      deploy_and_notify
+    ensure
+      deployment_target.release_deploy_lock! if @lock_acquired
     end
 
     private
@@ -105,8 +121,11 @@ module StaticSite
       PrecompressJob.perform_now(output_dir)
     end
 
-    def deploy
-      Rclone::DeployJob.perform_later(deployment_target)
+    def deploy_and_notify
+      @deployer.deploy(deployment_target)
+      @noticer.new(site).notice(
+        "Site built. <a href='https://#{deployment_target.public_hostname}'>Preview</a>"
+      )
     end
 
     def renderer
