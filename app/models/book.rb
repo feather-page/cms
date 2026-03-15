@@ -10,9 +10,10 @@ class Book < ApplicationRecord
 
   enum :reading_status, { want_to_read: 0, reading: 1, finished: 2 }, prefix: true
 
+  before_validation :set_read_at_default
+
   validates :title, presence: true
   validates :author, presence: true
-  validates :read_at, presence: true, if: :reading_status_finished?
   validates :rating, inclusion: { in: 1..5 }, allow_nil: true
 
   def review?
@@ -27,4 +28,10 @@ class Book < ApplicationRecord
   scope :by_status, ->(status) { where(reading_status: status) }
 
   delegate :year, to: :read_at, allow_nil: true
+
+  private
+
+  def set_read_at_default
+    self.read_at ||= Date.today if reading_status_finished?
+  end
 end

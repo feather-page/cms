@@ -24,10 +24,10 @@ RSpec.describe Book do
     end
 
     context "when reading_status is finished" do
-      it "requires read_at" do
+      it "auto-fills read_at when finished and read_at is nil" do
         book = build(:book, reading_status: :finished, read_at: nil)
-        expect(book).not_to be_valid
-        expect(book.errors[:read_at]).to be_present
+        expect(book).to be_valid
+        expect(book.read_at).to eq(Date.today)
       end
     end
 
@@ -94,6 +94,28 @@ RSpec.describe Book do
     it "returns nil when read_at is nil" do
       book = build(:book, :want_to_read)
       expect(book.year).to be_nil
+    end
+  end
+
+  describe "#set_read_at_default" do
+    let(:site) { create(:site) }
+
+    it "sets read_at to today when status changes to finished and read_at is nil" do
+      book = build(:book, site: site, reading_status: :finished, read_at: nil)
+      book.valid?
+      expect(book.read_at).to eq(Date.today)
+    end
+
+    it "does not overwrite existing read_at when status changes to finished" do
+      book = build(:book, site: site, reading_status: :finished, read_at: Date.new(2025, 1, 15))
+      book.valid?
+      expect(book.read_at).to eq(Date.new(2025, 1, 15))
+    end
+
+    it "does not set read_at for non-finished status" do
+      book = build(:book, site: site, reading_status: :reading, read_at: nil)
+      book.valid?
+      expect(book.read_at).to be_nil
     end
   end
 
