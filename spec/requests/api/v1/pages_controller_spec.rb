@@ -1,12 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Api::V1::Pages" do
-  include ApiHelpers
-
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-  let(:api_token) { create(:api_token, user: user) }
-  let(:headers) { api_headers(token: api_token.plain_token) }
+  include_context "authenticated api user"
 
   describe "GET /api/v1/sites/:site_id/pages" do
     it "returns all pages for the site" do

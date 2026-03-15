@@ -1,10 +1,5 @@
 describe Api::SlugsController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before do
-    login_as(user)
-  end
+  include_context "authenticated user"
 
   context 'when slug does not exist' do
     it 'returns http success' do

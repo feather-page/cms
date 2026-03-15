@@ -1,10 +1,7 @@
 require "rails_helper"
 
 describe PagesController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe "GET #index" do
     it "returns successful response" do

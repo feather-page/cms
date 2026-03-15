@@ -1,8 +1,5 @@
 describe ImagesController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe 'GET #show' do
     let(:image) { create(:image, site:) }

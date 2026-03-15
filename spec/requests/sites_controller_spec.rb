@@ -1,9 +1,7 @@
 require "rails_helper"
 
 describe SitesController do
-  let(:user) { create(:user) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe "GET #index" do
     it "shows user's own sites" do
@@ -84,8 +82,6 @@ describe SitesController do
   end
 
   describe "GET #edit" do
-    let(:site) { create(:site, users: [user]) }
-
     it "returns successful response" do
       get edit_site_path(site)
 
@@ -94,7 +90,6 @@ describe SitesController do
   end
 
   describe "PATCH #update" do
-    let(:site) { create(:site, users: [user]) }
     let(:valid_params) do
       {
         site: {

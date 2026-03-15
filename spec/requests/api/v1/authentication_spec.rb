@@ -1,10 +1,7 @@
 require "rails_helper"
 
 RSpec.describe "Api::V1 Authentication" do
-  include ApiHelpers
-
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
+  include_context "authenticated api user"
 
   describe "Bearer token authentication" do
     it "authenticates with valid token" do

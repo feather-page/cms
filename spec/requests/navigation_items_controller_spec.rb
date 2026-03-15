@@ -1,10 +1,7 @@
 require "rails_helper"
 
 describe NavigationItemsController do
-  let(:user) { create(:user, :site_admin) }
-  let(:site) { user.sites.first }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe "POST #create" do
     it "adds a page to the navigation" do

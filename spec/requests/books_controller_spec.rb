@@ -1,8 +1,5 @@
 describe BooksController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe 'GET #lookup' do
     let!(:gatsby_book) { create(:book, site:, title: 'The Great Gatsby', author: 'F. Scott Fitzgerald') }

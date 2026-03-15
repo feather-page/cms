@@ -1,12 +1,10 @@
 require "rails_helper"
 
 RSpec.describe UnsplashImagesController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
+  include_context "authenticated user"
   let(:unsplash_client) { instance_double(Unsplash::Client) }
 
   before do
-    login_as(user)
     allow(Unsplash::Client).to receive(:new).and_return(unsplash_client)
   end
 

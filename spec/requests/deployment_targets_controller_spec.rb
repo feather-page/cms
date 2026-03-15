@@ -1,10 +1,7 @@
 require "rails_helper"
 
 describe DeploymentTargetsController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe "GET #index" do
     let!(:deployment_target) { create(:deployment_target, site: site) }

@@ -1,10 +1,7 @@
 require "rails_helper"
 
 describe UserInvitationsController do
-  let(:user) { create(:user, :superadmin) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated superadmin"
 
   describe "GET #new" do
     it "returns successful response" do

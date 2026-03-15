@@ -1,12 +1,9 @@
 describe PreviewsController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
+  include_context "authenticated user"
   let(:deployment_target) { create(:deployment_target, :staging, site:) }
 
   describe "GET #show" do
     context "when logged in as site user" do
-      before { login_as(user) }
-
       describe "home page" do
         it "renders the home page for root path" do
           get preview_root_path(deployment_target)
@@ -150,6 +147,8 @@ describe PreviewsController do
     end
 
     context "when not logged in" do
+      before { login_as(nil) }
+
       it "redirects to login" do
         get preview_root_path(deployment_target)
 

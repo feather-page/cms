@@ -1,10 +1,7 @@
 require "rails_helper"
 
 describe ProjectsController do
-  let(:user) { create(:user) }
-  let(:site) { create(:site, users: [user]) }
-
-  before { login_as(user) }
+  include_context "authenticated user"
 
   describe "GET #index" do
     let!(:old_project) { create(:project, site: site, title: "Old Project", started_at: 2.years.ago) }
