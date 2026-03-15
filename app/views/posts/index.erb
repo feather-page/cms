@@ -5,9 +5,11 @@
 
   <%= turbo_frame_tag(:posts) do %>
     <% if @posts.empty? %>
-      <%= component('empty_state', icon: "pen", message: "No posts yet", action_label: "Create your first post", action_href: new_site_post_path) %>
+      <%= render EmptyStateComponent.new(emoji: "✏️", message: "Noch keine Blogposts", subtitle: "Schreibe deinen ersten Post und teile ihn mit der Welt.", action_label: "Neuer Post", action_href: new_site_post_path) %>
     <% else %>
-      <%= render @posts %>
+      <% @posts.each do |post| %>
+        <%= render PostListItemComponent.new(post: post, site: current_site) %>
+      <% end %>
       <%= render('layouts/pagination') %>
     <% end %>
   <% end %>
