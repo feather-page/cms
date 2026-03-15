@@ -35,13 +35,12 @@ rescue ActiveRecord::StaleObjectError
 end
 
 def release_deploy_lock!
-  update_column(:deploying, false)
-  update_column(:lock_version, 0)
+  update_columns(deploying: false, lock_version: 0)
 end
 ```
 
 - `acquire_deploy_lock!` reloads to get fresh state, checks `deploying`, and atomically sets it to `true`. If another thread won the race (StaleObjectError from optimistic locking), returns `false`.
-- `release_deploy_lock!` uses `update_column` to bypass optimistic locking and callbacks — it must always succeed, even from an `ensure` block with stale state. Resets `lock_version` to avoid unbounded growth.
+- `release_deploy_lock!` uses `update_columns` (single UPDATE statement) to bypass optimistic locking and callbacks — it must always succeed, even from an `ensure` block with stale state. Resets `lock_version` to avoid unbounded growth.
 
 ### 3. StaticSite::ExportJob
 
@@ -50,11 +49,15 @@ Restructure `perform` to acquire the lock, do all work (including rclone sync an
 ```ruby
 def perform(deployment_target)
   @deployment_target = deployment_target
+  @lock_acquired = false
 
   unless deployment_target.acquire_deploy_lock!
-    return retry_job(wait: 5.seconds)
+    return retry_job(wait: 5.seconds) if executions < 60
+    Rails.logger.warn("Deploy lock for target #{deployment_target.id} stuck — giving up after 60 retries")
+    return
   end
 
+  @lock_acquired = true
   @site = deployment_target.site
 
   cleanup
@@ -62,16 +65,20 @@ def perform(deployment_target)
   precompress
   deploy_and_notify
 ensure
-  deployment_target.release_deploy_lock! if deployment_target.deploying?
+  deployment_target.release_deploy_lock! if @lock_acquired
 end
 ```
 
-The `deploy` method changes from `Rclone::DeployJob.perform_later` to inline execution:
+The `deploy` method changes from `Rclone::DeployJob.perform_later` to inline execution. `perform` accepts optional DI keyword arguments (matching the existing pattern in `Rclone::DeployJob`) for testability:
 
 ```ruby
+def perform(deployment_target, deployer: Rclone::Deployer, noticer: Noticer)
+  # ...
+end
+
 def deploy_and_notify
-  Rclone::Deployer.deploy(deployment_target)
-  Noticer.new(site).notice(
+  @deployer.deploy(deployment_target)
+  @noticer.new(site).notice(
     "Site built. <a href='https://#{deployment_target.public_hostname}'>Preview</a>"
   )
 end
@@ -97,6 +104,8 @@ Becomes unused. Delete the file `app/jobs/rclone/deploy_job.rb` and its spec (if
 | Double click (second while first runs) | Second job retries every 5s until first finishes, then runs |
 | Job crashes mid-build | `ensure` releases lock, next retry starts clean |
 | Three rapid clicks | Jobs serialize — each waits for the previous one |
+| Retry limit exceeded (stuck lock) | Job logs warning and gives up after 60 retries (~5 min) |
+| Process killed (SIGKILL / crash) | Lock stays stuck — operator resets via `DeploymentTarget.find(id).release_deploy_lock!` in Rails console. Retry cap (60) prevents infinite loops for waiting jobs. |
 
 ## Testing
 
