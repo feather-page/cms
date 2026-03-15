@@ -139,7 +139,9 @@ rescue ActiveRecord::StaleObjectError
 end
 
 def release_deploy_lock!
-  update_columns(deploying: false, lock_version: 0)
+  # NOTE: update_columns still includes lock_version in WHERE clause,
+  # so it fails on stale objects. update_all bypasses this.
+  self.class.where(id: id).update_all(deploying: false, lock_version: 0)
 end
 ```
 

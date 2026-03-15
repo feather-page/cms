@@ -35,12 +35,12 @@ rescue ActiveRecord::StaleObjectError
 end
 
 def release_deploy_lock!
-  update_columns(deploying: false, lock_version: 0)
+  self.class.where(id: id).update_all(deploying: false, lock_version: 0)
 end
 ```
 
 - `acquire_deploy_lock!` reloads to get fresh state, checks `deploying`, and atomically sets it to `true`. If another thread won the race (StaleObjectError from optimistic locking), returns `false`.
-- `release_deploy_lock!` uses `update_columns` (single UPDATE statement) to bypass optimistic locking and callbacks — it must always succeed, even from an `ensure` block with stale state. Resets `lock_version` to avoid unbounded growth.
+- `release_deploy_lock!` uses `update_all` via a class-level WHERE query to truly bypass optimistic locking. Note: `update_columns` still includes `lock_version` in the WHERE clause for models with optimistic locking, so it would fail on stale objects. `update_all` only uses the primary key. Resets `lock_version` to avoid unbounded growth.
 
 ### 3. StaticSite::ExportJob
 
