@@ -34,12 +34,12 @@ RSpec.describe EmptyStateComponent, type: :component do
   it "renders subtitle when provided" do
     render_inline(described_class.new(
       emoji: "📚",
-      message: "Dein Buecherregal ist leer",
-      subtitle: "Fuege dein erstes Buch hinzu.",
+      message: "Dein Bücherregal ist leer",
+      subtitle: "Füge dein erstes Buch hinzu.",
       action_label: "Neues Buch",
       action_href: "/books/new"
     ))
-    expect(page).to have_css(".empty-state__subtitle", text: "Fuege dein erstes Buch hinzu.")
+    expect(page).to have_css(".empty-state__subtitle", text: "Füge dein erstes Buch hinzu.")
   end
 
   it "does not render subtitle element when not provided" do

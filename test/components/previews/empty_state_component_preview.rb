@@ -31,8 +31,8 @@ class EmptyStateComponentPreview < Lookbook::Preview
   def emoji_books
     render EmptyStateComponent.new(
       emoji: "📚",
-      message: "Dein Buecherregal ist leer",
-      subtitle: "Fuege dein erstes Buch hinzu.",
+      message: "Dein Bücherregal ist leer",
+      subtitle: "Füge dein erstes Buch hinzu.",
       action_label: "Neues Buch",
       action_href: "#"
     )
@@ -66,7 +66,7 @@ class EmptyStateComponentPreview < Lookbook::Preview
       emoji: "✉️",
       message: "Keine ausstehenden Einladungen",
       subtitle: "Lade weitere Nutzer ein, um an deiner Seite mitzuarbeiten.",
-      action_label: "Nutzer einladen",
+      action_label: "Einladen",
       action_href: "#"
     )
   end
