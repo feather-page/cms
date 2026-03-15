@@ -17,8 +17,8 @@
     <%= component('form/text_field', form:, attribute: :copyright) %>
 
     <div class="d-flex gap-2">
-      <%= form.submit(t('.update'), class: 'btn btn--primary btn--md') %>
-      <%= render ButtonComponent.new(label: t('form.cancel'), variant: :secondary, href: url_for(current_site), data: { turbo_frame: '_top' }) %>
+      <%= render ButtonComponent.new(label: t('.update'), variant: :primary, type: "submit") %>
+      <%= render ButtonComponent.new(label: t('form.cancel'), variant: :ghost, href: site_posts_path(current_site), data: { turbo_frame: '_top' }) %>
     </div>
   <% end %>
 <% end %>
