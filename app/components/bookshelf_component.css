@@ -38,13 +38,11 @@
 
 .bookshelf__year {
   margin-bottom: var(--space-4);
-  border-top: 1px solid var(--color-border-primary);
   padding-top: var(--space-3);
 }
 
-.bookshelf__year:first-child {
-  border-top: none;
-  padding-top: 0;
+.bookshelf__year + .bookshelf__year {
+  border-top: 1px solid var(--color-border-primary);
 }
 
 .bookshelf__year-header {
