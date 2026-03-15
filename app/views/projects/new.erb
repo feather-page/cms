@@ -1,5 +1,4 @@
 <%= turbo_frame_tag(:content) do %>
-  <%= render BreadcrumbComponent.new(items: [["Projects", site_projects_path(current_site)], ["New Project"]]) %>
-  <%= render PageHeaderComponent.new(title: "New Project") %>
+  <%= render PageHeaderComponent.new(title: "New Project", breadcrumb_items: [["Projects", site_projects_path(current_site)], ["New Project"]]) %>
   <%= render "form", project: @project %>
 <% end %>

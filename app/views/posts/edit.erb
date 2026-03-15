@@ -1,5 +1,4 @@
 <%= turbo_frame_tag(:content) do %>
-  <%= render BreadcrumbComponent.new(items: [["Blogposts", site_posts_path(current_site)], ["Edit Post"]]) %>
-  <%= render PageHeaderComponent.new(title: "Edit Post") %>
+  <%= render PageHeaderComponent.new(title: "Edit Post", breadcrumb_items: [["Blogposts", site_posts_path(current_site)], ["Edit Post"]]) %>
   <%= render "form", post: @post %>
 <% end %>

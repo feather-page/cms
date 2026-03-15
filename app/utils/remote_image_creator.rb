@@ -33,6 +33,7 @@ class RemoteImageCreator
 
   def get(url, timeout:)
     connection = Faraday.new do |f|
+      f.response :follow_redirects
       f.options.timeout = timeout
       f.options.open_timeout = timeout
     end

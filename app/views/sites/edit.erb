@@ -1,5 +1,4 @@
-<%= render BreadcrumbComponent.new(items: [["Site"]]) %>
-<%= render PageHeaderComponent.new(title: t('.title')) %>
+<%= render PageHeaderComponent.new(title: t('.title'), breadcrumb_items: [["Site"]]) %>
 
 <%= render 'edit_form', site: @site %>
 

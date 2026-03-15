@@ -1,6 +1,11 @@
 <div class="page-header">
-  <h1 class="page-header__title"><%= @title %></h1>
-  <% if content.present? %>
-    <div class="page-header__actions"><%= content %></div>
+  <% if @breadcrumb_items %>
+    <%= render BreadcrumbComponent.new(items: @breadcrumb_items) %>
   <% end %>
+  <div class="page-header__row">
+    <h1 class="page-header__title"><%= @title %></h1>
+    <% if content.present? %>
+      <div class="page-header__actions"><%= content %></div>
+    <% end %>
+  </div>
 </div>
