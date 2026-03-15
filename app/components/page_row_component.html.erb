@@ -1,0 +1,24 @@
+<div id="<%= dom_id(@page) %>" class="card-row">
+  <div class="card-row__icon">
+    <% if emoji %>
+      <span><%= emoji %></span>
+    <% else %>
+      <%= helpers.icon("file-text") %>
+    <% end %>
+  </div>
+  <div class="card-row__content">
+    <div class="card-row__title"><%= title %></div>
+    <div class="card-row__subtitle">
+      <%= slug %>
+      <% if page_type_badge %>
+        <span class="list-row__tag"><%= page_type_badge %></span>
+      <% end %>
+    </div>
+  </div>
+  <div class="card-row__actions">
+    <%= link_to helpers.icon("plus"), add_to_nav_path, class: "card-row__action-btn card-row__action-btn--success", title: "Add to navigation", data: { turbo_method: :post } %>
+    <span class="card-row__separator"></span>
+    <%= link_to helpers.icon("pencil"), edit_path, class: "card-row__action-btn", title: "Edit", data: { turbo_frame: :content } %>
+    <%= link_to helpers.icon("trash"), delete_path, class: "card-row__action-btn card-row__action-btn--danger", title: "Delete", data: { turbo_method: :delete, turbo_confirm: I18n.t('are_you_sure') } %>
+  </div>
+</div>

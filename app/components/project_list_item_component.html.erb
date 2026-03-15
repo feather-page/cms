@@ -1,0 +1,39 @@
+<div class="list-row">
+  <%= link_to edit_path, class: "list-row__link", data: { turbo_frame: :content } do %>
+    <div class="list-row__icon">
+      <%= icon_content %>
+    </div>
+    <div class="list-row__content">
+      <div class="list-row__title"><%= @project.title %></div>
+      <div class="list-row__meta">
+        <% if @project.company.present? %>
+          <span><%= @project.company %></span>
+        <% end %>
+        <% if @project.role.present? %>
+          <span><%= @project.role %></span>
+        <% end %>
+        <%= render BadgeComponent.new(
+              label: I18n.t("activerecord.attributes.project.statuses.#{@project.status}"),
+              variant: status_variant) %>
+      </div>
+    </div>
+  <% end %>
+  <div class="list-row__actions">
+    <%= render ButtonComponent.new(
+          label: helpers.icon("pencil"),
+          variant: :ghost,
+          size: :sm,
+          href: edit_path,
+          data: { turbo_frame: :content },
+          title: I18n.t('edit'),
+          aria: { label: I18n.t('edit') }) %>
+    <%= render ButtonComponent.new(
+          label: helpers.icon("trash"),
+          variant: :ghost,
+          size: :sm,
+          href: delete_path,
+          data: { turbo_method: :delete, turbo_confirm: I18n.t('are_you_sure') },
+          title: I18n.t('delete'),
+          aria: { label: I18n.t('delete') }) %>
+  </div>
+</div>

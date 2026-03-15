@@ -2,8 +2,12 @@
   <%= render ButtonComponent.new(label: t('.invite_user'), variant: :primary, icon: "user-plus", href: new_site_invitation_path(current_site)) %>
 <% end %>
 
-<%= render TableComponent.new(headers: ["Email", ""]) do %>
-  <%= render @users %>
+<% if @users.empty? %>
+  <%= render EmptyStateComponent.new(icon: "users", message: "No users yet") %>
+<% else %>
+  <% @users.each do |site_user| %>
+    <%= render SiteUserRowComponent.new(site_user: site_user, site: current_site) %>
+  <% end %>
 <% end %>
 
 <div class="labeled-divider">
@@ -12,8 +16,9 @@
 
 <% if @user_invitations.none? %>
   <%= render EmptyStateComponent.new(
-        icon: "mail",
-        message: t('.no_invitations'),
+        emoji: "✉️",
+        message: "Keine ausstehenden Einladungen",
+        subtitle: "Lade weitere Nutzer ein, um an deiner Seite mitzuarbeiten.",
         action_label: t('.invite_user'),
         action_href: new_site_invitation_path(current_site)) %>
 <% else %>

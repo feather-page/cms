@@ -1,0 +1,9 @@
+.deployment-row__icon--production {
+  background: #d4edda;
+  color: #3d7a3d;
+}
+
+.deployment-row__icon--staging {
+  background: #fff3cd;
+  color: #856404;
+}

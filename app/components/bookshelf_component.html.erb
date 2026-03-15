@@ -44,9 +44,6 @@
         </div>
         <span class="bookshelf__year-stats">
           <%= books.size %> <%= books.size == 1 ? "Buch" : "Bücher" %>
-          <% if (avg = average_rating(books)) %>
-            · ⌀ <%= avg %>
-          <% end %>
         </span>
       </div>
       <div class="bookshelf__grid" data-toggle-target="content">

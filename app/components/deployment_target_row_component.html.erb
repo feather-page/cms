@@ -1,0 +1,16 @@
+<div class="list-row">
+  <div class="list-row__icon <%= icon_class %>">
+    <%= helpers.icon("globe") %>
+  </div>
+  <div class="list-row__content">
+    <div class="list-row__title"><%= hostname %></div>
+    <div class="list-row__meta"><span><%= type_label %></span></div>
+  </div>
+  <div class="list-row__actions">
+    <%= render ButtonComponent.new(label: "Deploy", variant: :primary, size: :sm, href: deploy_path, data: { turbo_method: :post }) %>
+    <% if show_preview? %>
+      <%= render ButtonComponent.new(label: "Preview", variant: :secondary, size: :sm, href: preview_path, target: "_blank") %>
+    <% end %>
+    <%= render ButtonComponent.new(label: helpers.icon("pencil"), variant: :ghost, size: :sm, href: edit_path, title: "Edit", aria: { label: "Edit" }) %>
+  </div>
+</div>

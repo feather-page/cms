@@ -14,9 +14,11 @@
 
   <%= turbo_frame_tag(:pages) do %>
     <% if @pages.empty? %>
-      <%= component('empty_state', icon: "file", message: "No other pages yet", action_label: "Create your first page", action_href: new_site_page_path) %>
+      <%= render EmptyStateComponent.new(emoji: "📄", message: "Keine weiteren Seiten", subtitle: "Erstelle Seiten wie Impressum, About oder Kontakt.", action_label: "Neue Seite", action_href: new_site_page_path) %>
     <% else %>
-      <%= render 'pages', pages: @pages %>
+      <% @pages.each do |page| %>
+        <%= render PageRowComponent.new(page: page, site: current_site) %>
+      <% end %>
       <%= render('layouts/pagination') %>
     <% end %>
   <% end %>

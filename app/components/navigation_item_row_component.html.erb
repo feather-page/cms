@@ -1,0 +1,29 @@
+<div id="<%= dom_id(@item) %>" class="card-row">
+  <div class="card-row__drag-handle" title="Drag to reorder">⠿</div>
+  <div class="card-row__icon">
+    <% if emoji %>
+      <span><%= emoji %></span>
+    <% else %>
+      <%= helpers.icon("file-text") %>
+    <% end %>
+  </div>
+  <div class="card-row__content">
+    <div class="card-row__title"><%= title %></div>
+    <div class="card-row__subtitle"><%= slug %></div>
+  </div>
+  <div class="card-row__actions">
+    <% if first? %>
+      <span class="card-row__action-btn card-row__action-btn--disabled"><%= helpers.icon("chevron-up") %></span>
+    <% else %>
+      <%= link_to helpers.icon("chevron-up"), move_up_path, data: { turbo_method: :patch }, class: "card-row__action-btn", title: "Move up" %>
+    <% end %>
+    <% if last? %>
+      <span class="card-row__action-btn card-row__action-btn--disabled"><%= helpers.icon("chevron-down") %></span>
+    <% else %>
+      <%= link_to helpers.icon("chevron-down"), move_down_path, data: { turbo_method: :patch }, class: "card-row__action-btn", title: "Move down" %>
+    <% end %>
+    <span class="card-row__separator"></span>
+    <%= link_to helpers.icon("pencil"), edit_path, class: "card-row__action-btn", title: "Edit", data: { turbo_frame: :content } %>
+    <%= link_to helpers.icon("minus"), remove_path, class: "card-row__action-btn card-row__action-btn--danger", title: "Remove from navigation", data: { turbo_method: :delete } %>
+  </div>
+</div>

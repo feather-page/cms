@@ -2,10 +2,10 @@
   <%= render PageHeaderComponent.new(title: "Deployment Targets") %>
 
   <% if @deployment_targets.empty? %>
-    <%= render EmptyStateComponent.new(icon: "box-seam", message: "No deployment targets configured") %>
+    <%= render EmptyStateComponent.new(icon: "globe", message: "No deployment targets configured") %>
   <% else %>
-    <%= render TableComponent.new(headers: ["URL", "Type", ""]) do %>
-      <%= render @deployment_targets %>
+    <% @deployment_targets.each do |target| %>
+      <%= render DeploymentTargetRowComponent.new(target: target, site: current_site) %>
     <% end %>
   <% end %>
 <% end %>
