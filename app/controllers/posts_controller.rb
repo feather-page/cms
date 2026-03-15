@@ -4,7 +4,7 @@ class PostsController < ApplicationController
   before_action :set_post, only: %i[edit update destroy]
 
   def index
-    @pagy, @posts = pagy(current_site.posts.includes(thumbnail_image: { file_attachment: :blob }).latest)
+    @pagy, @posts = pagy(current_site.posts.includes(:book, thumbnail_image: { file_attachment: :blob }).latest)
   end
 
   def new

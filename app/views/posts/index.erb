@@ -1,12 +1,14 @@
 <%= turbo_frame_tag(:content) do %>
-  <div class="page-header">
-    <h1 class="h4"><%= icon('pen') %> Blogposts</h1>
-    <%= link_to "New Post", new_site_post_path, class: "btn btn-primary" %>
-  </div>
+  <%= render PageHeaderComponent.new(title: "Blogposts") do %>
+    <%= render ButtonComponent.new(label: "New Post", variant: :primary, icon: "plus", href: new_site_post_path) %>
+  <% end %>
 
   <%= turbo_frame_tag(:posts) do %>
-    <%= render @posts %>
-
-    <%= render('layouts/pagination') %>
+    <% if @posts.empty? %>
+      <%= component('empty_state', icon: "pen", message: "No posts yet", action_label: "Create your first post", action_href: new_site_post_path) %>
+    <% else %>
+      <%= render @posts %>
+      <%= render('layouts/pagination') %>
+    <% end %>
   <% end %>
 <% end %>

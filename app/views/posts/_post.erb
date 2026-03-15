@@ -2,44 +2,47 @@
   <article class="post-card">
     <% if post.title.present? %>
       <div class="post-card-title"><%= post.emoji %> <%= post.title %></div>
-      <div class="d-flex align-items-start gap-2">
+      <div class="post-card-body">
         <% if post.thumbnail_image&.file&.attached? %>
-          <div class="flex-shrink-0">
-            <%= image_tag post.thumbnail_image.file.variant(:mobile_x1_webp), style: 'width: 120px; height: auto; border-radius: 6px;' %>
+          <div class="post-card-thumbnail">
+            <%= image_tag post.thumbnail_image.file.variant(:mobile_x1_webp), class: "post-card-thumbnail__img" %>
           </div>
         <% end %>
         <% if post.content.present? %>
-          <div class="flex-grow-1 text-muted"><%= post.content_excerpt %></div>
+          <div class="post-card-excerpt"><%= post.content_excerpt %></div>
         <% end %>
       </div>
     <% else %>
-      <div class="content"><%= post.content_html %></div>
+      <div class="post-card-content"><%= post.content_html %></div>
     <% end %>
     <% if post.book.present? %>
-      <div class="post-card-book d-flex align-items-center gap-2 my-2 p-2 bg-body-tertiary rounded">
+      <div class="post-card-book">
         <% if post.book.cover_image&.file&.attached? %>
           <%= image_tag post.book.cover_image.file.variant(:mobile_x1_webp), style: 'max-height: 40px;', class: 'rounded' %>
         <% elsif post.book.emoji.present? %>
-          <span style="font-size: 1.5rem;"><%= post.book.emoji %></span>
+          <span class="post-card-book__emoji"><%= post.book.emoji %></span>
         <% end %>
-        <div class="flex-grow-1">
-          <div class="fw-semibold small"><%= post.book.title %></div>
-          <div class="text-muted small"><%= post.book.author %></div>
+        <div class="post-card-book__info">
+          <div class="post-card-book__title"><%= post.book.title %></div>
+          <div class="post-card-book__author"><%= post.book.author %></div>
         </div>
         <% if post.book.rating.present? %>
-          <small class="text-warning"><%= '★' * post.book.rating %><%= '☆' * (5 - post.book.rating) %></small>
+          <small class="post-card-book__rating"><%= '★' * post.book.rating %><%= '☆' * (5 - post.book.rating) %></small>
         <% end %>
       </div>
     <% end %>
     <div class="post-card-meta">
-      <span class="badge bg-secondary"><%= l(post.publish_at, format: :long) %></span>
+      <%= render BadgeComponent.new(label: l(post.publish_at, format: :long), variant: :neutral) %>
+      <% if post.draft? %>
+        <%= render BadgeComponent.new(label: "Draft", variant: :accent) %>
+      <% end %>
       <% post.tag_list.each do |tag| %>
-        <span class="badge bg-light text-dark"><%= tag %></span>
+        <%= render BadgeComponent.new(label: tag, variant: :neutral) %>
       <% end %>
     </div>
     <div class="post-card-actions">
-      <%= link_to('Edit', edit_site_post_path(current_site, post), data: { turbo_frame: :content }, class: 'btn btn-outline-secondary btn-sm') %>
-      <%= link_to('Delete', site_post_path(current_site, post), data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' }, class: 'btn btn-outline-danger btn-sm') %>
+      <%= render ButtonComponent.new(label: "Edit", variant: :secondary, size: :sm, href: edit_site_post_path(current_site, post), data: { turbo_frame: :content }) %>
+      <%= render ButtonComponent.new(label: "Delete", variant: :danger, size: :sm, href: site_post_path(current_site, post), data: { turbo_method: :delete, turbo_confirm: "Are you sure?" }) %>
     </div>
   </article>
 <% end %>
