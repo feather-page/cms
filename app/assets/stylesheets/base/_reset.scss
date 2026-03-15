@@ -332,48 +332,6 @@ a {
 // Temporary: components that will be extracted later
 // ---------------------------------------------------------------------------
 
-// Site Navigation
-.site-navigation {
-  background-color: var(--color-bg-secondary);
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-  margin-bottom: var(--space-6);
-
-  .site-header {
-    color: var(--color-text-primary);
-
-    .icon {
-      color: var(--color-text-accent);
-    }
-  }
-
-  > nav {
-    background-color: transparent;
-    max-width: none;
-    margin: 0;
-    padding: 0;
-    position: static;
-  }
-
-  .nav-pills {
-    .nav-link {
-      color: var(--color-text-secondary);
-      border-radius: var(--radius-md);
-      transition: all 0.2s ease;
-
-      &:hover {
-        background-color: var(--color-bg-tertiary);
-        color: var(--color-text-primary);
-      }
-
-      &.active {
-        background-color: var(--color-bg-accent);
-        color: white;
-      }
-    }
-  }
-}
-
 // Site Cards
 .site-card {
   background-color: var(--color-bg-primary);
