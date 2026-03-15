@@ -6,7 +6,7 @@ describe SocialMediaLinksComponent, type: :component do
 
     render_inline(described_class.new(social_media_links: [social_media_link]))
 
-    expect(page).to have_css('i.bi-instagram')
+    expect(page).to have_css('svg.icon')
     expect(page).to have_text('Instagram')
     expect(page).to have_text('https://instagram.com/example')
   end
