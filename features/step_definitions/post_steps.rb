@@ -69,9 +69,7 @@ end
 
 # Delete actions
 When("I delete the post {string}") do |post_title|
-  post = Post.find_by(title: post_title)
-  # turbo_frame_tag uses dom_id which calls to_key returning public_id
-  within("#post_#{post.public_id}", match: :first) do
+  within(find('.list-row', text: post_title, match: :first)) do
     accept_confirm do
       click_on 'Delete'
     end
@@ -146,5 +144,5 @@ Then("I should see pagination controls") do
 end
 
 Then("I should see {int} posts on the first page") do |count|
-  expect(page).to have_css('article.post-card', count: count)
+  expect(page).to have_css('.list-row', count: count)
 end

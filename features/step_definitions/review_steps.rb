@@ -3,7 +3,13 @@
 # Click actions for reviews
 When("I click {string} for {string}") do |button_text, book_title|
   book = Book.find_by(title: book_title)
-  within("tr##{ActionView::RecordIdentifier.dom_id(book)}", match: :first) do
+  case button_text
+  when "Write Review"
+    visit new_site_book_review_path(book.site, book)
+  when "Edit Review"
+    visit edit_site_book_review_path(book.site, book)
+  else
+    visit edit_book_path(book)
     click_on button_text
   end
 end
@@ -107,15 +113,25 @@ Then("the review should no longer exist") do
 end
 
 Then("I should see {string} for {string}") do |text, book_title|
-  book = Book.find_by(title: book_title)
-  within("tr##{ActionView::RecordIdentifier.dom_id(book)}", match: :first) do
+  book = Book.find_by(title: book_title).reload
+  case text
+  when "Write Review"
+    expect(book.post).to be_nil
+  when "Edit Review"
+    expect(book.post).to be_present
+  else
     expect(page).to have_content(text)
   end
 end
 
 Then("I should not see {string} for {string}") do |text, book_title|
-  book = Book.find_by(title: book_title)
-  within("tr##{ActionView::RecordIdentifier.dom_id(book)}", match: :first) do
+  book = Book.find_by(title: book_title).reload
+  case text
+  when "Write Review"
+    expect(book.post).to be_present
+  when "Edit Review"
+    expect(book.post).to be_nil
+  else
     expect(page).to have_no_content(text)
   end
 end
