@@ -15,6 +15,7 @@ class BooksController < ApplicationController
 
   def create
     @book = current_site.books.new(book_params)
+    @cover_url = params[:cover_url]
 
     return unless @book.save
 

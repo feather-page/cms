@@ -48,7 +48,7 @@
 
     <%= form.hidden_field :isbn, data: { book_search_target: 'isbn' } %>
     <%= form.hidden_field :open_library_key %>
-    <%= hidden_field_tag :cover_url, nil, data: { book_search_target: 'coverUrl' } %>
+    <%= hidden_field_tag :cover_url, @cover_url, data: { book_search_target: 'coverUrl' } %>
 
     <div data-book-search-target="coverPreview" class="mb-3">
       <% if book.cover_image&.file&.attached? %>
