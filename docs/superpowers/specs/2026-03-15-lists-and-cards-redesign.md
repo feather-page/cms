@@ -321,6 +321,7 @@ All new components follow existing patterns:
 - Styling: add component-specific CSS to `application.scss` (the current pattern). Sidecar CSS files are a future goal but not yet configured in the asset pipeline.
 - Rendered via `component()` helper or direct `render`
 - Icons via existing `IconComponent` (Bootstrap Icons in current codebase; Lucide migration is a separate effort)
+- **Lookbook previews are mandatory:** Every new component must have a corresponding Lookbook preview class in `test/components/previews/` (or the project's preview path). Previews should cover all meaningful variants (e.g. post with title vs. short-post, book with cover vs. without, empty state for each content type). Lookbook must stay up to date throughout implementation — not as an afterthought.
 
 ### What Gets Replaced
 
