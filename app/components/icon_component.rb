@@ -32,6 +32,7 @@ class IconComponent < ViewComponent::Base
     "box-seam" => "package",
     "mail" => "mail",
     "plus" => "plus",
+    "minus" => "minus",
     "file" => "file"
   }.freeze
 
@@ -219,6 +220,11 @@ class IconComponent < ViewComponent::Base
       paths: [
         "M5 12h14",
         "M12 5v14"
+      ]
+    },
+    "minus" => {
+      paths: [
+        "M5 12h14"
       ]
     },
     "file" => {
