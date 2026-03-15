@@ -237,6 +237,7 @@ en:
     update:
       notice: "The book was successfully updated."
     new_book: "New Book"
+    edit_book: "Edit Book"
     search_openlibrary: "Search OpenLibrary"
     search_placeholder: "Search by title or author..."
     reading_statuses:

@@ -1,9 +1,7 @@
 <%= turbo_frame_tag(:content) do %>
   <%= render PageHeaderComponent.new(title: Project.model_name.human.pluralize) do %>
-    <%= render ButtonComponent.new(label: t('projects.new_project'), variant: :primary, icon: "plus", href: new_site_project_path, data: { turbo_frame: "new_project" }) %>
+    <%= render ButtonComponent.new(label: t('projects.new_project'), variant: :primary, icon: "plus", href: new_site_project_path, data: { turbo_frame: :content }) %>
   <% end %>
-
-  <%= turbo_frame_tag(:new_project) %>
 
   <%= turbo_frame_tag(:projects) do %>
     <% if @projects.empty? %>
