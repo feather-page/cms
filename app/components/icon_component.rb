@@ -28,7 +28,11 @@ class IconComponent < ViewComponent::Base
     "trash" => "trash-2",
     "image" => "image",
     "upload" => "upload",
-    "file-text" => "file-text"
+    "file-text" => "file-text",
+    "box-seam" => "package",
+    "mail" => "mail",
+    "plus" => "plus",
+    "file" => "file"
   }.freeze
 
   # Lucide SVG path data (24x24 viewBox, stroke-based).
@@ -203,6 +207,24 @@ class IconComponent < ViewComponent::Base
         "M10 9H8",
         "M16 13H8",
         "M16 17H8"
+      ]
+    },
+    "mail" => {
+      paths: [
+        "M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z",
+        "M22 7l-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"
+      ]
+    },
+    "plus" => {
+      paths: [
+        "M5 12h14",
+        "M12 5v14"
+      ]
+    },
+    "file" => {
+      paths: [
+        "M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z",
+        "M14 2v4a2 2 0 0 0 2 2h4"
       ]
     }
   }.freeze
