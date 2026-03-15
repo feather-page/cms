@@ -1,0 +1,12 @@
+<nav class="breadcrumb-nav" aria-label="Breadcrumb">
+  <% @items.each_with_index do |(label, path), index| %>
+    <% if index > 0 %>
+      <span class="breadcrumb__separator" aria-hidden="true">›</span>
+    <% end %>
+    <% if path %>
+      <%= link_to label, path, class: "breadcrumb__link", data: { turbo_frame: :content } %>
+    <% else %>
+      <span class="breadcrumb__current" aria-current="page"><%= label %></span>
+    <% end %>
+  <% end %>
+</nav>
