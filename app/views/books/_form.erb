@@ -6,18 +6,18 @@
                  book_search_search_url_value: search_site_books_path(current_site)
                }) do |form| %>
 
-      <div class="mb-3">
-        <%= label_tag :book_search, t('books.search_openlibrary'), class: 'form-label' %>
-        <%= text_field_tag :book_search, nil,
-            class: 'form-control',
-            data: {
-              book_search_target: 'query',
-              action: 'input->book-search#search'
-            },
-            placeholder: t('books.search_placeholder'),
-            autocomplete: 'off' %>
-        <div data-book-search-target="results" class="list-group mt-1"></div>
-      </div>
+    <div class="mb-3">
+      <%= label_tag :book_search, t('books.search_openlibrary'), class: 'form-label' %>
+      <%= text_field_tag :book_search, nil,
+          class: 'form-control',
+          data: {
+            book_search_target: 'query',
+            action: 'input->book-search#search'
+          },
+          placeholder: t('books.search_placeholder'),
+          autocomplete: 'off' %>
+      <div data-book-search-target="results" class="list-group mt-1"></div>
+    </div>
 
     <div class="mb-3">
       <%= component('form/select',

@@ -14,6 +14,7 @@ class Book < ApplicationRecord
 
   validates :title, presence: true
   validates :author, presence: true
+  validates :read_at, presence: true, if: :reading_status_finished?
   validates :rating, inclusion: { in: 1..5 }, allow_nil: true
 
   def review?

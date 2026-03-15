@@ -41,8 +41,9 @@ class RemoteImageCreator
 
     response = connection.get(url)
 
-    if response.status.in?(301..302) && redirects > 0
-      return get(response.headers["location"], timeout:, redirects: redirects - 1)
+    location = response.headers["location"]
+    if response.status.in?([301, 302, 303, 307, 308]) && redirects > 0 && location.present?
+      return get(location, timeout:, redirects: redirects - 1)
     end
 
     response
