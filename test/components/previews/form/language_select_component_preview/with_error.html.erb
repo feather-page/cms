@@ -1,0 +1,7 @@
+<%
+  site = Site.new
+  site.errors.add(:language_code, "is not included in the list")
+%>
+<%= form_with(model: site, url: "#") do |f| %>
+  <%= render Form::LanguageSelectComponent.new(form: f, attribute: :language_code) %>
+<% end %>

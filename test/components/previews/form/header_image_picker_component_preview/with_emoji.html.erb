@@ -1,0 +1,9 @@
+<%
+  post = Post.new(emoji: "🚀")
+  post.build_site
+  post.site.define_singleton_method(:to_param) { "preview" }
+  post.site.define_singleton_method(:public_id) { "preview" }
+%>
+<%= form_with(model: post, url: "#") do |f| %>
+  <%= render Form::HeaderImagePickerComponent.new(form: f) %>
+<% end %>

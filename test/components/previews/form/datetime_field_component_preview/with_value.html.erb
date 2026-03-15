@@ -1,0 +1,3 @@
+<%= form_with(model: Post.new(publish_at: Time.zone.local(2026, 6, 15, 9, 0)), url: "#") do |f| %>
+  <%= render Form::DatetimeFieldComponent.new(form: f, attribute: :publish_at) %>
+<% end %>

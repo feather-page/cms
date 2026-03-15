@@ -1,0 +1,7 @@
+<%
+  post = Post.new
+  post.errors.add(:publish_at, "can't be blank")
+%>
+<%= form_with(model: post, url: "#") do |f| %>
+  <%= render Form::DatetimeFieldComponent.new(form: f, attribute: :publish_at) %>
+<% end %>
