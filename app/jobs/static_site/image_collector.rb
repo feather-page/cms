@@ -17,7 +17,7 @@ module StaticSite
     end
 
     def header_images
-      post_headers + page_headers
+      post_headers + page_headers + project_headers + project_thumbnails
     end
 
     def post_headers
@@ -26,6 +26,14 @@ module StaticSite
 
     def page_headers
       site.pages.includes(:header_image).where.not(header_image: nil).map(&:header_image)
+    end
+
+    def project_headers
+      site.projects.includes(:header_image).where.not(header_image: nil).map(&:header_image)
+    end
+
+    def project_thumbnails
+      site.projects.includes(:thumbnail_image).where.not(thumbnail_image: nil).map(&:thumbnail_image)
     end
 
     def book_covers
