@@ -109,27 +109,11 @@ describe BooksController do
       expect(response).to be_successful
     end
 
-    it 'shows finished books by default' do
+    it 'shows all books grouped in bookshelf' do
       get site_books_path(site)
       expect(response.body).to include('Finished Book')
-      expect(response.body).not_to include('Want To Read Book')
-      expect(response.body).not_to include('Currently Reading Book')
-    end
-
-    it 'filters by want_to_read status' do
-      get site_books_path(site), params: { status: 'want_to_read' }
-      expect(response).to be_successful
       expect(response.body).to include('Want To Read Book')
-      expect(response.body).not_to include('Finished Book')
-      expect(response.body).not_to include('Currently Reading Book')
-    end
-
-    it 'filters by reading status' do
-      get site_books_path(site), params: { status: 'reading' }
-      expect(response).to be_successful
       expect(response.body).to include('Currently Reading Book')
-      expect(response.body).not_to include('Finished Book')
-      expect(response.body).not_to include('Want To Read Book')
     end
 
     it 'does not show books from other sites' do

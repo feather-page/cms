@@ -9,6 +9,6 @@
     <p class="empty-state__subtitle"><%= @subtitle %></p>
   <% end %>
   <% if render_action? %>
-    <%= render ButtonComponent.new(label: @action_label, href: @action_href, variant: :primary, size: :sm) %>
+    <%= render ButtonComponent.new(label: @action_label, href: @action_href, variant: :primary, size: :sm, data: { turbo_frame: "_top" }) %>
   <% end %>
 </div>
