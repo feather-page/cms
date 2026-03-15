@@ -238,6 +238,8 @@ en:
       notice: "The book was successfully added."
     update:
       notice: "The book was successfully updated."
+    destroy:
+      notice: "The book was successfully deleted."
     new_book: "New Book"
     edit_book: "Edit Book"
     search_openlibrary: "Search OpenLibrary"

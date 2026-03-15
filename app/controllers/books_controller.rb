@@ -30,8 +30,7 @@ class BooksController < ApplicationController
 
   def destroy
     @book.destroy
-
-    render layout: false
+    turbo_redirect_to(site_books_path(@book.site), notice: t(".notice"))
   end
 
   def search

@@ -56,9 +56,21 @@
       <% end %>
     </div>
 
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
       <%= render ButtonComponent.new(label: book.persisted? ? "Update Book" : "Save Book", variant: :primary, type: "submit") %>
       <%= render ButtonComponent.new(label: t('form.cancel'), variant: :ghost, href: site_books_path(current_site), "data-turbo-frame": "_top") %>
+      <% if book.persisted? %>
+        <div class="ms-auto">
+          <%= render ButtonComponent.new(
+                label: icon("trash"),
+                variant: :danger,
+                size: :sm,
+                href: book_path(book),
+                data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') },
+                title: t('delete'),
+                aria: { label: t('delete') }) %>
+        </div>
+      <% end %>
     </div>
   <% end %>
 <% end %>
