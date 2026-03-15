@@ -44,4 +44,13 @@ class Project < ApplicationRecord
     else "secondary"
     end
   end
+
+  def status_badge_variant
+    case status
+    when "completed" then :success
+    when "ongoing" then :accent
+    when "paused" then :neutral
+    else :neutral
+    end
+  end
 end
