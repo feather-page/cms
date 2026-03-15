@@ -124,6 +124,8 @@ en:
       notice: Post was successfully created.
     update:
       notice: Post was successfully updated.
+    destroy:
+      notice: Post was successfully deleted.
   sites:
     create:
       notice: Site was successfully created.
