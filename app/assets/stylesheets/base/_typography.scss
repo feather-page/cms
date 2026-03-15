@@ -2,25 +2,6 @@
 // Typography — global heading and page-header styles
 // =============================================================================
 
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-6);
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--color-border-primary);
-
-  h1, .h1, h4, .h4 {
-    margin: 0;
-    color: var(--color-text-primary);
-
-    .bi {
-      color: var(--color-text-accent);
-      margin-right: var(--space-2);
-    }
-  }
-}
-
 h1, .h1 {
   color: var(--color-text-primary);
 
