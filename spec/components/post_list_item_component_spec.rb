@@ -20,7 +20,7 @@ RSpec.describe PostListItemComponent, type: :component do
 
     it "renders as a link to edit" do
       render_inline(described_class.new(post: post, site: site))
-      expect(page).to have_css("a.list-row[href*='/posts/#{post.public_id}']")
+      expect(page).to have_css("a.list-row__link[href*='/posts/#{post.public_id}']")
     end
 
     it "renders formatted date" do

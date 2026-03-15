@@ -102,3 +102,25 @@
   font-family: var(--font-sans);
   color: var(--color-text-secondary);
 }
+
+.list-row__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+  text-decoration: none;
+  color: inherit;
+}
+
+.list-row__link:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
+.list-row__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
