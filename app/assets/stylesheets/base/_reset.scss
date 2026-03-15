@@ -442,12 +442,4 @@ nav.navbar-main {
     display: flex;
     gap: var(--space-2);
   }
-
-  .content {
-    img {
-      max-width: 100% !important;
-      height: auto !important;
-      border-radius: var(--radius-md);
-    }
-  }
 }
