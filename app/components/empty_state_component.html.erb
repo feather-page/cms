@@ -1,6 +1,13 @@
 <div class="empty-state">
-  <div class="empty-state__icon"><%= helpers.icon(@icon, size: 48) %></div>
+  <% if emoji_mode? %>
+    <div class="empty-state__emoji"><%= @emoji %></div>
+  <% else %>
+    <div class="empty-state__icon"><%= helpers.icon(@icon, size: 48) %></div>
+  <% end %>
   <p class="empty-state__message"><%= @message %></p>
+  <% if @subtitle %>
+    <p class="empty-state__subtitle"><%= @subtitle %></p>
+  <% end %>
   <% if render_action? %>
     <%= render ButtonComponent.new(label: @action_label, href: @action_href, variant: :primary, size: :sm) %>
   <% end %>

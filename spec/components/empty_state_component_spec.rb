@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-describe EmptyStateComponent, type: :component do
+require "rails_helper"
+
+RSpec.describe EmptyStateComponent, type: :component do
   it "renders icon and message" do
     render_inline(described_class.new(icon: "files", message: "Nothing here"))
     expect(page).to have_css(".empty-state")
@@ -21,5 +23,27 @@ describe EmptyStateComponent, type: :component do
       action_href: "/posts/new"
     ))
     expect(page).to have_css('a.btn[href="/posts/new"]', text: "Create Post")
+  end
+
+  it "renders with emoji instead of icon" do
+    render_inline(described_class.new(emoji: "✏️", message: "Noch keine Blogposts"))
+    expect(page).to have_css(".empty-state__emoji", text: "✏️")
+    expect(page).to have_text("Noch keine Blogposts")
+  end
+
+  it "renders subtitle when provided" do
+    render_inline(described_class.new(
+      emoji: "📚",
+      message: "Dein Buecherregal ist leer",
+      subtitle: "Fuege dein erstes Buch hinzu.",
+      action_label: "Neues Buch",
+      action_href: "/books/new"
+    ))
+    expect(page).to have_css(".empty-state__subtitle", text: "Fuege dein erstes Buch hinzu.")
+  end
+
+  it "does not render subtitle element when not provided" do
+    render_inline(described_class.new(icon: "file", message: "Empty"))
+    expect(page).to have_no_css(".empty-state__subtitle")
   end
 end
