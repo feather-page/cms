@@ -31,14 +31,21 @@ class RemoteImageCreator
     StringIO.new(response.body)
   end
 
-  def get(url, timeout:)
+  MAX_REDIRECTS = 3
+
+  def get(url, timeout:, redirects: MAX_REDIRECTS)
     connection = Faraday.new do |f|
-      f.response :follow_redirects
       f.options.timeout = timeout
       f.options.open_timeout = timeout
     end
 
-    connection.get(url)
+    response = connection.get(url)
+
+    if response.status.in?(301..302) && redirects > 0
+      return get(response.headers["location"], timeout:, redirects: redirects - 1)
+    end
+
+    response
   rescue Faraday::Error => e
     raise Error, "Failed to fetch image from #{url}. Error: #{e.message}"
   end
