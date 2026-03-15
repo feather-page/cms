@@ -39,14 +39,14 @@
     <div class="bookshelf__year" data-controller="toggle" data-toggle-open-value="<%= index == 0 %>">
       <div class="bookshelf__year-header" data-action="click->toggle#toggle">
         <div class="bookshelf__year-title">
-          <span class="bookshelf__chevron" data-toggle-target="icon">▶</span>
+          <span class="bookshelf__chevron" data-toggle-target="icon"><%= index == 0 ? "▼" : "▶" %></span>
           <%= year || "Unbekannt" %>
         </div>
         <span class="bookshelf__year-stats">
           <%= books.size %> <%= books.size == 1 ? "Buch" : "Bücher" %>
         </span>
       </div>
-      <div class="bookshelf__grid" data-toggle-target="content">
+      <div class="bookshelf__grid" data-toggle-target="content" style="<%= 'display:none' unless index == 0 %>">
         <% books.each do |book| %>
           <%= render BookCoverComponent.new(book: book) %>
         <% end %>
