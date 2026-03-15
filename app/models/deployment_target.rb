@@ -20,6 +20,20 @@ class DeploymentTarget < ApplicationRecord
     StaticSite::ExportJob.perform_later(self)
   end
 
+  def acquire_deploy_lock!
+    reload
+    return false if deploying?
+
+    update!(deploying: true)
+    true
+  rescue ActiveRecord::StaleObjectError
+    false
+  end
+
+  def release_deploy_lock!
+    self.class.where(id: id).update_all(deploying: false, lock_version: 0)
+  end
+
   def config
     JSON.parse(encrypted_config || "{}")
   end
