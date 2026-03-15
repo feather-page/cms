@@ -1,4 +1,5 @@
 <%= turbo_frame_tag(:content) do %>
+  <%= render BreadcrumbComponent.new(items: [["Books", site_books_path(current_site)], [t('books.new_book')]]) %>
   <%= render PageHeaderComponent.new(title: t('books.new_book')) %>
   <%= render "form", book: @book %>
 <% end %>
