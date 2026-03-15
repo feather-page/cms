@@ -4,8 +4,8 @@
   <%= component('form/select', form:, attribute: :type, options: DeploymentTarget.types.keys.map { |key| [t("deployment_target.types.#{key}"), key] }) %>
 
   <div class="d-flex gap-2">
-    <%= form.submit('Update Deployment target', class: 'btn btn-primary') %>
-    <%= link_to 'Cancel', site_deployment_targets_path(current_site), 'data-turbo-frame': '_top', class: 'btn btn-outline-primary' %>
+    <%= render ButtonComponent.new(label: "Update Deployment Target", variant: :primary, type: "submit") %>
+    <%= render ButtonComponent.new(label: "Cancel", variant: :ghost, href: site_deployment_targets_path(current_site), "data-turbo-frame": "_top") %>
   </div>
   <% end %>
 <% end %>

@@ -3,10 +3,10 @@
     <td><%= deployment_target.public_hostname %></td>
     <td><%= t("deployment_target.types.#{deployment_target.type}") %></td>
     <td class="text-end">
-      <%= link_to 'Edit', edit_site_deployment_target_path(current_site, deployment_target), class: 'btn btn-outline-secondary btn-sm' %>
-      <%= link_to 'Deploy', deploy_site_deployment_target_path(current_site, deployment_target), class: 'btn btn-outline-primary btn-sm', data: { turbo_method: :post } %>
+      <%= render ButtonComponent.new(label: "Edit", variant: :secondary, size: :sm, href: edit_site_deployment_target_path(current_site, deployment_target)) %>
+      <%= render ButtonComponent.new(label: "Deploy", variant: :primary, size: :sm, href: deploy_site_deployment_target_path(current_site, deployment_target), data: { turbo_method: :post }) %>
       <% if deployment_target.provider == "internal" %>
-        <%= link_to t("deployment_targets.preview"), preview_root_path(deployment_target), class: 'btn btn-outline-secondary btn-sm', target: '_blank' %>
+        <%= render ButtonComponent.new(label: t("deployment_targets.preview"), variant: :secondary, size: :sm, href: preview_root_path(deployment_target), target: "_blank") %>
       <% end %>
     </td>
   </tr>
