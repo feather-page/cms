@@ -5,7 +5,7 @@ ruby '4.0.1'
 
 gem 'bcrypt', '~> 3.1.21'
 gem 'bootsnap', require: false
-gem 'brotli', '~> 0.7.0'
+gem 'brotli', '~> 0.8.0'
 gem 'dotenv-rails', require: 'dotenv/load'
 gem 'faraday'
 gem 'image_processing'
