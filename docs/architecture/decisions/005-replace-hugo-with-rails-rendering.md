@@ -1,7 +1,7 @@
 # ADR-005: Static Sites with ERB Templates (Hugo Removal)
 
 ## Status
-**Accepted**
+**Superseded by [ADR-006: Restore Hugo Rendering](006-restore-hugo-rendering.md)**
 
 ## Date
 2026-01-18

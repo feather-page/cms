@@ -66,10 +66,10 @@ describe DeploymentTargetsController do
   describe "POST #deploy" do
     let(:deployment_target) { create(:deployment_target, site: site) }
 
-    it "enqueues a StaticSite::ExportJob" do
+    it "enqueues a Hugo::BuildJob" do
       expect {
         post deploy_site_deployment_target_path(site, deployment_target)
-      }.to have_enqueued_job(StaticSite::ExportJob)
+      }.to have_enqueued_job(Hugo::BuildJob)
     end
 
     it "returns turbo stream redirect to deployment targets index" do
