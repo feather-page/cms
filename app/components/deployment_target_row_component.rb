@@ -27,7 +27,7 @@ class DeploymentTargetRowComponent < ViewComponent::Base
   end
 
   def preview_path
-    helpers.preview_root_path(@target)
+    helpers.preview_path(@target)
   end
 
   def show_preview?

@@ -5,7 +5,7 @@
       <span><%= current_site.title %></span>
     </div>
     <% if preview_target %>
-      <%= helpers.link_to helpers.preview_root_path(preview_target), class: "btn btn-outline-primary btn-sm", target: "_blank" do %>
+      <%= helpers.link_to helpers.preview_path(preview_target), class: "btn btn-outline-primary btn-sm", target: "_blank" do %>
         <%= helpers.icon("eye") %> <%= t("site_navigation.preview") %>
       <% end %>
     <% end %>
