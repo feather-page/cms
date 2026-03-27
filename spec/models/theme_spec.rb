@@ -1,4 +1,6 @@
-describe Theme do
+require "rails_helper"
+
+RSpec.describe Theme, type: :model do
   describe "validations" do
     it "is valid with valid attributes" do
       theme = build(:theme)
