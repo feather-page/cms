@@ -1,4 +1,6 @@
-describe Hugo::BaseFile do
+require "rails_helper"
+
+RSpec.describe Hugo::BaseFile do
   let(:build_path) { Pathname.new(Dir.mktmpdir) }
 
   after { FileUtils.rm_rf(build_path) }

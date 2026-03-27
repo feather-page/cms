@@ -1,4 +1,6 @@
-describe Hugo::ImageVariant do
+require "rails_helper"
+
+RSpec.describe Hugo::ImageVariant do
   let(:image) { instance_double(Image, public_id: "abc123") }
 
   describe "#public_path" do

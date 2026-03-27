@@ -8,7 +8,7 @@ module Hugo
 
     def write
       full_path = build_path.join(relative_path).cleanpath
-      unless full_path.to_s.start_with?(build_path.to_s)
+      unless full_path.to_s.start_with?("#{build_path}/")
         raise ArgumentError, "Path #{full_path} is outside build path #{build_path}"
       end
       FileUtils.mkdir_p(full_path.dirname)
