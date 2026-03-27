@@ -43,10 +43,22 @@ class DeploymentTarget < ApplicationRecord
   end
 
   def build_path
-    Rails.root.join("storage", "hugo", id).to_s
+    Rails.root.join("storage", "hugo", id.to_s)
+  end
+
+  def source_path
+    build_path.join("source")
+  end
+
+  def deploy_output_path
+    build_path.join("deploy")
+  end
+
+  def preview_output_path
+    build_path.join("preview")
   end
 
   def source_dir
-    "#{build_path}/public/"
+    "#{deploy_output_path}/"
   end
 end
