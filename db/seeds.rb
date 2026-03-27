@@ -5,3 +5,5 @@
 #
 #   movies = Movie.create([{ name: "Star Wars" }, { name: "Lord of the Rings" }])
 #   Character.create(name: "Luke", movie: movies.first)
+
+Theme.find_or_create_by!(hugo_theme: "simple_emoji") { |t| t.name = "Simple Emoji" }

@@ -1,4 +1,6 @@
 class Site < ApplicationRecord
+  belongs_to :theme, optional: true
+
   has_many :posts, dependent: :destroy
   has_many :pages, dependent: :destroy
   has_many :images, dependent: :destroy
