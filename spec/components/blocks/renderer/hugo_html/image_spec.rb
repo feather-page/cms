@@ -7,7 +7,7 @@ RSpec.describe Blocks::Renderer::HugoHtml::Image do
   end
 
   before do
-    allow(Image).to receive(:find).with(image.public_id).and_return(image)
+    allow(block).to receive(:image).and_return(image)
   end
 
   describe "#to_html" do

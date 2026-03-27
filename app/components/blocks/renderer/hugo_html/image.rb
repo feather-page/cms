@@ -11,7 +11,7 @@ module Blocks
         def to_html
           return "" if block.image_id.blank?
 
-          image = ::Image.find(block.image_id)
+          image = block.image
           params = ["id=\"#{image.public_id}\""]
           params << "caption=\"#{block.caption}\"" if block.caption.present?
           "{{< image #{params.join(' ')} >}}"

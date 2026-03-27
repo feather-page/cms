@@ -26,17 +26,23 @@ module Blocks
         private
 
         def extract_youtube_id(url)
+          return "" if url.blank?
+
           if url.include?("watch?v=")
-            url.match(/[?&]v=([^&]+)/)[1]
+            url.match(/[?&]v=([^&]+)/)&.then { |m| m[1] } || ""
           elsif url.include?("youtu.be/")
-            url.match(%r{youtu\.be/([^?&/]+)})[1]
+            url.match(%r{youtu\.be/([^?&/]+)})&.then { |m| m[1] } || ""
           elsif url.include?("/embed/")
-            url.match(%r{/embed/([^?&/]+)})[1]
+            url.match(%r{/embed/([^?&/]+)})&.then { |m| m[1] } || ""
+          else
+            ""
           end
         end
 
         def extract_vimeo_id(url)
-          url.match(%r{/(\d+)})[1]
+          return "" if url.blank?
+
+          url.match(%r{/(\d+)})&.then { |m| m[1] } || ""
         end
       end
     end

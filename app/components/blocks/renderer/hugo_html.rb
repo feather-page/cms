@@ -1,5 +1,3 @@
-require 'json'
-
 module Blocks
   module Renderer
     module HugoHtml
