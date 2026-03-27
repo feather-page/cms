@@ -1,0 +1,14 @@
+{{ define "main" }}
+  <p>{{ len .Pages }} post{{ if ne (len .Pages) 1 }}s{{ end }} tagged with "{{ .Title }}"</p>
+
+  {{ range .Pages }}
+    <article>
+      <div>
+        {{ with .Params.emoji }}{{ . }}{{ end }}
+        <a class="post-title" href="{{ .RelPermalink }}">{{ .Title }}</a>
+      </div>
+      <div class="post-date">{{ .Date | time.Format ":date_long" }}</div>
+    </article>
+    <hr />
+  {{ end }}
+{{ end }}

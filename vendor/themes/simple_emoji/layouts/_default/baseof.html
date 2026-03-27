@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="{{ .Site.LanguageCode | default "en" }}">
+  <head>
+    {{ partial "head.html" . }}
+    <style>{{ readFile "static/css/style.css" | safeCSS }}</style>
+  </head>
+  <body>
+    {{ partial "nav.html" . }}
+    <main>
+      {{ if .Params.header_image }}
+        <div class="header-image-container">
+          <img src="{{ .Params.header_image.url }}"
+               {{ with .Params.header_image.srcset }}srcset="{{ . }}"{{ end }}
+               sizes="100vw"
+               alt="{{ .Title }}"
+               class="header-image">
+          {{ with .Params.emoji }}<div class="emoji">{{ . }}</div>{{ end }}
+        </div>
+      {{ else }}
+        {{ if and (not .IsHome) .Params.emoji }}
+          <div class="emoji">{{ .Params.emoji }}</div>
+        {{ end }}
+      {{ end }}
+      <h1>{{ .Title }}</h1>
+      {{ block "main" . }}{{ end }}
+      {{ if .Params.header_image.unsplash_photographer }}
+        <div class="photo-credit">
+          Photo by <a href="{{ .Params.header_image.unsplash_url }}" target="_blank" rel="noopener">{{ .Params.header_image.unsplash_photographer }}</a> on <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
+        </div>
+      {{ end }}
+    </main>
+    {{ partial "footer.html" . }}
+  </body>
+</html>

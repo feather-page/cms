@@ -1,0 +1,11 @@
+<nav>
+  <a href="/" class="site-title">{{ .Site.Params.emoji }} {{ .Site.Title }}</a>
+  {{ if not .IsHome }}
+    <span class="separator">/</span>
+    {{ with .Params.emoji }}<span class="page-emoji">{{ . }}</span>{{ end }}
+    <span class="page-title">{{ .Title }}</span>
+  {{ end }}
+  {{ range .Site.Menus.main }}
+    <a href="{{ .URL }}" class="nav-link">{{ .Name }}</a>
+  {{ end }}
+</nav>

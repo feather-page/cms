@@ -24,7 +24,6 @@ module Hugo
         theme: site.theme.hugo_theme,
         copyright: site.copyright,
         enableRobotsTXT: true,
-        robotsNoIndex: deployment_target.type == "staging",
         minify: true,
         taxonomies: { tag: "tags" },
         pagination: { pagerSize: 25 },
@@ -37,7 +36,10 @@ module Hugo
         },
         outputs: { home: %w[HTML RSS], section: %w[HTML RSS] },
         markup: { highlight: { style: "monokai", lineNos: false, noClasses: true } },
-        params: { emoji: site.emoji }
+        params: {
+          emoji: site.emoji,
+          robotsNoIndex: deployment_target.type == "staging"
+        }
       }
     end
   end

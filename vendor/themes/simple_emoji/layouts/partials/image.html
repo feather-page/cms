@@ -1,0 +1,8 @@
+{{ $id := .id }}
+<figure>
+  <picture>
+    <source type="image/webp" srcset="/images/{{ $id }}/mobile_x1.webp 430w, /images/{{ $id }}/mobile_x2.webp 860w, /images/{{ $id }}/desktop_x1.webp 1000w, /images/{{ $id }}/mobile_x3.webp 1290w, /images/{{ $id }}/desktop_x2.webp 2000w">
+    <img src="/images/{{ $id }}/desktop_x1.webp" alt="{{ .caption }}" loading="lazy">
+  </picture>
+  {{ with .caption }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>

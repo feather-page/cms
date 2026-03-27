@@ -1,0 +1,54 @@
+{{ define "main" }}
+  <div class="project-detail">
+    <div class="project-metadata">
+      <div class="project-meta-row">
+        {{ with .Params.status }}
+          <span class="badge badge-{{ $.Params.status_badge_class }}">
+            {{ . | title }}
+          </span>
+        {{ end }}
+        {{ with .Params.company }}
+          <span class="project-company">{{ . }}</span>
+        {{ end }}
+        {{ with .Params.period }}
+          <span class="project-period">{{ . }}</span>
+        {{ end }}
+        {{ range .Params.tags }}
+          <span class="badge badge-outline">{{ . }}</span>
+        {{ end }}
+      </div>
+      {{ with .Params.role }}
+        <div class="project-role">{{ . }}</div>
+      {{ end }}
+    </div>
+
+    {{ with .Params.short_description }}
+      <div class="project-summary">
+        <p>{{ . }}</p>
+      </div>
+    {{ end }}
+  </div>
+
+  {{ .Content }}
+
+  {{ with .Params.links }}
+    {{ $hasLinks := false }}
+    {{ range . }}
+      {{ if .url }}{{ $hasLinks = true }}{{ end }}
+    {{ end }}
+    {{ if $hasLinks }}
+      <div class="project-links">
+        <h3>Links</h3>
+        <div class="links-list">
+          {{ range . }}
+            {{ if .url }}
+              <a href="{{ .url }}" target="_blank" rel="noopener noreferrer" class="project-link">
+                &#128279; {{ with .label }}{{ . }}{{ else }}{{ .url }}{{ end }}
+              </a>
+            {{ end }}
+          {{ end }}
+        </div>
+      </div>
+    {{ end }}
+  {{ end }}
+{{ end }}

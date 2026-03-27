@@ -1,0 +1,20 @@
+{{ $id := .Get "id" }}
+{{ $book := index .Site.Data.books $id }}
+{{ with $book }}
+<div class="book-card book-card--detail">
+  <div class="book-card-header">
+    {{ with .cover_url }}
+      <img src="{{ . }}" alt="{{ $book.title }}" class="book-cover" loading="lazy">
+    {{ else }}
+      {{ with .emoji }}<span class="book-emoji">{{ . }}</span>{{ end }}
+    {{ end }}
+    <div class="book-info">
+      <div class="book-title">{{ .title }}</div>
+      <div class="book-author">{{ .author }}</div>
+      {{ with .rating }}{{ $r := . }}
+        <div class="book-rating" aria-label="{{ . }} out of 5 stars">{{ range seq 1 5 }}{{ if le . $r }}&#9733;{{ else }}&#9734;{{ end }}{{ end }}</div>
+      {{ end }}
+    </div>
+  </div>
+</div>
+{{ end }}

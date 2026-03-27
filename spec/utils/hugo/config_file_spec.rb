@@ -80,14 +80,14 @@ RSpec.describe Hugo::ConfigFile do
     context "when deployment target is staging" do
       let(:deployment_target) { create(:deployment_target, site: site, type: :staging) }
 
-      it "sets robotsNoIndex to true" do
-        expect(parsed["robotsNoIndex"]).to be true
+      it "sets robotsNoIndex to true in params" do
+        expect(parsed["params"]["robotsNoIndex"]).to be true
       end
     end
 
     context "when deployment target is production" do
-      it "sets robotsNoIndex to false" do
-        expect(parsed["robotsNoIndex"]).to be false
+      it "sets robotsNoIndex to false in params" do
+        expect(parsed["params"]["robotsNoIndex"]).to be false
       end
     end
   end

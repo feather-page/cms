@@ -1,0 +1,103 @@
+{{ define "main" }}
+  <ul class="page-list">
+    {{- range .Site.Menus.main }}
+    <li>
+      {{ with .Params.emoji }}{{ . }}{{ end }} <a class="page-link" href="{{ .URL }}">{{ .Name }}</a>
+    </li>
+    {{- end }}
+  </ul>
+
+  {{ .Content }}
+
+  <hr />
+
+  <h2>Blogposts</h2>
+
+  {{ $paginator := .Paginate (where .Site.RegularPages "Section" "posts") }}
+  <div class="page-list">
+    {{ range $paginator.Pages }}
+      <article>
+        {{ if .Title }}
+          {{/* Long post with title */}}
+          <div>
+            {{ with .Params.emoji }}{{ . }}{{ end }}
+            <a class="post-title" href="{{ .RelPermalink }}">{{ .Title }}</a>
+            {{ with .Params.book }}
+              {{ with .rating }}{{ $r := . }}
+              <span class="rating" aria-label="{{ . }} out of 5 stars">
+                {{ range seq 1 5 }}{{ if le . $r }}&#9733;{{ else }}&#9734;{{ end }}{{ end }}
+              </span>
+              {{ end }}
+            {{ end }}
+          </div>
+          <div class="post-long-body">
+            {{ with .Params.emoji }}
+              <div class="post-emoji">{{ . }}</div>
+            {{ end }}
+            <div class="post-long-content">
+              {{ with .Params.thumbnail_image }}
+                <div class="post-thumbnail">
+                  <img src="{{ .url }}" alt="" loading="lazy">
+                </div>
+              {{ end }}
+              {{ if .Summary }}
+                <div class="post-excerpt">{{ .Summary }}</div>
+              {{ end }}
+            </div>
+          </div>
+          <div class="post-date">{{ .Date | time.Format ":date_long" }}</div>
+          {{ with .Params.tags }}
+            <div class="post-tags">
+              {{ range . }}
+                <span class="badge badge-outline">{{ . }}</span>
+              {{ end }}
+            </div>
+          {{ end }}
+        {{ else }}
+          {{/* Short post without title */}}
+          {{ with .Params.book }}
+            {{ $book_id := .public_id }}
+            {{ $book_data := index $.Site.Data.books $book_id }}
+            <div class="book-card book-card--detail">
+              <div class="book-card-header">
+                {{ if $book_data }}
+                  {{ with $book_data.cover_url }}
+                    <img src="{{ . }}" alt="{{ $book_data.title }}" class="book-cover" loading="lazy">
+                  {{ else }}
+                    {{ with $book_data.emoji }}<span class="book-emoji">{{ . }}</span>{{ end }}
+                  {{ end }}
+                  <div class="book-info">
+                    <div class="book-title">{{ $book_data.title }}</div>
+                    <div class="book-author">{{ $book_data.author }}</div>
+                    {{ with $book_data.rating }}{{ $r := . }}
+                      <div class="book-rating" aria-label="{{ . }} out of 5 stars">{{ range seq 1 5 }}{{ if le . $r }}&#9733;{{ else }}&#9734;{{ end }}{{ end }}</div>
+                    {{ end }}
+                  </div>
+                {{ else }}
+                  {{ with .emoji }}<span class="book-emoji">{{ . }}</span>{{ end }}
+                  <div class="book-info">
+                    <div class="book-title">{{ .title }}</div>
+                    <div class="book-author">{{ .author }}</div>
+                    {{ with .rating }}{{ $r := . }}
+                      <div class="book-rating" aria-label="{{ . }} out of 5 stars">{{ range seq 1 5 }}{{ if le . $r }}&#9733;{{ else }}&#9734;{{ end }}{{ end }}</div>
+                    {{ end }}
+                  </div>
+                {{ end }}
+              </div>
+            </div>
+          {{ end }}
+          <div class="post-shortBody">
+            {{ if and .Params.emoji (not .Params.book) }}
+              <div class="post-emoji">{{ .Params.emoji }}</div>
+            {{ end }}
+            <div class="post-content">{{ .Content }}</div>
+          </div>
+          <div class="post-date">{{ .Date | time.Format ":date_long" }}</div>
+        {{ end }}
+      </article>
+      <hr />
+    {{ end }}
+  </div>
+
+  {{ template "_internal/pagination.html" . }}
+{{ end }}

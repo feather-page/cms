@@ -1,0 +1,11 @@
+{{ define "main" }}
+  {{ .Content }}
+
+  {{ with .Params.tags }}
+    <div class="page-tags">
+      {{ range . }}
+        <span class="badge badge-outline">{{ . }}</span>
+      {{ end }}
+    </div>
+  {{ end }}
+{{ end }}

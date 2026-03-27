@@ -1,0 +1,6 @@
+{{ $url := .Get "url" }}
+{{ $caption := .Get "caption" }}
+<figure class="embed">
+  <iframe src="{{ $url }}" frameborder="0" allowfullscreen loading="lazy" style="width:100%; aspect-ratio:16/9;"></iframe>
+  {{ with $caption }}<figcaption>{{ . }}</figcaption>{{ end }}
+</figure>

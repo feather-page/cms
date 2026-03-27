@@ -1,0 +1,7 @@
+name = "Simple Emoji"
+license = "MIT"
+description = "A clean, emoji-focused theme for personal sites"
+min_version = "0.120.0"
+
+[author]
+  name = "Feather-Page"

@@ -1,0 +1,14 @@
+{{ define "main" }}
+  {{ .Content }}
+
+  {{ range .Pages }}
+    <article>
+      <h2><a href="{{ .RelPermalink }}">{{ with .Params.emoji }}{{ . }} {{ end }}{{ .Title }}</a></h2>
+      {{ with .Summary }}<p>{{ . }}</p>{{ end }}
+      {{ with .Date }}<div class="post-date">{{ . | time.Format ":date_long" }}</div>{{ end }}
+    </article>
+    <hr />
+  {{ end }}
+
+  {{ template "_internal/pagination.html" . }}
+{{ end }}
