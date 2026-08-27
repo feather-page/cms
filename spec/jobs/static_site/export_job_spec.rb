@@ -114,6 +114,14 @@ RSpec.describe StaticSite::ExportJob do
       expect(File.read(robots_path)).to include("User-agent: *")
     end
 
+    it "exports sitemap.xml" do
+      perform
+
+      sitemap_path = File.join(deployment_target.source_dir, "sitemap.xml")
+      expect(File.exist?(sitemap_path)).to be true
+      expect(File.read(sitemap_path)).to include("<urlset")
+    end
+
     context "with an internal target" do
       it "links the feed canonically to the public hostname" do
         create(:post, site:, title: "RSS Test Post", publish_at: 1.day.ago)

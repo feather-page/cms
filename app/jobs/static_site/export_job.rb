@@ -49,6 +49,7 @@ module StaticSite
       export_images
       export_rss_feed
       export_robots_txt
+      export_sitemap
     end
 
     def export_home
@@ -119,6 +120,10 @@ module StaticSite
 
     def robots_content
       "User-agent: *\nAllow: /\n\nSitemap: #{routes.canonical.artifact_url('sitemap.xml')}\n"
+    end
+
+    def export_sitemap
+      write_file(routes.artifact_path("sitemap.xml"), SitemapRenderer.new(site: site, routes: routes).render)
     end
 
     def precompress
