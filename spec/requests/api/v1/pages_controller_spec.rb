@@ -89,7 +89,7 @@ RSpec.describe "Api::V1::Pages" do
 
       expect(response).to have_http_status(:created)
       expect(json_response.dig("data", "title")).to eq("About Me")
-      expect(json_response.dig("data", "slug")).to eq("about")
+      expect(json_response.dig("data", "slug")).to eq("/about")
       validate_response_schema!("/sites/{site_id}/pages", "post", 201)
     end
 

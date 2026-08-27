@@ -12,7 +12,7 @@ FactoryBot.define do
     project_type { :professional }
     links { [{ "label" => "Website", "url" => Faker::Internet.url }] }
     emoji { ["🚀", "💻", "⚙️", "📱", "🔧"].sample }
-    slug { Faker::Lorem.sentence.parameterize }
+    slug { "/#{Faker::Lorem.sentence.parameterize}" }
     site
 
     trait :tagged do
