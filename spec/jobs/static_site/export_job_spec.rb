@@ -114,6 +114,24 @@ RSpec.describe StaticSite::ExportJob do
       expect(File.read(robots_path)).to include("User-agent: *")
     end
 
+    context "with an internal target" do
+      it "links the feed canonically to the public hostname" do
+        create(:post, site:, title: "RSS Test Post", publish_at: 1.day.ago)
+
+        perform
+
+        feed_path = File.join(deployment_target.source_dir, "feed.xml")
+        expect(File.read(feed_path)).to include("<link>https://#{deployment_target.public_hostname}/</link>")
+      end
+
+      it "does not leak the preview path into robots.txt" do
+        perform
+
+        robots_path = File.join(deployment_target.source_dir, "robots.txt")
+        expect(File.read(robots_path)).not_to include("/preview/")
+      end
+    end
+
     it "calls precompress job" do
       perform
 

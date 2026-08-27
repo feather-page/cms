@@ -22,7 +22,7 @@ module StaticSite
 
       @lock_acquired = true
       @site = deployment_target.site
-      @routes = build_routes
+      @routes = Routes.for(deployment_target)
 
       cleanup
       export_content
@@ -144,20 +144,6 @@ module StaticSite
       full_path = File.join(output_dir, relative_path)
       FileUtils.mkdir_p(File.dirname(full_path))
       File.write(full_path, content)
-    end
-
-    def build_routes
-      Routes.new(site: deployment_target.site, site_root: "/", canonical_url: legacy_canonical_url)
-    end
-
-    # Replaced by Routes.for(deployment_target) once the internal special
-    # case is removed.
-    def legacy_canonical_url
-      if deployment_target.provider == "internal"
-        "/preview/#{deployment_target.id}/"
-      else
-        "https://#{deployment_target.public_hostname}/"
-      end
     end
   end
 end
