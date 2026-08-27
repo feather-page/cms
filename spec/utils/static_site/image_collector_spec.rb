@@ -1,9 +1,9 @@
 require "rails_helper"
 
 RSpec.describe StaticSite::ImageCollector do
-  let(:site) { create(:site) }
-
   subject(:collected_images) { described_class.new(site).to_a }
+
+  let(:site) { create(:site) }
 
   describe "#to_a" do
     it "returns an empty array when no images exist" do
@@ -64,7 +64,7 @@ RSpec.describe StaticSite::ImageCollector do
       end
     end
 
-    context "deduplication" do
+    context "when deduplicating" do
       it "does not return the same image twice" do
         post = create(:post, site:)
         image = create(:image, site:, imageable: post)

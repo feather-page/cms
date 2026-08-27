@@ -1,6 +1,4 @@
 class PreviewsController < ApplicationController
-  include PreviewImageServing
-
   skip_after_action :verify_pundit_checked
 
   def show
@@ -28,6 +26,13 @@ class PreviewsController < ApplicationController
 
   def routes
     @routes ||= StaticSite::Routes.for(deployment_target, as: :preview)
+  end
+
+  def serve_preview_image(image, variant)
+    file_path = image.fs_path(variant:)
+    return head(:not_found) unless file_path && File.exist?(file_path)
+
+    send_file(file_path, type: Image::Variants.content_type_for(variant), disposition: :inline)
   end
 
   def requested_path
