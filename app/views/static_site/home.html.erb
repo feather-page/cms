@@ -1,7 +1,7 @@
 <ul class="page-list">
   <% @site.main_navigation.navigation_items.ordered.each do |item| %>
     <li>
-      <%= item.emoji %> <a class="page-link" href="<%= @base_url %><%= item.slug.sub(%r{^/}, '') %>/"><%= item.title %></a>
+      <%= item.emoji %> <a class="page-link" href="<%= static_site_routes.page_url(item.page) %>"><%= item.title %></a>
     </li>
   <% end %>
 </ul>
@@ -84,7 +84,7 @@
 <% if @total_pages > 1 %>
   <nav class="pagination" aria-label="Pagination">
     <% if @current_page > 1 %>
-      <a href="<%= @current_page == 2 ? "#{@base_url}" : "#{@base_url}page/#{@current_page - 1}/" %>" class="pagination-link">&larr;</a>
+      <a href="<%= @current_page == 2 ? static_site_routes.home_url : static_site_routes.home_url(page: @current_page - 1) %>" class="pagination-link">&larr;</a>
     <% end %>
     <% pagination_page_numbers(@current_page, @total_pages).each do |page| %>
       <% if page == :gap %>
@@ -92,11 +92,11 @@
       <% elsif page == @current_page %>
         <span class="pagination-current"><%= page %></span>
       <% else %>
-        <a href="<%= page == 1 ? "#{@base_url}" : "#{@base_url}page/#{page}/" %>" class="pagination-link"><%= page %></a>
+        <a href="<%= page == 1 ? static_site_routes.home_url : static_site_routes.home_url(page: page) %>" class="pagination-link"><%= page %></a>
       <% end %>
     <% end %>
     <% if @current_page < @total_pages %>
-      <a href="<%= @base_url %>page/<%= @current_page + 1 %>/" class="pagination-link">&rarr;</a>
+      <a href="<%= static_site_routes.home_url(page: @current_page + 1) %>" class="pagination-link">&rarr;</a>
     <% end %>
   </nav>
 <% end %>

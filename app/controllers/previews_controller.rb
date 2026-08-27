@@ -83,6 +83,6 @@ class PreviewsController < ApplicationController
     @page_title = page_title
     @page_emoji = page_emoji
     @is_home = is_home
-    @base_url = routes.site_root
+    @routes = routes
   end
 end

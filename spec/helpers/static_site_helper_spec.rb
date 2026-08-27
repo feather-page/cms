@@ -20,7 +20,7 @@ describe StaticSiteHelper do
     end
 
     context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@base_url, "/preview/ABC123/") }
+      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
 
       it "prepends base_url to slug URL" do
         post.update!(slug: "/my-custom-slug")
@@ -46,7 +46,7 @@ describe StaticSiteHelper do
     end
 
     context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@base_url, "/preview/ABC123/") }
+      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
 
       it "prepends base_url to image path" do
         result = helper_instance.static_site_image_url(image, :desktop_x1)
@@ -70,7 +70,7 @@ describe StaticSiteHelper do
     end
 
     context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@base_url, "/preview/ABC123/") }
+      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
 
       it "prepends base_url to header image path" do
         result = helper_instance.static_site_header_image_url(image)
@@ -91,7 +91,7 @@ describe StaticSiteHelper do
     end
 
     context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@base_url, "/preview/ABC123/") }
+      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
 
       it "prepends base_url to all srcset paths" do
         srcset = helper_instance.static_site_header_image_srcset(image)
@@ -136,7 +136,7 @@ describe StaticSiteHelper do
     end
 
     context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@base_url, "/preview/ABC123/") }
+      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
 
       it "prepends base_url to image paths in content" do
         html = '<img src="/images/abc123/desktop_x1.webp">'

@@ -57,7 +57,10 @@ module StaticSite
 
       (1..total_pages).each do |page_number|
         page_posts = posts.slice((page_number - 1) * POSTS_PER_PAGE, POSTS_PER_PAGE) || []
-        html = renderer.render_home(site: site, posts: page_posts, current_page: page_number, total_pages: total_pages)
+        html = renderer.render_home(
+          site: site, routes: routes, posts: page_posts,
+          current_page: page_number, total_pages: total_pages
+        )
         write_file(routes.home_path(page: page_number), html)
       end
     end
@@ -66,7 +69,7 @@ module StaticSite
       posts = site.posts.published.to_a
       ParallelProcessor.new(posts, thread_count: THREAD_COUNT).process do |post|
         thread_renderer = PageRenderer.new
-        write_file(routes.post_path(post), thread_renderer.render_post(site: site, post: post))
+        write_file(routes.post_path(post), thread_renderer.render_post(site: site, routes: routes, post: post))
       end
     end
 
@@ -74,7 +77,10 @@ module StaticSite
       projects = site.projects.ordered.to_a
       ParallelProcessor.new(projects, thread_count: THREAD_COUNT).process do |project|
         thread_renderer = PageRenderer.new
-        write_file(routes.project_path(project), thread_renderer.render_project(site: site, project: project))
+        write_file(
+          routes.project_path(project),
+          thread_renderer.render_project(site: site, routes: routes, project: project)
+        )
       end
     end
 
@@ -82,7 +88,7 @@ module StaticSite
       pages = site.pages.where.not(slug: "/").to_a
       ParallelProcessor.new(pages, thread_count: THREAD_COUNT).process do |page|
         thread_renderer = PageRenderer.new
-        write_file(routes.page_path(page), thread_renderer.render_page(site: site, page: page))
+        write_file(routes.page_path(page), thread_renderer.render_page(site: site, routes: routes, page: page))
       end
     end
 

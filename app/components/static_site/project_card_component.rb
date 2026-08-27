@@ -7,30 +7,29 @@ module StaticSite
       "freelance" => "Freelance"
     }.freeze
 
-    def initialize(project:, base_url: "/")
+    def initialize(project:, routes: nil)
       @project = project
-      @base_url = base_url
+      @routes = routes || StaticSite::Routes.new(site: project.site, site_root: "/")
     end
 
     private
 
-    attr_reader :project, :base_url
+    attr_reader :project, :routes
 
     def header_image_path
       return nil unless project.header_image&.file&.attached?
 
-      "/images/#{project.header_image.public_id}/mobile_x1.webp"
+      routes.image_url(project.header_image, :mobile_x1_webp)
     end
 
     def thumbnail_image_path
       return nil unless project.thumbnail_image&.file&.attached?
 
-      "/images/#{project.thumbnail_image.public_id}/mobile_x1.webp"
+      routes.image_url(project.thumbnail_image, :mobile_x1_webp)
     end
 
     def project_url
-      slug = project.slug.sub(%r{^/}, "")
-      "#{base_url}projects/#{slug}/"
+      routes.project_url(project)
     end
 
     def status_badge_class
