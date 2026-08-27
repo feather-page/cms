@@ -26,7 +26,7 @@ module StaticSite
       private
 
       def normalize_request_path(path)
-        path.to_s.delete_prefix("/").delete_suffix("index.html").delete_suffix("/")
+        path.to_s.delete_prefix("/").sub(%r{(\A|/)index\.html\z}, "").delete_suffix("/")
       end
 
       def resolve_home(path)
@@ -72,7 +72,7 @@ module StaticSite
       end
 
       def resolve_post_by_slug(path)
-        post = find_by_slug(site.posts, path)
+        post = find_by_slug(site.posts, path.delete_suffix(".html"))
         Route.build(:post, record: post) if post
       end
 

@@ -21,11 +21,22 @@ describe StaticSite::SitemapRenderer do
   end
 
   it "omits drafts and future posts" do
-    create(:post, site:, title: "Draft", draft: true)
-    create(:post, site:, title: "Future", publish_at: 1.day.from_now)
+    create(:post, site:, slug: "/draft-post", draft: true)
+    create(:post, site:, slug: "/future-post", publish_at: 1.day.from_now)
+    create(:post, site:, slug: "/live-post", publish_at: 1.day.ago)
 
-    expect(sitemap).not_to include("draft")
-    expect(sitemap).not_to include("future")
+    expect(sitemap).to include("<loc>https://example.com/live-post/</loc>")
+    expect(sitemap).not_to include("draft-post")
+    expect(sitemap).not_to include("future-post")
+  end
+
+  it "dates the home page by its most recently changed post" do
+    post = create(:post, site:, publish_at: 1.day.ago)
+    post.update!(updated_at: 3.days.from_now)
+
+    home_lastmod = sitemap[%r{<loc>https://example\.com/</loc>\s*<lastmod>([^<]+)</lastmod>}, 1]
+
+    expect(Time.zone.parse(home_lastmod)).to be_within(1.second).of(post.reload.updated_at)
   end
 
   it "does not duplicate the home page slug" do

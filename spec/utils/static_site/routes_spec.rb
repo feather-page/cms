@@ -204,6 +204,21 @@ describe StaticSite::Routes do
       expect(other_post.site).not_to eq(site)
     end
 
+    it "resolves a post and a page alike when addressed with .html" do
+      page = create(:page, site:, slug: "/about")
+      post = create(:post, site:, slug: "/hello")
+
+      expect(routes.resolve("about.html").record).to eq(page)
+      expect(routes.resolve("hello.html").record).to eq(post)
+    end
+
+    it "only strips index.html at a path boundary" do
+      create(:page, site:, slug: "/about")
+
+      expect(routes.resolve("aboutindex.html")).to be_nil
+      expect(routes.resolve("about/index.html").record).to eq(Page.find_by(slug: "/about"))
+    end
+
     it "returns nil for an unknown path" do
       expect(routes.resolve("nope/not/here")).to be_nil
     end

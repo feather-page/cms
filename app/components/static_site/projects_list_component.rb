@@ -2,7 +2,7 @@ module StaticSite
   class ProjectsListComponent < ViewComponent::Base
     def initialize(projects:, routes: nil)
       @projects = sort_projects(projects)
-      @routes = routes
+      @routes = routes || StaticSite::Routes.new(site: @projects.first&.site, site_root: "/")
     end
 
     attr_reader :routes

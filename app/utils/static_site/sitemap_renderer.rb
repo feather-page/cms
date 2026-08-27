@@ -25,12 +25,19 @@ module StaticSite
       home_entry + post_entries + page_entries + project_entries
     end
 
+    # The home page lists published posts, so its freshness follows the most
+    # recently changed one -- site.updated_at does not move when a post is
+    # published.
     def home_entry
-      [[routes.home_url, site.updated_at]]
+      [[routes.home_url, [published_posts.maximum(:updated_at), site.updated_at].compact.max]]
+    end
+
+    def published_posts
+      @published_posts ||= site.posts.published
     end
 
     def post_entries
-      site.posts.published.map { |post| [routes.post_url(post), post.updated_at] }
+      published_posts.map { |post| [routes.post_url(post), post.updated_at] }
     end
 
     def page_entries
