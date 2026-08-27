@@ -1,7 +1,5 @@
 module StaticSite
   class ExportJob < ApplicationJob
-    include OutputPaths
-
     THREAD_COUNT = 4
     POSTS_PER_PAGE = 25
 
@@ -24,6 +22,7 @@ module StaticSite
 
       @lock_acquired = true
       @site = deployment_target.site
+      @routes = build_routes
 
       cleanup
       export_content
@@ -35,7 +34,7 @@ module StaticSite
 
     private
 
-    attr_reader :deployment_target, :site
+    attr_reader :deployment_target, :site, :routes
 
     def cleanup
       FileUtils.rm_rf(output_dir)
@@ -59,8 +58,7 @@ module StaticSite
       (1..total_pages).each do |page_number|
         page_posts = posts.slice((page_number - 1) * POSTS_PER_PAGE, POSTS_PER_PAGE) || []
         html = renderer.render_home(site: site, posts: page_posts, current_page: page_number, total_pages: total_pages)
-        path = page_number == 1 ? "index.html" : "page/#{page_number}/index.html"
-        write_file(path, html)
+        write_file(routes.home_path(page: page_number), html)
       end
     end
 
@@ -68,7 +66,7 @@ module StaticSite
       posts = site.posts.published.to_a
       ParallelProcessor.new(posts, thread_count: THREAD_COUNT).process do |post|
         thread_renderer = PageRenderer.new
-        write_file(post_output_path(post), thread_renderer.render_post(site: site, post: post))
+        write_file(routes.post_path(post), thread_renderer.render_post(site: site, post: post))
       end
     end
 
@@ -76,7 +74,7 @@ module StaticSite
       projects = site.projects.ordered.to_a
       ParallelProcessor.new(projects, thread_count: THREAD_COUNT).process do |project|
         thread_renderer = PageRenderer.new
-        write_file(project_output_path(project), thread_renderer.render_project(site: site, project: project))
+        write_file(routes.project_path(project), thread_renderer.render_project(site: site, project: project))
       end
     end
 
@@ -84,7 +82,7 @@ module StaticSite
       pages = site.pages.where.not(slug: "/").to_a
       ParallelProcessor.new(pages, thread_count: THREAD_COUNT).process do |page|
         thread_renderer = PageRenderer.new
-        write_file(page_output_path(page), thread_renderer.render_page(site: site, page: page))
+        write_file(routes.page_path(page), thread_renderer.render_page(site: site, page: page))
       end
     end
 
@@ -100,21 +98,21 @@ module StaticSite
       source_path = image.fs_path(variant: variant_key)
       return unless source_path && File.exist?(source_path)
 
-      dest_path = File.join(output_dir, image_output_path(image, variant_key))
+      dest_path = File.join(output_dir, routes.image_path(image, variant_key))
       FileUtils.mkdir_p(File.dirname(dest_path))
       FileUtils.cp(source_path, dest_path)
     end
 
     def export_rss_feed
-      write_file("feed.xml", RssFeedRenderer.new(site: site, base_url: base_url).render)
+      write_file(routes.artifact_path("feed.xml"), RssFeedRenderer.new(site: site, routes: routes).render)
     end
 
     def export_robots_txt
-      write_file("robots.txt", robots_content)
+      write_file(routes.artifact_path("robots.txt"), robots_content)
     end
 
     def robots_content
-      "User-agent: *\nAllow: /\n\nSitemap: #{base_url}sitemap.xml\n"
+      "User-agent: *\nAllow: /\n\nSitemap: #{routes.canonical.artifact_url('sitemap.xml')}\n"
     end
 
     def precompress
@@ -142,8 +140,18 @@ module StaticSite
       File.write(full_path, content)
     end
 
-    def base_url
-      deployment_target.provider == "internal" ? "/preview/#{deployment_target.id}/" : "https://#{deployment_target.public_hostname}/"
+    def build_routes
+      Routes.new(site: deployment_target.site, site_root: "/", canonical_url: legacy_canonical_url)
+    end
+
+    # Replaced by Routes.for(deployment_target) once the internal special
+    # case is removed.
+    def legacy_canonical_url
+      if deployment_target.provider == "internal"
+        "/preview/#{deployment_target.id}/"
+      else
+        "https://#{deployment_target.public_hostname}/"
+      end
     end
   end
 end

@@ -56,6 +56,16 @@ RSpec.describe StaticSite::ExportJob do
       end
     end
 
+    it "exports projects without a double slash in the path" do
+      project = create(:project, site:, slug: "/my-project")
+
+      perform
+
+      project_path = File.join(deployment_target.source_dir, "projects", "my-project", "index.html")
+      expect(File.exist?(project_path)).to be true
+      expect(File.read(project_path)).to include(project.title)
+    end
+
     it "exports posts" do
       post = create(:post, site:, title: "Test Post", slug: nil, publish_at: 1.day.ago)
 
