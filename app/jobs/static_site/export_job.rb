@@ -53,8 +53,7 @@ module StaticSite
       PrecompressJob.perform_now(sink.dir)
     end
 
-    # Replaces the deployed directory with what this run built. The export never
-    # touches the live directory, so a failure above leaves it untouched.
+    # The export never touches the live directory, so a failure above leaves it intact.
     def publish
       destination = deployment_target.source_dir.chomp("/")
 

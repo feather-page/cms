@@ -35,11 +35,11 @@ RSpec.describe StaticSite::Export do
     end
 
     it "exports projects without a double slash in the path" do
-      project = create(:project, site:, slug: "/my-project")
+      create(:project, site:, slug: "/my-project", title: "My Project")
 
       export
 
-      expect(sink["projects/my-project/index.html"]).to include(project.title)
+      expect(sink["projects/my-project/index.html"]).to include("My Project")
     end
 
     it "exports posts" do

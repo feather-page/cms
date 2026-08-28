@@ -1,5 +1,4 @@
 # The sink contract from docs/adr/0006-export-writes-through-a-sink.md.
-# Both implementations must satisfy it; neither gains a lifecycle method.
 RSpec.shared_examples "a sink" do
   it "accepts written content" do
     sink.write("index.html", "<h1>Hello</h1>")

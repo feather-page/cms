@@ -1,6 +1,6 @@
 module StaticSite
   # Renders a whole site into a sink. Knows nothing about deployment targets,
-  # locks or where the files end up — see docs/adr/0006-export-writes-through-a-sink.md.
+  # locks or where the files end up.
   class Export
     THREAD_COUNT = 4
 
@@ -98,8 +98,7 @@ module StaticSite
       sink.write(routes.artifact_path("sitemap.xml"), SitemapRenderer.new(site: site, routes: routes).render)
     end
 
-    # Each thread renders through its own PageRenderer; ApplicationController.render
-    # is not safe to share across threads.
+    # Each thread renders through its own PageRenderer.
     def in_parallel(records)
       ParallelProcessor.new(records, thread_count: THREAD_COUNT).process do |record|
         yield record, PageRenderer.new
