@@ -1,5 +1,6 @@
 describe StaticSite::BooksListComponent, type: :component do
   let(:site) { create(:site) }
+  let(:routes) { StaticSite::Routes.new(site:, site_root: "/") }
   let(:book_with_rating) do
     create(:book, site: site, title: "Clean Code", author: "Robert C. Martin",
                   rating: 5, reading_status: :finished, read_at: Date.new(2024, 6, 15))
@@ -12,12 +13,12 @@ describe StaticSite::BooksListComponent, type: :component do
 
   describe "#initialize" do
     it "accepts books and group_by parameter" do
-      component = described_class.new(books: books, group_by: :year)
+      component = described_class.new(books: books, group_by: :year, routes: routes)
       expect(component).to be_a(described_class)
     end
 
     it "defaults to grouping by year" do
-      component = described_class.new(books: books)
+      component = described_class.new(books: books, routes: routes)
       expect(component).to be_a(described_class)
     end
   end
@@ -26,13 +27,13 @@ describe StaticSite::BooksListComponent, type: :component do
     describe "#group_books" do
       context "when grouping by year" do
         it "groups books by their read_at year" do
-          component = described_class.new(books: books, group_by: :year)
+          component = described_class.new(books: books, group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css("h2").first.text).to include("2024")
         end
 
         it "excludes books without read_at date" do
-          component = described_class.new(books: books, group_by: :year)
+          component = described_class.new(books: books, group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.text).not_to include("The Pragmatic Programmer")
         end
@@ -40,13 +41,13 @@ describe StaticSite::BooksListComponent, type: :component do
 
       context "when grouping by status" do
         it "groups books by reading status" do
-          component = described_class.new(books: books, group_by: :status)
+          component = described_class.new(books: books, group_by: :status, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css("h2").map(&:text).join).to include("Finished")
         end
 
         it "includes all books regardless of read_at date" do
-          component = described_class.new(books: books, group_by: :status)
+          component = described_class.new(books: books, group_by: :status, routes: routes)
           rendered = render_inline(component)
           expect(rendered.text).to include("The Pragmatic Programmer")
         end
@@ -55,7 +56,7 @@ describe StaticSite::BooksListComponent, type: :component do
 
     describe "#group_title" do
       it "returns human-readable status titles" do
-        component = described_class.new(books: books, group_by: :status)
+        component = described_class.new(books: books, group_by: :status, routes: routes)
         rendered = render_inline(component)
         expect(rendered.text).to include("Currently Reading")
       end
@@ -63,13 +64,13 @@ describe StaticSite::BooksListComponent, type: :component do
 
     describe "#rating_stars" do
       it "displays filled and empty stars for rated books" do
-        component = described_class.new(books: [book_with_rating], group_by: :year)
+        component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".book-rating").text).to eq("★★★★★")
       end
 
       it "does not display stars for unrated books" do
-        component = described_class.new(books: [book_without_rating], group_by: :status)
+        component = described_class.new(books: [book_without_rating], group_by: :status, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".book-rating")).to be_empty
       end
@@ -86,7 +87,7 @@ describe StaticSite::BooksListComponent, type: :component do
         end
 
         it "returns the static site image path" do
-          component = described_class.new(books: [book_with_cover], group_by: :year)
+          component = described_class.new(books: [book_with_cover], group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css(".book-cover").first["src"]).to include("/images/")
           expect(rendered.css(".book-cover").first["src"]).to include("/mobile_x1.webp")
@@ -95,7 +96,7 @@ describe StaticSite::BooksListComponent, type: :component do
 
       context "when book has no cover image" do
         it "does not render an img tag" do
-          component = described_class.new(books: [book_with_rating], group_by: :year)
+          component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css(".book-cover")).to be_empty
         end
@@ -112,17 +113,17 @@ describe StaticSite::BooksListComponent, type: :component do
           book
         end
 
-        it "renders the title as a link" do
-          component = described_class.new(books: [book_with_review], group_by: :year)
+        it "renders the title as a link to the post's address" do
+          component = described_class.new(books: [book_with_review], group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css("a.book-title")).to be_present
-          expect(rendered.css("a.book-title").first["href"]).to include("/posts/")
+          expect(rendered.css("a.book-title").first["href"]).to eq(routes.post_url(book_with_review.post))
         end
       end
 
       context "when book has no review" do
         it "renders the title as a span" do
-          component = described_class.new(books: [book_with_rating], group_by: :year)
+          component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
           rendered = render_inline(component)
           expect(rendered.css("span.book-title")).to be_present
           expect(rendered.css("a.book-title")).to be_empty
@@ -133,7 +134,7 @@ describe StaticSite::BooksListComponent, type: :component do
 
   describe "rendering" do
     it "renders book information" do
-      component = described_class.new(books: [book_with_rating], group_by: :year)
+      component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
       rendered = render_inline(component)
 
       expect(rendered.text).to include("Clean Code")
@@ -141,7 +142,7 @@ describe StaticSite::BooksListComponent, type: :component do
     end
 
     it "shows book count in group header" do
-      component = described_class.new(books: [book_with_rating], group_by: :year)
+      component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
       rendered = render_inline(component)
 
       expect(rendered.css("h2").first.text).to include("(1)")
@@ -149,7 +150,7 @@ describe StaticSite::BooksListComponent, type: :component do
 
     it "displays emoji when present" do
       book_with_rating.update!(emoji: "📚")
-      component = described_class.new(books: [book_with_rating], group_by: :year)
+      component = described_class.new(books: [book_with_rating], group_by: :year, routes: routes)
       rendered = render_inline(component)
 
       expect(rendered.css(".book-emoji").text).to eq("📚")

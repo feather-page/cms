@@ -9,7 +9,7 @@
 <% end %>
 
 <% if @page.page_type_books? %>
-  <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered) %>
+  <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered, routes: static_site_routes) %>
 <% end %>
 
 <% if @page.page_type_projects? %>

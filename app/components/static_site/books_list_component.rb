@@ -6,14 +6,15 @@ module StaticSite
       "finished" => "Finished"
     }.freeze
 
-    def initialize(books:, group_by: :year)
+    def initialize(books:, routes:, group_by: :year)
       @books = group_books(books, group_by)
       @group_by = group_by
+      @routes = routes
     end
 
     private
 
-    attr_reader :group_by
+    attr_reader :group_by, :routes
 
     def group_books(books, group_by)
       case group_by
@@ -37,13 +38,13 @@ module StaticSite
     def cover_path(book)
       return nil unless book.cover_image&.file&.attached?
 
-      "/images/#{book.cover_image.public_id}/mobile_x1.webp"
+      routes.image_url(book.cover_image, :mobile_x1_webp)
     end
 
     def review_url(book)
       return nil unless book.post.present? && book.post.title.present?
 
-      "/posts/#{book.post.public_id.downcase}/"
+      routes.post_url(book.post)
     end
 
     def rating_stars(rating)
