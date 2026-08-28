@@ -1,8 +1,7 @@
 require "builder"
 
 module StaticSite
-  # See ADR-006. Sitemap entries are addressed absolutely via
-  # routes.canonical, by their external address.
+  # Sitemap entries carry the site's external address, never a preview path.
   class SitemapRenderer
     def initialize(site:, routes:)
       @site = site

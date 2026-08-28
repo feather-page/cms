@@ -33,7 +33,10 @@ module StaticSite
         return Route.build(:home, page: 1) if ["", "index.html", "index"].include?(path)
 
         match = path.match(%r{\Apage/(\d+)\z})
-        Route.build(:home, page: match[1].to_i) if match
+        return unless match
+
+        page = match[1].to_i
+        Route.build(:home, page:) if page.positive?
       end
 
       def resolve_artifact(path)

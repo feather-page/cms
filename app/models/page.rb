@@ -27,6 +27,9 @@ class Page < ApplicationRecord
     end
   end
 
+  # The homepage is the one record that legitimately owns the site root.
+  def root_slug_allowed? = homepage?
+
   def homepage?
     slug == '/'
   end

@@ -1,10 +1,18 @@
 module StaticSite
-  # See ADR-006.
+  # Owns the static site's address scheme in both directions: it generates
+  # every URL and output path, and resolves a requested path back to a record.
   class Routes
     ARTIFACTS = %w[feed.xml robots.txt sitemap.xml].freeze
     RESERVED_PREFIXES = %w[images page posts projects].freeze
 
     include Resolution
+
+    # Paths the site generates itself; content must not claim them.
+    def self.reserved?(slug)
+      path = slug.to_s.delete_prefix("/")
+
+      RESERVED_PREFIXES.include?(path.split("/").first) || ARTIFACTS.include?(path)
+    end
 
     def self.for(deployment_target, as: :deployed)
       new(

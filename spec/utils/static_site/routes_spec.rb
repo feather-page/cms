@@ -222,6 +222,10 @@ describe StaticSite::Routes do
     it "returns nil for an unknown path" do
       expect(routes.resolve("nope/not/here")).to be_nil
     end
+
+    it "does not resolve a page number below one" do
+      expect(routes.resolve("page/0")).to be_nil
+    end
   end
 
   describe "round trip" do

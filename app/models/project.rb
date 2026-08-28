@@ -29,6 +29,8 @@ class Project < ApplicationRecord
 
   scope :ordered, -> { order(started_at: :desc) }
 
+  # Projects are addressed under projects/, so their slugs cannot collide
+  # with the generated top-level paths.
   def slug_in_own_namespace? = true
 
   def display_period

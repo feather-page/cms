@@ -63,5 +63,31 @@ describe Sluggable do
     it "allows a project to use a reserved name, because it lives under projects/" do
       expect(build(:project, site:, slug: "/images")).to be_valid
     end
+
+    it "names the reserved slug in a readable error" do
+      page = build(:page, site:, slug: "/posts")
+
+      page.validate
+
+      expect(page.errors.full_messages.join).not_to include("translation missing")
+      expect(page.errors.full_messages.join).not_to include("Translation missing")
+    end
+  end
+
+  describe "the site root" do
+    it "allows the homepage to own it" do
+      expect(build(:page, site:, slug: "/")).to be_valid
+    end
+
+    it "rejects a post claiming it" do
+      post = build(:post, site:, slug: "/")
+
+      expect(post).not_to be_valid
+      expect(post.errors.full_messages.join).not_to include("ranslation missing")
+    end
+
+    it "rejects a project claiming it" do
+      expect(build(:project, site:, slug: "/")).not_to be_valid
+    end
   end
 end
