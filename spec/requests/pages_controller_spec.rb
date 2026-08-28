@@ -11,9 +11,13 @@ describe PagesController do
     end
 
     it "shows all pages" do
-      pages = create_list(:page, 2, site: site)
+      create(:page, site: site, title: "First Page")
+      create(:page, site: site, title: "Second Page")
+
       get site_pages_path(site)
-      pages.each { |page| expect(response.body).to include(page.title) }
+
+      expect(response.body).to include("First Page")
+      expect(response.body).to include("Second Page")
     end
 
     it "does not show pages from other sites" do

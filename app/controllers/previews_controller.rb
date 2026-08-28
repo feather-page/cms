@@ -51,7 +51,7 @@ class PreviewsController < ApplicationController
     @rss_url = "/feed.xml"
 
     all_posts = site.posts.published.order(publish_at: :desc)
-    per_page = StaticSite::ExportJob::POSTS_PER_PAGE
+    per_page = StaticSite::PageRenderer::POSTS_PER_PAGE
     @current_page = page_number
     @total_pages = [(all_posts.count / per_page.to_f).ceil, 1].max
     @posts = all_posts.offset((@current_page - 1) * per_page).limit(per_page)

@@ -1,7 +1,6 @@
 module StaticSite
   class ExportJob < ApplicationJob
-    THREAD_COUNT = 4
-    POSTS_PER_PAGE = 25
+    MAX_LOCK_RETRIES = 60
 
     queue_as :default
 
@@ -9,146 +8,65 @@ module StaticSite
       @deployment_target = deployment_target
       @deployer = deployer
       @noticer = noticer
-      @lock_acquired = false
 
-      unless deployment_target.acquire_deploy_lock!
-        if executions < 60
-          return retry_job(wait: 5.seconds)
-        else
-          Rails.logger.warn("Deploy lock for target #{deployment_target.id} stuck — giving up after 60 retries")
-          return
-        end
-      end
+      return retry_or_give_up unless acquire_lock
 
-      @lock_acquired = true
-      @site = deployment_target.site
-      @routes = Routes.for(deployment_target)
-
-      cleanup
-      export_content
-      precompress
+      @sink = FileSink.new(deployment_target.build_path)
+      build_and_publish
       deploy_and_notify
     ensure
-      deployment_target.release_deploy_lock! if @lock_acquired
+      @sink&.discard!
+      release_lock
     end
 
     private
 
-    attr_reader :deployment_target, :site, :routes
+    attr_reader :deployment_target, :sink
 
-    def cleanup
-      FileUtils.rm_rf(output_dir)
-      FileUtils.mkdir_p(output_dir)
+    def acquire_lock
+      @lock_acquired = deployment_target.acquire_deploy_lock!
     end
 
-    def export_content
-      export_home
-      export_posts
-      export_projects
-      export_pages
-      export_images
-      export_rss_feed
-      export_robots_txt
-      export_sitemap
+    def release_lock
+      deployment_target.release_deploy_lock! if @lock_acquired
     end
 
-    def export_home
-      posts = site.posts.published.order(publish_at: :desc).to_a
-      total_pages = [(posts.length / POSTS_PER_PAGE.to_f).ceil, 1].max
+    def retry_or_give_up
+      return retry_job(wait: 5.seconds) if executions < MAX_LOCK_RETRIES
 
-      (1..total_pages).each do |page_number|
-        page_posts = posts.slice((page_number - 1) * POSTS_PER_PAGE, POSTS_PER_PAGE) || []
-        html = renderer.render_home(
-          site: site, routes: routes, posts: page_posts,
-          current_page: page_number, total_pages: total_pages
-        )
-        write_file(routes.home_path(page: page_number), html)
-      end
+      Rails.logger.warn(
+        "Deploy lock for target #{deployment_target.id} stuck — giving up after #{MAX_LOCK_RETRIES} retries"
+      )
     end
 
-    def export_posts
-      posts = site.posts.published.to_a
-      ParallelProcessor.new(posts, thread_count: THREAD_COUNT).process do |post|
-        thread_renderer = PageRenderer.new
-        write_file(routes.post_path(post), thread_renderer.render_post(site: site, routes: routes, post: post))
-      end
+    def build_and_publish
+      export
+      precompress
+      publish
     end
 
-    def export_projects
-      projects = site.projects.ordered.to_a
-      ParallelProcessor.new(projects, thread_count: THREAD_COUNT).process do |project|
-        thread_renderer = PageRenderer.new
-        write_file(
-          routes.project_path(project),
-          thread_renderer.render_project(site: site, routes: routes, project: project)
-        )
-      end
-    end
-
-    def export_pages
-      pages = site.pages.where.not(slug: "/").to_a
-      ParallelProcessor.new(pages, thread_count: THREAD_COUNT).process do |page|
-        thread_renderer = PageRenderer.new
-        write_file(routes.page_path(page), thread_renderer.render_page(site: site, routes: routes, page: page))
-      end
-    end
-
-    def export_images
-      images = ImageCollector.new(site).to_a
-      image_variants = images.flat_map { |img| Image::Variants.keys.map { |key| [img, key] } }
-      ParallelProcessor.new(image_variants, thread_count: THREAD_COUNT).process do |(image, variant_key)|
-        copy_image_variant(image, variant_key)
-      end
-    end
-
-    def copy_image_variant(image, variant_key)
-      source_path = image.fs_path(variant: variant_key)
-      return unless source_path && File.exist?(source_path)
-
-      dest_path = File.join(output_dir, routes.image_path(image, variant_key))
-      FileUtils.mkdir_p(File.dirname(dest_path))
-      FileUtils.cp(source_path, dest_path)
-    end
-
-    def export_rss_feed
-      write_file(routes.artifact_path("feed.xml"), RssFeedRenderer.new(site: site, routes: routes).render)
-    end
-
-    def export_robots_txt
-      write_file(routes.artifact_path("robots.txt"), robots_content)
-    end
-
-    def robots_content
-      "User-agent: *\nAllow: /\n\nSitemap: #{routes.canonical.artifact_url('sitemap.xml')}\n"
-    end
-
-    def export_sitemap
-      write_file(routes.artifact_path("sitemap.xml"), SitemapRenderer.new(site: site, routes: routes).render)
+    def export
+      Export.new(site: deployment_target.site, routes: Routes.for(deployment_target), sink:).run
     end
 
     def precompress
-      PrecompressJob.perform_now(output_dir)
+      PrecompressJob.perform_now(sink.dir)
+    end
+
+    # The export never touches the live directory, so a failure above leaves it intact.
+    def publish
+      destination = deployment_target.source_dir.chomp("/")
+
+      FileUtils.rm_rf(destination)
+      FileUtils.mkdir_p(File.dirname(destination))
+      FileUtils.mv(sink.dir, destination)
     end
 
     def deploy_and_notify
       @deployer.deploy(deployment_target)
-      @noticer.new(site).notice(
+      @noticer.new(deployment_target.site).notice(
         "Site built. <a href='https://#{deployment_target.public_hostname}'>Preview</a>"
       )
-    end
-
-    def renderer
-      @renderer ||= PageRenderer.new
-    end
-
-    def output_dir
-      @output_dir ||= deployment_target.source_dir
-    end
-
-    def write_file(relative_path, content)
-      full_path = File.join(output_dir, relative_path)
-      FileUtils.mkdir_p(File.dirname(full_path))
-      File.write(full_path, content)
     end
   end
 end

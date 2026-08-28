@@ -34,8 +34,13 @@ A destination a site is published to, typed `staging`, `production` or `backup`,
 _Avoid_: Host, Server, Environment
 
 **Static Export**:
-Rendering a site to static files and syncing them to a deployment target.
+Rendering a site to static files. Syncing them to a deployment target is a separate step.
 _Avoid_: Build, Generate
+
+**Sink**:
+Where a static export puts the files it produces. Receives generated content and copies of existing
+files; knows nothing about sites, posts or deployment.
+_Avoid_: Output, Target (a target is a deployment target)
 
 **Preview**:
 Live rendering of the same templates inside the CMS, with no export and no deployment.

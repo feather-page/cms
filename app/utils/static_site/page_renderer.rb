@@ -1,5 +1,7 @@
 module StaticSite
   class PageRenderer
+    POSTS_PER_PAGE = 25
+
     def render_home(site:, routes:, posts:, current_page:, total_pages:)
       render_template("static_site/home", home_assigns(site, routes, posts, current_page, total_pages))
     end
