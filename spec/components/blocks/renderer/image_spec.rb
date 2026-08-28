@@ -11,6 +11,8 @@ describe Blocks::Renderer::Image do
         .and_return("/images/#{image.public_id}/desktop_x1.jpg")
       allow(r).to receive(:image_url).with(image, anything)
         .and_return("/images/#{image.public_id}/mobile_x1.webp")
+      allow(r).to receive(:image_srcset).with(image)
+        .and_return("/images/#{image.public_id}/mobile_x1.webp 430w, /images/#{image.public_id}/desktop_x1.webp 1200w")
     end
   end
 

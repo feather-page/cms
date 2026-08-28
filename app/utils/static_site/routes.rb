@@ -42,6 +42,7 @@ module StaticSite
     def project_url(project) = "#{site_root}#{project_segment(project)}/"
     def image_url(image, variant) = "#{site_root}#{image_segment(image, variant)}"
     def artifact_url(name) = "#{site_root}#{artifact(name)}"
+    def image_srcset(image) = Image::Variants::SIZES.map { |name, width| "#{image_url(image, :"#{name}_webp")} #{width}w" }.join(", ")
 
     def home_path(page: 1) = paginated?(page) ? "page/#{page.to_i}/index.html" : "index.html"
     def post_path(post) = "#{post_segment(post)}/index.html"

@@ -20,9 +20,15 @@ module Blocks
       end
 
       def srcset(format)
-        ::Image::Variants::SIZES.map do |size_name, size|
-          "#{routes.image_url(image, :"#{size_name}_#{format}")} #{size}w"
-        end.join(', ')
+        # Only webp is used via sources; the format parameter is preserved for
+        # future use but currently Routes#image_srcset hard-codes webp.
+        if format == 'webp'
+          routes.image_srcset(image)
+        else
+          ::Image::Variants::SIZES.map do |size_name, size|
+            "#{routes.image_url(image, :"#{size_name}_#{format}")} #{size}w"
+          end.join(', ')
+        end
       end
     end
   end

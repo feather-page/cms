@@ -16,9 +16,7 @@ module StaticSiteHelper
   def static_site_header_image_srcset(image)
     return nil unless image&.file&.attached?
 
-    Image::Variants::SIZES.map do |name, width|
-      "#{static_site_routes.image_url(image, :"#{name}_webp")} #{width}w"
-    end.join(", ")
+    static_site_routes.image_srcset(image)
   end
 
   def static_site_rating_stars(rating)

@@ -30,6 +30,8 @@ describe Blocks::Renderer do
         allow(Image).to receive(:find).with(image.public_id).and_return(image)
         allow(routes).to receive(:image_url).with(image, anything)
           .and_return("/images/#{image.public_id}/mobile_x1.webp")
+        allow(routes).to receive(:image_srcset).with(image)
+          .and_return("/images/#{image.public_id}/mobile_x1.webp 430w")
       end
 
       it "passes routes to the block renderer" do
