@@ -5,7 +5,7 @@ module Blocks
         delegate :service, :source, :caption, to: :block
 
         def embed_url
-          block.embed
+          block.embed.gsub("youtube.com/embed/", "youtube-nocookie.com/embed/")
         end
 
         def size_attrs
