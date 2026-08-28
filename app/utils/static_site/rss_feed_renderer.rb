@@ -45,7 +45,7 @@ module StaticSite
         item.link routes.post_url(post)
         item.pubDate post.publish_at.rfc2822
         item.guid routes.post_url(post), isPermaLink: "true"
-        item.description post.static_site_html
+        item.description Blocks::Renderer.render(post.blocks, routes:)
       end
     end
 

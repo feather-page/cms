@@ -125,25 +125,4 @@ describe StaticSiteHelper do
       expect(result).to eq([1, :gap, 7, 8, 9, :gap, 16])
     end
   end
-
-  describe "#static_site_content_html" do
-    context "without base_url (static site export)" do
-      it "preserves image paths" do
-        html = '<img src="/images/abc123/desktop_x1.webp">'
-
-        expect(helper_instance.static_site_content_html(html)).to eq('<img src="/images/abc123/desktop_x1.webp">')
-      end
-    end
-
-    context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
-
-      it "prepends base_url to image paths in content" do
-        html = '<img src="/images/abc123/desktop_x1.webp">'
-        result = helper_instance.static_site_content_html(html)
-
-        expect(result).to eq('<img src="/preview/ABC123/images/abc123/desktop_x1.webp">')
-      end
-    end
-  end
 end
