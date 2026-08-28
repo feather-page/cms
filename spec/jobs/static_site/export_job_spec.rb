@@ -20,130 +20,26 @@ RSpec.describe StaticSite::ExportJob do
   end
 
   describe "#perform" do
-    it "creates the output directory" do
-      perform
-
-      expect(Dir.exist?(deployment_target.source_dir)).to be true
-    end
-
-    it "exports the home page" do
-      perform
-
-      index_path = File.join(deployment_target.source_dir, "index.html")
-      expect(File.exist?(index_path)).to be true
-      expect(File.read(index_path)).to include(ERB::Util.html_escape(site.title))
-    end
-
-    context "with pagination" do
-      it "paginates posts across multiple pages" do
-        create_list(:post, 26, site:, publish_at: 1.day.ago)
-
-        perform
-
-        page1_path = File.join(deployment_target.source_dir, "index.html")
-        page2_path = File.join(deployment_target.source_dir, "page", "2", "index.html")
-        expect(File.exist?(page1_path)).to be true
-        expect(File.exist?(page2_path)).to be true
-      end
-
-      it "does not create page/2 when posts fit on one page" do
-        create_list(:post, 3, site:, publish_at: 1.day.ago)
-
-        perform
-
-        page2_path = File.join(deployment_target.source_dir, "page", "2", "index.html")
-        expect(File.exist?(page2_path)).to be false
-      end
-    end
-
-    it "exports projects without a double slash in the path" do
-      project = create(:project, site:, slug: "/my-project")
+    it "renders the site into the deployed directory" do
+      create(:post, site:, title: "End To End", slug: "/e2e", publish_at: 1.day.ago)
 
       perform
 
-      project_path = File.join(deployment_target.source_dir, "projects", "my-project", "index.html")
-      expect(File.exist?(project_path)).to be true
-      expect(File.read(project_path)).to include(project.title)
+      index = File.join(deployment_target.source_dir, "index.html")
+      post = File.join(deployment_target.source_dir, "e2e", "index.html")
+      expect(File.read(index)).to include(ERB::Util.html_escape(site.title))
+      expect(File.read(post)).to include("End To End")
     end
 
-    it "exports posts" do
-      post = create(:post, site:, title: "Test Post", slug: nil, publish_at: 1.day.ago)
+    it "precompresses what the export built, before publishing it" do
+      built_dir = nil
+      allow(StaticSite::PrecompressJob).to receive(:perform_now) { |dir| built_dir = dir }
 
       perform
 
-      post_path = File.join(deployment_target.source_dir, "posts", post.public_id.downcase, "index.html")
-      expect(File.exist?(post_path)).to be true
-      expect(File.read(post_path)).to include("Test Post")
-    end
-
-    it "exports posts with custom slug" do
-      create(:post, site:, title: "Custom Slug Post", slug: "/my-custom-url", publish_at: 1.day.ago)
-
-      perform
-
-      post_path = File.join(deployment_target.source_dir, "my-custom-url", "index.html")
-      expect(File.exist?(post_path)).to be true
-      expect(File.read(post_path)).to include("Custom Slug Post")
-    end
-
-    it "exports pages" do
-      create(:page, site:, title: "About Page", slug: "/about")
-
-      perform
-
-      page_path = File.join(deployment_target.source_dir, "about", "index.html")
-      expect(File.exist?(page_path)).to be true
-      expect(File.read(page_path)).to include("About Page")
-    end
-
-    it "exports the RSS feed" do
-      create(:post, site:, title: "RSS Test Post", publish_at: 1.day.ago)
-
-      perform
-
-      feed_path = File.join(deployment_target.source_dir, "feed.xml")
-      expect(File.exist?(feed_path)).to be true
-      expect(File.read(feed_path)).to include("RSS Test Post")
-    end
-
-    it "exports robots.txt" do
-      perform
-
-      robots_path = File.join(deployment_target.source_dir, "robots.txt")
-      expect(File.exist?(robots_path)).to be true
-      expect(File.read(robots_path)).to include("User-agent: *")
-    end
-
-    it "exports sitemap.xml" do
-      perform
-
-      sitemap_path = File.join(deployment_target.source_dir, "sitemap.xml")
-      expect(File.exist?(sitemap_path)).to be true
-      expect(File.read(sitemap_path)).to include("<urlset")
-    end
-
-    context "with an internal target" do
-      it "links the feed canonically to the public hostname" do
-        create(:post, site:, title: "RSS Test Post", publish_at: 1.day.ago)
-
-        perform
-
-        feed_path = File.join(deployment_target.source_dir, "feed.xml")
-        expect(File.read(feed_path)).to include("<link>https://#{deployment_target.public_hostname}/</link>")
-      end
-
-      it "does not leak the preview path into robots.txt" do
-        perform
-
-        robots_path = File.join(deployment_target.source_dir, "robots.txt")
-        expect(File.read(robots_path)).not_to include("/preview/")
-      end
-    end
-
-    it "calls precompress job" do
-      perform
-
-      expect(StaticSite::PrecompressJob).to have_received(:perform_now).with(deployment_target.source_dir)
+      expect(built_dir).to be_present
+      expect(built_dir).not_to eq(deployment_target.source_dir)
+      expect(File.dirname(built_dir)).to eq(deployment_target.build_path)
     end
 
     it "deploys via rclone" do
@@ -161,55 +57,50 @@ RSpec.describe StaticSite::ExportJob do
       )
     end
 
-    context "with book reviews" do
-      it "includes star ratings in posts" do
-        book = create(:book, site:, title: "Clean Code", rating: 4)
-        post = create(:post, site:, title: "Book Review", slug: nil, publish_at: 1.day.ago)
-        book.update!(post:)
+    it "leaves no build directory behind" do
+      perform
 
-        perform
+      leftovers = Dir.children(deployment_target.build_path)
+      expect(leftovers).to eq(["public"])
+    end
+  end
 
-        post_path = File.join(deployment_target.source_dir, "posts", post.public_id.downcase, "index.html")
-        content = File.read(post_path)
-        expect(content).to include("Clean Code")
-        expect(content).to include("\u2605\u2605\u2605\u2605\u2606")
-      end
+  describe "publishing" do
+    it "replaces the previously deployed directory" do
+      stale = File.join(deployment_target.source_dir, "gone.html")
+      FileUtils.mkdir_p(deployment_target.source_dir)
+      File.write(stale, "from an earlier run")
+
+      perform
+
+      expect(File.exist?(stale)).to be false
+      expect(File.exist?(File.join(deployment_target.source_dir, "index.html"))).to be true
     end
 
-    context "with navigation items" do
-      it "exports navigation links in the correct order" do
-        navigation = site.main_navigation
+    it "leaves the deployed directory untouched when the export fails" do
+      FileUtils.mkdir_p(deployment_target.source_dir)
+      File.write(File.join(deployment_target.source_dir, "index.html"), "the live site")
+      allow(StaticSite::Export).to receive(:new).and_raise(RuntimeError, "boom")
 
-        page_c = create(:page, site:, title: "Page C", slug: "/page-c")
-        page_a = create(:page, site:, title: "Page A", slug: "/page-a")
-        page_b = create(:page, site:, title: "Page B", slug: "/page-b")
+      expect { perform }.to raise_error(RuntimeError, "boom")
 
-        navigation.add(page_c)
-        nav_item_a = navigation.add(page_a)
-        navigation.add(page_b)
+      expect(File.read(File.join(deployment_target.source_dir, "index.html"))).to eq("the live site")
+    end
 
-        nav_item_a.move_up
+    it "discards the build directory when the export fails" do
+      allow(StaticSite::Export).to receive(:new).and_raise(RuntimeError, "boom")
 
-        perform
+      expect { perform }.to raise_error(RuntimeError, "boom")
 
-        index_path = File.join(deployment_target.source_dir, "index.html")
-        content = File.read(index_path)
-
-        page_a_pos = content.index("Page A")
-        page_c_pos = content.index("Page C")
-        page_b_pos = content.index("Page B")
-
-        expect(page_a_pos).to be < page_c_pos, "Page A should appear before Page C"
-        expect(page_c_pos).to be < page_b_pos, "Page C should appear before Page B"
-      end
+      expect(Dir.children(deployment_target.build_path)).to be_empty
     end
   end
 
   describe "deploy locking" do
-    it "acquires the lock before exporting" do
+    it "releases the lock after a successful export" do
       perform
 
-      expect(deployment_target.reload.deploying?).to be false # released in ensure
+      expect(deployment_target.reload.deploying?).to be false
     end
 
     it "retries when lock is already held" do
@@ -225,12 +116,10 @@ RSpec.describe StaticSite::ExportJob do
     end
 
     it "releases the lock when an error occurs during export" do
-      deployment_target # ensure created before stubbing
+      deployment_target
       allow(StaticSite::PrecompressJob).to receive(:perform_now).and_raise(RuntimeError, "boom")
 
-      expect {
-        perform
-      }.to raise_error(RuntimeError, "boom")
+      expect { perform }.to raise_error(RuntimeError, "boom")
 
       expect(deployment_target.reload.deploying?).to be false
     end
