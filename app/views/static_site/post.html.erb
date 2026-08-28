@@ -19,7 +19,7 @@
   </div>
 <% end %>
 
-<%= static_site_content_html(@post.static_site_html) %>
+<%= Blocks::Renderer.render(@post.blocks, routes: static_site_routes) %>
 
 <div class="post-date"><%= l(@post.publish_at.to_date, format: :long) %></div>
 

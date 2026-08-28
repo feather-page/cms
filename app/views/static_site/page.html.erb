@@ -1,4 +1,4 @@
-<%= static_site_content_html(@page.static_site_html) %>
+<%= Blocks::Renderer.render(@page.blocks, routes: static_site_routes) %>
 
 <% if @page.tag_list.any? %>
   <div class="page-tags">
@@ -9,7 +9,7 @@
 <% end %>
 
 <% if @page.page_type_books? %>
-  <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered) %>
+  <%= render StaticSite::BooksListComponent.new(books: @page.site.books.ordered, routes: static_site_routes) %>
 <% end %>
 
 <% if @page.page_type_projects? %>

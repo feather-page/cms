@@ -24,7 +24,7 @@
   <% end %>
 </div>
 
-<%= static_site_content_html(@project.static_site_html) %>
+<%= Blocks::Renderer.render(@project.blocks, routes: static_site_routes) %>
 
 <% if @project.links&.any? { |link| link['url'].present? } %>
   <div class="project-links">

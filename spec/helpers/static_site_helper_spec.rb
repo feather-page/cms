@@ -3,6 +3,8 @@ describe StaticSiteHelper do
   let(:site) { create(:site) }
   let(:image) { create(:image, :with_file, site:) }
   let(:post) { create(:post, site:, publish_at: 1.day.ago) }
+  let(:routes) { StaticSite::Routes.new(site:, site_root: "/") }
+  before { helper_instance.instance_variable_set(:@routes, routes) }
 
   describe "#static_site_post_url" do
     context "without base_url (static site export)" do
@@ -123,27 +125,6 @@ describe StaticSiteHelper do
     it "adds gaps on both sides when current page is in the middle" do
       result = helper_instance.pagination_page_numbers(8, 16)
       expect(result).to eq([1, :gap, 7, 8, 9, :gap, 16])
-    end
-  end
-
-  describe "#static_site_content_html" do
-    context "without base_url (static site export)" do
-      it "preserves image paths" do
-        html = '<img src="/images/abc123/desktop_x1.webp">'
-
-        expect(helper_instance.static_site_content_html(html)).to eq('<img src="/images/abc123/desktop_x1.webp">')
-      end
-    end
-
-    context "with base_url (preview mode)" do
-      before { helper_instance.instance_variable_set(:@routes, StaticSite::Routes.new(site: site, site_root: "/preview/ABC123/")) }
-
-      it "prepends base_url to image paths in content" do
-        html = '<img src="/images/abc123/desktop_x1.webp">'
-        result = helper_instance.static_site_content_html(html)
-
-        expect(result).to eq('<img src="/preview/ABC123/images/abc123/desktop_x1.webp">')
-      end
     end
   end
 end

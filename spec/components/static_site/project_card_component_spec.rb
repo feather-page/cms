@@ -1,5 +1,6 @@
 describe StaticSite::ProjectCardComponent, type: :component do
   let(:site) { create(:site) }
+  let(:routes) { StaticSite::Routes.new(site:, site_root: "/") }
   let(:project) do
     create(:project, site: site, title: "Test Project", company: "Test Company",
                      started_at: Date.new(2024, 1, 1), ended_at: Date.new(2024, 6, 1),
@@ -9,7 +10,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
 
   describe "#initialize" do
     it "accepts project parameter" do
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       expect(component).to be_a(described_class)
     end
   end
@@ -18,7 +19,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
     describe "#project_url" do
       it "returns the correct project URL" do
         test_project = create(:project, site: site, slug: "my-test-project")
-        component = described_class.new(project: test_project)
+        component = described_class.new(project: test_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".project-title").first["href"]).to eq("/projects/my-test-project/")
       end
@@ -27,28 +28,28 @@ describe StaticSite::ProjectCardComponent, type: :component do
     describe "#status_badge_class" do
       it "returns badge-success for completed status" do
         completed_project = create(:project, site: site, status: :completed)
-        component = described_class.new(project: completed_project)
+        component = described_class.new(project: completed_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".badge-success")).to be_present
       end
 
       it "returns badge-primary for ongoing status" do
         ongoing_project = create(:project, site: site, status: :ongoing)
-        component = described_class.new(project: ongoing_project)
+        component = described_class.new(project: ongoing_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".badge-primary")).to be_present
       end
 
       it "returns badge-warning for paused status" do
         paused_project = create(:project, site: site, status: :paused)
-        component = described_class.new(project: paused_project)
+        component = described_class.new(project: paused_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".badge-warning")).to be_present
       end
 
       it "returns badge-secondary for abandoned status" do
         abandoned_project = create(:project, site: site, status: :abandoned)
-        component = described_class.new(project: abandoned_project)
+        component = described_class.new(project: abandoned_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.css(".badge-secondary")).to be_present
       end
@@ -57,28 +58,28 @@ describe StaticSite::ProjectCardComponent, type: :component do
     describe "#project_type_label" do
       it "returns 'Professional' for professional type" do
         professional_project = create(:project, site: site, project_type: :professional)
-        component = described_class.new(project: professional_project)
+        component = described_class.new(project: professional_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.text).to include("Professional")
       end
 
       it "returns 'Personal' for personal type" do
         personal_project = create(:project, site: site, project_type: :personal)
-        component = described_class.new(project: personal_project)
+        component = described_class.new(project: personal_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.text).to include("Personal")
       end
 
       it "returns 'Open Source' for open_source type" do
         os_project = create(:project, site: site, project_type: :open_source)
-        component = described_class.new(project: os_project)
+        component = described_class.new(project: os_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.text).to include("Open Source")
       end
 
       it "returns 'Freelance' for freelance type" do
         freelance_project = create(:project, site: site, project_type: :freelance)
-        component = described_class.new(project: freelance_project)
+        component = described_class.new(project: freelance_project, routes: routes)
         rendered = render_inline(component)
         expect(rendered.text).to include("Freelance")
       end
@@ -87,7 +88,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
 
   describe "rendering" do
     it "renders all project information" do
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       rendered = render_inline(component)
 
       expect(rendered.text).to include("Test Project")
@@ -98,14 +99,14 @@ describe StaticSite::ProjectCardComponent, type: :component do
     end
 
     it "displays project period" do
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       rendered = render_inline(component)
 
       expect(rendered.text).to include(project.display_period)
     end
 
     it "links to project detail page" do
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       rendered = render_inline(component)
 
       link = rendered.css(".project-title").first
@@ -114,7 +115,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
     end
 
     it "displays status and type badges" do
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       rendered = render_inline(component)
 
       badges = rendered.css(".badge")
@@ -125,7 +126,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
     it "displays full description" do
       long_description = "A" * 200
       project.update!(short_description: long_description)
-      component = described_class.new(project: project)
+      component = described_class.new(project: project, routes: routes)
       rendered = render_inline(component)
 
       description_text = rendered.css(".project-description").text
@@ -139,35 +140,35 @@ describe StaticSite::ProjectCardComponent, type: :component do
       end
 
       it "still renders the title" do
-        component = described_class.new(project: minimal_project)
+        component = described_class.new(project: minimal_project, routes: routes)
         rendered = render_inline(component)
 
         expect(rendered.text).to include("Minimal Project")
       end
 
       it "does not render empty company" do
-        component = described_class.new(project: minimal_project)
+        component = described_class.new(project: minimal_project, routes: routes)
         rendered = render_inline(component)
 
         expect(rendered.css(".project-company")).to be_empty
       end
 
       it "does not render empty role" do
-        component = described_class.new(project: minimal_project)
+        component = described_class.new(project: minimal_project, routes: routes)
         rendered = render_inline(component)
 
         expect(rendered.css(".project-role")).to be_empty
       end
 
       it "renders the provided description" do
-        component = described_class.new(project: minimal_project)
+        component = described_class.new(project: minimal_project, routes: routes)
         rendered = render_inline(component)
 
         expect(rendered.css(".project-description").text).to include("A minimal project")
       end
 
       it "does not render empty emoji" do
-        component = described_class.new(project: minimal_project)
+        component = described_class.new(project: minimal_project, routes: routes)
         rendered = render_inline(component)
 
         expect(rendered.css(".project-emoji")).to be_empty

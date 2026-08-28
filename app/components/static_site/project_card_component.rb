@@ -7,9 +7,9 @@ module StaticSite
       "freelance" => "Freelance"
     }.freeze
 
-    def initialize(project:, routes: nil)
+    def initialize(project:, routes:)
       @project = project
-      @routes = routes || StaticSite::Routes.new(site: project.site, site_root: "/")
+      @routes = routes
     end
 
     private

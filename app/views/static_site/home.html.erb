@@ -6,7 +6,7 @@
   <% end %>
 </ul>
 
-<%= static_site_content_html(@page&.static_site_html.to_s) %>
+<%= Blocks::Renderer.render(@page&.blocks || [], routes: static_site_routes) %>
 
 <hr />
 
@@ -39,7 +39,7 @@
           <% if post.emoji.present? && post.book.blank? %>
             <div class="post-emoji"><%= post.emoji %></div>
           <% end %>
-          <div class="post-content"><%= static_site_content_html(post.static_site_html) %></div>
+          <div class="post-content"><%= Blocks::Renderer.render(post.blocks, routes: static_site_routes) %></div>
         </div>
         <div class="post-date"><%= l(post.publish_at.to_date, format: :long) %></div>
       <% else %>

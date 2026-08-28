@@ -25,9 +25,9 @@
 # Ignore uploaded files in development.
 /storage/*
 !/storage/.keep
-!/storage/hugo/
-/storage/hugo/*
-!/storage/hugo/.keep
+!/storage/static_site/
+/storage/static_site/*
+!/storage/static_site/.keep
 /tmp/storage/*
 !/tmp/storage/
 !/tmp/storage/.keep

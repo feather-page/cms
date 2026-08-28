@@ -14,8 +14,6 @@ RSpec.configure do |config|
     # cleanup capybara screenshots
     FileUtils.rm_rf(Rails.root.glob('tmp/capybara/*'))
 
-    # Cleanup hugo sites
-    FileUtils.rm_rf(Rails.root.glob('tmp/hugo/*'))
     FileUtils.rm_rf(Rails.root.glob('tmp/staging_sites/*'))
   end
 end

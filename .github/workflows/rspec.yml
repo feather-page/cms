@@ -21,7 +21,7 @@ jobs:
       - name: Run tests
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y rclone hugo libvips
+          sudo apt-get install --no-install-recommends -y rclone libvips
           bundle exec rails db:create
           bundle exec rails db:setup
           bundle exec rspec

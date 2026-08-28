@@ -16,9 +16,7 @@ module StaticSiteHelper
   def static_site_header_image_srcset(image)
     return nil unless image&.file&.attached?
 
-    Image::Variants::SIZES.map do |name, width|
-      "#{static_site_routes.image_url(image, :"#{name}_webp")} #{width}w"
-    end.join(", ")
+    static_site_routes.image_srcset(image)
   end
 
   def static_site_rating_stars(rating)
@@ -35,13 +33,6 @@ module StaticSiteHelper
     static_site_routes.image_url(image, :"#{variant}_webp")
   end
 
-  def static_site_content_html(content_html)
-    # rubocop:disable Rails/OutputSafety
-    # Stop-gap: stays until the block renderer receives URL generation as a
-    # parameter and can address images itself.
-    content_html.gsub(%r{/images/}, "#{static_site_routes.site_root}images/").html_safe
-    # rubocop:enable Rails/OutputSafety
-  end
 
   def static_site_post_url(post)
     static_site_routes.post_url(post)
@@ -76,7 +67,7 @@ module StaticSiteHelper
 
   # rubocop:disable Rails/HelperInstanceVariable
   def static_site_routes
-    @static_site_routes ||= @routes || StaticSite::Routes.new(site: @site, site_root: "/")
+    @routes
   end
   # rubocop:enable Rails/HelperInstanceVariable
 end

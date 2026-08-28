@@ -64,6 +64,17 @@ describe StaticSite::Routes do
     end
   end
 
+  describe "#image_srcset" do
+    it "builds a valid srcset string for the image" do
+      image = build(:image, site:, public_id: "img123456789")
+
+      srcset = routes.image_srcset(image)
+      expect(srcset).to include("/images/img123456789/mobile_x1.webp 430w")
+      expect(srcset).to include("/images/img123456789/desktop_x1.webp 1000w")
+      expect(srcset).to include(", ")
+    end
+  end
+
   describe "#image_url and #image_path" do
     it "addresses a variant by its filename" do
       image = build(:image, site:, public_id: "img123456789")
