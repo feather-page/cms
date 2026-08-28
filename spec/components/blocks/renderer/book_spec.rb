@@ -1,4 +1,6 @@
-describe Blocks::Renderer::StaticSiteHtml::Book do
+# frozen_string_literal: true
+
+describe Blocks::Renderer::Book do
   let(:book_model) { create(:book, :with_cover, title: 'Test Book', author: 'Test Author') }
   let(:block) do
     Blocks::Book.new(
@@ -8,12 +10,21 @@ describe Blocks::Renderer::StaticSiteHtml::Book do
       author: book_model.author
     )
   end
+  let(:routes) do
+    cover_image = book_model.cover_image
+    if cover_image
+      instance_double(StaticSite::Routes,
+                      image_url: "/images/#{cover_image.public_id}/mobile_x1.webp")
+    else
+      instance_double(StaticSite::Routes)
+    end
+  end
 
   describe '#to_html' do
-    let(:book_html) { described_class.new(block).to_html }
+    let(:book_html) { described_class.new(block, routes:).to_html }
 
     context 'with a book that has a cover image' do
-      it 'renders the static site cover image path' do
+      it 'renders the static site cover image path via routes' do
         cover_image = book_model.cover_image
         expect(book_html).to include("/images/#{cover_image.public_id}/mobile_x1.webp")
       end

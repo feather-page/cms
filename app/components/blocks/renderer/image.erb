@@ -1,0 +1,11 @@
+<picture>
+  <%- sources.each do |source| %>
+    <source srcset="<%= source[:srcset] %>" type="<%= source[:type] %>">
+  <% end %>
+
+  <img
+    loading="lazy" height="<%= image.height %>" width="<%= image.width %>"
+    src="<%= routes.image_url(image, :desktop_x1_jpg) %>" alt="<%= caption %>"
+  />
+  <%= raw(figcaption) %>
+</picture>
