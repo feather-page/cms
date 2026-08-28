@@ -254,26 +254,31 @@ def resolve_operation_schema(method_name, path_template, status)
   resolve_openapi_schema(raw, openapi)
 end
 
-def resolve_openapi_schema(schema, spec)
-  return resolve_ref(schema, spec) if schema["$ref"]
+def resolve_openapi_schema(schema, spec, seen = [])
+  return resolve_ref(schema, spec, seen) if schema["$ref"]
 
   result = schema.dup
-  result["oneOf"] = result["oneOf"].map { |s| resolve_openapi_schema(s, spec) } if result["oneOf"]
-  result["items"] = resolve_openapi_schema(result["items"], spec) if result["items"]
-  resolve_openapi_properties(result, spec)
+  result["oneOf"] = result["oneOf"].map { |s| resolve_openapi_schema(s, spec, seen) } if result["oneOf"]
+  result["items"] = resolve_openapi_schema(result["items"], spec, seen) if result["items"]
+  resolve_openapi_properties(result, spec, seen)
 end
 
-def resolve_ref(schema, spec)
-  path = schema["$ref"].delete_prefix("#/").split("/")
-  resolve_openapi_schema(spec.dig(*path), spec)
+# ListItem nests ListItem, so inlining every $ref would recurse forever. Stop at a $ref
+# that is already open in this branch and keep only its type check.
+def resolve_ref(schema, spec, seen)
+  ref = schema["$ref"]
+  return { "type" => "object" } if seen.include?(ref)
+
+  path = ref.delete_prefix("#/").split("/")
+  resolve_openapi_schema(spec.dig(*path), spec, seen + [ref])
 end
 
-def resolve_openapi_properties(result, spec)
+def resolve_openapi_properties(result, spec, seen)
   if result["properties"]
-    result["properties"] = result["properties"].transform_values { |v| resolve_openapi_schema(v, spec) }
+    result["properties"] = result["properties"].transform_values { |v| resolve_openapi_schema(v, spec, seen) }
   end
   if result["additionalProperties"].is_a?(Hash)
-    result["additionalProperties"] = resolve_openapi_schema(result["additionalProperties"], spec)
+    result["additionalProperties"] = resolve_openapi_schema(result["additionalProperties"], spec, seen)
   end
   result
 end
