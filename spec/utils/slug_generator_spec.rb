@@ -21,4 +21,15 @@ describe SlugGenerator do
       expect(slug_generator.generate('/foobar')).to eq('/foobar2')
     end
   end
+
+  describe 'when the slug is reserved' do
+    it 'proposes an alternative the models accept' do
+      site = create(:site)
+
+      slug = described_class.new(site).generate('Projects')
+
+      expect(slug).not_to eq('/projects')
+      expect(build(:page, site:, slug:)).to be_valid
+    end
+  end
 end

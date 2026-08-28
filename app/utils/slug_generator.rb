@@ -11,14 +11,23 @@ class SlugGenerator
 
     slug = "/#{slug}"
     alternative_slug = attempts.zero? ? slug : "#{slug}#{attempts}"
-    return alternative_slug unless slug_exists?(alternative_slug)
+    return alternative_slug unless taken?(alternative_slug)
 
     generate(slug, attempts + 1)
   end
 
   private
 
+  def taken?(slug)
+    slug_exists?(slug) || reserved?(slug)
+  end
+
   def slug_exists?(slug)
     @site.posts.exists?(slug:) || @site.pages.exists?(slug:)
+  end
+
+  # Reserved slugs are rejected by Sluggable, so never suggest one.
+  def reserved?(slug)
+    StaticSite::Routes.reserved?(slug)
   end
 end

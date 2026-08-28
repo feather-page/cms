@@ -110,7 +110,7 @@ describe StaticSite::ProjectCardComponent, type: :component do
 
       link = rendered.css(".project-title").first
       expect(link).to be_present
-      expect(link["href"]).to include("/projects/#{project.slug}/")
+      expect(link["href"]).to include("/projects/#{project.slug.delete_prefix("/")}/")
     end
 
     it "displays status and type badges" do

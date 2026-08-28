@@ -1,11 +1,11 @@
 module StaticSite
   class ProjectsListComponent < ViewComponent::Base
-    def initialize(projects:, base_url: "/")
+    def initialize(projects:, routes: nil)
       @projects = sort_projects(projects)
-      @base_url = base_url
+      @routes = routes || StaticSite::Routes.new(site: @projects.first&.site, site_root: "/")
     end
 
-    attr_reader :base_url
+    attr_reader :routes
 
     private
 

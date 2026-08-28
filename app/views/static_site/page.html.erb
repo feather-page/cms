@@ -13,5 +13,5 @@
 <% end %>
 
 <% if @page.page_type_projects? %>
-  <%= render StaticSite::ProjectsListComponent.new(projects: @page.site.projects.ordered, base_url: @base_url || "/") %>
+  <%= render StaticSite::ProjectsListComponent.new(projects: @page.site.projects.ordered, routes: static_site_routes) %>
 <% end %>

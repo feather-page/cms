@@ -36,6 +36,8 @@ en:
     errors:
       messages:
         invalid_emoji: is not a valid emoji
+        reserved: is reserved for generated pages, please pick another one
+        root_reserved: "cannot be /, that address belongs to the homepage"
       models:
         user_invitation:
           attributes:

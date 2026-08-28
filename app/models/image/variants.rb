@@ -21,6 +21,27 @@ class Image
       keys.each(&)
     end
 
+    def self.filename_for(variant_key)
+      raise ArgumentError, "unknown variant #{variant_key.inspect}" unless key?(variant_key)
+
+      extension = extension_of(variant_key)
+      "#{variant_key.to_s.delete_suffix("_#{extension}")}.#{extension}"
+    end
+
+    def self.key_from(name, extension)
+      key = :"#{name}_#{extension}"
+      key if key?(key)
+    end
+
+    def self.content_type_for(variant_key)
+      extension_of(variant_key) == "jpg" ? "image/jpeg" : "image/webp"
+    end
+
+    def self.extension_of(variant_key)
+      variant_key.to_s.split("_").last
+    end
+    private_class_method :extension_of
+
     def self.options(size:, format:)
       { resize_to_limit: [size, size], format:, saver: { strip: true } }
     end

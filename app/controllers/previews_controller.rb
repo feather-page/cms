@@ -1,18 +1,15 @@
 class PreviewsController < ApplicationController
-  include PreviewRouting
-  include PreviewImageServing
-
   skip_after_action :verify_pundit_checked
 
   def show
     authorize deployment_target, :show?, policy_class: PreviewPolicy
 
-    case preview_route_type
-    when :home    then render_home
-    when :project then render_project
-    when :post    then render_post
-    when :page    then render_page
-    when :image   then serve_preview_image
+    case routes.resolve(requested_path)
+    in { kind: :home, params: { page: } }               then render_home(page)
+    in { kind: :project, record: }                      then render_project(record)
+    in { kind: :post, record: }                         then render_post(record)
+    in { kind: :page, record: }                         then render_page(record)
+    in { kind: :image, record:, params: { variant: } }  then serve_preview_image(record, variant)
     else head(:not_found)
     end
   end
@@ -27,56 +24,63 @@ class PreviewsController < ApplicationController
     @site ||= deployment_target.site
   end
 
-  def requested_path
-    @requested_path ||= params[:path].to_s
+  def routes
+    @routes ||= StaticSite::Routes.for(deployment_target, as: :preview)
   end
 
-  def render_home
+  def serve_preview_image(image, variant)
+    file_path = image.fs_path(variant:)
+    return head(:not_found) unless file_path && File.exist?(file_path)
+
+    send_file(file_path, type: Image::Variants.content_type_for(variant), disposition: :inline)
+  end
+
+  def requested_path
+    @requested_path ||= begin
+      path = params[:path].to_s
+      # Rails parses a trailing .webp/.jpg out of a glob path into params[:format];
+      # restore it so Routes#resolve sees the full address.
+      format = params[:format]
+      format.in?(%w[webp jpg]) ? "#{path}.#{format}" : path
+    end
+  end
+
+  def render_home(page_number)
     assign_site_context(page_title: site.title, page_emoji: site.emoji, is_home: true)
     @page = site.pages.find_by(slug: "/")
     @rss_url = "/feed.xml"
 
     all_posts = site.posts.published.order(publish_at: :desc)
-    @current_page = current_page_number
-    @total_pages = [(all_posts.count / StaticSite::ExportJob::POSTS_PER_PAGE.to_f).ceil, 1].max
-    @posts = all_posts.offset((@current_page - 1) * StaticSite::ExportJob::POSTS_PER_PAGE).limit(StaticSite::ExportJob::POSTS_PER_PAGE)
+    per_page = StaticSite::ExportJob::POSTS_PER_PAGE
+    @current_page = page_number
+    @total_pages = [(all_posts.count / per_page.to_f).ceil, 1].max
+    @posts = all_posts.offset((@current_page - 1) * per_page).limit(per_page)
 
     render template: "static_site/home", layout: "static_site"
   end
 
-  def render_project
-    @project = find_project_by_path
-    return head(:not_found) unless @project
-
+  def render_project(project)
+    @project = project
     assign_site_context(page_title: @project.title, page_emoji: @project.emoji)
     @header_image = @project.header_image
 
     render template: "static_site/project", layout: "static_site"
   end
 
-  def render_post
-    @post = find_post_by_path || find_post_by_slug
-    return head(:not_found) unless @post
-
+  def render_post(post)
+    @post = post
     assign_site_context(page_title: @post.title.presence || site.title, page_emoji: @post.emoji)
     @header_image = @post.header_image
 
     render template: "static_site/post", layout: "static_site"
   end
 
-  def render_page
-    @page = find_page_by_path
-    return head(:not_found) unless @page
-
+  def render_page(page)
+    @page = page
     assign_site_context(page_title: @page.title, page_emoji: @page.emoji)
     @header_image = @page.header_image
 
     render template: "static_site/page", layout: "static_site"
-  end
-
-  def current_page_number
-    match = requested_path.match(%r{^page/(\d+)})
-    match ? match[1].to_i : 1
   end
 
   def assign_site_context(page_title:, page_emoji:, is_home: false)
@@ -84,6 +88,6 @@ class PreviewsController < ApplicationController
     @page_title = page_title
     @page_emoji = page_emoji
     @is_home = is_home
-    @base_url = "/preview/#{deployment_target.public_id}/"
+    @routes = routes
   end
 end

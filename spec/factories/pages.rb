@@ -3,7 +3,7 @@ FactoryBot.define do
     title { Faker::Lorem.sentence }
     content { nil }
     site
-    slug { Faker::Lorem.sentence.parameterize }
+    slug { "/#{Faker::Lorem.sentence.parameterize}" }
 
     trait :tagged do
       tags { "travel, photos" }

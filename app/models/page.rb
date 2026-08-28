@@ -1,5 +1,6 @@
 class Page < ApplicationRecord
   include Editable
+  include Sluggable
   include Taggable
 
   enum :page_type, { default: 0, books: 1, projects: 2 }, prefix: true
@@ -25,6 +26,9 @@ class Page < ApplicationRecord
       site.main_navigation.add(self)
     end
   end
+
+  # The homepage is the one record that legitimately owns the site root.
+  def root_slug_allowed? = homepage?
 
   def homepage?
     slug == '/'

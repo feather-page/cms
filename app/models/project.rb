@@ -1,6 +1,7 @@
 class Project < ApplicationRecord
   include PublicIdable
   include Editable
+  include Sluggable
   include Taggable
 
   belongs_to :site
@@ -27,6 +28,10 @@ class Project < ApplicationRecord
   validates :project_type, presence: true
 
   scope :ordered, -> { order(started_at: :desc) }
+
+  # Projects are addressed under projects/, so their slugs cannot collide
+  # with the generated top-level paths.
+  def slug_in_own_namespace? = true
 
   def display_period
     return period if period.present?
