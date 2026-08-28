@@ -43,7 +43,7 @@ class DeploymentTarget < ApplicationRecord
   end
 
   def build_path
-    Rails.root.join("storage", "hugo", id).to_s
+    Rails.root.join("storage", "static_site", id).to_s
   end
 
   def source_dir
