@@ -5,10 +5,14 @@ describe PostsController do
 
   describe "GET #index" do
     it "shows all posts" do
-      posts = create_list(:post, 2, site: site)
+      create(:post, site: site, title: "First Post")
+      create(:post, site: site, title: "Second Post")
+
       get site_posts_path(site)
+
       expect(response).to be_successful
-      posts.each { |p| expect(response.body).to include(p.title) }
+      expect(response.body).to include("First Post")
+      expect(response.body).to include("Second Post")
     end
   end
 

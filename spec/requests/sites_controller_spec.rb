@@ -5,26 +5,26 @@ describe SitesController do
 
   describe "GET #index" do
     it "shows user's own sites" do
-      site = create(:site, users: [user])
-      other_site = create(:site)
+      create(:site, users: [user], title: "My Own Site")
+      create(:site, title: "Someone Elses Site")
 
       get root_path
 
       expect(response).to be_successful
-      expect(response.body).to include(site.title)
-      expect(response.body).not_to include(other_site.title)
+      expect(response.body).to include("My Own Site")
+      expect(response.body).not_to include("Someone Elses Site")
     end
 
     context "as superadmin" do
       let(:user) { create(:user, :superadmin) }
 
       it "shows all sites" do
-        site = create(:site)
+        create(:site, title: "A Site Owned By Nobody Here")
 
         get root_path
 
         expect(response).to be_successful
-        expect(response.body).to include(site.title)
+        expect(response.body).to include("A Site Owned By Nobody Here")
       end
     end
   end
