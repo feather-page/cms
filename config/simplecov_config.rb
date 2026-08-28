@@ -38,5 +38,5 @@ SimpleCov.start 'rails' do
 
   # Minimum coverage thresholds
   # Target: 100% - raise these as coverage improves
-  minimum_coverage line: 85
+  minimum_coverage line: 90
 end

@@ -23,7 +23,6 @@ module Editable
     Blocks.from_content(content)
   end
 
-
   def content_excerpt(length: 300)
     text = blocks.filter_map { |b| b.try(:text) }.join(" ")
     ActionController::Base.helpers.strip_tags(text).truncate(length)
