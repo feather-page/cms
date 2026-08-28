@@ -3,6 +3,8 @@ describe StaticSiteHelper do
   let(:site) { create(:site) }
   let(:image) { create(:image, :with_file, site:) }
   let(:post) { create(:post, site:, publish_at: 1.day.ago) }
+  let(:routes) { StaticSite::Routes.new(site:, site_root: "/") }
+  before { helper_instance.instance_variable_set(:@routes, routes) }
 
   describe "#static_site_post_url" do
     context "without base_url (static site export)" do

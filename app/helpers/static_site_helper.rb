@@ -67,7 +67,7 @@ module StaticSiteHelper
 
   # rubocop:disable Rails/HelperInstanceVariable
   def static_site_routes
-    @static_site_routes ||= @routes || StaticSite::Routes.new(site: @site, site_root: "/")
+    @routes
   end
   # rubocop:enable Rails/HelperInstanceVariable
 end
