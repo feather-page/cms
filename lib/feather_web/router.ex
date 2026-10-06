@@ -33,6 +33,12 @@ defmodule FeatherWeb.Router do
     plug FeatherWeb.Plugs.ApiAuth
   end
 
+  # kamal-proxy's health check (config/deploy.yml). No pipeline: no
+  # session, no CSRF; excluded from force_ssl in config/prod.exs.
+  scope "/", FeatherWeb do
+    get "/up", HealthController, :show
+  end
+
   # Caddy's on-demand TLS check (ops/Caddyfile). Unauthenticated and
   # outside the :api pipeline: Caddy sends no Accept header we could rely on.
   scope "/api", FeatherWeb.Api do
