@@ -1,0 +1,7 @@
+<%= if book(@post) do %><%= post_book_card(%{book: book(@post), routes: @routes}) %><% end %>
+
+<%= Blocks.render(@post.content, @ctx) %>
+
+<div class="post-date"><%= format_date(@post.publish_at) %></div>
+
+<%= tags(%{tags: Content.tag_list(@post), class: "post-tags"}) %>

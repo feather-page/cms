@@ -13,9 +13,14 @@ defmodule Feather.StaticSite.Sanitizer do
   uses `http`, `https`, `mailto` or `tel`.
 
   Safety does not depend on the parser agreeing with browsers: the input is
-  parsed with Floki (entities decoded), and the output is rebuilt from the
-  parsed tree with every text node and attribute value escaped. The `href`
-  a browser sees is therefore exactly the decoded value checked here.
+  tokenized (entities decoded) and the output is rebuilt from the tokens,
+  with every text and attribute value escaped and every allowed element
+  closed. The `href` a browser sees is therefore exactly the decoded value
+  checked here.
+
+  The tokens come from Floki's mochiweb tokenizer (`:floki_mochi_html.tokens/1`)
+  rather than `Floki.parse_fragment/1`: building the tree drops
+  whitespace-only text, which would glue `<b>a</b> <i>b</i>` together.
   """
 
   @allowed_tags ~w(b i u a code)
@@ -29,13 +34,21 @@ defmodule Feather.StaticSite.Sanitizer do
   def sanitize(nil), do: ""
 
   def sanitize(html) when is_binary(html) do
-    case Floki.parse_fragment(html) do
-      {:ok, nodes} -> nodes |> Enum.map(&node_to_iodata/1) |> IO.iodata_to_binary()
-      {:error, _reason} -> escape(html)
+    html = String.replace_invalid(html, "")
+
+    case tokens(html) do
+      {:ok, tokens} -> tokens |> walk([], nil, []) |> IO.iodata_to_binary()
+      :error -> escape(html)
     end
   end
 
   def sanitize(other), do: other |> to_string() |> sanitize()
+
+  defp tokens(html) do
+    {:ok, :floki_mochi_html.tokens(html)}
+  rescue
+    _exception -> :error
+  end
 
   @doc """
   Returns true if `url` may be used as a link target: a relative URL or one
@@ -64,54 +77,74 @@ defmodule Feather.StaticSite.Sanitizer do
     end
   end
 
-  defp node_to_iodata(text) when is_binary(text), do: escape(text)
+  # walk(tokens, open allowed tags (innermost first), tag whose content is
+  # being dropped or nil, output in reverse)
 
-  defp node_to_iodata({tag, attributes, children}) when is_binary(tag) do
+  defp walk([], open, _dropping, acc), do: Enum.reverse(acc, Enum.map(open, &close/1))
+
+  # Inside script/style: everything up to its end tag is dropped.
+  defp walk([{:end_tag, tag} | rest], open, dropping, acc) when is_binary(dropping) do
+    if String.downcase(tag) == dropping,
+      do: walk(rest, open, nil, acc),
+      else: walk(rest, open, dropping, acc)
+  end
+
+  defp walk([_token | rest], open, dropping, acc) when is_binary(dropping),
+    do: walk(rest, open, dropping, acc)
+
+  defp walk([{:data, text, _whitespace?} | rest], open, nil, acc),
+    do: walk(rest, open, nil, [escape(text) | acc])
+
+  defp walk([{:start_tag, tag, attributes, self_closing?} | rest], open, nil, acc) do
     tag = String.downcase(tag)
 
     cond do
-      tag in @allowed_tags ->
-        ["<", tag, attributes_to_iodata(tag, attributes), ">", children_to_iodata(children)] ++
-          ["</", tag, ">"]
+      tag in @allowed_tags and self_closing? ->
+        walk(rest, open, nil, [[open_tag(tag, attributes), close(tag)] | acc])
 
-      tag in @dropped_content_tags ->
-        []
+      tag in @allowed_tags ->
+        walk(rest, [tag | open], nil, [open_tag(tag, attributes) | acc])
+
+      tag in @dropped_content_tags and not self_closing? ->
+        walk(rest, open, tag, acc)
 
       true ->
-        children_to_iodata(children)
+        walk(rest, open, nil, acc)
     end
   end
 
-  # Comments, processing instructions, doctypes and anything else.
-  defp node_to_iodata(_node), do: []
+  # An end tag closes its element and everything opened inside it; end
+  # tags of elements that are not open are ignored.
+  defp walk([{:end_tag, tag} | rest], open, nil, acc) do
+    tag = String.downcase(tag)
 
-  defp children_to_iodata(children) when is_list(children),
-    do: Enum.map(children, &node_to_iodata/1)
-
-  defp children_to_iodata(_children), do: []
-
-  defp attributes_to_iodata("a", attributes) do
-    attributes
-    |> Enum.find_value(fn {name, value} ->
-      if String.downcase(name) == "href" and safe_url?(value), do: value
-    end)
-    |> case do
-      nil -> []
-      href -> [~s( href="), escape(href), ~s(")]
+    case Enum.split_while(open, &(&1 != tag)) do
+      {inner, [^tag | outer]} -> walk(rest, outer, nil, [Enum.map(inner ++ [tag], &close/1) | acc])
+      {_inner, []} -> walk(rest, open, nil, acc)
     end
   end
 
-  defp attributes_to_iodata(_tag, _attributes), do: []
+  # Comments, processing instructions, doctypes.
+  defp walk([_token | rest], open, nil, acc), do: walk(rest, open, nil, acc)
+
+  defp open_tag("a", attributes) do
+    href =
+      Enum.find_value(attributes, fn {name, value} ->
+        value = IO.iodata_to_binary(value)
+        if String.downcase(to_string(name)) == "href" and safe_url?(value), do: value
+      end)
+
+    if href, do: [~s(<a href="), escape(href), ~s(">)], else: "<a>"
+  end
+
+  defp open_tag(tag, _attributes), do: ["<", tag, ">"]
+
+  defp close(tag), do: ["</", tag, ">"]
 
   defp escape(text) do
     text
-    |> strip_invalid()
+    |> String.replace_invalid("")
     |> Phoenix.HTML.html_escape()
     |> Phoenix.HTML.safe_to_string()
-  end
-
-  # Invalid UTF-8 would make the output undecodable for the browser.
-  defp strip_invalid(text) do
-    if String.valid?(text), do: text, else: String.replace_invalid(text, "")
   end
 end

@@ -41,6 +41,13 @@ defmodule Feather.StaticSite.SanitizerTest do
       assert sanitize(~S|<B>x</B><A HREF="http://x">y</A>|) == ~S|<b>x</b><a href="http://x">y</a>|
     end
 
+    test "keeps whitespace between elements and entities" do
+      assert sanitize("<b>a</b> <i>b</i>") == "<b>a</b> <i>b</i>"
+      assert sanitize("x &amp; &lt; &#65;") == "x &amp; &lt; A"
+      assert sanitize("<b>a</b>\n<i>b</i>") == "<b>a</b>\n<i>b</i>"
+      assert sanitize("Some <b>bold</b> <script>x</script>text.") == "Some <b>bold</b> text."
+    end
+
     test "nil and empty input" do
       assert sanitize(nil) == ""
       assert sanitize("") == ""
