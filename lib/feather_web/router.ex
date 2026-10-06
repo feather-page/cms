@@ -47,9 +47,32 @@ defmodule FeatherWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{FeatherWeb.UserAuth, :require_authenticated}] do
       live "/", SiteLive.Index, :index
+      live "/sites/new", SiteLive.New, :new
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
+
+    # Pages of one site. `SiteAuth` loads the site through
+    # `Feather.Sites.get_site!/2`, so non-members get a 404.
+    live_session :site,
+      on_mount: [
+        {FeatherWeb.UserAuth, :require_authenticated},
+        {FeatherWeb.SiteAuth, :load_site}
+      ] do
+      live "/sites/:site_id/settings", SiteLive.Settings, :edit
+      live "/sites/:site_id/users", MemberLive.Index, :index
+      live "/sites/:site_id/deployments", DeploymentTargetLive.Index, :index
+      live "/sites/:site_id/deployments/:id/edit", DeploymentTargetLive.Form, :edit
+    end
+  end
+
+  # Invitation acceptance works logged out: the invitee may not have an
+  # account yet. Accepting logs them in.
+  scope "/", FeatherWeb do
+    pipe_through [:browser]
+
+    get "/invitations/:token", InvitationController, :show
+    post "/invitations/:token/accept", InvitationController, :accept
   end
 
   scope "/", FeatherWeb do

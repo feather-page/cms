@@ -48,6 +48,9 @@ defmodule Feather.PublishingTest do
     assert updated.public_hostname == "new.example.com"
     assert updated.type == "backup"
     assert updated.provider == "hetzner_ftps"
+
+    assert {:error, changeset} = Publishing.update_target(scope, target, %{public_hostname: ""})
+    assert "can't be blank" in errors_on(changeset).public_hostname
   end
 
   describe "encrypted config" do

@@ -193,4 +193,10 @@ defmodule Feather.Publishing do
   def deploying?(%DeploymentTarget{id: id}) do
     Repo.exists?(from t in DeploymentTarget, where: t.id == ^id and t.deploying == true)
   end
+
+  @doc "Placeholder until the deploy pipeline lands: deploys one target."
+  def deploy(_scope, _target), do: :ok
+
+  @doc "Placeholder until the deploy pipeline lands: publishes the site's staging targets."
+  def publish_site(_scope_or_site), do: :ok
 end

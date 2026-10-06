@@ -159,6 +159,15 @@ defmodule Feather.Sites do
   end
 
   @doc """
+  Gets a member (site user) of the scope's site by id, user preloaded.
+  Raises `Ecto.NoResultsError` if not found.
+  """
+  @spec get_member!(Scope.t(), Ecto.UUID.t()) :: SiteUser.t()
+  def get_member!(%Scope{site: %Site{id: site_id}}, id) do
+    Repo.one!(from su in SiteUser, where: su.id == ^id and su.site_id == ^site_id, preload: :user)
+  end
+
+  @doc """
   Returns true if the user is a member of the site.
   """
   @spec member?(Site.t(), User.t()) :: boolean()
