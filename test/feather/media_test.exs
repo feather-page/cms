@@ -69,7 +69,7 @@ defmodule Feather.MediaTest do
       File.write!(path, "definitely not a png")
 
       assert {:error, changeset} = Media.create_image_from_upload(scope, path, "fake.png")
-      assert "must be an image" in errors_on(changeset).file
+      assert errors_on(changeset) == %{file: ["must be an image"]}
       assert Media.list_images(scope) == []
     end
 
@@ -78,7 +78,7 @@ defmodule Feather.MediaTest do
       File.write!(path, :binary.copy(<<0>>, Media.max_byte_size() + 1))
 
       assert {:error, changeset} = Media.create_image_from_upload(scope, path, "big.png")
-      assert "is too big (at most 25 MB)" in errors_on(changeset).file
+      assert errors_on(changeset) == %{file: ["is too big (at most 25 MB)"]}
       File.rm!(path)
     end
 
