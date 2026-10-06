@@ -286,6 +286,50 @@ defmodule Feather.Content.Blocks do
   end
 
   @doc """
+  The length of the content as the admin counts it to tell short posts
+  (no title needed) from long ones, ported from Rails'
+  `EditorJsContentLengthCalculator`: the raw text (HTML included) of
+  paragraphs, headers, quotes (text and caption), code, table cells, list
+  items (nested) and image captions. Book and embed blocks count 0.
+  """
+  @spec content_length([block()] | nil) :: non_neg_integer()
+  def content_length(blocks) do
+    blocks
+    |> normalize()
+    |> Enum.map(&block_length/1)
+    |> Enum.sum()
+  end
+
+  defp block_length(%{"type" => type, "text" => text}) when type in ~w(paragraph header),
+    do: text_length(text)
+
+  defp block_length(%{"type" => "quote"} = b),
+    do: text_length(b["text"]) + text_length(b["caption"])
+
+  defp block_length(%{"type" => "code"} = b), do: text_length(b["code"])
+  defp block_length(%{"type" => "image"} = b), do: text_length(b["caption"])
+  defp block_length(%{"type" => "list"} = b), do: list_length(b["items"])
+
+  defp block_length(%{"type" => "table", "content" => rows}) when is_list(rows) do
+    for row <- rows, is_list(row), cell <- row, reduce: 0 do
+      sum -> sum + text_length(cell)
+    end
+  end
+
+  defp block_length(_block), do: 0
+
+  defp list_length(items) when is_list(items) do
+    Enum.reduce(items, 0, fn item, sum ->
+      sum + text_length(item["content"]) + list_length(item["items"])
+    end)
+  end
+
+  defp list_length(_items), do: 0
+
+  defp text_length(text) when is_binary(text), do: String.length(text)
+  defp text_length(_text), do: 0
+
+  @doc """
   Removes HTML tags from a string and decodes entities.
   """
   @spec strip_tags(String.t()) :: String.t()

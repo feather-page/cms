@@ -265,6 +265,48 @@ defmodule Feather.Content do
     Project.changeset(project, attrs)
   end
 
+  ## Admin listings
+
+  @doc """
+  One page of the scope's posts for the admin, newest `publish_at` first,
+  with the thumbnail image and the reviewed book preloaded.
+  """
+  @spec paginate_posts(Scope.t(), pos_integer() | String.t() | nil) :: Feather.Pagination.t()
+  def paginate_posts(%Scope{site: %Site{id: site_id}}, page) do
+    from(p in Post,
+      where: p.site_id == ^site_id,
+      order_by: [desc: p.publish_at, desc: p.inserted_at],
+      preload: [:thumbnail_image, :book]
+    )
+    |> Feather.Pagination.paginate(page)
+  end
+
+  @doc """
+  One page of the scope's pages that are not in the main navigation, the
+  homepage first, then by title, with the thumbnail image preloaded.
+  """
+  @spec paginate_pages_outside_navigation(Scope.t(), pos_integer() | String.t() | nil) ::
+          Feather.Pagination.t()
+  def paginate_pages_outside_navigation(%Scope{site: %Site{id: site_id}}, page) do
+    from(p in Page,
+      left_join: n in Feather.Sites.NavigationItem,
+      on: n.page_id == p.id,
+      where: p.site_id == ^site_id and is_nil(n.id),
+      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
+      preload: [:thumbnail_image]
+    )
+    |> Feather.Pagination.paginate(page)
+  end
+
+  @doc """
+  Preloads the header and thumbnail image of a post, page or project (for
+  the admin forms).
+  """
+  @spec preload_header_images(record) :: record when record: Post.t() | Page.t() | Project.t()
+  def preload_header_images(record) do
+    Repo.preload(record, [:header_image, :thumbnail_image])
+  end
+
   ## Shared
 
   @doc """

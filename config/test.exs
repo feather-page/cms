@@ -46,3 +46,7 @@ config :phoenix,
 
 # Image downloads go through Req.Test stubs named Feather.Media.
 config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
+
+# Unsplash and OpenLibrary requests go through Req.Test stubs as well.
+config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}
+config :feather, :open_library_req_options, plug: {Req.Test, Feather.OpenLibrary}
