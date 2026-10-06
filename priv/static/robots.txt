@@ -1,0 +1,3 @@
+# The CMS admin is not meant to be indexed.
+User-agent: *
+Disallow: /

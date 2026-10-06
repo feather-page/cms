@@ -1,9 +1,10 @@
 # Feather-Page CMS
 
-[![RSpec](https://github.com/feather-page/cms/actions/workflows/rspec.yml/badge.svg)](https://github.com/feather-page/cms/actions/workflows/rspec.yml)
-[![Coverage Status](https://coveralls.io/repos/github/feather-page/cms/badge.svg?branch=main)](https://coveralls.io/github/feather-page/cms?branch=main)
+[![CI](https://github.com/feather-page/cms/actions/workflows/ci.yml/badge.svg)](https://github.com/feather-page/cms/actions/workflows/ci.yml)
 
-Feather-Page CMS is a Ruby on Rails application that provides a web interface for managing small static websites. It generates static sites directly using Rails ERB templates and provides a simple management UI.
+Feather-Page CMS is a web interface for managing small static websites. It is a Phoenix
+application (LiveView admin, SQLite) that renders sites to static HTML and deploys them to the
+site owner's own hosting.
 
 ## Design Goals
 
@@ -15,133 +16,67 @@ Feather-Page CMS is a Ruby on Rails application that provides a web interface fo
 *   Deployed websites should be SEO friendly.
 *   Deployed websites are on domains that belong to the user.
 
-## Requirements
+## Development
 
-*   **Ruby**: 4.0.1 (as specified in `Gemfile`)
-*   **Node.js & npm**: Required for JavaScript assets and Jest tests.
-*   **System Dependencies**:
-    *   `rclone`: Used for syncing files to deployment targets.
-    *   `libvips`: Image processing library.
-    *   `PostgreSQL`: Database.
+### Requirements
 
-## Setup
-
-1.  **Install system dependencies**:
-    ```bash
-    brew install rclone libvips postgresql
-    ```
-
-2.  **Install Ruby dependencies**:
-    ```bash
-    bundle install
-    ```
-
-3.  **Install JavaScript dependencies**:
-    ```bash
-    npm install
-    ```
-
-4.  **Prepare the database**:
-    ```bash
-    cp .env.example .env # Configure your database credentials
-    rails db:create
-    rails db:schema:load
-    ```
-    Alternatively, you can use:
-    ```bash
-    bin/setup
-    ```
-
-## Running the Application
-
-To start the Rails server along with background workers (Sidekiq) and other services:
-
-```bash
-foreman start
-```
-
-Or start just the Rails server:
-```bash
-bin/dev
-# or
-rails s
-```
-
-## Environment Variables
-
-| Variable | Description | Default/Example |
-|----------|-------------|-----------------|
-| `BASE_HOSTNAME_AND_PORT` | Base domain for staging URLs | `localhost:3000` |
-| `HTTPS` | Whether to use HTTPS | `false` |
-| `POSTGRES_HOST` | Database host | `localhost` |
-| `POSTGRES_USERNAME` | Database username | `postgres` |
-| `POSTGRES_PASSWORD` | Database password | `postgres` |
-| `SMTP_ADDRESS` | Mail server address | `localhost` |
-| `SMTP_PORT` | Mail server port | `1025` |
-| `STAGING_SITES_PATH` | Path where staging sites are built | (Defined in Kamal/Production) |
-| `UNSPLASH_ACCESS_KEY` | Unsplash API access key (optional) | Get from https://unsplash.com/developers |
-
-## Unsplash Integration (Optional)
-
-The CMS supports header images with Unsplash integration for posts and pages.
+*   Erlang/OTP 28 and Elixir 1.19
+*   `rclone` for deployments
+*   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 
 ### Setup
 
-1. Create an account at https://unsplash.com/developers
-2. Create a new application (select "Demo" for testing)
-3. Copy your Access Key
-4. Configure credentials:
-   ```bash
-   EDITOR=nano rails credentials:edit
-   ```
-5. Add your Unsplash access key:
-   ```yaml
-   unsplash:
-     access_key: YOUR_ACCESS_KEY_HERE
-   ```
-6. Save and close the editor
-
-Alternatively, you can set the `UNSPLASH_ACCESS_KEY` environment variable in your `.env` file.
-
-**Note**: Without Unsplash credentials, users can still upload header images manually - they just won't be able to search Unsplash.
-
-## Scripts
-
-*   `bin/setup`: Automated setup and database preparation.
-*   `bin/dev`: Starts the Rails server.
-*   `npm run lint`: Runs JavaScript linting (standard).
-*   `bundle exec rubocop`: Runs Ruby linting.
-
-## Testing
-
-### Ruby Tests (RSpec)
 ```bash
-bundle exec rspec
+mix setup          # deps, database (SQLite file feather_dev.db), seeds, assets
+mix phx.server     # http://localhost:4000
 ```
 
-### JavaScript Tests (Jest)
-```bash
-npm test
-```
+The seeds create the super admin `admin@example.com` and a demo site. There are no passwords:
+enter the email on the login page and open the magic link from the dev mailbox at
+<http://localhost:4000/dev/mailbox>.
 
-## Project Structure
+Uploaded images are stored in `storage/` (git-ignored).
 
-*   `app/interactions/`: Business logic organized using the `LightService` gem.
-*   `app/components/`: Reusable UI elements using `ViewComponent`.
-*   `app/javascript/`: Modern JavaScript using Import Maps.
-*   `spec/`: Comprehensive test suite (RSpec and Jest).
-*   `config/deploy.yml`: Kamal deployment configuration.
+### Mix tasks
 
-## Deployment
+| Task | Purpose |
+|------|---------|
+| `mix feather.create_user EMAIL [--super-admin]` | Create (or update) a user who can log in by magic link |
+| `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
+| `mix test` | Run the test suite |
+| `mix precommit` | Compile with warnings as errors, format, run the tests |
+| `mix ecto.reset` | Drop, migrate and seed the development database |
 
-This project uses [Kamal](https://kamal-deploy.org/) for deployment.
+In a release the same is available through `bin/feather eval`, see `Feather.Release`
+(`migrate/0`, `create_user/2`, `create_api_token/2`). `bin/server` migrates and starts the app.
 
-```bash
-kamal lock release -d production
-kamal envify -d production
-kamal accessory boot all -d production
-kamal deploy -d production
-```
+### Environment variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PHX_HOST` | Public host name of the CMS (prod) | `example.com` |
+| `PORT` | HTTP port | `4000` |
+| `SECRET_KEY_BASE` | Signs cookies and tokens (prod, required) | |
+| `DATABASE_PATH` | SQLite database file (prod, required) | |
+| `POOL_SIZE` | Database connections (prod) | `5` |
+| `STORAGE_PATH` | Images and build output (prod, required) | dev: `storage/` |
+| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
+| `BASE_HOSTNAME_AND_PORT` | Base domain for staging hosts (`<site>.stage.<this>`) | `localhost:4000` |
+| `STAGING_SITES_PATH` | Where staging sites are written | `<storage>/staging_sites` |
+| `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
+| `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
+
+Generate a `CONFIG_ENCRYPTION_KEY` with
+`elixir -e 'IO.puts(Base.encode64(:crypto.strong_rand_bytes(32)))'`.
+
+## Project structure
+
+*   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
+    `Media`, `Publishing`)
+*   `lib/feather_web/`: the LiveView admin, styled with [felt-css](https://felt-css.rocu.de)
+*   `priv/static_site/`: assets of the generated static sites
+*   `docs/api/openapi.yml`: the content API
+*   `CONTEXT.md`, `docs/adr/`: domain language and architecture decisions
 
 ## License
 

@@ -23,8 +23,9 @@ This repo is single-context:
 │   ├── 0003-code-coverage-policy.md
 │   ├── 0004-hugo-theme-feature-parity.md   (superseded)
 │   └── 0005-static-sites-with-erb.md
-├── features/          ← executable Gherkin specifications
-└── app/               ← Rails application code
+├── lib/feather/       ← contexts (domain logic)
+├── lib/feather_web/   ← Phoenix web layer (LiveView admin)
+└── test/              ← ExUnit tests
 ```
 
 ADRs are written in English and numbered `NNNN-<slug>.md`, seeded from `docs/adr/TEMPLATE.md`.

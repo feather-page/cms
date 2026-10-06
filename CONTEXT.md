@@ -1,6 +1,6 @@
 # Feather-Page CMS
 
-A CMS for managing small static websites. Content is edited in Rails, rendered to static HTML with ERB,
+A CMS for managing small static websites. Content is edited in the Phoenix (LiveView) admin, rendered to static HTML,
 and deployed to the site owner's own hosting.
 
 ## Language
@@ -22,7 +22,7 @@ A portfolio entry describing work by the site owner — not the software project
 _Avoid_: Work, Portfolio Item
 
 **Review**:
-A post attached to a book. There is no separate review model — `book.review?` means a post hangs off that book.
+A post attached to a book. There is no separate review model — `Book.review?/1` means a post hangs off that book (`book.post_id`).
 _Avoid_: treating a review as its own object
 
 **Block**:

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+cd -P -- "$(dirname -- "$0")"
+./feather eval Feather.Release.migrate
+PHX_SERVER=true exec ./feather start

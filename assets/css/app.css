@@ -1,0 +1,52 @@
+/* App-specific styles. Everything else comes from felt-css
+   (https://felt-css.rocu.de/felt.css), loaded in the root layout. */
+
+.icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: -0.15em;
+}
+
+.narrow {
+  max-width: 28rem;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
+/* Flash messages float in the top right corner. */
+.flash-group {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1080;
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.flash {
+  cursor: pointer;
+}
+
+.invalid-feedback {
+  display: flex;
+}
+
+.fade-transition {
+  transition: opacity 0.2s ease;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

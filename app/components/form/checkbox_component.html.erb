@@ -1,6 +1,0 @@
-<% checkbox_id = "#{form.object_name}_#{attribute}" %>
-<div class="form-check mb-3">
-  <%= form.check_box(attribute, class: 'form-check-input', id: checkbox_id) %>
-  <label class="form-check-label" for="<%= checkbox_id %>"><%= form.object.class.human_attribute_name(attribute) %></label>
-  <%= help_text %>
-</div>
