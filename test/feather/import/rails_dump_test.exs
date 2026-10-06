@@ -228,6 +228,54 @@ defmodule Feather.Import.RailsDumpTest do
     end
   end
 
+  describe "exporting imported sites" do
+    alias Feather.StaticSite.{Export, RecordingSink, Routes}
+
+    @atelier_site "d2403fc6-a442-4bce-9f45-3c23e1b91b4a"
+
+    defp export(site_id) do
+      site = Repo.get!(Site, site_id)
+      sink = RecordingSink.new()
+      assert :ok = Export.run(site, Routes.new(site), sink, now: ~U[2026-10-06 19:00:00Z])
+      sink
+    end
+
+    test "every imported site exports with its content and images" do
+      import!()
+
+      notes = export(@notes_site)
+
+      for path <- ~w(index.html feed.xml sitemap.xml robots.txt
+                     review-pragmatic-programmer/index.html about/index.html books/index.html
+                     projects/feather-page/index.html) do
+        assert RecordingSink.exists?(notes, path), "notes: #{path} missing"
+      end
+
+      refute RecordingSink.exists?(notes, "draft-post/index.html")
+
+      for public_id <- @image_public_ids, variant <- Variants.all() do
+        path = "images/#{public_id}/#{variant.filename}"
+        image = Repo.get_by!(Image, public_id: public_id)
+
+        assert RecordingSink.get(notes, path) == {:copy, Media.variant_path(image, variant.name)},
+               "notes: #{path}"
+      end
+
+      post = RecordingSink.get(notes, "review-pragmatic-programmer/index.html")
+      assert post =~ "Review: The Pragmatic Programmer"
+      assert post =~ "images/DrqGSEC4zyvZ/"
+      assert RecordingSink.get(notes, "feed.xml") =~ "review-pragmatic-programmer"
+      assert RecordingSink.get(notes, "sitemap.xml") =~ "about/"
+
+      atelier = export(@atelier_site)
+
+      for path <- ~w(index.html feed.xml sitemap.xml robots.txt),
+          do: assert(RecordingSink.exists?(atelier, path), "atelier: #{path} missing")
+
+      refute Enum.any?(RecordingSink.paths(atelier), &String.starts_with?(&1, "images/"))
+    end
+  end
+
   describe "guard" do
     test "refuses to import into a database with data" do
       import!()

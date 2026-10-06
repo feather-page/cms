@@ -59,7 +59,7 @@ deployment targets (their credentials must show up decrypted), and the preview.
 Deploy both sites to their staging targets from the CMS, then compare with the last Rails
 export of the same target (target ids are kept, so the directories match up):
 
-    diff -r <rails storage>/static_site/<target id>/public <phoenix export dir of the target>
+    diff -r <rails storage>/static_site/<target id>/public <feather_data volume>/storage/static_site/<target id>/public
 
 Expect only intended differences (asset fingerprints, whitespace). Check the staging sites
 in the browser.
