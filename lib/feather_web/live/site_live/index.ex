@@ -1,7 +1,7 @@
 defmodule FeatherWeb.SiteLive.Index do
   @moduledoc """
-  Placeholder start page: lists the sites the user may access. The admin
-  replaces it.
+  The start page: cards of the sites the user may access (all sites for a
+  super admin), each linking to the site's posts.
   """
   use FeatherWeb, :live_view
 
@@ -14,17 +14,34 @@ defmodule FeatherWeb.SiteLive.Index do
       <.header>
         Sites
         <:subtitle>The websites you manage</:subtitle>
+        <:actions>
+          <.button id="new-site" variant="primary" navigate={~p"/sites/new"}>
+            <.icon name="plus" size={16} /> New site
+          </.button>
+        </:actions>
       </.header>
 
-      <p :if={@sites == []} id="no-sites" class="text-body-secondary">
-        You do not have any sites yet.
-      </p>
+      <div :if={@sites == []} id="no-sites" class="text-center text-body-secondary py-5">
+        <p class="fs-1 mb-2"><.icon name="house" size={40} /></p>
+        <p>No sites yet.</p>
+        <.button variant="primary" navigate={~p"/sites/new"}>Create your first site</.button>
+      </div>
 
-      <div :if={@sites != []} id="sites" class="list-group">
-        <div :for={site <- @sites} id={"site-#{site.public_id}"} class="list-group-item">
-          <span class="me-2">{site.emoji}</span>
-          <strong>{site.title}</strong>
-          <span class="text-body-secondary ms-2">{site.domain}</span>
+      <div :if={@sites != []} id="sites" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
+        <div :for={site <- @sites} class="col">
+          <div id={"site-#{site.public_id}"} class="card h-100">
+            <div class="card-body">
+              <h2 class="h5 card-title">
+                <span :if={site.emoji} class="me-1">{site.emoji}</span>
+                <.link navigate={~p"/sites/#{site.public_id}/posts"} class="stretched-link">
+                  {site.title}
+                </.link>
+              </h2>
+              <p class="card-text text-body-secondary mb-0">
+                <.icon name="globe" size={16} /> {site.domain}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </Layouts.app>
@@ -33,6 +50,9 @@ defmodule FeatherWeb.SiteLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :sites, Sites.list_sites(socket.assigns.current_scope))}
+    {:ok,
+     socket
+     |> assign(:page_title, "Sites")
+     |> assign(:sites, Sites.list_sites(socket.assigns.current_scope))}
   end
 end

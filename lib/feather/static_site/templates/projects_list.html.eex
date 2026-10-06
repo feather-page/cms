@@ -1,0 +1,8 @@
+<div class="projects-list">
+  <%= for {project, index} <- Enum.with_index(sort_projects(@projects)) do %>
+  <%= project_card(%{project: project, routes: @routes}) %>
+  <%= if index != length(@projects) - 1 do %>
+  <hr />
+  <% end %>
+  <% end %>
+</div>

@@ -22,6 +22,8 @@ defmodule FeatherWeb.SiteComponents do
   use Phoenix.Component
   use Gettext, backend: FeatherWeb.Gettext
 
+  use FeatherWeb, :verified_routes
+
   import FeatherWeb.CoreComponents
 
   alias FeatherWeb.Layouts
@@ -64,18 +66,18 @@ defmodule FeatherWeb.SiteComponents do
           </div>
           <nav class="site-nav d-flex flex-wrap justify-content-between gap-2">
             <ul class="nav nav-pills">
-              <.nav_item active={@active == :posts} navigate={"/sites/#{@site.public_id}/posts"}>
+              <.nav_item active={@active == :posts} navigate={~p"/sites/#{@site.public_id}/posts"}>
                 <.icon name="pencil" size={16} /> Posts
               </.nav_item>
-              <.nav_item active={@active == :pages} navigate={"/sites/#{@site.public_id}/pages"}>
+              <.nav_item active={@active == :pages} navigate={~p"/sites/#{@site.public_id}/pages"}>
                 <.icon name="file-text" size={16} /> Pages
               </.nav_item>
-              <.nav_item active={@active == :books} navigate={"/sites/#{@site.public_id}/books"}>
+              <.nav_item active={@active == :books} navigate={~p"/sites/#{@site.public_id}/books"}>
                 <.icon name="book-open" size={16} /> Books
               </.nav_item>
               <.nav_item
                 active={@active == :projects}
-                navigate={"/sites/#{@site.public_id}/projects"}
+                navigate={~p"/sites/#{@site.public_id}/projects"}
               >
                 <.icon name="rocket" size={16} /> Projects
               </.nav_item>
@@ -83,16 +85,16 @@ defmodule FeatherWeb.SiteComponents do
             <ul class="nav nav-pills">
               <.nav_item
                 active={@active == :settings}
-                navigate={"/sites/#{@site.public_id}/settings"}
+                navigate={~p"/sites/#{@site.public_id}/settings"}
               >
                 <.icon name="settings" size={16} /> Settings
               </.nav_item>
-              <.nav_item active={@active == :users} navigate={"/sites/#{@site.public_id}/users"}>
+              <.nav_item active={@active == :users} navigate={~p"/sites/#{@site.public_id}/users"}>
                 <.icon name="users" size={16} /> Users
               </.nav_item>
               <.nav_item
                 active={@active == :deployments}
-                navigate={"/sites/#{@site.public_id}/deployments"}
+                navigate={~p"/sites/#{@site.public_id}/deployments"}
               >
                 <.icon name="package" size={16} /> Deployments
               </.nav_item>

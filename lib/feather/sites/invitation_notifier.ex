@@ -9,43 +9,52 @@ defmodule Feather.Sites.InvitationNotifier do
   alias Feather.Sites.Invitation
 
   @doc """
-  Invites the invitation's email address to the site.
+  Invites the invitation's email address to the site. Expects `site` and
+  `inviting_user` to be preloaded.
   """
   def deliver_invitation(%Invitation{} = invitation, accept_url) do
-    deliver(invitation.email, "You have been invited to #{invitation.site.title}", """
+    deliver(
+      invitation.email,
+      "You have been invited to #{invitation.site.title} on feather.page",
+      """
 
-    ==============================
+      ==============================
 
-    Hi #{invitation.email},
+      Hi #{invitation.email},
 
-    #{invitation.inviting_user.email} invited you to edit the website
-    "#{invitation.site.title}" (#{invitation.site.domain}).
+      Someone invited you to join their site on feather.page:
+      #{invitation.inviting_user.email} invited you to edit the website
+      "#{invitation.site.title}" (#{invitation.site.domain}).
 
-    Accept the invitation by visiting the URL below:
+      Click the link below to accept the invitation:
 
-    #{accept_url}
+      #{accept_url}
 
-    The link is valid for 7 days. If you don't want to join, ignore this email.
+      The link is valid for 7 days. If you don't want to join, ignore this email.
 
-    ==============================
-    """)
+      ==============================
+      """
+    )
   end
 
   @doc """
-  Tells the inviting user that the invitation was accepted.
+  Tells the inviting user that the invitation was accepted. Expects `site`
+  and `inviting_user` to be preloaded.
   """
   def deliver_invitation_accepted(%Invitation{} = invitation) do
     deliver(
       invitation.inviting_user.email,
-      "#{invitation.email} accepted your invitation",
+      "The user #{invitation.email} accepted your invitation to #{invitation.site.title}.",
       """
 
       ==============================
 
       Hi #{invitation.inviting_user.email},
 
-      #{invitation.email} accepted your invitation and can now edit
+      The user #{invitation.email} accepted your invitation to
       "#{invitation.site.title}".
+
+      You can now collaborate on the site together.
 
       ==============================
       """

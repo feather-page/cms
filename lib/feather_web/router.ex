@@ -29,10 +29,26 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  # The content API (later). Authenticated with bearer API tokens.
-  # scope "/api", FeatherWeb do
-  #   pipe_through :api
-  # end
+  pipeline :api_token do
+    plug FeatherWeb.Plugs.ApiAuth
+  end
+
+  # Caddy's on-demand TLS check (ops/Caddyfile). Unauthenticated and
+  # outside the :api pipeline: Caddy sends no Accept header we could rely on.
+  scope "/api", FeatherWeb.Api do
+    get "/caddy/check_domain", CaddyController, :check_domain
+  end
+
+  # The content API, see docs/api/openapi.yml. Authenticated with bearer
+  # API tokens (`mix feather.api_token`); the token's user must have access
+  # to the site.
+  scope "/api/v1/sites/:site_id", FeatherWeb.Api.V1 do
+    pipe_through [:api, :api_token]
+
+    resources "/posts", PostController, except: [:new, :edit]
+    resources "/pages", PageController, except: [:new, :edit]
+    resources "/images", ImageController, only: [:show, :create]
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:feather, :dev_routes) do
@@ -59,16 +75,36 @@ defmodule FeatherWeb.Router do
     live_session :require_authenticated_user,
       on_mount: [{FeatherWeb.UserAuth, :require_authenticated}] do
       live "/", SiteLive.Index, :index
+      live "/sites/new", SiteLive.New, :new
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
   end
 
+  # Invitation acceptance works logged out: the invitee may not have an
+  # account yet. Accepting logs them in.
+  scope "/", FeatherWeb do
+    pipe_through [:browser]
+
+    get "/invitations/:token", InvitationController, :show
+    post "/invitations/:token/accept", InvitationController, :accept
+  end
+
+  # The preview of a site's static pages: logged-in users with access to
+  # the target's site (checked in the controller).
+  scope "/preview", FeatherWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/:target_id", PreviewController, :show
+    get "/:target_id/*path", PreviewController, :show
+  end
+
   ## Site content admin
   #
-  # Everything under /sites/:site_id requires a logged-in user and access to
-  # the site: FeatherWeb.SiteAuth loads it with Sites.get_site!/2 (404
-  # otherwise) and puts it into current_scope.
+  # Everything under /sites/:site_id (content, settings, users,
+  # deployments) requires a logged-in user and access to the site:
+  # FeatherWeb.SiteAuth loads it with Sites.get_site!/2 (404 otherwise) and
+  # puts it into current_scope.
 
   scope "/sites/:site_id", FeatherWeb do
     pipe_through [:browser, :require_authenticated_user]
@@ -95,6 +131,11 @@ defmodule FeatherWeb.Router do
       live "/books/:id/edit", BookLive.Form, :edit
       live "/books/:book_id/review/new", ReviewLive.Form, :new
       live "/books/:book_id/review/edit", ReviewLive.Form, :edit
+
+      live "/settings", SiteLive.Settings, :edit
+      live "/users", MemberLive.Index, :index
+      live "/deployments", DeploymentTargetLive.Index, :index
+      live "/deployments/:id/edit", DeploymentTargetLive.Form, :edit
     end
   end
 

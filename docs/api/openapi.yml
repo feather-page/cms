@@ -136,8 +136,12 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ListItem"
-          description: List items in EditorJS NestedList format.
+            oneOf:
+              - $ref: "#/components/schemas/ListItem"
+              - type: string
+          description: |
+            List items in EditorJS NestedList format. A plain string is shorthand for an
+            item without sub-items; responses always contain ListItem objects.
 
     ListItem:
       type: object
@@ -149,8 +153,10 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ListItem"
-          description: Nested sub-items.
+            oneOf:
+              - $ref: "#/components/schemas/ListItem"
+              - type: string
+          description: Nested sub-items (a plain string is shorthand for an item without sub-items).
 
     TableBlock:
       type: object
@@ -415,14 +421,30 @@ components:
 
     # --- Wrapper Schemas ---
 
+    PaginationMeta:
+      type: object
+      required: [page, pages, count]
+      properties:
+        page:
+          type: integer
+          description: The current page (1-based).
+        pages:
+          type: integer
+          description: The number of pages (at least 1).
+        count:
+          type: integer
+          description: The total number of records.
+
     PostListResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
           items:
             $ref: "#/components/schemas/PostResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     PostDetailResponse:
       type: object
@@ -433,12 +455,14 @@ components:
 
     PageListResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
           items:
             $ref: "#/components/schemas/PageResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     PageDetailResponse:
       type: object
@@ -468,6 +492,15 @@ paths:
       summary: List all posts
       operationId: listPosts
       tags: [Posts]
+      parameters:
+        - name: p
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number. Pages hold 20 records.
       responses:
         "200":
           description: List of posts.
@@ -481,8 +514,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "403":
-          description: Forbidden.
+        "404":
+          description: Site not found or not accessible with this token.
           content:
             application/json:
               schema:
@@ -622,6 +655,15 @@ paths:
       summary: List all pages
       operationId: listPages
       tags: [Pages]
+      parameters:
+        - name: p
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number. Pages hold 20 records.
       responses:
         "200":
           description: List of pages.

@@ -299,7 +299,7 @@ defmodule FeatherWeb.PostLiveTest do
 
       Phoenix.PubSub.broadcast(
         Feather.PubSub,
-        "site:#{site.id}:notices",
+        Feather.Publishing.notices_topic(site),
         {:site_notice, %{message: "Deployed to production", url: "https://example.com"}}
       )
 

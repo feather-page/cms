@@ -9,13 +9,13 @@ defmodule Feather.AdminContentTest do
     %{scope: site_scope_fixture()}
   end
 
-  describe "Content.paginate_posts/2" do
+  describe "Content.paginate_admin_posts/2" do
     test "pages posts newest first with preloads", %{scope: scope} do
       for n <- 1..21 do
         post_fixture(scope, publish_at: DateTime.add(~U[2024-01-01 00:00:00Z], n, :day))
       end
 
-      first = Content.paginate_posts(scope, 1)
+      first = Content.paginate_admin_posts(scope, 1)
       assert %Pagination{page: 1, total_pages: 2, total_entries: 21} = first
       assert length(first.entries) == 20
 
@@ -24,14 +24,14 @@ defmodule Feather.AdminContentTest do
 
       assert %{book: nil, thumbnail_image: nil} = hd(first.entries)
 
-      assert %Pagination{page: 2, entries: [_]} = Content.paginate_posts(scope, "2")
-      assert %Pagination{page: 2} = Content.paginate_posts(scope, "99")
-      assert %Pagination{page: 1} = Content.paginate_posts(scope, "nope")
+      assert %Pagination{page: 2, entries: [_]} = Content.paginate_admin_posts(scope, "2")
+      assert %Pagination{page: 2} = Content.paginate_admin_posts(scope, "99")
+      assert %Pagination{page: 1} = Content.paginate_admin_posts(scope, "nope")
     end
 
     test "only sees the scope's site", %{scope: scope} do
       post_fixture(site_scope_fixture())
-      assert %Pagination{entries: [], total_pages: 1} = Content.paginate_posts(scope, 1)
+      assert %Pagination{entries: [], total_pages: 1} = Content.paginate_admin_posts(scope, 1)
     end
   end
 

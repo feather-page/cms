@@ -60,6 +60,23 @@ defmodule Feather.SitesTest do
       assert Sites.list_sites(scope) == []
     end
 
+    test "normalizes the domain like Rails' DomainNormalizer" do
+      scope = user_scope_fixture()
+
+      assert {:ok, site} =
+               Sites.create_site(scope, %{
+                 title: "X",
+                 domain: " HTTPS://Blog.Example.com/posts/1 "
+               })
+
+      assert site.domain == "blog.example.com"
+      assert Site.normalize_domain("http://example.com") == "example.com"
+      assert Site.normalize_domain("example.com/") == "example.com"
+
+      assert {:error, changeset} = Sites.create_site(scope, %{title: "X", domain: ""})
+      assert "can't be blank" in errors_on(changeset).domain
+    end
+
     test "requires a unique domain" do
       scope = user_scope_fixture()
       site_fixture(scope, domain: "taken.example.com")
@@ -141,6 +158,9 @@ defmodule Feather.SitesTest do
       assert length(members) == 2
       own = Enum.find(members, &(&1.user_id == scope.user.id))
 
+      assert Sites.get_member!(scope, su.id).user.id == other.id
+      assert_raise Ecto.NoResultsError, fn -> Sites.get_member!(site_scope_fixture(), su.id) end
+
       assert {:error, :cannot_remove_self} = Sites.remove_member(scope, own)
       assert {:ok, _} = Sites.remove_member(scope, su)
       refute Sites.member?(scope.site, other)
@@ -190,7 +210,7 @@ defmodule Feather.SitesTest do
 
       {:ok, email} = Sites.deliver_invitation(invitation, &"https://cms.test/invitations/#{&1}")
 
-      assert_email_sent(subject: "You have been invited to #{scope.site.title}")
+      assert_email_sent(subject: "You have been invited to #{scope.site.title} on feather.page")
       assert email.to == [{"", "mail@example.com"}]
       assert email.from == {"Feather", "no-reply@feather.page"}
       assert email.text_body =~ "https://cms.test/invitations/"
@@ -209,7 +229,9 @@ defmodule Feather.SitesTest do
       assert site.id == scope.site.id
       assert Sites.member?(scope.site, user)
 
-      assert_email_sent(subject: "invitee@example.com accepted your invitation")
+      assert_email_sent(
+        subject: "The user invitee@example.com accepted your invitation to #{scope.site.title}."
+      )
 
       assert {:error, :already_accepted} = Sites.get_invitation_by_token(token)
       assert Sites.list_pending_invitations(scope) == []

@@ -96,6 +96,20 @@ defmodule FeatherWeb.UserSessionControllerTest do
 
       assert redirected_to(conn) == ~p"/users/log-in"
     end
+
+    # Rails: authentication.feature "Login with expired token"
+    test "redirects to login page when magic link has expired", %{conn: conn, user: user} do
+      {token, hashed_token} = generate_user_magic_link_token(user)
+      offset_user_token(hashed_token, -16, :minute)
+
+      conn = post(conn, ~p"/users/log-in", %{"user" => %{"token" => token}})
+
+      refute get_session(conn, :user_token)
+      assert redirected_to(conn) == ~p"/users/log-in"
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) ==
+               "The link is invalid or it has expired."
+    end
   end
 
   describe "DELETE /users/log-out" do

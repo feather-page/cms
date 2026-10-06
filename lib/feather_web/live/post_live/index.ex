@@ -135,7 +135,7 @@ defmodule FeatherWeb.PostLive.Index do
   end
 
   defp load_posts(socket, page) do
-    pagination = Content.paginate_posts(socket.assigns.current_scope, page)
+    pagination = Content.paginate_admin_posts(socket.assigns.current_scope, page)
 
     socket
     |> assign(:pagination, pagination)
