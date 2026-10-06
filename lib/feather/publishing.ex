@@ -67,6 +67,21 @@ defmodule Feather.Publishing do
   end
 
   @doc """
+  Returns true if we serve the host name ourselves: a staging or
+  production target with the `internal` provider has it as its public host
+  name. Caddy asks this before obtaining a TLS certificate on demand.
+  """
+  @spec internally_hosted?(String.t()) :: boolean()
+  def internally_hosted?(hostname) when is_binary(hostname) do
+    hostname = hostname |> String.trim() |> String.downcase()
+
+    Repo.exists?(
+      from t in DeploymentTarget,
+        where: t.public_hostname == ^hostname and t.provider == "internal" and t.type != "backup"
+    )
+  end
+
+  @doc """
   The host name of a new site's staging target:
   `<site public_id>.stage.<staging_host>`, lowercased like every host name.
   """
