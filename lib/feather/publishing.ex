@@ -1,15 +1,15 @@
 defmodule Feather.Publishing do
   @moduledoc """
-  Deployment targets and the deploy lock.
-
-  The static export and the rclone deployment build on these functions.
+  Deployment targets, the deploy lock, deploying (static export,
+  precompression and rclone sync, see `Feather.Publishing.Deploy`) and the
+  notices a deploy broadcasts.
   """
 
   import Ecto.Query, warn: false
 
   alias Feather.Repo
   alias Feather.Accounts.Scope
-  alias Feather.Publishing.DeploymentTarget
+  alias Feather.Publishing.{Deploy, DeploymentTarget}
   alias Feather.Sites
   alias Feather.Sites.Site
 
@@ -192,5 +192,91 @@ defmodule Feather.Publishing do
   @spec deploying?(DeploymentTarget.t()) :: boolean()
   def deploying?(%DeploymentTarget{id: id}) do
     Repo.exists?(from t in DeploymentTarget, where: t.id == ^id and t.deploying == true)
+  end
+
+  ## Deploying
+
+  @doc """
+  Deploys a target of the scope's site in the background: static export,
+  precompression, rclone sync (see `Feather.Publishing.Deploy`). Returns
+  `:ok` at once; the outcome arrives as a notice (`subscribe_notices/1`).
+
+  How the deploy runs is set by `config :feather, :deploy_mode` (or the
+  `:mode` option):
+
+    * `:async` (default) - under `Feather.TaskSupervisor`
+    * `:inline` - in the calling process
+    * `:manual` (tests) - not at all; the caller receives
+      `{:deploy_requested, target}` instead
+
+  Other options are passed to `Feather.Publishing.Deploy.run/2`.
+  """
+  @spec deploy(Scope.t(), DeploymentTarget.t(), keyword()) :: :ok
+  def deploy(scope, target, opts \\ [])
+
+  def deploy(%Scope{site: %Site{id: site_id}}, %DeploymentTarget{site_id: site_id} = target, opts) do
+    start_deploy(target, opts)
+  end
+
+  @doc """
+  Deploys all staging targets of a site (a scope with a site, or a site
+  for trusted internal callers), like Rails did after changes to the
+  site, its navigation or its social links. Returns `:ok` at once.
+  """
+  @spec publish_site(Scope.t() | Site.t(), keyword()) :: :ok
+  def publish_site(scope_or_site, opts \\ [])
+
+  def publish_site(%Scope{site: %Site{} = site}, opts), do: publish_site(site, opts)
+
+  def publish_site(%Site{} = site, opts) do
+    site
+    |> Scope.for_site()
+    |> list_targets(:staging)
+    |> Enum.each(&start_deploy(&1, opts))
+  end
+
+  defp start_deploy(%DeploymentTarget{} = target, opts) do
+    {mode, opts} =
+      Keyword.pop_lazy(opts, :mode, fn -> Application.get_env(:feather, :deploy_mode, :async) end)
+
+    case mode do
+      :async ->
+        {:ok, _pid} =
+          Task.Supervisor.start_child(Feather.TaskSupervisor, fn -> Deploy.run(target, opts) end)
+
+        :ok
+
+      :inline ->
+        Deploy.run(target, opts)
+        :ok
+
+      :manual ->
+        send(self(), {:deploy_requested, target})
+        :ok
+    end
+  end
+
+  ## Notices
+
+  @doc """
+  The PubSub topic of a site's notices. Messages are
+  `{:site_notice, %{message: String.t(), url: String.t() | nil}}`.
+  """
+  @spec notices_topic(Site.t()) :: String.t()
+  def notices_topic(%Site{id: id}), do: "site:#{id}:notices"
+
+  @doc "Subscribes the caller to a site's notices."
+  @spec subscribe_notices(Site.t()) :: :ok | {:error, term()}
+  def subscribe_notices(%Site{} = site),
+    do: Phoenix.PubSub.subscribe(Feather.PubSub, notices_topic(site))
+
+  @doc "Broadcasts a notice to everyone watching the site."
+  @spec broadcast_notice(Site.t(), String.t(), String.t() | nil) :: :ok | {:error, term()}
+  def broadcast_notice(%Site{} = site, message, url \\ nil) do
+    Phoenix.PubSub.broadcast(
+      Feather.PubSub,
+      notices_topic(site),
+      {:site_notice, %{message: message, url: url}}
+    )
   end
 end
