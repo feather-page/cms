@@ -52,6 +52,24 @@ defmodule Feather.Content do
   end
 
   @doc """
+  Gets a post of the scope's site by public id, or nil.
+  """
+  @spec get_post(Scope.t(), String.t()) :: Post.t() | nil
+  def get_post(%Scope{site: %Site{id: site_id}}, public_id) do
+    Repo.one(from p in Post, where: p.site_id == ^site_id and p.public_id == ^public_id)
+  end
+
+  @doc """
+  One page of the scope's posts, newest `publish_at` first, with header
+  and thumbnail images preloaded. See `t:pagination/1`.
+  """
+  @spec paginate_posts(Scope.t(), integer(), pos_integer()) :: pagination(Post.t())
+  def paginate_posts(%Scope{site: %Site{id: site_id}}, page, per_page \\ 20) do
+    from(p in Post, where: p.site_id == ^site_id, order_by: [desc: p.publish_at, asc: p.id])
+    |> paginate(page, per_page)
+  end
+
+  @doc """
   Gets a post of the scope's site by slug, or nil.
   """
   @spec get_post_by_slug(Scope.t(), String.t()) :: Post.t() | nil
@@ -115,6 +133,33 @@ defmodule Feather.Content do
     from(p in Page, where: p.site_id == ^site_id and p.public_id == ^public_id)
     |> Repo.one!()
     |> put_navigation_flag()
+  end
+
+  @doc """
+  Gets a page of the scope's site by public id, with `add_to_navigation`
+  filled in, or nil.
+  """
+  @spec get_page(Scope.t(), String.t()) :: Page.t() | nil
+  def get_page(%Scope{site: %Site{id: site_id}}, public_id) do
+    case Repo.one(from p in Page, where: p.site_id == ^site_id and p.public_id == ^public_id) do
+      nil -> nil
+      page -> put_navigation_flag(page)
+    end
+  end
+
+  @doc """
+  One page of the scope's pages (the homepage first, then by title), with
+  header and thumbnail images preloaded and `add_to_navigation` filled in.
+  See `t:pagination/1`.
+  """
+  @spec paginate_pages(Scope.t(), integer(), pos_integer()) :: pagination(Page.t())
+  def paginate_pages(%Scope{site: %Site{id: site_id}}, page, per_page \\ 20) do
+    from(p in Page,
+      where: p.site_id == ^site_id,
+      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at, asc: p.id]
+    )
+    |> paginate(page, per_page)
+    |> Map.update!(:entries, &put_navigation_flags/1)
   end
 
   @doc """
@@ -311,6 +356,37 @@ defmodule Feather.Content do
       |> Map.new(&{&1.public_id, &1})
 
     Blocks.to_editor_js(content, site, books)
+  end
+
+  @doc """
+  Preloads the header and thumbnail image of a post, page or project.
+  """
+  @spec preload_images(record) :: record when record: Post.t() | Page.t() | Project.t()
+  def preload_images(record), do: Repo.preload(record, [:header_image, :thumbnail_image])
+
+  @typedoc """
+  One page of records: the `entries`, the current `page` (1-based, below 1
+  counts as 1), the number of `pages` (at least 1) and the total `count`.
+  """
+  @type pagination(entry) :: %{
+          entries: [entry],
+          page: pos_integer(),
+          pages: pos_integer(),
+          count: non_neg_integer()
+        }
+
+  defp paginate(query, page, per_page) do
+    page = max(page, 1)
+    count = Repo.aggregate(query, :count)
+
+    entries =
+      query
+      |> limit(^per_page)
+      |> offset(^((page - 1) * per_page))
+      |> preload([:header_image, :thumbnail_image])
+      |> Repo.all()
+
+    %{entries: entries, page: page, pages: max(ceil(count / per_page), 1), count: count}
   end
 
   defp save_with_images(%Ecto.Changeset{} = changeset, owner_field) do

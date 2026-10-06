@@ -17,10 +17,26 @@ defmodule FeatherWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # The content API (later). Authenticated with bearer API tokens.
-  # scope "/api", FeatherWeb do
-  #   pipe_through :api
-  # end
+  pipeline :api_token do
+    plug FeatherWeb.Plugs.ApiAuth
+  end
+
+  # Caddy's on-demand TLS check (ops/Caddyfile). Unauthenticated and
+  # outside the :api pipeline: Caddy sends no Accept header we could rely on.
+  scope "/api", FeatherWeb.Api do
+    get "/caddy/check_domain", CaddyController, :check_domain
+  end
+
+  # The content API, see docs/api/openapi.yml. Authenticated with bearer
+  # API tokens (`mix feather.api_token`); the token's user must have access
+  # to the site.
+  scope "/api/v1/sites/:site_id", FeatherWeb.Api.V1 do
+    pipe_through [:api, :api_token]
+
+    resources "/posts", PostController, except: [:new, :edit]
+    resources "/pages", PageController, except: [:new, :edit]
+    resources "/images", ImageController, only: [:show, :create]
+  end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:feather, :dev_routes) do
