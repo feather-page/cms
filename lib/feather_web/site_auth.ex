@@ -20,6 +20,10 @@ defmodule FeatherWeb.SiteAuth do
 
   Besides the scope it
 
+    * checks access again before every event and every `handle_params/3`
+      (one `exists?` query; super admins pass): a member removed while
+      the LiveView is open is redirected to the site list with an error
+      instead of acting on the site,
     * assigns `site_preview_path`: the preview of the site's internal
       staging target, or nil,
     * subscribes to the site's notices (`Feather.Publishing.subscribe_notices/1`)
@@ -56,12 +60,32 @@ defmodule FeatherWeb.SiteAuth do
       |> Phoenix.Component.assign(:current_scope, scope)
       |> Phoenix.Component.assign(:site_preview_path, preview_path(scope))
       |> Phoenix.Component.assign(:site_notices, [])
+      |> LiveView.attach_hook(:site_access_on_event, :handle_event, &check_access_on_event/3)
+      |> LiveView.attach_hook(:site_access_on_params, :handle_params, &check_access_on_params/3)
       |> LiveView.attach_hook(:site_messages, :handle_info, &handle_message/2)
       |> LiveView.attach_hook(:dismiss_site_notice, :handle_event, &handle_dismiss/3)
 
     if LiveView.connected?(socket), do: Publishing.subscribe_notices(site)
 
     {:cont, socket}
+  end
+
+  defp check_access_on_event(_event, _params, socket), do: check_access(socket)
+  defp check_access_on_params(_params, _uri, socket), do: check_access(socket)
+
+  # Membership can be revoked while the LiveView is open; mount only
+  # checked it once.
+  defp check_access(socket) do
+    %Scope{site: site} = scope = socket.assigns.current_scope
+
+    if Sites.can_access_site?(scope, site) do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> LiveView.put_flash(:error, "You no longer have access to this site.")
+       |> LiveView.redirect(to: ~p"/")}
+    end
   end
 
   defp handle_message({:site_notice, %{message: message} = notice}, socket) do
