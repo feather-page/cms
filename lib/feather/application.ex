@@ -12,6 +12,8 @@ defmodule Feather.Application do
       Feather.Repo,
       {DNSCluster, query: Application.get_env(:feather, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Feather.PubSub},
+      # Deletes orphaned images daily (ignored when disabled, as in tests)
+      Feather.Media.CleanupScheduler,
       # Start to serve requests, typically the last entry
       FeatherWeb.Endpoint
     ]

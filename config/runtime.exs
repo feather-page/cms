@@ -37,6 +37,10 @@ if config_env() != :test do
   if unsplash_access_key = System.get_env("UNSPLASH_ACCESS_KEY") do
     config :feather, :unsplash_access_key, unsplash_access_key
   end
+
+  if System.get_env("IMAGE_CLEANUP") == "false" do
+    config :feather, Feather.Media.CleanupScheduler, enabled: false
+  end
 end
 
 if config_env() == :dev do

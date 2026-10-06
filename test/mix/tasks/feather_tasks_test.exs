@@ -38,4 +38,29 @@ defmodule Mix.Tasks.FeatherTasksTest do
   test "feather.api_token for an unknown user raises" do
     assert_raise Mix.Error, fn -> Mix.Tasks.Feather.ApiToken.run(["nobody@example.com"]) end
   end
+
+  describe "feather.import" do
+    @dump Path.expand("../../fixtures/rails_dump", __DIR__)
+
+    setup do
+      on_exit(fn -> File.rm_rf!(Path.join(Feather.Media.storage_root(), "images")) end)
+    end
+
+    test "imports a dump and prints the counts" do
+      Mix.Tasks.Feather.Import.run([@dump])
+      assert_received {:mix_shell, :info, [report]}
+      assert report =~ ~r/posts\s+2 dumped\s+2 imported/
+      assert_received {:mix_shell, :info, ["Import finished."]}
+      assert Repo.aggregate(Feather.Sites.Site, :count) == 2
+
+      assert_raise Mix.Error, ~r/--force/, fn -> Mix.Tasks.Feather.Import.run([@dump]) end
+
+      Mix.Tasks.Feather.Import.run([@dump, "--force"])
+      assert_received {:mix_shell, :info, ["Import finished."]}
+    end
+
+    test "without a directory raises" do
+      assert_raise Mix.Error, ~r/Usage/, fn -> Mix.Tasks.Feather.Import.run([]) end
+    end
+  end
 end

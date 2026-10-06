@@ -1,0 +1,24 @@
+[
+  {
+    "id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "copyright": "© All rights reserved.",
+    "created_at": "2026-10-06T18:09:31.071247Z",
+    "domain": "notes.example.com",
+    "emoji": "📓",
+    "language_code": "en",
+    "public_id": "hq4ngndLE0FK",
+    "title": "Robert's Notes",
+    "updated_at": "2026-10-06T18:09:31.071247Z"
+  },
+  {
+    "id": "d2403fc6-a442-4bce-9f45-3c23e1b91b4a",
+    "copyright": "© 2026 Atelier Beispiel",
+    "created_at": "2026-10-06T18:09:31.081229Z",
+    "domain": "atelier.example.de",
+    "emoji": "🎨",
+    "language_code": "de",
+    "public_id": "lyvcKPCuf1LR",
+    "title": "Atelier Beispiel",
+    "updated_at": "2026-10-06T18:09:31.081229Z"
+  }
+]

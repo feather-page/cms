@@ -1,0 +1,22 @@
+[
+  {
+    "id": "b0a9da02-b28d-485c-b185-6670b98d30c8",
+    "created_at": "2026-10-06T18:09:31.516639Z",
+    "icon": "github",
+    "name": "GitHub",
+    "public_id": "YR9yjauOqGia",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "updated_at": "2026-10-06T18:09:31.516639Z",
+    "url": "https://github.com/example"
+  },
+  {
+    "id": "15c26154-4d42-47a2-972a-87c536f58294",
+    "created_at": "2026-10-06T18:09:31.541535Z",
+    "icon": "instagram",
+    "name": "Instagram",
+    "public_id": "810Y1wdzdipm",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "updated_at": "2026-10-06T18:09:31.541535Z",
+    "url": "https://www.instagram.com/example"
+  }
+]

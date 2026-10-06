@@ -1,47 +1,32 @@
-# See https://docs.docker.com/engine/reference/builder/#dockerignore-file for more about ignoring files.
+# Only what the release build needs goes into the build context:
+# mix.exs, mix.lock, config/, lib/, priv/, assets/, vendor/, rel/.
 
-# Ignore git directory.
 /.git/
-/.gitignore
-
-# Ignore bundler config.
-/.bundle
-
-# Ignore all environment files.
+/.github/
+/.claude/
+/.worktrees/
+/.kamal/
 /.env*
 
-# Ignore all default key files.
-/config/master.key
-/config/credentials/*.key
+# Build output and dependencies are fetched and compiled in the image.
+/_build/
+/deps/
+/cover/
+/doc/
+/assets/node_modules/
+/priv/static/assets/
+/priv/static/cache_manifest.json
 
-# Ignore all logfiles and tempfiles.
-/log/*
-/tmp/*
-!/log/.keep
-!/tmp/.keep
+# Local data: SQLite databases, uploaded images, temporary files.
+*.db
+*.db-*
+/storage/
+/tmp/
+erl_crash.dump
 
-# Ignore pidfiles, but keep the directory.
-/tmp/pids/*
-!/tmp/pids/.keep
-
-# Ignore storage (uploaded files in development and any SQLite databases).
-/storage/*
-!/storage/.keep
-/tmp/storage/*
-!/tmp/storage/.keep
-
-# Ignore assets.
-/node_modules/
-/app/assets/builds/*
-!/app/assets/builds/.keep
-/public/assets
-
-# Ignore CI service files.
-/.github
-
-# Ignore development files
-/.devcontainer
-
-# Ignore Docker-related files
-/.dockerignore
+# Not needed in the image.
+/test/
+/docs/
+/ops/
 /Dockerfile*
+/.dockerignore

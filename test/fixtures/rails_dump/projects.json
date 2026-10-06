@@ -1,0 +1,40 @@
+[
+  {
+    "id": "a7db6db8-1fbd-422c-b34a-51338f125aec",
+    "company": null,
+    "content": [
+      {
+        "id": "pr1",
+        "type": "paragraph",
+        "text": "Built with Rails."
+      }
+    ],
+    "created_at": "2026-10-06T18:09:33.992689Z",
+    "emoji": "🪶",
+    "ended_at": null,
+    "header_image_id": null,
+    "links": [
+      {
+        "label": "GitHub",
+        "url": "https://github.com/feather-page/cms"
+      },
+      {
+        "label": "Website",
+        "url": "https://feather-page.example"
+      }
+    ],
+    "period": "05.2023 - today",
+    "project_type": "open_source",
+    "public_id": "1LLmfEq3NVn6",
+    "role": "Maintainer",
+    "short_description": "A CMS for small static sites.",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "slug": "/feather-page",
+    "started_at": "2023-05-01",
+    "status": "ongoing",
+    "tags": "rails, cms",
+    "thumbnail_image_id": null,
+    "title": "Feather-Page CMS",
+    "updated_at": "2026-10-06T18:09:33.992689Z"
+  }
+]

@@ -1,0 +1,90 @@
+[
+  {
+    "id": "d9fe73ec-e149-4235-882a-8776e31b10c7",
+    "created_at": "2026-10-06T18:09:31.850983Z",
+    "imageable_id": null,
+    "imageable_type": null,
+    "public_id": "x3BP8Cxu2hMa",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "source_url": null,
+    "state": null,
+    "unsplash_data": null,
+    "updated_at": "2026-10-06T18:09:32.413794Z",
+    "file": {
+      "path": "images/x3BP8Cxu2hMa/header.png",
+      "filename": "header.png",
+      "content_type": "image/png",
+      "byte_size": 145,
+      "checksum": "OcH/prLbLm3DHDn7b0v3MA==",
+      "width": 8,
+      "height": 6
+    }
+  },
+  {
+    "id": "19f506f3-e973-4e80-a099-204a6d317cc1",
+    "created_at": "2026-10-06T18:09:32.456724Z",
+    "imageable_id": null,
+    "imageable_type": null,
+    "public_id": "5olRHPvR0D5N",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "source_url": "https://images.unsplash.com/photo-123",
+    "state": null,
+    "unsplash_data": {
+      "photographer_url": "https://unsplash.com/@janedoe",
+      "download_location": "https://api.unsplash.com/photos/abc/download",
+      "photographer_name": "Jane Doe"
+    },
+    "updated_at": "2026-10-06T18:09:32.750070Z",
+    "file": {
+      "path": "images/5olRHPvR0D5N/unsplash.png",
+      "filename": "unsplash.png",
+      "content_type": "image/png",
+      "byte_size": 98,
+      "checksum": "5lymvFSiDMkmV5R8/ql6ig==",
+      "width": 4,
+      "height": 4
+    }
+  },
+  {
+    "id": "a9745b0c-a649-4c50-b797-5c01238be26c",
+    "created_at": "2026-10-06T18:09:32.784350Z",
+    "imageable_id": "d3ed9664-5b57-4ab6-8199-1be1fa12279a",
+    "imageable_type": "Post",
+    "public_id": "DrqGSEC4zyvZ",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "source_url": null,
+    "state": null,
+    "unsplash_data": null,
+    "updated_at": "2026-10-06T18:09:33.387430Z",
+    "file": {
+      "path": "images/DrqGSEC4zyvZ/inline.jpg",
+      "filename": "inline.jpg",
+      "content_type": "image/jpeg",
+      "byte_size": 613,
+      "checksum": "BnGwOz8+hnwEMq6Yk4N3Tg==",
+      "width": 15,
+      "height": 15
+    }
+  },
+  {
+    "id": "b0600f8a-9da6-47c4-a2a1-ba0542d7c574",
+    "created_at": "2026-10-06T18:09:33.067434Z",
+    "imageable_id": "ba30d799-7144-43bd-a0ff-c71048619d12",
+    "imageable_type": "Book",
+    "public_id": "XBOKyjLaiLsB",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "source_url": null,
+    "state": null,
+    "unsplash_data": null,
+    "updated_at": "2026-10-06T18:09:33.199974Z",
+    "file": {
+      "path": "images/XBOKyjLaiLsB/cover.jpg",
+      "filename": "cover.jpg",
+      "content_type": "image/jpeg",
+      "byte_size": 613,
+      "checksum": "GMdtSPpqFrIJ0FfCeEk1xw==",
+      "width": 15,
+      "height": 15
+    }
+  }
+]

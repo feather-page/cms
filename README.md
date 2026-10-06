@@ -43,12 +43,13 @@ Uploaded images are stored in `storage/` (git-ignored).
 |------|---------|
 | `mix feather.create_user EMAIL [--super-admin]` | Create (or update) a user who can log in by magic link |
 | `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
+| `mix feather.import DIR [--force]` | One-time import of a Rails dump, see `docs/cutover.md` |
 | `mix test` | Run the test suite |
 | `mix precommit` | Compile with warnings as errors, format, run the tests |
 | `mix ecto.reset` | Drop, migrate and seed the development database |
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`
-(`migrate/0`, `create_user/2`, `create_api_token/2`). `bin/server` migrates and starts the app.
+(`migrate/0`, `create_user/2`, `create_api_token/2`, `import_dump/2`). `bin/server` migrates and starts the app.
 
 ### Environment variables
 
@@ -64,6 +65,7 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `BASE_HOSTNAME_AND_PORT` | Base domain for staging hosts (`<site>.stage.<this>`) | `localhost:4000` |
 | `STAGING_SITES_PATH` | Where staging sites are written | `<storage>/staging_sites` |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
+| `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
 
 Generate a `CONFIG_ENCRYPTION_KEY` with

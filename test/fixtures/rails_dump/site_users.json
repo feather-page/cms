@@ -1,0 +1,23 @@
+[
+  {
+    "id": 4,
+    "public_id": "BBBgXQB3lp6a",
+    "role": "admin",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "user_id": "66b355ad-332b-469f-8843-68cc9bbb82e3"
+  },
+  {
+    "id": 5,
+    "public_id": "DzgXgHsczRCP",
+    "role": "editor",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "user_id": "2e3c97c4-325f-4419-90d5-3451be037af4"
+  },
+  {
+    "id": 6,
+    "public_id": "Y1hyh63W0S6a",
+    "role": "admin",
+    "site_id": "d2403fc6-a442-4bce-9f45-3c23e1b91b4a",
+    "user_id": "2e3c97c4-325f-4419-90d5-3451be037af4"
+  }
+]

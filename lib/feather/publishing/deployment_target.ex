@@ -16,7 +16,9 @@ defmodule Feather.Publishing.DeploymentTarget do
     field :type, :string
     field :provider, :string
     field :public_hostname, :string
-    field :config, Feather.Encrypted.Map, default: %{}
+    # The default is not dumped at compile time: that would need the key,
+    # which a release only reads at runtime.
+    field :config, Feather.Encrypted.Map, default: %{}, skip_default_validation: true
     field :deploying, :boolean, default: false
 
     belongs_to :site, Feather.Sites.Site

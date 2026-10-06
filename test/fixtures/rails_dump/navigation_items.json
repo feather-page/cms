@@ -1,0 +1,20 @@
+[
+  {
+    "id": "4ff363ab-f46f-4407-9ea9-00bfeda243af",
+    "created_at": "2026-10-06T18:09:33.810659Z",
+    "navigation_id": "75a5cd26-7031-4dc9-bcbc-c7f65ec0af36",
+    "page_id": "7ddf3ca5-baec-46b6-a5ae-ec42a4e281eb",
+    "position": 1,
+    "public_id": "vxLRLhqs7dfX",
+    "updated_at": "2026-10-06T18:09:33.810659Z"
+  },
+  {
+    "id": "f376d23b-7512-4ef5-b174-70b8b5f78583",
+    "created_at": "2026-10-06T18:09:33.886466Z",
+    "navigation_id": "75a5cd26-7031-4dc9-bcbc-c7f65ec0af36",
+    "page_id": "bbfa380b-e4cf-4ae9-9f67-ffbd7d7250ed",
+    "position": 2,
+    "public_id": "k2ZcdXHLeYRs",
+    "updated_at": "2026-10-06T18:09:33.886466Z"
+  }
+]

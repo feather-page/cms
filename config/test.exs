@@ -46,3 +46,6 @@ config :phoenix,
 
 # Image downloads go through Req.Test stubs named Feather.Media.
 config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
+
+# The daily image cleanup does not run in tests.
+config :feather, Feather.Media.CleanupScheduler, enabled: false

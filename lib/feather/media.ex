@@ -17,7 +17,7 @@ defmodule Feather.Media do
 
   alias Feather.Repo
   alias Feather.Accounts.Scope
-  alias Feather.Media.{Image, Processor, UrlChecker, Variants}
+  alias Feather.Media.{Cleanup, Image, Processor, UrlChecker, Variants}
   alias Feather.Sites.Site
 
   @max_byte_size 25 * 1024 * 1024
@@ -327,4 +327,23 @@ defmodule Feather.Media do
     File.rm_rf!(image_dir(image))
     :ok
   end
+
+  ## Cleanup
+
+  @doc """
+  Lists the images `cleanup_orphaned_images/1` would delete at `now`: those
+  nothing references and those their post, page or project no longer
+  embeds. See `Feather.Media.Cleanup`.
+  """
+  @spec orphaned_images(DateTime.t()) :: Cleanup.result()
+  def orphaned_images(now \\ DateTime.utc_now()), do: Cleanup.orphaned(now)
+
+  @doc """
+  Deletes images (rows and files) nothing references any more and images
+  their owner no longer embeds, if they are older than two days. Runs
+  daily through `Feather.Media.CleanupScheduler`. Returns the deleted
+  images.
+  """
+  @spec cleanup_orphaned_images(DateTime.t()) :: {:ok, Cleanup.result()} | {:error, term()}
+  def cleanup_orphaned_images(now \\ DateTime.utc_now()), do: Cleanup.delete_orphaned(now)
 end
