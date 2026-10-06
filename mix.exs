@@ -81,6 +81,9 @@ defmodule Feather.MixProject do
       "assets.setup": ["esbuild.install --if-missing"],
       "assets.build": ["compile", "esbuild feather"],
       "assets.deploy": [
+        # compile first: app.js imports phoenix-colocated/feather, which the
+        # LiveView compiler writes while compiling (fresh checkouts, CI)
+        "compile",
         "esbuild feather --minify",
         "phx.digest"
       ],

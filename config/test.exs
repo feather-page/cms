@@ -7,7 +7,12 @@ import Config
 # Run `mix help test` for more information.
 config :feather, Feather.Repo,
   database: Path.expand("../feather_test.db", __DIR__),
-  pool_size: 5,
+  # One connection only. SQLite has a single writer and the sandbox opens its
+  # transaction with a deferred BEGIN, so with several pooled connections the
+  # next test's connection could try to write while the previous test's
+  # connection still held the write lock ("Database busy", flaky). Database
+  # tests run synchronously anyway, so one connection costs nothing.
+  pool_size: 1,
   pool: Ecto.Adapters.SQL.Sandbox
 
 # We don't run a server during test. If one is required,
