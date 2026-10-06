@@ -182,5 +182,27 @@ defmodule Feather.Content.BlocksTest do
       assert String.ends_with?(excerpt, "...")
       assert Blocks.excerpt(long, 10) == "aaaaaaa..."
     end
+
+    test "strip_tags/1 keeps whitespace between tags" do
+      assert Blocks.strip_tags("<b>a</b> <i>b</i>") == "a b"
+      assert Blocks.strip_tags("<b>one</b>\n<i>two</i>") == "one\ntwo"
+    end
+
+    test "strip_tags/1 decodes entities and handles plain or broken input" do
+      assert Blocks.strip_tags("Tom &amp; Jerry &lt;3") == "Tom & Jerry <3"
+      assert Blocks.strip_tags("no tags") == "no tags"
+      assert Blocks.strip_tags("") == ""
+      assert Blocks.strip_tags("broken <b") == "broken "
+    end
+
+    test "strip_tags/1 turns <br> into a space and drops scripts and styles" do
+      assert Blocks.strip_tags("line<br>break") == "line break"
+      assert Blocks.strip_tags("a<script>alert(1)</script>b<style>p{}</style>c") == "abc"
+    end
+
+    test "excerpt/2 keeps words of formatted text apart" do
+      blocks = [%{"type" => "paragraph", "text" => "<b>Bold</b> <i>italic</i> words"}]
+      assert Blocks.excerpt(blocks) == "Bold italic words"
+    end
   end
 end

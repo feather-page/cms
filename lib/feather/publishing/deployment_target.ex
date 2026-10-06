@@ -55,7 +55,10 @@ defmodule Feather.Publishing.DeploymentTarget do
 
   defp validate(changeset) do
     changeset
-    |> update_change(:public_hostname, &(&1 |> String.trim() |> String.downcase()))
+    |> update_change(:public_hostname, fn
+      hostname when is_binary(hostname) -> hostname |> String.trim() |> String.downcase()
+      nil -> nil
+    end)
     |> validate_required([:type, :provider, :public_hostname])
     |> validate_inclusion(:type, @types)
     |> validate_inclusion(:provider, @providers)

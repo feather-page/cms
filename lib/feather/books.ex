@@ -19,7 +19,8 @@ defmodule Feather.Books do
 
   @doc """
   Lists the books of the scope's site, most recently read first. Pass
-  `status:` to only list books with that reading status.
+  `status:` to only list books with that reading status and `preload:` to
+  preload associations (e.g. `[:cover_image]`).
   """
   @spec list_books(Scope.t(), keyword()) :: [Book.t()]
   def list_books(%Scope{site: %Site{id: site_id}}, opts \\ []) do
@@ -34,13 +35,102 @@ defmodule Feather.Books do
         status -> where(query, [b], b.reading_status == ^to_string(status))
       end
 
+    query =
+      case opts[:preload] do
+        nil -> query
+        preloads -> preload(query, ^preloads)
+      end
+
     Repo.all(query)
+  end
+
+  @doc """
+  Finds books of the scope's site for the editor's book block, like Rails'
+  `books#lookup`: without a query the 5 most recently read books, with a
+  query up to 10 books whose title or author contains it (case-insensitive).
+  The cover image is preloaded.
+  """
+  @spec lookup_books(Scope.t(), String.t() | nil) :: [Book.t()]
+  def lookup_books(%Scope{site: %Site{id: site_id}}, query) do
+    query = if is_binary(query), do: String.trim(query), else: ""
+
+    base =
+      from b in Book,
+        where: b.site_id == ^site_id,
+        order_by: [desc_nulls_last: b.read_at, desc: b.inserted_at],
+        preload: [:cover_image]
+
+    if query == "" do
+      base |> limit(5) |> Repo.all()
+    else
+      pattern = "%" <> String.downcase(escape_like(query)) <> "%"
+
+      base
+      |> where(
+        [b],
+        fragment("lower(?) LIKE ? ESCAPE '\\'", b.title, ^pattern) or
+          fragment("lower(?) LIKE ? ESCAPE '\\'", b.author, ^pattern)
+      )
+      |> limit(10)
+      |> Repo.all()
+    end
+  end
+
+  defp escape_like(text), do: String.replace(text, ~r/([\\%_])/, "\\\\\\1")
+
+  @doc """
+  Downloads a cover image (e.g. from OpenLibrary) and makes it the book's
+  cover, like Rails' `RemoteImageCreator`. A previous cover image is
+  deleted.
+  """
+  @spec attach_cover_from_url(Scope.t(), Book.t(), String.t()) ::
+          {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
+  def attach_cover_from_url(
+        %Scope{site: %Site{id: site_id}} = scope,
+        %Book{site_id: site_id} = book,
+        url
+      ) do
+    with {:ok, image} <- Media.create_image_from_url(scope, url) do
+      case update_book(scope, book, %{cover_image_id: image.id}) do
+        {:ok, updated} ->
+          delete_previous_cover(book.cover_image_id, image.id)
+          {:ok, updated}
+
+        {:error, changeset} ->
+          Media.delete_image(image)
+          {:error, changeset}
+      end
+    end
+  end
+
+  defp delete_previous_cover(nil, _new_id), do: :ok
+  defp delete_previous_cover(same, same), do: :ok
+
+  defp delete_previous_cover(old_id, _new_id) do
+    case Repo.get(Feather.Media.Image, old_id) do
+      nil -> :ok
+      image -> Media.delete_image(image)
+    end
+
+    :ok
   end
 
   @doc "Gets a book of the scope's site by public id. Raises if not found."
   @spec get_book!(Scope.t(), String.t()) :: Book.t()
   def get_book!(%Scope{site: %Site{id: site_id}}, public_id) do
     Repo.one!(from b in Book, where: b.site_id == ^site_id and b.public_id == ^public_id)
+  end
+
+  @doc "Preloads the cover image of a book."
+  @spec preload_cover_image(Book.t()) :: Book.t()
+  def preload_cover_image(%Book{} = book), do: Repo.preload(book, :cover_image)
+
+  @doc "The review post of a book, or nil if it has none."
+  @spec get_review_post(Scope.t(), Book.t()) :: Post.t() | nil
+  def get_review_post(%Scope{}, %Book{post_id: nil}), do: nil
+
+  def get_review_post(%Scope{site: %Site{id: site_id}}, %Book{site_id: site_id, post_id: post_id}) do
+    Repo.one(from p in Post, where: p.id == ^post_id and p.site_id == ^site_id)
   end
 
   @doc "Gets the book reviewed by a post, or nil."

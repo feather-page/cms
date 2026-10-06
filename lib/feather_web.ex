@@ -86,6 +86,8 @@ defmodule FeatherWeb do
       import Phoenix.HTML
       # Core UI components
       import FeatherWeb.CoreComponents
+      # The site admin shell and its building blocks
+      import FeatherWeb.SiteComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

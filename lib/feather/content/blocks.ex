@@ -286,15 +286,86 @@ defmodule Feather.Content.Blocks do
   end
 
   @doc """
-  Removes HTML tags from a string and decodes entities.
+  The length of the content as the admin counts it to tell short posts
+  (no title needed) from long ones, ported from Rails'
+  `EditorJsContentLengthCalculator`: the raw text (HTML included) of
+  paragraphs, headers, quotes (text and caption), code, table cells, list
+  items (nested) and image captions. Book and embed blocks count 0.
+  """
+  @spec content_length([block()] | nil) :: non_neg_integer()
+  def content_length(blocks) do
+    blocks
+    |> normalize()
+    |> Enum.map(&block_length/1)
+    |> Enum.sum()
+  end
+
+  defp block_length(%{"type" => type, "text" => text}) when type in ~w(paragraph header),
+    do: text_length(text)
+
+  defp block_length(%{"type" => "quote"} = b),
+    do: text_length(b["text"]) + text_length(b["caption"])
+
+  defp block_length(%{"type" => "code"} = b), do: text_length(b["code"])
+  defp block_length(%{"type" => "image"} = b), do: text_length(b["caption"])
+  defp block_length(%{"type" => "list"} = b), do: list_length(b["items"])
+
+  defp block_length(%{"type" => "table", "content" => rows}) when is_list(rows) do
+    for row <- rows, is_list(row), cell <- row, reduce: 0 do
+      sum -> sum + text_length(cell)
+    end
+  end
+
+  defp block_length(_block), do: 0
+
+  defp list_length(items) when is_list(items) do
+    Enum.reduce(items, 0, fn item, sum ->
+      sum + text_length(item["content"]) + list_length(item["items"])
+    end)
+  end
+
+  defp list_length(_items), do: 0
+
+  defp text_length(text) when is_binary(text), do: String.length(text)
+  defp text_length(_text), do: 0
+
+  @doc """
+  Removes HTML tags from a string and decodes entities. Whitespace between
+  tags is kept (`"<b>a</b> <i>b</i>"` becomes `"a b"`), a `<br>` becomes a
+  space and the content of `<script>` and `<style>` is dropped.
+
+  Uses Floki's mochiweb tokenizer directly: `Floki.parse_fragment/1` drops
+  whitespace-only text nodes, which glued words together.
   """
   @spec strip_tags(String.t()) :: String.t()
   def strip_tags(html) when is_binary(html) do
-    case Floki.parse_fragment(html) do
-      {:ok, nodes} -> Floki.text(nodes)
-      {:error, _} -> html
-    end
+    html
+    |> :floki_mochi_html.tokens()
+    |> text_of_tokens(nil, [])
+  rescue
+    _exception -> html
   end
+
+  @dropped_content ~w(script style)
+
+  defp text_of_tokens([], _dropping, acc), do: acc |> Enum.reverse() |> IO.iodata_to_binary()
+
+  defp text_of_tokens([{:end_tag, tag} | rest], tag, acc), do: text_of_tokens(rest, nil, acc)
+
+  defp text_of_tokens([_token | rest], dropping, acc) when is_binary(dropping),
+    do: text_of_tokens(rest, dropping, acc)
+
+  defp text_of_tokens([{:data, text, _whitespace?} | rest], nil, acc),
+    do: text_of_tokens(rest, nil, [text | acc])
+
+  defp text_of_tokens([{:start_tag, tag, _attributes, self_closing?} | rest], nil, acc)
+       when tag in @dropped_content and not self_closing?,
+       do: text_of_tokens(rest, tag, acc)
+
+  defp text_of_tokens([{:start_tag, "br", _attributes, _self_closing?} | rest], nil, acc),
+    do: text_of_tokens(rest, nil, [" " | acc])
+
+  defp text_of_tokens([_token | rest], nil, acc), do: text_of_tokens(rest, nil, acc)
 
   @doc """
   Truncates a string to `length` characters, ending in "..." when cut.

@@ -35,7 +35,7 @@ defmodule Feather.Sites.Site do
   def changeset(site, attrs) do
     site
     |> cast(attrs, [:title, :domain, :language_code, :emoji, :copyright])
-    |> update_change(:domain, &String.trim/1)
+    |> update_change(:domain, &normalize_domain/1)
     |> Feather.Validations.trim_to_nil(:emoji)
     |> validate_required([:title, :domain, :language_code, :copyright])
     |> validate_format(:domain, ~r/\A[a-zA-Z0-9\-.]+\z/,
@@ -46,6 +46,22 @@ defmodule Feather.Sites.Site do
     |> unique_constraint(:domain)
     |> unique_constraint(:public_id)
   end
+
+  @doc """
+  Normalizes what users type as a domain: trims and downcases it and drops
+  a leading `http://` or `https://` and any path, so
+  `"https://Example.com/blog"` becomes `"example.com"`.
+  """
+  @spec normalize_domain(String.t() | nil) :: String.t() | nil
+  def normalize_domain(domain) when is_binary(domain) do
+    domain
+    |> String.trim()
+    |> String.downcase()
+    |> String.replace(~r{\Ahttps?://}, "")
+    |> String.replace(~r{/.*\z}s, "")
+  end
+
+  def normalize_domain(nil), do: nil
 
   @doc false
   def create_changeset(site, attrs) do

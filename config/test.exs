@@ -18,6 +18,9 @@ config :feather, FeatherWeb.Endpoint,
   server: false
 
 config :feather,
+  # Deploys are not started in tests; Feather.Publishing sends the caller
+  # {:deploy_requested, target} instead (tests of deploys pass mode:).
+  deploy_mode: :manual,
   base_url: "http://localhost:4002",
   storage_root: Path.expand("../tmp/test_storage", __DIR__),
   staging_sites_path: Path.expand("../tmp/test_storage/staging_sites", __DIR__),
@@ -49,3 +52,7 @@ config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
 
 # The daily image cleanup does not run in tests.
 config :feather, Feather.Media.CleanupScheduler, enabled: false
+
+# Unsplash and OpenLibrary requests go through Req.Test stubs as well.
+config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}
+config :feather, :open_library_req_options, plug: {Req.Test, Feather.OpenLibrary}

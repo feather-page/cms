@@ -151,10 +151,13 @@ defmodule Feather.Media do
     end
   end
 
+  # Only the file error: running the full changeset here would add
+  # follow-up errors such as a missing content type, which mean nothing to
+  # the user.
   defp file_error(site, attrs, message) do
     changeset =
       %Image{site_id: site.id}
-      |> Image.create_changeset(attrs)
+      |> Ecto.Changeset.cast(attrs, [:filename, :byte_size])
       |> Ecto.Changeset.add_error(:file, message)
 
     {:error, %{changeset | action: :insert}}
