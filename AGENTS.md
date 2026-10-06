@@ -5,14 +5,15 @@ feather.page CMS: a Phoenix 1.8 / LiveView app with SQLite that manages small st
 ## Read first
 
 `CONTEXT.md` for the domain language, `README.md` for setup and configuration, and only the ADRs
-in `docs/adr/` that touch the area you are about to change. ADRs written for the Rails app (Gherkin
-features, ERB, Hugo) describe intent; where they name Rails mechanisms they are being revisited.
+in `docs/adr/` that touch the area you are about to change. ADR-0007 records the port from Rails;
+older ADRs that name Rails mechanisms carry a status and an "Update (2026-10-06)" section saying
+what holds in the Phoenix app.
 
 ## Workflow
 
 Test-first: describe the behaviour as an ExUnit test (context tests in `test/feather/`, LiveView
 tests in `test/feather_web/`) and get the scenario confirmed before implementing. New code arrives
-tested.
+tested (ADR-0008).
 
 Gates, all must pass before you are done (check the exit codes, not piped output):
 
@@ -20,7 +21,8 @@ Gates, all must pass before you are done (check the exit codes, not piped output
     mix format --check-formatted
     mix test
 
-`mix precommit` runs them in one go.
+`mix precommit` runs them in one go; it formats instead of only checking and also unlocks unused
+dependencies, which CI checks with `mix deps.unlock --check-unused`.
 
 ## Conventions
 

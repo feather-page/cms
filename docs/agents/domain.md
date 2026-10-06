@@ -18,14 +18,18 @@ This repo is single-context:
 /
 ├── CONTEXT.md
 ├── docs/adr/
-│   ├── 0001-bdd-feature-first-development.md
+│   ├── 0001-bdd-feature-first-development.md   (superseded by 0008)
 │   ├── 0002-documentation-structure.md
-│   ├── 0003-code-coverage-policy.md
-│   ├── 0004-hugo-theme-feature-parity.md   (superseded)
-│   └── 0005-static-sites-with-erb.md
+│   ├── 0003-code-coverage-policy.md            (deprecated)
+│   ├── 0004-hugo-theme-feature-parity.md       (superseded by 0005)
+│   ├── 0005-static-sites-with-erb.md           (EEx since the Phoenix port)
+│   ├── 0006-export-writes-through-a-sink.md
+│   ├── 0007-port-to-phoenix-and-sqlite.md
+│   └── 0008-behaviour-is-specified-in-exunit.md
+├── docs/api/          ← content API (openapi.yml)
 ├── lib/feather/       ← contexts (domain logic)
 ├── lib/feather_web/   ← Phoenix web layer (LiveView admin)
-└── test/              ← ExUnit tests
+└── test/              ← ExUnit tests, the executable specification
 ```
 
 ADRs are written in English and numbered `NNNN-<slug>.md`, seeded from `docs/adr/TEMPLATE.md`.

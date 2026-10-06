@@ -24,6 +24,8 @@ site owner's own hosting.
 *   `rclone` for deployments
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
+*   `inotify-tools` (optional, Linux) for live reload in development
+*   No Node.js: `mix setup` downloads the standalone `esbuild` binary
 
 ### Setup
 
@@ -46,7 +48,7 @@ Uploaded images are stored in `storage/` (git-ignored).
 | `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
 | `mix feather.import DIR [--force]` | One-time import of a Rails dump, see `docs/cutover.md` |
 | `mix test` | Run the test suite |
-| `mix precommit` | Compile with warnings as errors, format, run the tests |
+| `mix precommit` | Compile with warnings as errors, unlock unused deps, format, run the tests |
 | `mix ecto.reset` | Drop, migrate and seed the development database |
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`
@@ -76,9 +78,14 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
     `Media`, `Publishing`)
-*   `lib/feather_web/`: the LiveView admin, styled with [felt-css](https://felt-css.rocu.de)
-*   `priv/static_site/`: assets of the generated static sites
-*   `docs/api/openapi.yml`: the content API
+*   `lib/feather/static_site/`: static export and preview (EEx templates in `templates/`, sinks,
+    feed, sitemap)
+*   `lib/feather_web/`: the LiveView admin, styled with [felt-css](https://felt-css.rocu.de), and
+    the content API controllers
+*   `priv/static_site/`: the stylesheet of the generated static sites
+*   `test/`: ExUnit tests, the executable specification (`docs/adr/0008-*`)
+*   `docs/api/`: the content API (`openapi.yml`)
+*   `docs/cutover.md`: the one-time move from the Rails app
 *   `CONTEXT.md`, `docs/adr/`: domain language and architecture decisions
 
 ## License
