@@ -22,6 +22,7 @@ site owner's own hosting.
 
 *   Erlang/OTP 28 and Elixir 1.19
 *   `rclone` for deployments
+*   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 
 ### Setup

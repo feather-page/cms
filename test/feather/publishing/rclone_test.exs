@@ -24,7 +24,8 @@ defmodule Feather.Publishing.RcloneTest do
   test "internal: local copy into the staging sites path", %{tmp_dir: tmp} do
     target = %DeploymentTarget{provider: "internal", public_hostname: "abc.stage.localhost:4000"}
 
-    assert {:ok, "done"} = Rclone.deploy(target, "/src/", runner: runner(), staging_sites_path: tmp)
+    assert {:ok, "done"} =
+             Rclone.deploy(target, "/src/", runner: runner(), staging_sites_path: tmp)
 
     assert_received {:rclone, ["sync", "--config", config, "/src/", remote], content, mode}
     assert remote == "internal:" <> Path.join(tmp, "abc.stage.localhost")
@@ -37,7 +38,9 @@ defmodule Feather.Publishing.RcloneTest do
   test "internal: a host name that is not a host name is refused", %{tmp_dir: tmp} do
     for hostname <- ["../../etc", "a/b", "..", ""] do
       target = %DeploymentTarget{provider: "internal", public_hostname: hostname}
-      assert {:error, _} = Rclone.deploy(target, "/src/", runner: runner(), staging_sites_path: tmp)
+
+      assert {:error, _} =
+               Rclone.deploy(target, "/src/", runner: runner(), staging_sites_path: tmp)
     end
 
     refute_received {:rclone, _, _, _}
@@ -98,6 +101,7 @@ defmodule Feather.Publishing.RcloneTest do
   end
 
   test "unknown providers" do
-    assert {:error, _} = Rclone.deploy(%DeploymentTarget{provider: "s3"}, "/src/", runner: runner())
+    assert {:error, _} =
+             Rclone.deploy(%DeploymentTarget{provider: "s3"}, "/src/", runner: runner())
   end
 end

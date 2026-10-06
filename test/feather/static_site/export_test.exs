@@ -7,7 +7,9 @@ defmodule Feather.StaticSite.ExportTest do
   @published_at ~U[2024-03-05 10:00:00.000000Z]
 
   setup do
-    scope = site_scope_fixture(%{title: "My <Site>", emoji: "🦉", copyright: "© {{CurrentYear}} Me"})
+    scope =
+      site_scope_fixture(%{title: "My <Site>", emoji: "🦉", copyright: "© {{CurrentYear}} Me"})
+
     {:ok, site} = Sites.update_site(scope, scope.site, %{})
     scope = %{scope | site: site}
 
@@ -58,7 +60,9 @@ defmodule Feather.StaticSite.ExportTest do
           %{
             "type" => "list",
             "style" => "ol",
-            "items" => [%{"content" => "One", "items" => [%{"content" => "Nested", "items" => []}]}]
+            "items" => [
+              %{"content" => "One", "items" => [%{"content" => "Nested", "items" => []}]}
+            ]
           },
           %{"type" => "quote", "text" => "Simplicity.", "caption" => "Dijkstra"},
           %{"type" => "code", "code" => "<b>x</b>", "language" => "html"},
@@ -77,7 +81,9 @@ defmodule Feather.StaticSite.ExportTest do
         ]
       })
 
-    untitled = post_fixture(scope, %{title: nil, slug: nil, emoji: "💬", publish_at: @published_at})
+    untitled =
+      post_fixture(scope, %{title: nil, slug: nil, emoji: "💬", publish_at: @published_at})
+
     draft = post_fixture(scope, %{title: "Draft", slug: "/draft", draft: true})
 
     future =
@@ -87,14 +93,17 @@ defmodule Feather.StaticSite.ExportTest do
         publish_at: DateTime.add(DateTime.utc_now(), 3600)
       })
 
-    about = page_fixture(scope, %{title: "About", slug: "/about", emoji: "👋", add_to_navigation: true})
+    about =
+      page_fixture(scope, %{title: "About", slug: "/about", emoji: "👋", add_to_navigation: true})
+
     page_fixture(scope, %{title: "Books", slug: "/books", page_type: "books"})
     page_fixture(scope, %{title: "Work", slug: "/work", page_type: "projects"})
 
     homepage = Content.get_homepage(scope)
     {:ok, _} = Content.update_page(scope, homepage, %{content: [paragraph("Welcome home.")]})
 
-    ongoing = project_fixture(scope, %{title: "Ongoing", slug: "/ongoing", started_at: ~D[2020-01-01]})
+    ongoing =
+      project_fixture(scope, %{title: "Ongoing", slug: "/ongoing", started_at: ~D[2020-01-01]})
 
     project =
       project_fixture(scope, %{
@@ -198,7 +207,10 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<div class="book-title">Dune</div>)
     assert html =~ ~s(class="header-image")
     assert html =~ ~s(srcset="/images/#{c.header.public_id}/mobile_x1.webp 430w)
-    assert html =~ ~s(<a href="https://unsplash.com/@ann" target="_blank" rel="noopener">Ann Lens</a>)
+
+    assert html =~
+             ~s(<a href="https://unsplash.com/@ann" target="_blank" rel="noopener">Ann Lens</a>)
+
     assert html =~ ~s(<div class="post-date">March 06, 2024</div>)
     assert html =~ ~s(<span class="badge badge-outline">elixir</span>)
     assert html =~ ~s(<a href="https://github.com/johndoe" title="GitHub" class="socialLink">)

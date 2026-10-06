@@ -37,7 +37,9 @@ defmodule Feather.StaticSite.RoutesTest do
 
     test "projects under projects/, with or without leading slash", %{routes: r} do
       assert Routes.project_url(r, %Project{slug: "/my-project"}) == "/projects/my-project/"
-      assert Routes.project_path(r, %Project{slug: "my-project"}) == "projects/my-project/index.html"
+
+      assert Routes.project_path(r, %Project{slug: "my-project"}) ==
+               "projects/my-project/index.html"
     end
 
     test "images by variant name or file name, unknown variants raise", %{routes: r} do

@@ -27,7 +27,9 @@ defmodule Feather.StaticSite.SanitizerTest do
 
   describe "allowed markup" do
     test "keeps b, i, u, code and links with href" do
-      html = ~S|Some <b>bold</b>, <i>it</i>, <u>u</u>, <code>x</code> and <a href="https://example.com">a link</a>.|
+      html =
+        ~S|Some <b>bold</b>, <i>it</i>, <u>u</u>, <code>x</code> and <a href="https://example.com">a link</a>.|
+
       assert sanitize(html) == html
     end
 
@@ -38,7 +40,8 @@ defmodule Feather.StaticSite.SanitizerTest do
     end
 
     test "lowercases tags and attributes" do
-      assert sanitize(~S|<B>x</B><A HREF="http://x">y</A>|) == ~S|<b>x</b><a href="http://x">y</a>|
+      assert sanitize(~S|<B>x</B><A HREF="http://x">y</A>|) ==
+               ~S|<b>x</b><a href="http://x">y</a>|
     end
 
     test "keeps whitespace between elements and entities" do
@@ -90,12 +93,14 @@ defmodule Feather.StaticSite.SanitizerTest do
     test "text is escaped, entities decoded once" do
       assert sanitize("1 < 2 and 3 > 2") == "1 &lt; 2 and 3 &gt; 2"
       assert sanitize("a &amp; b &lt;x&gt;") == "a &amp; b &lt;x&gt;"
+
       assert sanitize("&lt;script&gt;alert(1)&lt;/script&gt;") ==
                "&lt;script&gt;alert(1)&lt;/script&gt;"
     end
 
     test "quotes in href values are escaped" do
       assert sanitize(~S|<a href='/a"b'>q</a>|) == ~S|<a href="/a&quot;b">q</a>|
+
       assert sanitize(~S|<a href="/x&quot; onmouseover=&quot;alert(1)">q</a>|) ==
                ~S|<a href="/x&quot; onmouseover=&quot;alert(1)">q</a>|
     end

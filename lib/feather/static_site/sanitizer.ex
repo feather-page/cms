@@ -119,8 +119,11 @@ defmodule Feather.StaticSite.Sanitizer do
     tag = String.downcase(tag)
 
     case Enum.split_while(open, &(&1 != tag)) do
-      {inner, [^tag | outer]} -> walk(rest, outer, nil, [Enum.map(inner ++ [tag], &close/1) | acc])
-      {_inner, []} -> walk(rest, open, nil, acc)
+      {inner, [^tag | outer]} ->
+        walk(rest, outer, nil, [Enum.map(inner ++ [tag], &close/1) | acc])
+
+      {_inner, []} ->
+        walk(rest, open, nil, acc)
     end
   end
 

@@ -14,7 +14,11 @@ defmodule Feather.Publishing.DeployTest do
     :ok = Publishing.subscribe_notices(scope.site)
     on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
 
-    %{scope: scope, target: target, opts: [runner: runner(), brotli: false, staging_sites_path: tmp]}
+    %{
+      scope: scope,
+      target: target,
+      opts: [runner: runner(), brotli: false, staging_sites_path: tmp]
+    }
   end
 
   defp runner(sync_result \\ {:ok, ""}) do
@@ -51,7 +55,12 @@ defmodule Feather.Publishing.DeployTest do
 
   test "a second deploy replaces the live directory", c do
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
-    {:ok, _} = Feather.Content.update_post(c.scope, Feather.Content.get_post_by_slug(c.scope, "/hello"), %{slug: "/moved"})
+
+    {:ok, _} =
+      Feather.Content.update_post(c.scope, Feather.Content.get_post_by_slug(c.scope, "/hello"), %{
+        slug: "/moved"
+      })
+
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
     live = Deploy.live_dir(c.target)
@@ -101,7 +110,10 @@ defmodule Feather.Publishing.DeployTest do
     opts = c.opts ++ [lock_retries: 10_000, lock_retry_interval: 5]
 
     waiting = Task.async(fn -> Deploy.run(c.target, opts) end)
-    wait_until(fn -> Registry.lookup(Feather.Publishing.Registry, {:waiting, c.target.id}) != [] end)
+
+    wait_until(fn ->
+      Registry.lookup(Feather.Publishing.Registry, {:waiting, c.target.id}) != []
+    end)
 
     assert {:ok, :coalesced} = Deploy.run(c.target, opts)
 

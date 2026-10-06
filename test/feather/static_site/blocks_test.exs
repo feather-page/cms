@@ -59,7 +59,9 @@ defmodule Feather.StaticSite.BlocksTest do
     assert html(block, c) ==
              "<ol><li>First<ol><li>Nested <i>one</i></li></ol></li><li>Second</li></ol>"
 
-    assert html(%{"type" => "list", "style" => "ul", "items" => ["a"]}, c) == "<ul><li>a</li></ul>"
+    assert html(%{"type" => "list", "style" => "ul", "items" => ["a"]}, c) ==
+             "<ul><li>a</li></ul>"
+
     assert html(%{"type" => "list", "style" => "ul", "items" => []}, c) == ""
   end
 
