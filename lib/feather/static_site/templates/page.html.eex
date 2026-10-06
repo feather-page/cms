@@ -1,0 +1,11 @@
+<%= Blocks.render(@page.content, @ctx) %>
+
+<%= tags(%{tags: Content.tag_list(@page), class: "page-tags"}) %>
+
+<%= if @page.page_type == "books" do %>
+<%= books_list(%{data: @data, routes: @routes}) %>
+<% end %>
+
+<%= if @page.page_type == "projects" do %>
+<%= projects_list(%{projects: @data.projects, routes: @routes}) %>
+<% end %>

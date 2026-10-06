@@ -91,6 +91,15 @@ defmodule FeatherWeb.Router do
     post "/invitations/:token/accept", InvitationController, :accept
   end
 
+  # The preview of a site's static pages: logged-in users with access to
+  # the target's site (checked in the controller).
+  scope "/preview", FeatherWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/:target_id", PreviewController, :show
+    get "/:target_id/*path", PreviewController, :show
+  end
+
   scope "/", FeatherWeb do
     pipe_through [:browser]
 

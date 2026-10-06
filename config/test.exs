@@ -18,6 +18,9 @@ config :feather, FeatherWeb.Endpoint,
   server: false
 
 config :feather,
+  # Deploys are not started in tests; Feather.Publishing sends the caller
+  # {:deploy_requested, target} instead (tests of deploys pass mode:).
+  deploy_mode: :manual,
   base_url: "http://localhost:4002",
   storage_root: Path.expand("../tmp/test_storage", __DIR__),
   staging_sites_path: Path.expand("../tmp/test_storage/staging_sites", __DIR__),
