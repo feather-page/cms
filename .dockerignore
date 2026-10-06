@@ -1,5 +1,5 @@
 # Only what the release build needs goes into the build context:
-# mix.exs, mix.lock, config/, lib/, priv/, assets/, vendor/, rel/.
+# mix.exs, mix.lock, config/, lib/, priv/, assets/, rel/.
 
 /.git/
 /.github/
