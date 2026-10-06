@@ -330,15 +330,42 @@ defmodule Feather.Content.Blocks do
   defp text_length(_text), do: 0
 
   @doc """
-  Removes HTML tags from a string and decodes entities.
+  Removes HTML tags from a string and decodes entities. Whitespace between
+  tags is kept (`"<b>a</b> <i>b</i>"` becomes `"a b"`), a `<br>` becomes a
+  space and the content of `<script>` and `<style>` is dropped.
+
+  Uses Floki's mochiweb tokenizer directly: `Floki.parse_fragment/1` drops
+  whitespace-only text nodes, which glued words together.
   """
   @spec strip_tags(String.t()) :: String.t()
   def strip_tags(html) when is_binary(html) do
-    case Floki.parse_fragment(html) do
-      {:ok, nodes} -> Floki.text(nodes)
-      {:error, _} -> html
-    end
+    html
+    |> :floki_mochi_html.tokens()
+    |> text_of_tokens(nil, [])
+  rescue
+    _exception -> html
   end
+
+  @dropped_content ~w(script style)
+
+  defp text_of_tokens([], _dropping, acc), do: acc |> Enum.reverse() |> IO.iodata_to_binary()
+
+  defp text_of_tokens([{:end_tag, tag} | rest], tag, acc), do: text_of_tokens(rest, nil, acc)
+
+  defp text_of_tokens([_token | rest], dropping, acc) when is_binary(dropping),
+    do: text_of_tokens(rest, dropping, acc)
+
+  defp text_of_tokens([{:data, text, _whitespace?} | rest], nil, acc),
+    do: text_of_tokens(rest, nil, [text | acc])
+
+  defp text_of_tokens([{:start_tag, tag, _attributes, self_closing?} | rest], nil, acc)
+       when tag in @dropped_content and not self_closing?,
+       do: text_of_tokens(rest, tag, acc)
+
+  defp text_of_tokens([{:start_tag, "br", _attributes, _self_closing?} | rest], nil, acc),
+    do: text_of_tokens(rest, nil, [" " | acc])
+
+  defp text_of_tokens([_token | rest], nil, acc), do: text_of_tokens(rest, nil, acc)
 
   @doc """
   Truncates a string to `length` characters, ending in "..." when cut.
