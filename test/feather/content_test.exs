@@ -169,6 +169,31 @@ defmodule Feather.ContentTest do
       %{"blocks" => [block]} = Content.editor_js(scope, post)
       assert block["data"]["title"] == "Real title"
     end
+
+    test "content is stored sanitized", %{scope: scope} do
+      payload = ~S|<img src=x onerror="alert(1)"><b>b</b> <a href="javascript:alert(1)">a</a>|
+      post = post_fixture(scope, content: [paragraph(payload)])
+
+      assert [%{"text" => "<b>b</b> <a>a</a>"}] = post.content
+      assert [%{"text" => "<b>b</b> <a>a</a>"}] = Content.get_post!(scope, post.public_id).content
+    end
+
+    test "editor_js/2 sanitizes content stored before sanitizing was in place", %{scope: scope} do
+      post = post_fixture(scope)
+      payload = ~S|<img src=x onerror="alert(1)"><i>kept</i>|
+
+      # Raw SQL: update_all would cast (and sanitize) the content.
+      Repo.query!("UPDATE posts SET content = ? WHERE public_id = ?", [
+        Jason.encode!([%{"id" => "p1", "type" => "paragraph", "text" => payload}]),
+        post.public_id
+      ])
+
+      post = Content.get_post!(scope, post.public_id)
+      assert [%{"text" => ^payload}] = post.content
+
+      assert %{"blocks" => [%{"data" => %{"text" => "<i>kept</i>"}}]} =
+               Content.editor_js(scope, post)
+    end
   end
 
   describe "embedded images" do

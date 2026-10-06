@@ -165,6 +165,110 @@ defmodule Feather.Content.BlocksTest do
     end
   end
 
+  describe "sanitizing inline HTML" do
+    @payload ~S|<img src=x onerror="window.__xss=1">ok <b>b</b> <i>i</i> <u>u</u> | <>
+               ~S|<code>c</code> <a href="https://e.com" onclick="x()">a</a>|
+    @clean ~S|ok <b>b</b> <i>i</i> <u>u</u> <code>c</code> <a href="https://e.com">a</a>|
+
+    @dirty_blocks [
+      %{"id" => "p", "type" => "paragraph", "text" => @payload},
+      %{"id" => "h", "type" => "header", "level" => 2, "text" => @payload},
+      %{"id" => "q", "type" => "quote", "text" => @payload, "caption" => @payload},
+      %{
+        "id" => "l",
+        "type" => "list",
+        "style" => "ul",
+        "items" => [@payload, %{"content" => @payload, "items" => [%{"content" => @payload}]}]
+      },
+      %{"id" => "t", "type" => "table", "content" => [[@payload, "x"]], "with_headings" => true},
+      %{"id" => "i", "type" => "image", "image_id" => "IMAGE1234567", "caption" => @payload},
+      %{
+        "id" => "e",
+        "type" => "embed",
+        "service" => "youtube",
+        "source" => "javascript:alert(1)",
+        "embed" => "javascript:window.__xss=1",
+        "caption" => @payload
+      }
+    ]
+
+    test "normalize/1 sanitizes every inline HTML field" do
+      [p, h, q, l, t, i, e] = Blocks.normalize(@dirty_blocks)
+
+      assert p["text"] == @clean
+      assert h["text"] == @clean
+      assert {q["text"], q["caption"]} == {@clean, @clean}
+
+      assert [
+               %{"content" => @clean, "items" => []},
+               %{"content" => @clean, "items" => [%{"content" => @clean, "items" => []}]}
+             ] = l["items"]
+
+      assert t["content"] == [[@clean, "x"]]
+      assert i["caption"] == @clean
+      assert e["caption"] == @clean
+      assert {e["source"], e["embed"]} == {nil, nil}
+    end
+
+    test "keeps safe embed URLs" do
+      [e] =
+        Blocks.normalize([
+          %{
+            "type" => "embed",
+            "service" => "youtube",
+            "source" => "https://www.youtube.com/watch?v=x",
+            "embed" => "https://www.youtube.com/embed/x"
+          }
+        ])
+
+      assert e["source"] == "https://www.youtube.com/watch?v=x"
+      assert e["embed"] == "https://www.youtube.com/embed/x"
+    end
+
+    test "from_editor_js/1 sanitizes" do
+      editor_js = %{
+        "blocks" => [
+          %{"type" => "paragraph", "data" => %{"text" => @payload}},
+          %{"type" => "table", "data" => %{"content" => [[@payload]]}},
+          %{"type" => "list", "data" => %{"style" => "ordered", "items" => [@payload]}},
+          %{
+            "type" => "image",
+            "data" => %{
+              "file" => %{"url" => "/sites/x/images/IMAGE1234567"},
+              "caption" => @payload
+            }
+          }
+        ]
+      }
+
+      assert [
+               %{"text" => @clean},
+               %{"content" => [[@clean]]},
+               %{"items" => [%{"content" => @clean}]},
+               %{"caption" => @clean}
+             ] = Blocks.from_editor_js(editor_js)
+    end
+
+    test "to_editor_js/3 sanitizes content stored before sanitizing was in place" do
+      %{"blocks" => blocks} = Blocks.to_editor_js(@dirty_blocks, @site)
+
+      json = Jason.encode!(blocks)
+      refute json =~ "onerror"
+      refute json =~ "javascript:"
+      assert json =~ "<b>b</b>"
+    end
+
+    test "Editor.js markup passes unchanged" do
+      text =
+        ~S|It's <b>b</b>&nbsp;<i>i</i> <u class="cdx-underline">u</u> | <>
+          ~S|<code class="inline-code">c</code> <a href="https://e.com/?a=1&amp;b=2" | <>
+          ~S|target="_blank" rel="nofollow">a</a><br>next &amp; &lt;line&gt;|
+
+      blocks = [%{"id" => "p", "type" => "paragraph", "text" => text}]
+      assert Blocks.normalize(blocks) == blocks
+    end
+  end
+
   describe "helpers" do
     test "image_ids/1 and book_ids/1" do
       assert Blocks.image_ids(@blocks) == ["DrqGSEC4zyvZ"]

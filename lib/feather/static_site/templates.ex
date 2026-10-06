@@ -20,10 +20,10 @@ defmodule Feather.StaticSite.Templates do
 
   alias Feather.Books.Book
   alias Feather.Content
-  alias Feather.Content.Project
+  alias Feather.Content.{HTML, Project}
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
-  alias Feather.StaticSite.{Blocks, Routes, Sanitizer, SiteData}
+  alias Feather.StaticSite.{Blocks, Routes, SiteData}
 
   @css_path Path.expand("../../../priv/static_site/static_site.css", __DIR__)
   @external_resource @css_path
@@ -111,7 +111,7 @@ defmodule Feather.StaticSite.Templates do
     {:safe,
      (text || "")
      |> String.replace("{{CurrentYear}}", Integer.to_string(year))
-     |> Sanitizer.sanitize()}
+     |> HTML.sanitize()}
   end
 
   @doc """
@@ -128,7 +128,7 @@ defmodule Feather.StaticSite.Templates do
       |> Enum.map(fn paragraph ->
         html =
           paragraph
-          |> Sanitizer.sanitize()
+          |> HTML.sanitize()
           |> String.replace(~r/([^\n]\n)(?=[^\n])/, "\\1<br />")
 
         ["<p>", html, "</p>"]
@@ -143,7 +143,7 @@ defmodule Feather.StaticSite.Templates do
   end
 
   defp unsplash_credit?(%Image{} = image),
-    do: Image.unsplash?(image) and Sanitizer.safe_url?(Image.unsplash_photographer_url(image))
+    do: Image.unsplash?(image) and HTML.safe_url?(Image.unsplash_photographer_url(image))
 
   defp unsplash_credit?(_image), do: false
 
@@ -176,7 +176,7 @@ defmodule Feather.StaticSite.Templates do
   end
 
   defp project_links(%Project{links: links}) when is_list(links),
-    do: Enum.filter(links, &(present?(&1.url) and Sanitizer.safe_url?(&1.url)))
+    do: Enum.filter(links, &(present?(&1.url) and HTML.safe_url?(&1.url)))
 
   defp project_links(_project), do: []
 

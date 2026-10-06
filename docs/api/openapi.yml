@@ -15,6 +15,13 @@ info:
     Content is stored as an array of typed blocks. Each block has a `type` field
     that determines which additional fields are available. See the block type
     schemas in this specification for details.
+
+    Inline HTML (paragraph, header and quote text, captions, list items, table
+    cells) is sanitized when it is stored and returned sanitized: only `b`, `i`,
+    `u`, `a` (with a relative, http, https, mailto or tel `href`), `code` and
+    `br` survive; other elements are removed but their text is kept (`script`
+    and `style` with their content). Embed URLs that are not safe link targets
+    become null.
   version: "1.0"
 
 servers:

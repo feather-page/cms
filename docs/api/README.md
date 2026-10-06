@@ -35,7 +35,7 @@ Generic CRUD REST API for managing posts, pages, and images. Designed for AI-dri
 Content is stored as an array of typed blocks. Each block is validated against its JSON Schema defined in `docs/api/openapi.yml`:
 
 - **paragraph** - Text with optional formatting
-- **header** - Heading level 1-6
+- **header** - Heading level 2-4
 - **code** - Code with language
 - **image** - Image reference with caption
 - **quote** - Blockquote with attribution
@@ -43,6 +43,15 @@ Content is stored as an array of typed blocks. Each block is validated against i
 - **table** - Rows with optional header
 - **embed** - Embedded media (service, source, size, caption)
 - **book** - Book reference from catalog
+
+Inline HTML (paragraph, header and quote text, captions, list items, table cells) is
+sanitized when content is stored, so responses return the sanitized HTML, not the input
+verbatim: only `b`, `i`, `u`, `a` (with a relative, `http`, `https`, `mailto` or `tel`
+`href`), `code` and `br` survive (plus the attributes the admin editor writes:
+`target="_blank"`, `rel="nofollow"` and its classes `inline-code` / `cdx-underline`).
+Other elements are removed with their text kept, `script` and `style` with their content.
+Text is re-serialized like a browser's `innerHTML` (`&amp;`, `&lt;`, `&gt;`, `&nbsp;`).
+Embed `source` and `embed` URLs that are not such safe link targets become `null`.
 
 ## Key Files
 

@@ -1,9 +1,7 @@
-defmodule Feather.StaticSite.SanitizerTest do
+defmodule Feather.Content.HTMLTest do
   use ExUnit.Case, async: true
 
-  alias Feather.StaticSite.Sanitizer
-
-  import Sanitizer, only: [sanitize: 1, safe_url?: 1]
+  import Feather.Content.HTML, only: [sanitize: 1, sanitize: 2, safe_url?: 1]
 
   # No markup that could execute survives: no event handlers, no script or
   # style elements, no dangerous URLs, no elements outside the allow list.
@@ -169,6 +167,69 @@ defmodule Feather.StaticSite.SanitizerTest do
 
     test "invalid UTF-8 is removed" do
       assert sanitize(<<"a", 0xFF, "b">>) == "ab"
+    end
+  end
+
+  describe "escaping like innerHTML" do
+    test "quotes and apostrophes in text stay literal, no-break spaces become &nbsp;" do
+      assert sanitize(~S|It's "quoted"|) == ~S|It's "quoted"|
+      assert sanitize("a&nbsp;b\u00A0c") == "a&nbsp;b&nbsp;c"
+    end
+
+    test "sanitizing is idempotent" do
+      for html <- [
+            ~S|<b>x</b> &amp; &lt;y&gt; it's&nbsp;<a href="/a?b=1&amp;c=2">l</a>|,
+            "<img src=x onerror=alert(1)>t<br>u",
+            ~S|<a href="javascript:alert(1)" target="_blank">x</a>|
+          ],
+          mode <- [:published, :editor] do
+        once = sanitize(html, mode)
+        assert sanitize(once, mode) == once
+      end
+    end
+  end
+
+  describe "editor mode" do
+    test "keeps what Editor.js writes" do
+      html =
+        ~S|a<br><code class="inline-code">c</code> <u class="cdx-underline">u</u> | <>
+          ~S|<a href="https://e.com" target="_blank" rel="nofollow">l</a>|
+
+      assert sanitize(html, :editor) == html
+    end
+
+    test "the published mode strips the editor extras" do
+      html =
+        ~S|a<br><code class="inline-code">c</code> <a href="/x" target="_blank" rel="nofollow">l</a>|
+
+      assert sanitize(html) == ~S|a<code>c</code> <a href="/x">l</a>|
+    end
+
+    test "other attribute values and elements are removed" do
+      assert sanitize(~S|<code class="x" onclick="a()">c</code>|, :editor) == "<code>c</code>"
+      assert sanitize(~S|<u class="inline-code">u</u>|, :editor) == "<u>u</u>"
+
+      assert sanitize(~S|<a href="/x" target="evil" rel="opener">l</a>|, :editor) ==
+               ~S|<a href="/x">l</a>|
+
+      assert sanitize(~S|<br onclick="x()">|, :editor) == "<br>"
+      assert sanitize("<img src=x onerror=alert(1)><p>p</p>", :editor) == "p"
+    end
+
+    test "no XSS vector survives" do
+      for vector <- @vectors do
+        output = sanitize(vector, :editor)
+        {:ok, nodes} = Floki.parse_fragment(output)
+
+        for {tag, attributes, _children} <- Floki.find(nodes, "*") do
+          assert tag in ~w(b i u a code br), "unexpected <#{tag}> in #{inspect(output)}"
+
+          for {name, value} <- attributes do
+            assert name in ~w(href target rel class), "unexpected #{name} in #{inspect(output)}"
+            if name == "href", do: assert(safe_url?(value))
+          end
+        end
+      end
     end
   end
 

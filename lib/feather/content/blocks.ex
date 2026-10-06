@@ -17,11 +17,22 @@ defmodule Feather.Content.Blocks do
     * `embed` - `service`, `source`, `embed`, `width`, `height`, `caption`
     * `book` - `book_public_id`, `title`, `author`, `cover_url`, `emoji`
 
+  Inline HTML (paragraph, header and quote text, quote, image and embed
+  captions, list items, table cells) is sanitized with
+  `Feather.Content.HTML.sanitize(html, :editor)` and embed URLs that are
+  not safe link targets are dropped whenever content is normalized: before
+  it is stored (admin editor, content API, import) and before it is handed
+  to the admin editor, which renders it with `innerHTML`. Content stored
+  before this was in place is therefore sanitized on its way to the
+  editor as well.
+
   Blocks of unknown types are dropped. `from_editor_js/1` and
   `to_editor_js/3` convert from and to the Editor.js format used by the
   admin editor; `from_editor_js(to_editor_js(blocks, site))` returns the
   blocks unchanged.
   """
+
+  alias Feather.Content.HTML
 
   @type block :: %{required(String.t()) => term()}
 
@@ -53,38 +64,43 @@ defmodule Feather.Content.Blocks do
     end)
   end
 
-  defp normalize_block("paragraph", b), do: %{"type" => "paragraph", "text" => b["text"]}
+  defp normalize_block("paragraph", b), do: %{"type" => "paragraph", "text" => inline(b["text"])}
 
   defp normalize_block("header", b),
-    do: %{"type" => "header", "level" => header_level(b["level"]), "text" => b["text"]}
+    do: %{"type" => "header", "level" => header_level(b["level"]), "text" => inline(b["text"])}
 
   defp normalize_block("list", b),
     do: %{"type" => "list", "style" => list_style(b["style"]), "items" => list_items(b["items"])}
 
   defp normalize_block("quote", b),
-    do: %{"type" => "quote", "text" => b["text"], "caption" => b["caption"]}
+    do: %{"type" => "quote", "text" => inline(b["text"]), "caption" => inline(b["caption"])}
 
   defp normalize_block("code", b),
     do: %{"type" => "code", "code" => b["code"], "language" => code_language(b["language"])}
 
   defp normalize_block("image", b) do
     if is_binary(b["image_id"]) do
-      %{"type" => "image", "image_id" => b["image_id"], "caption" => b["caption"] || ""}
+      %{"type" => "image", "image_id" => b["image_id"], "caption" => inline(b["caption"]) || ""}
     end
   end
 
-  defp normalize_block("table", b),
-    do: %{"type" => "table", "content" => b["content"], "with_headings" => b["with_headings"]}
+  defp normalize_block("table", b) do
+    %{
+      "type" => "table",
+      "content" => table_content(b["content"]),
+      "with_headings" => b["with_headings"]
+    }
+  end
 
   defp normalize_block("embed", b) do
     %{
       "type" => "embed",
       "service" => b["service"],
-      "source" => b["source"],
-      "embed" => b["embed"],
+      "source" => safe_url(b["source"]),
+      "embed" => safe_url(b["embed"]),
       "width" => b["width"],
       "height" => b["height"],
-      "caption" => b["caption"] || ""
+      "caption" => inline(b["caption"]) || ""
     }
   end
 
@@ -117,6 +133,12 @@ defmodule Feather.Content.Blocks do
   end
 
   def from_editor_js(%{} = data) do
+    data
+    |> editor_js_blocks()
+    |> normalize()
+  end
+
+  defp editor_js_blocks(data) do
     data
     |> stringify_keys()
     |> Map.get("blocks", [])
@@ -399,18 +421,34 @@ defmodule Feather.Content.Blocks do
   defp list_items(items) when is_list(items) do
     Enum.map(items, fn
       item when is_binary(item) ->
-        %{"content" => item, "items" => []}
+        %{"content" => inline(item), "items" => []}
 
       %{} = item ->
         item = stringify_keys(item)
-        %{"content" => item["content"] || "", "items" => list_items(item["items"])}
+        %{"content" => inline(item["content"]) || "", "items" => list_items(item["items"])}
 
       other ->
-        %{"content" => to_string(other), "items" => []}
+        %{"content" => inline(other) || "", "items" => []}
     end)
   end
 
   defp list_items(_items), do: []
+
+  # Inline HTML as the admin editor renders it (innerHTML): sanitized.
+  defp inline(nil), do: nil
+  defp inline(html) when is_binary(html), do: HTML.sanitize(html, :editor)
+  defp inline(value) when is_number(value) or is_boolean(value), do: to_string(value)
+  defp inline(_value), do: nil
+
+  defp table_content(rows) when is_list(rows) do
+    for row <- rows, is_list(row), do: Enum.map(row, &(inline(&1) || ""))
+  end
+
+  defp table_content(_rows), do: nil
+
+  # The editor puts embed URLs into an iframe's src.
+  defp safe_url(url) when is_binary(url), do: if(HTML.safe_url?(url), do: url)
+  defp safe_url(_url), do: nil
 
   defp stringify_keys(%{} = map) do
     Map.new(map, fn {key, value} -> {to_string(key), value} end)

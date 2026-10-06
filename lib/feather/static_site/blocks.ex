@@ -5,7 +5,7 @@ defmodule Feather.StaticSite.Blocks do
   look the same.
 
   Inline HTML (paragraphs, headers, list items, quotes, captions, table
-  cells) goes through `Feather.StaticSite.Sanitizer`; everything else is
+  cells) goes through `Feather.Content.HTML.sanitize/1`; everything else is
   escaped. Image and book blocks look their records up in the maps given
   in the context (by public id) and render nothing when the record is
   missing.
@@ -13,8 +13,9 @@ defmodule Feather.StaticSite.Blocks do
 
   alias Feather.Books.Book
   alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Content.HTML
   alias Feather.Media.Image
-  alias Feather.StaticSite.{Routes, Sanitizer}
+  alias Feather.StaticSite.Routes
 
   @enforce_keys [:routes]
   defstruct [:routes, images: %{}, books: %{}]
@@ -90,7 +91,7 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   def render_block(%{"type" => "embed"} = block, _context) do
-    if is_binary(block["embed"]) and Sanitizer.safe_url?(block["embed"]) do
+    if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]) do
       src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")
 
       caption =
@@ -211,7 +212,7 @@ defmodule Feather.StaticSite.Blocks do
   defp optional_attribute(_name, nil), do: []
   defp optional_attribute(name, value), do: [" ", name, "=\"", escape(value), "\""]
 
-  defp sanitize(html), do: Sanitizer.sanitize(html)
+  defp sanitize(html), do: HTML.sanitize(html)
 
   defp escape(nil), do: ""
 

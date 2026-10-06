@@ -40,7 +40,7 @@
     <footer>
       <hr />
       <p>
-        <%= for link <- @social_links, Sanitizer.safe_url?(link.url) do %>
+        <%= for link <- @social_links, HTML.safe_url?(link.url) do %>
         <a href="<%= link.url %>" title="<%= link.name %>" class="socialLink">
           <%= raw(SocialMediaService.svg(link.icon) || "") %>
         </a>

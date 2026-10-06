@@ -146,6 +146,37 @@ defmodule FeatherWeb.Api.V1.PostControllerTest do
       assert [%{"type" => "header", "level" => 2}, %{"type" => "paragraph"}] = post.content
     end
 
+    test "stores and returns inline HTML sanitized", %{conn: conn, path: path} do
+      payload =
+        ~S|<img src=x onerror="alert(1)">It's <b>b</b> <i>i</i> <u>u</u> <code>c</code> | <>
+          ~S|<a href="https://e.com" onclick="x()">a</a><script>alert(1)</script>|
+
+      clean = ~S|It's <b>b</b> <i>i</i> <u>u</u> <code>c</code> <a href="https://e.com">a</a>|
+
+      conn =
+        json_request(conn, :post, path, %{
+          post: %{
+            title: "XSS",
+            content: [
+              %{type: "paragraph", text: payload},
+              %{type: "list", style: "ul", items: [payload]},
+              %{type: "table", content: [[payload]]}
+            ]
+          }
+        })
+
+      body = assert_openapi_response(conn, "post", "/sites/{site_id}/posts", 201)
+
+      assert [
+               %{"text" => ^clean},
+               %{"items" => [%{"content" => ^clean}]},
+               %{"content" => [[^clean]]}
+             ] = body["data"]["content"]
+
+      conn = get(recycle(conn), "#{path}/#{body["data"]["id"]}")
+      assert [%{"text" => ^clean} | _] = json_response(conn, 200)["data"]["content"]
+    end
+
     test "creates a post without content", %{conn: conn, path: path} do
       conn = json_request(conn, :post, path, %{post: %{title: "No content"}})
 

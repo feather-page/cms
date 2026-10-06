@@ -284,6 +284,36 @@ defmodule FeatherWeb.PostLiveTest do
       assert [%{"text" => "Keep me"}] = Content.get_post!(scope, post.public_id).content
     end
 
+    test "sanitizes inline HTML before it is stored and handed to the editor", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope)
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+
+      payload = ~S|<img src=x onerror="window.__xss=1"><b>bold</b> <a href="/x">link</a>|
+
+      lv
+      |> form("#post-form")
+      |> render_submit(%{"post" => %{"content" => editor_json(payload)}})
+
+      assert [%{"text" => ~S|<b>bold</b> <a href="/x">link</a>|}] =
+               Content.get_post!(scope, post.public_id).content
+
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+
+      [data] =
+        lv
+        |> element("#post-content-editor-input")
+        |> render()
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.attribute("value")
+
+      refute data =~ "onerror"
+      assert data =~ "<b>bold</b>"
+    end
+
     test "a post of another site is not found", %{conn: conn, site: site} do
       other_post = post_fixture(site_scope_fixture())
 
