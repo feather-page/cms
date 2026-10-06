@@ -52,8 +52,10 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-# Image downloads go through Req.Test stubs named Feather.Media.
+# Image downloads go through Req.Test stubs named Feather.Media, host names
+# resolve without DNS (see test/support/fake_resolver.ex).
 config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
+config :feather, :image_fetch_resolver, {Feather.FakeResolver, :resolve}
 
 # The daily image cleanup does not run in tests.
 config :feather, Feather.Media.CleanupScheduler, enabled: false

@@ -17,12 +17,10 @@ defmodule Feather.Media do
 
   alias Feather.Repo
   alias Feather.Accounts.Scope
-  alias Feather.Media.{Cleanup, Image, Processor, UrlChecker, Variants}
+  alias Feather.Media.{Cleanup, Fetcher, Image, Processor, Variants}
   alias Feather.Sites.Site
 
   @max_byte_size 25 * 1024 * 1024
-  @fetch_timeout 5_000
-  @max_redirects 3
 
   @doc "The largest accepted image file in bytes (25 MB)."
   @spec max_byte_size() :: pos_integer()
@@ -200,9 +198,17 @@ defmodule Feather.Media do
   Fetches an image from a URL and creates it like an upload, recording the
   URL as `source_url`.
 
-  Only http(s) URLs on ports 80/443 that do not point at local or private
-  addresses are fetched (`Feather.Media.UrlChecker`), with a 5 second
-  timeout and at most 3 redirects, each of which is checked as well.
+  `Feather.Media.Fetcher` does the download: only http(s) URLs on ports
+  80/443 whose host resolves to public addresses only, connecting to the
+  checked address, at most 3 redirects (each checked as well), at most
+  25 MB and 30 seconds.
+
+  Errors about the URL as given (scheme, port, `localhost`, a private IP
+  literal) name the problem; every failure after that (resolving, a private
+  address behind a name, the connection, the upstream status, size, time,
+  redirects) is the generic `"Image could not be fetched"`, so the result
+  does not tell the caller anything about the network the server sees. The
+  details are logged.
   """
   @spec create_image_from_url(Scope.t() | Site.t(), String.t(), map()) ::
           {:ok, Image.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -212,7 +218,7 @@ defmodule Feather.Media do
     do: create_image_from_url(site, url, attrs)
 
   def create_image_from_url(%Site{} = site, url, attrs) do
-    with {:ok, body} <- fetch(url, @max_redirects) do
+    with {:ok, body} <- fetch(url) do
       tmp = Path.join(System.tmp_dir!(), "feather-fetch-#{Feather.PublicId.generate()}")
 
       try do
@@ -226,39 +232,17 @@ defmodule Feather.Media do
     end
   end
 
-  defp fetch(url, redirects_left) do
-    with {:ok, uri} <- UrlChecker.check(url) do
-      options =
-        [
-          url: URI.to_string(uri),
-          redirect: false,
-          retry: false,
-          receive_timeout: @fetch_timeout,
-          connect_options: [timeout: @fetch_timeout],
-          decode_body: false
-        ]
-        |> Keyword.merge(Application.get_env(:feather, :image_fetch_req_options, []))
+  defp fetch(url) do
+    case Fetcher.fetch(url, @max_byte_size) do
+      {:ok, body} ->
+        {:ok, body}
 
-      case Req.get(options) do
-        {:ok, %Req.Response{status: status} = response} when status in 200..299 ->
-          {:ok, response.body}
+      {:error, {:invalid_url, message}} ->
+        {:error, message}
 
-        {:ok, %Req.Response{status: status} = response}
-        when status in [301, 302, 303, 307, 308] ->
-          location = Req.Response.get_header(response, "location") |> List.first()
-
-          cond do
-            is_nil(location) -> {:error, "Redirect without location: #{url}"}
-            redirects_left <= 0 -> {:error, "Too many redirects: #{url}"}
-            true -> fetch(URI.merge(uri, location) |> URI.to_string(), redirects_left - 1)
-          end
-
-        {:ok, %Req.Response{status: status}} ->
-          {:error, "Failed to fetch image from #{url}. Status: #{status}"}
-
-        {:error, exception} ->
-          {:error, "Failed to fetch image from #{url}. Error: #{Exception.message(exception)}"}
-      end
+      {:error, reason} ->
+        Logger.info("Image could not be fetched from #{inspect(url)}: #{inspect(reason)}")
+        {:error, "Image could not be fetched"}
     end
   end
 

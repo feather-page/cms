@@ -96,7 +96,7 @@ defmodule Feather.AdminContentTest do
       assert {:error, message} =
                Books.attach_cover_from_url(scope, book, "https://example.com/x.png")
 
-      assert message =~ "404"
+      assert message == "Image could not be fetched"
     end
 
     test "get_review_post/2 returns the review post", %{scope: scope} do

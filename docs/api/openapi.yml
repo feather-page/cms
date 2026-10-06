@@ -836,7 +836,12 @@ paths:
                 url:
                   type: string
                   format: uri
-                  description: Public URL to download the image from.
+                  description: |
+                    Public URL to download the image from: http or https on port 80
+                    or 443, a host that resolves to public addresses only, at most
+                    3 redirects, 25 MB and 30 seconds. A URL refused as given
+                    (scheme, port, localhost, a private IP) names the problem in
+                    the error; any later failure is "Image could not be fetched".
       responses:
         "201":
           description: Image created.

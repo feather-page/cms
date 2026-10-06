@@ -98,7 +98,7 @@ defmodule FeatherWeb.Api.V1.ImageControllerTest do
 
       conn = json_request(conn, :post, path, %{url: "https://example.com/missing.jpg"})
 
-      assert json_response(conn, 422)["error"] =~ "Failed to fetch image"
+      assert json_response(conn, 422)["error"] == "Image could not be fetched"
     end
 
     test "rejects a download that is not an image", %{conn: conn, path: path} do

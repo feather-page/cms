@@ -123,6 +123,13 @@ defmodule Feather.MediaTest do
   end
 
   describe "create_image_from_url/3" do
+    # Serves a PNG for every request: a URL that is refused must be refused
+    # before it is requested.
+    defp stub_png_server do
+      png = File.read!(test_image_path(4, 3))
+      Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 200, png))
+    end
+
     test "fetches the image and records the source", %{scope: scope} do
       png = File.read!(test_image_path(40, 30))
 
@@ -156,7 +163,58 @@ defmodule Feather.MediaTest do
         |> Plug.Conn.send_resp(302, "")
       end)
 
-      assert {:error, "Forbidden hostname" <> _} =
+      assert {:error, "Image could not be fetched"} =
+               Media.create_image_from_url(scope, "https://images.example.com/a.png")
+    end
+
+    test "refuses IPv4 literals in non-canonical forms", %{scope: scope} do
+      stub_png_server()
+
+      for url <- [
+            "http://2130706433/a.png",
+            "http://127.1/a.png",
+            "http://0177.0.0.1/a.png",
+            "http://0x7f.0.0.1/a.png",
+            "http://0x7f000001/a.png",
+            "http://127.0.0.01/a.png"
+          ] do
+        assert {:error, "Forbidden IP" <> _} = Media.create_image_from_url(scope, url), url
+      end
+
+      assert Media.list_images(scope) == []
+    end
+
+    test "refuses host names that resolve to private addresses", %{scope: scope} do
+      stub_png_server()
+
+      for url <- [
+            "http://127.0.0.1.nip.io/a.png",
+            "http://169.254.169.254.nip.io/latest",
+            "http://10.0.0.1.nip.io/a.png",
+            "http://private-and-public.example/a.png",
+            "http://unresolvable.example/a.png"
+          ] do
+        assert {:error, "Image could not be fetched"} = Media.create_image_from_url(scope, url),
+               url
+      end
+
+      assert Media.list_images(scope) == []
+    end
+
+    test "a redirect to a name that resolves to a private address is refused", %{scope: scope} do
+      Req.Test.stub(Feather.Media, fn conn ->
+        case conn.host do
+          "images.example.com" ->
+            conn
+            |> Plug.Conn.put_resp_header("location", "http://127.0.0.1.nip.io/secret.png")
+            |> Plug.Conn.send_resp(302, "")
+
+          other ->
+            flunk("requested #{other}")
+        end
+      end)
+
+      assert {:error, "Image could not be fetched"} =
                Media.create_image_from_url(scope, "https://images.example.com/a.png")
     end
 
@@ -167,14 +225,22 @@ defmodule Feather.MediaTest do
         |> Plug.Conn.send_resp(302, "")
       end)
 
-      assert {:error, "Too many redirects" <> _} =
+      assert {:error, "Image could not be fetched"} =
                Media.create_image_from_url(scope, "https://images.example.com/a.png")
     end
 
-    test "reports HTTP errors", %{scope: scope} do
+    test "reports HTTP errors without the upstream status", %{scope: scope} do
       Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 404, "not found"))
 
-      assert {:error, "Failed to fetch image" <> _} =
+      assert {:error, "Image could not be fetched"} =
+               Media.create_image_from_url(scope, "https://images.example.com/a.png")
+    end
+
+    test "refuses bodies over 25 MB", %{scope: scope} do
+      big = :binary.copy(<<0>>, Media.max_byte_size() + 1)
+      Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 200, big))
+
+      assert {:error, "Image could not be fetched"} =
                Media.create_image_from_url(scope, "https://images.example.com/a.png")
     end
   end
