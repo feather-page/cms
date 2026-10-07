@@ -255,6 +255,7 @@ defmodule Feather.Sites do
     |> Invitation.changeset(attrs)
     |> Ecto.Changeset.put_change(:inviting_user_id, inviter.id)
     |> Ecto.Changeset.put_change(:accepted_at, nil)
+    |> renew_token()
     |> validate_not_member(site)
     |> Repo.insert_or_update()
   end
@@ -319,6 +320,7 @@ defmodule Feather.Sites do
       invitation =
         invitation
         |> Ecto.Changeset.change(inviting_user_id: user.id)
+        |> renew_token()
         |> Repo.update!()
 
       {:ok, _email} = deliver_invitation(invitation, url_fun)
@@ -336,12 +338,22 @@ defmodule Feather.Sites do
 
   @doc """
   The token for the acceptance link: a `Phoenix.Token` with the invitation
-  id, valid for 7 days.
+  id and its `updated_at`, valid for 7 days. Inviting the address again
+  and resending update the invitation, so links sent before stop working.
   """
   @spec invitation_token(Invitation.t()) :: String.t()
-  def invitation_token(%Invitation{id: id}) do
-    Phoenix.Token.sign(FeatherWeb.Endpoint, @invitation_salt, id)
+  def invitation_token(%Invitation{id: id, updated_at: updated_at}) do
+    Phoenix.Token.sign(FeatherWeb.Endpoint, @invitation_salt, {id, token_version(updated_at)})
   end
+
+  defp token_version(%DateTime{} = updated_at), do: DateTime.to_unix(updated_at, :microsecond)
+
+  # An existing invitation sent again gets a new updated_at, which is part
+  # of its token, also when nothing else changes.
+  defp renew_token(%Ecto.Changeset{data: %Invitation{id: nil}} = changeset), do: changeset
+
+  defp renew_token(changeset),
+    do: Ecto.Changeset.force_change(changeset, :updated_at, DateTime.utc_now())
 
   @doc """
   Finds the pending invitation for an acceptance token.
@@ -349,14 +361,16 @@ defmodule Feather.Sites do
   @spec get_invitation_by_token(String.t()) ::
           {:ok, Invitation.t()} | {:error, :invalid | :expired | :already_accepted}
   def get_invitation_by_token(token) when is_binary(token) do
-    with {:ok, id} <-
+    with {:ok, {id, version}} <-
            Phoenix.Token.verify(FeatherWeb.Endpoint, @invitation_salt, token,
              max_age: @invitation_max_age
            ),
-         %Invitation{} = invitation <- Repo.get(Invitation, id) |> Repo.preload(:site) do
-      if Invitation.accepted?(invitation),
-        do: {:error, :already_accepted},
-        else: {:ok, invitation}
+         %Invitation{} = invitation <- Repo.get(Invitation, id) do
+      cond do
+        Invitation.accepted?(invitation) -> {:error, :already_accepted}
+        token_version(invitation.updated_at) != version -> {:error, :invalid}
+        true -> {:ok, Repo.preload(invitation, :site)}
+      end
     else
       {:error, :expired} -> {:error, :expired}
       _ -> {:error, :invalid}

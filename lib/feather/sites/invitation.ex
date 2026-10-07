@@ -3,8 +3,10 @@ defmodule Feather.Sites.Invitation do
   An invitation for an email address to become a member of a site.
 
   The acceptance link carries a `Phoenix.Token` signed with the invitation
-  id (see `Feather.Sites.invitation_token/1`), valid for 7 days. Nothing
-  token-related is stored; an accepted invitation can't be accepted again.
+  id and `updated_at` (see `Feather.Sites.invitation_token/1`), valid for
+  7 days: sending the invitation again invalidates earlier links. Nothing
+  else token-related is stored; an accepted invitation can't be accepted
+  again.
   """
   use Feather.Schema
 

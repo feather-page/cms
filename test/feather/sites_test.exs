@@ -258,6 +258,36 @@ defmodule Feather.SitesTest do
       assert {:error, :expired} = Sites.get_invitation_by_token(expired)
     end
 
+    test "sending an invitation again invalidates the links sent before", %{scope: scope} do
+      invitation = invitation_fixture(scope, email: "again@example.com")
+      first = Sites.invitation_token(invitation)
+
+      {:ok, resent} = Sites.resend_invitation(scope, invitation, &"https://cms.test/#{&1}")
+      second = Sites.invitation_token(resent)
+
+      assert {:error, :invalid} = Sites.get_invitation_by_token(first)
+      assert {:ok, _} = Sites.get_invitation_by_token(second)
+
+      {:ok, reinvited} = Sites.create_invitation(scope, %{email: "again@example.com"})
+      assert reinvited.id == invitation.id
+      assert {:error, :invalid} = Sites.get_invitation_by_token(second)
+      assert {:ok, _} = Sites.get_invitation_by_token(Sites.invitation_token(reinvited))
+    end
+
+    test "a removed member's old link does not work after a new invitation", %{scope: scope} do
+      invitation = invitation_fixture(scope, email: "removed@example.com")
+      old = Sites.invitation_token(invitation)
+      {:ok, found} = Sites.get_invitation_by_token(old)
+      {:ok, %{user: user}} = Sites.accept_invitation(found, nil)
+
+      member = Enum.find(Sites.list_members(scope), &(&1.user_id == user.id))
+      {:ok, _} = Sites.remove_member(scope, member)
+      {:ok, reinvited} = Sites.create_invitation(scope, %{email: "removed@example.com"})
+
+      assert {:error, :invalid} = Sites.get_invitation_by_token(old)
+      assert {:ok, _} = Sites.get_invitation_by_token(Sites.invitation_token(reinvited))
+    end
+
     test "resend and delete", %{scope: scope} do
       invitation = invitation_fixture(scope)
       assert {:ok, _} = Sites.resend_invitation(scope, invitation, &"https://cms.test/#{&1}")
