@@ -507,7 +507,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-          description: Page number. Pages hold 20 records.
+          description: Page number (1-based). Pages hold 20 records; a page beyond the last one returns an empty data list.
       responses:
         "200":
           description: List of posts.
@@ -670,7 +670,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-          description: Page number. Pages hold 20 records.
+          description: Page number (1-based). Pages hold 20 records; a page beyond the last one returns an empty data list.
       responses:
         "200":
           description: List of pages.

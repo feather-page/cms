@@ -18,6 +18,7 @@ defmodule Feather.Content do
   alias Feather.Content.{Blocks, Page, Post, Project, Slug, Tags}
   alias Feather.Media
   alias Feather.Media.Cleanup
+  alias Feather.Pagination
   alias Feather.Sites
   alias Feather.Sites.Site
 
@@ -62,12 +63,16 @@ defmodule Feather.Content do
 
   @doc """
   One page of the scope's posts, newest `publish_at` first, with header
-  and thumbnail images preloaded. See `t:pagination/1`.
+  and thumbnail images preloaded. Pages beyond the last one are empty (the content API).
   """
-  @spec paginate_posts(Scope.t(), integer(), pos_integer()) :: pagination(Post.t())
-  def paginate_posts(%Scope{site: %Site{id: site_id}}, page, per_page \\ 20) do
-    from(p in Post, where: p.site_id == ^site_id, order_by: [desc: p.publish_at, asc: p.id])
-    |> paginate(page, per_page)
+  @spec paginate_posts(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
+  def paginate_posts(%Scope{site: %Site{id: site_id}}, page) do
+    from(p in Post,
+      where: p.site_id == ^site_id,
+      order_by: [desc: p.publish_at, asc: p.id],
+      preload: [:header_image, :thumbnail_image]
+    )
+    |> Pagination.paginate(page, out_of_range: :empty)
   end
 
   @doc """
@@ -151,15 +156,16 @@ defmodule Feather.Content do
   @doc """
   One page of the scope's pages (the homepage first, then by title), with
   header and thumbnail images preloaded and `add_to_navigation` filled in.
-  See `t:pagination/1`.
+  Pages beyond the last one are empty (the content API).
   """
-  @spec paginate_pages(Scope.t(), integer(), pos_integer()) :: pagination(Page.t())
-  def paginate_pages(%Scope{site: %Site{id: site_id}}, page, per_page \\ 20) do
+  @spec paginate_pages(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
+  def paginate_pages(%Scope{site: %Site{id: site_id}}, page) do
     from(p in Page,
       where: p.site_id == ^site_id,
-      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at, asc: p.id]
+      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at, asc: p.id],
+      preload: [:header_image, :thumbnail_image]
     )
-    |> paginate(page, per_page)
+    |> Pagination.paginate(page, out_of_range: :empty)
     |> Map.update!(:entries, &put_navigation_flags/1)
   end
 
@@ -318,14 +324,14 @@ defmodule Feather.Content do
   with the thumbnail image and the reviewed book preloaded.
   """
   @spec paginate_admin_posts(Scope.t(), pos_integer() | String.t() | nil) ::
-          Feather.Pagination.t()
+          Pagination.t()
   def paginate_admin_posts(%Scope{site: %Site{id: site_id}}, page) do
     from(p in Post,
       where: p.site_id == ^site_id,
       order_by: [desc: p.publish_at, desc: p.inserted_at],
       preload: [:thumbnail_image, :book]
     )
-    |> Feather.Pagination.paginate(page)
+    |> Pagination.paginate(page)
   end
 
   @doc """
@@ -333,7 +339,7 @@ defmodule Feather.Content do
   homepage first, then by title, with the thumbnail image preloaded.
   """
   @spec paginate_pages_outside_navigation(Scope.t(), pos_integer() | String.t() | nil) ::
-          Feather.Pagination.t()
+          Pagination.t()
   def paginate_pages_outside_navigation(%Scope{site: %Site{id: site_id}}, page) do
     from(p in Page,
       left_join: n in Feather.Sites.NavigationItem,
@@ -342,7 +348,7 @@ defmodule Feather.Content do
       order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
       preload: [:thumbnail_image]
     )
-    |> Feather.Pagination.paginate(page)
+    |> Pagination.paginate(page)
   end
 
   @doc """
@@ -407,31 +413,6 @@ defmodule Feather.Content do
   """
   @spec preload_images(record) :: record when record: Post.t() | Page.t() | Project.t()
   def preload_images(record), do: Repo.preload(record, [:header_image, :thumbnail_image])
-
-  @typedoc """
-  One page of records: the `entries`, the current `page` (1-based, below 1
-  counts as 1), the number of `pages` (at least 1) and the total `count`.
-  """
-  @type pagination(entry) :: %{
-          entries: [entry],
-          page: pos_integer(),
-          pages: pos_integer(),
-          count: non_neg_integer()
-        }
-
-  defp paginate(query, page, per_page) do
-    page = max(page, 1)
-    count = Repo.aggregate(query, :count)
-
-    entries =
-      query
-      |> limit(^per_page)
-      |> offset(^((page - 1) * per_page))
-      |> preload([:header_image, :thumbnail_image])
-      |> Repo.all()
-
-    %{entries: entries, page: page, pages: max(ceil(count / per_page), 1), count: count}
-  end
 
   defp save_with_images(%Ecto.Changeset{} = changeset, owner_field) do
     changeset = Media.validate_site_images(changeset, [:header_image_id, :thumbnail_image_id])

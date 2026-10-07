@@ -18,8 +18,11 @@ defmodule FeatherWeb.Api.V1.Pagination do
     end
   end
 
-  @doc "The `meta` object of a list response."
-  @spec meta(Feather.Content.pagination(term())) :: map()
-  def meta(%{page: page, pages: pages, count: count}),
+  @doc """
+  The `meta` object of a list response: `page`, `pages` (at least 1) and
+  the total `count`.
+  """
+  @spec meta(Feather.Pagination.t()) :: map()
+  def meta(%Feather.Pagination{page: page, total_pages: pages, total_entries: count}),
     do: %{page: page, pages: pages, count: count}
 end
