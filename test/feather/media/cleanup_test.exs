@@ -166,6 +166,28 @@ defmodule Feather.Media.CleanupTest do
       assert :sys.get_state(pid).interval == 10
     end
 
+    test "runs daily at 03:00 UTC" do
+      at = ~T[03:00:00]
+      hour = :timer.hours(1)
+
+      assert CleanupScheduler.ms_until(at, ~U[2026-10-07 01:00:00Z]) == 2 * hour
+      assert CleanupScheduler.ms_until(at, ~U[2026-10-07 03:00:00Z]) == 24 * hour
+      assert CleanupScheduler.ms_until(at, ~U[2026-10-07 04:00:00Z]) == 23 * hour
+      assert CleanupScheduler.ms_until(at, ~U[2026-10-07 02:59:59.500Z]) == 500
+
+      test_pid = self()
+
+      pid =
+        start_supervised!(
+          {CleanupScheduler,
+           enabled: true, name: :daily_cleanup, cleanup: fn -> send(test_pid, :cleaned) end}
+        )
+
+      # Nothing runs after boot; the first run waits for 03:00 UTC.
+      assert %{interval: nil, at: ~T[03:00:00]} = :sys.get_state(pid)
+      refute_receive :cleaned, 100
+    end
+
     test "does not start when disabled" do
       assert CleanupScheduler.start_link(enabled: false) == :ignore
       # Disabled in config/test.exs.

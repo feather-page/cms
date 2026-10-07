@@ -1,7 +1,8 @@
 defmodule Feather.Media.CleanupScheduler do
   @moduledoc """
-  Runs `Feather.Media.cleanup_orphaned_images/1` once a day, the first time
-  a few minutes after boot.
+  Runs `Feather.Media.cleanup_orphaned_images/1` every day at 03:00 UTC
+  (like the Rails app's recurring job), not after boot: a deploy or restart
+  never triggers a cleanup.
 
   Started by `Feather.Application`; it does not start (`:ignore`) when
   disabled, as in tests:
@@ -9,17 +10,17 @@ defmodule Feather.Media.CleanupScheduler do
       config :feather, Feather.Media.CleanupScheduler, enabled: false
 
   Options, given to `start_link/1` or in that config (options win):
-  `:enabled`, `:initial_delay` and `:interval` in milliseconds, `:cleanup`
-  (a zero-arity function, for tests) and `:name`. A failing run is logged
-  and the schedule continues.
+  `:enabled`, `:at` (the UTC `Time` of the daily run), `:cleanup` (a
+  zero-arity function, for tests) and `:name`. Tests may also give
+  `:initial_delay` and `:interval` in milliseconds instead of the daily
+  time. A failing run is logged and the schedule continues.
   """
 
   use GenServer
 
   require Logger
 
-  @default_initial_delay :timer.minutes(5)
-  @default_interval :timer.hours(24)
+  @default_at ~T[03:00:00]
 
   @doc false
   def child_spec(opts) do
@@ -41,19 +42,34 @@ defmodule Feather.Media.CleanupScheduler do
   @impl true
   def init(opts) do
     state = %{
-      interval: Keyword.get(opts, :interval, @default_interval),
+      at: Keyword.get(opts, :at, @default_at),
+      interval: Keyword.get(opts, :interval),
       cleanup: Keyword.get(opts, :cleanup, &Feather.Media.cleanup_orphaned_images/0)
     }
 
-    schedule(Keyword.get(opts, :initial_delay, @default_initial_delay))
+    schedule(Keyword.get_lazy(opts, :initial_delay, fn -> next_delay(state) end))
     {:ok, state}
   end
 
   @impl true
   def handle_info(:run, state) do
     run(state.cleanup)
-    schedule(state.interval)
+    schedule(next_delay(state))
     {:noreply, state}
+  end
+
+  defp next_delay(%{interval: interval}) when is_integer(interval), do: interval
+  defp next_delay(%{at: at}), do: ms_until(at, DateTime.utc_now())
+
+  @doc """
+  Milliseconds from `now` until the next time of day `at` (UTC); a full day
+  when `now` is exactly at it.
+  """
+  @spec ms_until(Time.t(), DateTime.t()) :: pos_integer()
+  def ms_until(%Time{} = at, %DateTime{} = now) do
+    today = DateTime.new!(DateTime.to_date(now), at, "Etc/UTC")
+    next = if DateTime.compare(today, now) == :gt, do: today, else: DateTime.add(today, 1, :day)
+    DateTime.diff(next, now, :millisecond)
   end
 
   defp schedule(delay), do: Process.send_after(self(), :run, delay)

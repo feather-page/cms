@@ -99,6 +99,46 @@ defmodule Feather.Release do
     end)
   end
 
+  @doc """
+  Replaces the provider config (credentials) of the deployment target with
+  the given public id, e.g. one the import could not read. The admin does
+  not edit credentials. Keys per provider: `fastmail` takes `email`,
+  `password` and `path`; `hetzner_ftps` takes `host`, `user`, `password`
+  and `path`.
+
+      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"email" => "...", "password" => "...", "path" => "..."})'
+  """
+  def set_target_config(target_public_id, %{} = config) do
+    with_app(fn ->
+      alias Feather.Publishing
+
+      import Ecto.Query, only: [from: 2]
+
+      # Without the old config: it is replaced, and it may not decrypt.
+      fields = Publishing.DeploymentTarget.__schema__(:fields) -- [:config]
+
+      query =
+        from t in Publishing.DeploymentTarget,
+          where: t.public_id == ^target_public_id,
+          select: struct(t, ^fields)
+
+      case Feather.Repo.one(query) do
+        nil ->
+          IO.puts(:stderr, "No deployment target #{target_public_id}.")
+          {:error, :not_found}
+
+        target ->
+          target = Feather.Repo.preload(target, :site)
+          scope = Feather.Accounts.Scope.for_site(target.site)
+
+          with {:ok, target} <- Publishing.update_target_config(scope, target, config) do
+            IO.puts("Config of #{target.public_id} (#{target.provider}) set.")
+            {:ok, target}
+          end
+      end
+    end)
+  end
+
   defp with_app(fun) do
     load_app()
     {:ok, _} = Application.ensure_all_started(:ecto_sql)
