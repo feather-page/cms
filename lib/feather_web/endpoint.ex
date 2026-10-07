@@ -1,6 +1,8 @@
 defmodule FeatherWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :feather
 
+  require Logger
+
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
@@ -41,7 +43,7 @@ defmodule FeatherWeb.Endpoint do
     cookie_key: "request_logger"
 
   plug Plug.RequestId
-  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint]
+  plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
   plug Plug.Parsers,
     # Multipart bodies may carry an image of up to 25 MB (Feather.Media.max_byte_size/0)
@@ -52,6 +54,65 @@ defmodule FeatherWeb.Endpoint do
 
   plug Plug.MethodOverride
   plug Plug.Head
-  plug Plug.Session, @session_options
+  plug :session
   plug FeatherWeb.Router
+
+  @doc """
+  The level of the request log lines (`Phoenix.Logger`). Paths that carry a
+  secret token (magic link, email confirmation, invitation) are logged
+  with the token replaced by `[FILTERED]`: the request line is written
+  here and Phoenix only logs the response line, which has no path.
+  """
+  @spec log_level(Plug.Conn.t()) :: Logger.level() | false
+  def log_level(%Plug.Conn{} = conn) do
+    case filtered_path(conn.path_info) do
+      nil ->
+        :info
+
+      # Called for the request line (no status yet) and the response line.
+      path when is_nil(conn.status) ->
+        Logger.info([conn.method, ?\s, path])
+        false
+
+      _path ->
+        :info
+    end
+  end
+
+  defp filtered_path(["users", "log-in", _token]), do: "/users/log-in/[FILTERED]"
+
+  defp filtered_path(["users", "settings", "confirm-email", _token]),
+    do: "/users/settings/confirm-email/[FILTERED]"
+
+  defp filtered_path(["invitations", _token | rest]),
+    do: Enum.join(["/invitations/[FILTERED]" | rest], "/")
+
+  defp filtered_path(_path_info), do: nil
+
+  @doc """
+  Whether cookies get the `Secure` attribute: when the endpoint's URL uses
+  https (production, see config/runtime.exs), not in dev and test.
+  """
+  @spec secure_cookies?() :: boolean()
+  def secure_cookies?, do: config(:url)[:scheme] == "https"
+
+  # Plug.Session with `secure` decided at runtime: the URL scheme is runtime
+  # configuration, plugs are initialized at compile time in production.
+  defp session(conn, _opts) do
+    secure? = secure_cookies?()
+    key = {__MODULE__, :session_options, secure?}
+
+    options =
+      case :persistent_term.get(key, nil) do
+        nil ->
+          options = Plug.Session.init(Keyword.put(@session_options, :secure, secure?))
+          :persistent_term.put(key, options)
+          options
+
+        options ->
+          options
+      end
+
+    Plug.Session.call(conn, options)
+  end
 end

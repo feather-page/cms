@@ -56,7 +56,7 @@ defmodule FeatherWeb.UserAuth do
 
     conn
     |> renew_session(nil)
-    |> delete_resp_cookie(@remember_me_cookie, @remember_me_options)
+    |> delete_resp_cookie(@remember_me_cookie, remember_me_options())
     |> redirect(to: ~p"/users/log-in")
   end
 
@@ -160,8 +160,12 @@ defmodule FeatherWeb.UserAuth do
   defp write_remember_me_cookie(conn, token) do
     conn
     |> put_session(:user_remember_me, true)
-    |> put_resp_cookie(@remember_me_cookie, token, @remember_me_options)
+    |> put_resp_cookie(@remember_me_cookie, token, remember_me_options())
   end
+
+  # Secure in production (https), see FeatherWeb.Endpoint.secure_cookies?/0.
+  defp remember_me_options,
+    do: Keyword.put(@remember_me_options, :secure, FeatherWeb.Endpoint.secure_cookies?())
 
   defp put_token_in_session(conn, token) do
     conn
