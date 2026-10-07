@@ -4,13 +4,35 @@ defmodule FeatherWeb.Router do
   import FeatherWeb.UserAuth
   import FeatherWeb.SiteAuth, only: [fetch_current_site: 2]
 
+  # Content-Security-Policy of the admin (and the preview, which renders on
+  # the same origin): scripts only from our own origin, so markup that slips
+  # into a page (inline handlers, inline scripts) does not run. Styles and
+  # fonts also come from felt-css; Editor.js injects inline styles. Images
+  # (Unsplash, Open Library covers) and the embeds of the editor may come
+  # from any https origin.
+  @csp_directives [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://felt-css.rocu.de",
+    "font-src 'self' data: https://felt-css.rocu.de",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "frame-src 'self' https:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'"
+  ]
+
+  @browser_headers %{"content-security-policy" => Enum.join(@csp_directives, "; ")}
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, html: {FeatherWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @browser_headers
     plug :fetch_current_scope_for_user
   end
 
@@ -25,7 +47,7 @@ defmodule FeatherWeb.Router do
     plug :fetch_session
     plug :fetch_live_flash
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, @browser_headers
     plug :fetch_current_scope_for_user
   end
 
@@ -65,8 +87,13 @@ defmodule FeatherWeb.Router do
     # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
+    # The dashboard and the mailbox preview use inline scripts: no CSP here.
+    pipeline :dev_tools do
+      plug :delete_content_security_policy
+    end
+
     scope "/dev" do
-      pipe_through :browser
+      pipe_through [:browser, :dev_tools]
 
       live_dashboard "/dashboard", metrics: FeatherWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
@@ -165,5 +192,10 @@ defmodule FeatherWeb.Router do
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  if Application.compile_env(:feather, :dev_routes) do
+    defp delete_content_security_policy(conn, _opts),
+      do: Plug.Conn.delete_resp_header(conn, "content-security-policy")
   end
 end
