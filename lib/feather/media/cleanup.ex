@@ -9,6 +9,11 @@ defmodule Feather.Media.Cleanup do
       the owner's content embeds it any more (and it is not a header,
       thumbnail or cover image either)
 
+  Either way an image that an image block of any post, page or project of
+  its site embeds is kept: images can be embedded by more than one record
+  (copied blocks, content API imports), but only one owns them.
+  `delete_released/1` applies the same rule when the owner is deleted.
+
   Images younger than the grace period (2 days) are never touched, so an
   upload whose post has not been saved yet survives.
 
@@ -48,11 +53,14 @@ defmodule Feather.Media.Cleanup do
       %{unreferenced: [], unused: []}
     else
       featured = featured_image_ids()
-      {unowned, owned} = Enum.split_with(candidates, &(owner(&1) == nil))
-      unowned = Enum.reject(unowned, &MapSet.member?(featured, &1.id))
-      owned = Enum.reject(owned, &MapSet.member?(featured, &1.id))
+      embedded = embedded_by(candidates)
 
-      %{unreferenced: unreferenced(unowned), unused: unused(owned)}
+      {unowned, owned} =
+        candidates
+        |> Enum.reject(&(MapSet.member?(featured, &1.id) or Map.has_key?(embedded, key(&1))))
+        |> Enum.split_with(&(owner(&1) == nil))
+
+      %{unreferenced: unowned, unused: owned}
     end
   end
 
@@ -96,41 +104,60 @@ defmodule Feather.Media.Cleanup do
     end)
   end
 
-  # Unowned images are still kept when an image block of their site embeds
-  # them (content saved before ownership was recorded).
-  defp unreferenced([]), do: []
+  @doc """
+  Handles the images a deleted post, page or project owned (`images`,
+  listed before the deletion). Each one that is still used stays: it is
+  given to another record of its site that embeds it, if there is one, and
+  otherwise (a header, thumbnail or cover image) keeps no owner. The others
+  are deleted; their rows here, their files are left to the caller (after
+  the transaction commits). Returns the deleted images.
+  """
+  @spec delete_released([Image.t()]) :: [Image.t()]
+  def delete_released([]), do: []
 
-  defp unreferenced(images) do
-    site_ids = images |> Enum.map(& &1.site_id) |> Enum.uniq()
+  def delete_released(images) do
+    featured = featured_image_ids()
+    embedded = embedded_by(images)
 
-    embedded =
-      for {_field, schema} <- @owners,
-          {site_id, content} <-
-            Repo.all(
-              from r in schema, where: r.site_id in ^site_ids, select: {r.site_id, r.content}
-            ),
-          public_id <- Blocks.image_ids(content),
-          into: MapSet.new(),
-          do: {site_id, public_id}
+    Enum.flat_map(images, fn image ->
+      case Map.get(embedded, key(image)) do
+        [{owner_field, owner_id} | _] ->
+          Media.assign_images(image.site_id, owner_field, owner_id, [image.public_id])
+          []
 
-    Enum.reject(images, &MapSet.member?(embedded, {&1.site_id, &1.public_id}))
+        nil ->
+          if MapSet.member?(featured, image.id) do
+            Repo.update_all(from(i in Image, where: i.id == ^image.id),
+              set: [post_id: nil, page_id: nil, project_id: nil]
+            )
+
+            []
+          else
+            Repo.delete_all(from i in Image, where: i.id == ^image.id)
+            [image]
+          end
+      end
+    end)
   end
 
-  defp unused([]), do: []
+  defp key(%Image{site_id: site_id, public_id: public_id}), do: {site_id, public_id}
 
-  defp unused(images) do
-    embedded =
-      images
-      |> Enum.map(&owner/1)
-      |> Enum.group_by(fn {_field, schema, _id} -> schema end, fn {_, _, id} -> id end)
-      |> Enum.flat_map(fn {schema, ids} ->
-        Repo.all(from r in schema, where: r.id in ^Enum.uniq(ids), select: {r.id, r.content})
-      end)
-      |> Map.new(fn {id, content} -> {id, MapSet.new(Blocks.image_ids(content))} end)
+  # {site_id, image public id} => [{owner field, record id}] of every post,
+  # page and project of the images' sites whose content embeds the image.
+  defp embedded_by(images) do
+    site_ids = images |> Enum.map(& &1.site_id) |> Enum.uniq()
 
-    Enum.reject(images, fn image ->
-      {_field, _schema, owner_id} = owner(image)
-      embedded |> Map.get(owner_id, MapSet.new()) |> MapSet.member?(image.public_id)
-    end)
+    for {field, schema} <- @owners,
+        {site_id, id, content} <-
+          Repo.all(
+            from r in schema,
+              where: r.site_id in ^site_ids,
+              order_by: r.inserted_at,
+              select: {r.site_id, r.id, r.content}
+          ),
+        public_id <- Blocks.image_ids(content),
+        reduce: %{} do
+      acc -> Map.update(acc, {site_id, public_id}, [{field, id}], &(&1 ++ [{field, id}]))
+    end
   end
 end

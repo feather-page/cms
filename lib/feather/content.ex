@@ -17,6 +17,7 @@ defmodule Feather.Content do
   alias Feather.Accounts.Scope
   alias Feather.Content.{Blocks, Page, Post, Project, Slug, Tags}
   alias Feather.Media
+  alias Feather.Media.Cleanup
   alias Feather.Sites
   alias Feather.Sites.Site
 
@@ -94,7 +95,7 @@ defmodule Feather.Content do
   end
 
   @doc """
-  Deletes a post and the images embedded in it. A book reviewed by the post
+  Deletes a post and the images it owns that nothing else uses. A book reviewed by the post
   loses its review.
   """
   @spec delete_post(Scope.t(), Post.t()) :: {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
@@ -222,7 +223,7 @@ defmodule Feather.Content do
   end
 
   @doc """
-  Deletes a page (and its navigation item) and the images embedded in it.
+  Deletes a page (and its navigation item) and the images it owns that nothing else uses.
   """
   @spec delete_page(Scope.t(), Page.t()) :: {:ok, Page.t()} | {:error, Ecto.Changeset.t()}
   def delete_page(%Scope{site: %Site{id: site_id}} = scope, %Page{site_id: site_id} = page) do
@@ -297,7 +298,7 @@ defmodule Feather.Content do
     |> save_with_images(:project_id)
   end
 
-  @doc "Deletes a project and the images embedded in it."
+  @doc "Deletes a project and the images it owns that nothing else uses."
   @spec delete_project(Scope.t(), Project.t()) ::
           {:ok, Project.t()} | {:error, Ecto.Changeset.t()}
   def delete_project(%Scope{site: %Site{id: site_id}}, %Project{site_id: site_id} = project) do
@@ -449,11 +450,20 @@ defmodule Feather.Content do
     end)
   end
 
+  # The record's images are deleted unless something else still uses them,
+  # see Feather.Media.Cleanup.delete_released/1.
   defp delete_with_images(record, owner_field) do
     images = Media.list_images_owned_by(owner_field, record.id)
 
-    with {:ok, record} <- Repo.delete(record) do
-      Enum.each(images, &Media.delete_image/1)
+    result =
+      Repo.transact(fn ->
+        with {:ok, record} <- Repo.delete(record) do
+          {:ok, {record, Cleanup.delete_released(images)}}
+        end
+      end)
+
+    with {:ok, {record, deleted}} <- result do
+      Enum.each(deleted, &Media.delete_image_files/1)
       {:ok, record}
     end
   end

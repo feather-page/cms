@@ -77,6 +77,26 @@ defmodule Feather.Media.CleanupTest do
       refute File.exists?(Media.image_dir(dropped))
     end
 
+    test "keeps an owned image that another record of the site embeds", %{scope: scope} do
+      image = image_fixture(scope)
+      _page = page_fixture(scope, content: [image_block(image)])
+      post = post_fixture(scope, content: [image_block(image)])
+      assert Repo.get!(Image, image.id).post_id == post.id
+      {:ok, _post} = Content.update_post(scope, post, %{content: []})
+
+      # The same public id embedded on another site does not count.
+      dropped = image_fixture(scope)
+      dropping = post_fixture(scope, content: [image_block(dropped)])
+      {:ok, _} = Content.update_post(scope, dropping, %{content: []})
+      post_fixture(site_scope_fixture(), content: [image_block(dropped)])
+
+      assert {:ok, %{unreferenced: [], unused: [deleted]}} =
+               Media.cleanup_orphaned_images(later())
+
+      assert deleted.id == dropped.id
+      assert exists?(image)
+    end
+
     test "keeps an owned image that is a header image elsewhere", %{scope: scope} do
       image = image_fixture(scope)
       post = post_fixture(scope, content: [image_block(image)])

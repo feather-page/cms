@@ -237,6 +237,42 @@ defmodule Feather.ContentTest do
       assert Media.get_image(scope, image.public_id) == nil
       refute File.exists?(dir)
     end
+
+    test "deleting a post keeps its images that other records embed", %{scope: scope} do
+      image = image_fixture(scope)
+      _other_post = post_fixture(scope, content: [image_block(image)])
+      post = post_fixture(scope, content: [image_block(image)])
+      page = page_fixture(scope, content: [image_block(image)])
+      # The page saved last owns it; make the post the owner again.
+      {:ok, post} = Content.update_post(scope, post, %{title: "Owner again"})
+      assert Media.get_image!(scope, image.public_id).post_id == post.id
+
+      assert {:ok, _} = Content.delete_post(scope, post)
+
+      kept = Media.get_image!(scope, image.public_id)
+      assert {kept.post_id, kept.page_id} != {nil, nil}
+      assert kept.post_id != post.id
+      assert File.dir?(Media.image_dir(image))
+
+      assert {:ok, _} = Content.delete_page(scope, page)
+      assert Media.get_image(scope, image.public_id)
+    end
+
+    test "deleting a post keeps its images used as header, thumbnail or cover", %{scope: scope} do
+      header = image_fixture(scope)
+      cover = image_fixture(scope)
+      post = post_fixture(scope, content: [image_block(header), image_block(cover)])
+      post_fixture(scope, header_image_id: header.id)
+      book_fixture(scope, cover_image_id: cover.id)
+
+      assert {:ok, _} = Content.delete_post(scope, post)
+
+      for image <- [header, cover] do
+        kept = Media.get_image!(scope, image.public_id)
+        assert {kept.post_id, kept.page_id, kept.project_id} == {nil, nil, nil}
+        assert File.dir?(Media.image_dir(image))
+      end
+    end
   end
 
   describe "pages" do
