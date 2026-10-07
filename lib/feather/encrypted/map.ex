@@ -4,9 +4,19 @@ defmodule Feather.Encrypted.Map do
 
   The map is JSON encoded and encrypted with `Feather.Encryption` on dump and
   decrypted on load, so the column never holds plaintext.
+
+  A value that does not decrypt (the key changed) fails to load, with an
+  error logged, rather than loading as an empty map: an empty map could be
+  saved back over credentials that the right key still decrypts, and a
+  deploy with it would fail in confusing ways. Code that only needs a
+  target's metadata does not select the column (see
+  `Feather.Publishing.list_targets/1`), so a wrong key only breaks editing
+  and deploying a target.
   """
 
   use Ecto.Type
+
+  require Logger
 
   @impl true
   def type, do: :binary
@@ -33,7 +43,13 @@ defmodule Feather.Encrypted.Map do
          {:ok, %{} = map} <- Jason.decode(json) do
       {:ok, map}
     else
-      _ -> :error
+      _ ->
+        Logger.error(
+          "Could not decrypt an encrypted map (deployment target config). " <>
+            "Was CONFIG_ENCRYPTION_KEY changed?"
+        )
+
+        :error
     end
   end
 

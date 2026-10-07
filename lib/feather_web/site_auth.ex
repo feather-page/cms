@@ -115,9 +115,9 @@ defmodule FeatherWeb.SiteAuth do
   defp handle_dismiss(_event, _params, socket), do: {:cont, socket}
 
   defp preview_path(scope) do
-    case Enum.find(Publishing.list_targets(scope), &(&1.provider == "internal")) do
+    case Publishing.preview_target_public_id(scope) do
       nil -> nil
-      target -> ~p"/preview/#{target.public_id}"
+      public_id -> ~p"/preview/#{public_id}"
     end
   end
 

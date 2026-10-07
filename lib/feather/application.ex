@@ -9,6 +9,9 @@ defmodule Feather.Application do
 
   @impl true
   def start(_type, _args) do
+    # Fail fast on a malformed CONFIG_ENCRYPTION_KEY.
+    :ok = Feather.Encryption.validate_key!()
+
     children = [
       FeatherWeb.Telemetry,
       Feather.Repo,

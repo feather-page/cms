@@ -95,6 +95,19 @@ if config_env() == :prod do
       elixir -e 'IO.puts(Base.encode64(:crypto.strong_rand_bytes(32)))'
       """
 
+  case Base.decode64(config_encryption_key) do
+    {:ok, <<_key::binary-size(32)>>} ->
+      :ok
+
+    _ ->
+      raise """
+      environment variable CONFIG_ENCRYPTION_KEY must be 32 bytes encoded as base64.
+      Generate one with:
+      elixir -e 'IO.puts(Base.encode64(:crypto.strong_rand_bytes(32)))'
+      Changing the key makes the stored deployment target credentials unreadable.
+      """
+  end
+
   host = System.get_env("PHX_HOST") || "example.com"
 
   config :feather,

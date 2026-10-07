@@ -40,14 +40,32 @@ defmodule Feather.Encryption do
 
   def decrypt(_other), do: :error
 
+  @doc """
+  Raises unless the configured key is 32 bytes encoded as base64. Called at
+  application start, so a malformed `CONFIG_ENCRYPTION_KEY` stops the boot
+  instead of breaking every page that touches a deployment target.
+
+  (A well-formed but different key cannot be told apart here; decrypting
+  then fails, see `Feather.Encrypted.Map`.)
+  """
+  @spec validate_key!() :: :ok
+  def validate_key! do
+    _key = key()
+    :ok
+  end
+
   defp key do
     encoded =
       Application.get_env(:feather, :config_encryption_key) ||
-        raise "config :feather, :config_encryption_key is not set"
+        raise "config :feather, :config_encryption_key (CONFIG_ENCRYPTION_KEY) is not set"
 
     case Base.decode64(encoded) do
-      {:ok, <<key::binary-size(32)>>} -> key
-      _ -> raise "config :feather, :config_encryption_key must be 32 bytes encoded as base64"
+      {:ok, <<key::binary-size(32)>>} ->
+        key
+
+      _ ->
+        raise "config :feather, :config_encryption_key (CONFIG_ENCRYPTION_KEY) must be " <>
+                "32 bytes encoded as base64"
     end
   end
 end

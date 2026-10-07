@@ -16,10 +16,18 @@ defmodule Feather.Publishing do
   @doc """
   Lists the deployment targets of the scope's site: staging first, then
   production, then backup.
+
+  Without the (encrypted) `config`, which stays at its default: listing
+  works even when the credentials cannot be decrypted. Use `get_target!/2`
+  for a target to edit or deploy.
   """
   @spec list_targets(Scope.t()) :: [DeploymentTarget.t()]
   def list_targets(%Scope{site: %Site{id: site_id}}) do
-    from(t in DeploymentTarget, where: t.site_id == ^site_id, order_by: [asc: t.inserted_at])
+    from(t in DeploymentTarget,
+      where: t.site_id == ^site_id,
+      order_by: [asc: t.inserted_at],
+      select: struct(t, ^metadata_fields())
+    )
     |> Repo.all()
     |> Enum.sort_by(&Enum.find_index(DeploymentTarget.types(), fn type -> type == &1.type end))
   end
@@ -48,17 +56,37 @@ defmodule Feather.Publishing do
   end
 
   @doc """
+  The public id of the target the admin links as the site's preview (its
+  internal target), or nil. Reads no credentials.
+  """
+  @spec preview_target_public_id(Scope.t()) :: String.t() | nil
+  def preview_target_public_id(%Scope{} = scope) do
+    scope
+    |> list_targets()
+    |> Enum.find_value(&(&1.provider == "internal" && &1.public_id))
+  end
+
+  @doc """
   Gets a deployment target by public id for the preview, with its site
   preloaded, if the scope's user may access that site. Returns nil
-  otherwise. (The preview is addressed by target, not by site.)
+  otherwise. (The preview is addressed by target, not by site.) Without
+  the `config`, which the preview does not need.
   """
   @spec get_preview_target(Scope.t(), String.t()) :: DeploymentTarget.t() | nil
   def get_preview_target(%Scope{} = scope, public_id) do
     target =
-      Repo.one(from t in DeploymentTarget, where: t.public_id == ^public_id, preload: :site)
+      Repo.one(
+        from t in DeploymentTarget,
+          where: t.public_id == ^public_id,
+          select: struct(t, ^metadata_fields()),
+          preload: :site
+      )
 
     if target && Sites.can_access_site?(scope, target.site), do: target
   end
+
+  # Every field but the encrypted config.
+  defp metadata_fields, do: DeploymentTarget.__schema__(:fields) -- [:config]
 
   @doc "The staging target of the scope's site, or nil."
   @spec get_staging_target(Scope.t()) :: DeploymentTarget.t() | nil
