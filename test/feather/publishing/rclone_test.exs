@@ -12,11 +12,12 @@ defmodule Feather.Publishing.RcloneTest do
     test = self()
 
     fn
-      ["obscure", password] ->
-        {:ok, "obscured(#{password})\n"}
+      ["obscure", "-"], opts ->
+        {:ok, "obscured(#{String.trim_trailing(opts[:input], "\n")})\n"}
 
-      ["sync", "--config", config | _] = args ->
+      ["sync", "--config", config | _] = args, opts ->
         send(test, {:rclone, args, File.read!(config), File.stat!(config).mode})
+        send(test, {:sync_timeout, opts[:timeout]})
         sync_result
     end
   end
@@ -98,6 +99,23 @@ defmodule Feather.Publishing.RcloneTest do
     assert {:error, "boom"} = Rclone.deploy(target, "/src/", runner: runner({:error, "boom"}))
     assert_received {:rclone, [_, _, config | _], _content, _mode}
     refute File.exists?(config)
+  end
+
+  test "the password goes to rclone obscure on stdin, the sync gets a timeout" do
+    target = %DeploymentTarget{
+      provider: "fastmail",
+      public_hostname: "www.example.com",
+      config: %{"email" => "me@example.com", "password" => "secret", "path" => "/site"}
+    }
+
+    assert {:ok, _} = Rclone.deploy(target, "/src/", runner: runner())
+    assert_received {:sync_timeout, 1_800_000}
+
+    assert {:ok, _} = Rclone.deploy(target, "/src/", runner: runner(), sync_timeout: 5)
+    assert_received {:sync_timeout, 5}
+
+    assert Rclone.obscure(runner(), "a\nb") ==
+             {:error, "passwords with line breaks are not supported"}
   end
 
   test "unknown providers" do

@@ -4,12 +4,18 @@ defmodule Feather.Publishing.Rclone do
 
   The target's provider (`Feather.Publishing.Rclone.Provider`) supplies an
   rclone config and the remote path. The config is written to a private
-  temporary file (passwords obscured with `rclone obscure`), used for
-  `rclone sync --config <file> <source> <remote>` and deleted afterwards.
+  temporary file (passwords obscured with `rclone obscure -`, which reads
+  them from standard input so they never appear in a process list), used
+  for `rclone sync --config <file> <source> <remote>` and deleted
+  afterwards.
+
+  A sync that runs longer than 30 minutes is killed, so a hanging transfer
+  cannot hold the target's deploy lock forever
+  (`config :feather, :rclone_sync_timeout`, milliseconds).
 
   Commands go through a runner (`Feather.Publishing.Rclone.Runner`): a
-  module or a function taking the argument list. Tests pass a fake one;
-  the default is `config :feather, :rclone_runner` or
+  module or a function taking the argument list and the options. Tests
+  pass a fake one; the default is `config :feather, :rclone_runner` or
   `Feather.Publishing.Rclone.SystemRunner`.
   """
 
@@ -24,7 +30,11 @@ defmodule Feather.Publishing.Rclone do
     "hetzner_ftps" => HetznerFtps
   }
 
-  @type runner :: module() | ([String.t()] -> {:ok, String.t()} | {:error, String.t()})
+  @default_sync_timeout :timer.minutes(30)
+  @obscure_timeout :timer.seconds(30)
+
+  @type runner ::
+          module() | ([String.t()], keyword() -> {:ok, String.t()} | {:error, String.t()})
 
   @doc "The provider module of a provider name, or nil."
   @spec provider(String.t()) :: module() | nil
@@ -38,6 +48,8 @@ defmodule Feather.Publishing.Rclone do
     * `:runner` - the command runner (default: see the module doc)
     * `:staging_sites_path` - where the `internal` provider writes
       (default: `config :feather, :staging_sites_path`)
+    * `:sync_timeout` - milliseconds (default: `config :feather,
+      :rclone_sync_timeout`, or 30 minutes)
   """
   @spec deploy(DeploymentTarget.t(), Path.t(), keyword()) ::
           {:ok, String.t()} | {:error, String.t()}
@@ -48,25 +60,39 @@ defmodule Feather.Publishing.Rclone do
          {:ok, remote} <- provider.remote(target, opts),
          {:ok, config} <- provider.config(target, &obscure(runner, &1)) do
       with_config_file(config, fn path ->
-        run(runner, ["sync", "--config", path, source_dir, remote])
+        run(runner, ["sync", "--config", path, source_dir, remote], timeout: sync_timeout(opts))
       end)
     end
   end
 
   @doc """
-  Obscures a password the way rclone config files expect it.
+  Obscures a password the way rclone config files expect it. The password
+  goes to `rclone obscure -` on standard input, which reads its first
+  line: a password with a line break is refused.
   """
   @spec obscure(runner(), String.t()) :: {:ok, String.t()} | {:error, String.t()}
   def obscure(runner, password) do
-    with {:ok, output} <- run(runner, ["obscure", password]) do
-      {:ok, String.trim(output)}
+    if String.contains?(password, ["\n", "\r"]) do
+      {:error, "passwords with line breaks are not supported"}
+    else
+      with {:ok, output} <-
+             run(runner, ["obscure", "-"], input: password <> "\n", timeout: @obscure_timeout) do
+        {:ok, String.trim(output)}
+      end
     end
   end
 
   @doc "Runs an rclone command through the runner."
-  @spec run(runner(), [String.t()]) :: {:ok, String.t()} | {:error, String.t()}
-  def run(runner, args) when is_function(runner, 1), do: runner.(args)
-  def run(runner, args) when is_atom(runner), do: runner.run(args)
+  @spec run(runner(), [String.t()], keyword()) :: {:ok, String.t()} | {:error, String.t()}
+  def run(runner, args, opts \\ [])
+  def run(runner, args, opts) when is_function(runner, 2), do: runner.(args, opts)
+  def run(runner, args, opts) when is_atom(runner), do: runner.run(args, opts)
+
+  defp sync_timeout(opts) do
+    Keyword.get_lazy(opts, :sync_timeout, fn ->
+      Application.get_env(:feather, :rclone_sync_timeout, @default_sync_timeout)
+    end)
+  end
 
   defp default_runner, do: Application.get_env(:feather, :rclone_runner, SystemRunner)
 

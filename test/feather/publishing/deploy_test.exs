@@ -25,10 +25,10 @@ defmodule Feather.Publishing.DeployTest do
     test = self()
 
     fn
-      ["obscure", password] ->
-        {:ok, "obscured-#{password}"}
+      ["obscure", "-"], opts ->
+        {:ok, "obscured-#{String.trim_trailing(opts[:input], "\n")}"}
 
-      ["sync", "--config", _config, source, remote] ->
+      ["sync", "--config", _config, source, remote], _opts ->
         send(test, {:synced, source, remote, File.ls!(source)})
         sync_result
     end
