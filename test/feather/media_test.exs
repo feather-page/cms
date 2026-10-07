@@ -58,7 +58,6 @@ defmodule Feather.MediaTest do
       assert Variants.filenames() ==
                ~w(mobile_x1.webp mobile_x2.webp desktop_x1.webp mobile_x3.webp desktop_x2.webp desktop_x1.jpg)
 
-      assert Media.variant_names() == Variants.names()
       assert_raise ArgumentError, fn -> Media.variant_path(%Image{public_id: "x"}, :huge) end
     end
 

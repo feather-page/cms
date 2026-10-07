@@ -177,7 +177,7 @@ defmodule FeatherWeb.ProjectLive.Form do
     project =
       case socket.assigns.live_action do
         :new -> %Project{site_id: scope.site.id}
-        :edit -> scope |> Content.get_project!(params["id"]) |> Content.preload_header_images()
+        :edit -> scope |> Content.get_project!(params["id"]) |> Content.preload_images()
       end
 
     {:ok,

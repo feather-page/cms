@@ -87,7 +87,7 @@ defmodule FeatherWeb.ReviewLive.Form do
         {:ok, init(socket, book, %Post{site_id: scope.site.id})}
 
       {:edit, %Post{} = post} ->
-        {:ok, init(socket, book, Content.preload_header_images(post))}
+        {:ok, init(socket, book, Content.preload_images(post))}
 
       {:new, %Post{}} ->
         {:ok, push_navigate(socket, to: review_path(scope.site, book, "edit"))}

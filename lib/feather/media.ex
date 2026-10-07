@@ -26,10 +26,6 @@ defmodule Feather.Media do
   @spec max_byte_size() :: pos_integer()
   def max_byte_size, do: @max_byte_size
 
-  @doc "The names of the variants generated for every image."
-  @spec variant_names() :: [atom()]
-  def variant_names, do: Variants.names()
-
   ## Queries
 
   @doc "Lists the images of the scope's site, newest first."

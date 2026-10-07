@@ -15,7 +15,6 @@ defmodule Feather.Application do
     children = [
       FeatherWeb.Telemetry,
       Feather.Repo,
-      {DNSCluster, query: Application.get_env(:feather, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Feather.PubSub},
       # Deletes orphaned images daily (ignored when disabled, as in tests)
       Feather.Media.CleanupScheduler,

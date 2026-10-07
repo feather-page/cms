@@ -75,7 +75,7 @@ defmodule FeatherWeb.PageLive.Form do
     page =
       case socket.assigns.live_action do
         :new -> %Page{site_id: scope.site.id}
-        :edit -> scope |> Content.get_page!(params["id"]) |> Content.preload_header_images()
+        :edit -> scope |> Content.get_page!(params["id"]) |> Content.preload_images()
       end
 
     {:ok,

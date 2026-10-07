@@ -4,7 +4,6 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
   import Phoenix.LiveViewTest
 
   alias Feather.Publishing
-  alias FeatherWeb.DeploymentTargetLive.Index
 
   test "a site the user is not a member of is not found", %{conn: conn} do
     %{conn: conn} = register_and_log_in_user(%{conn: conn})
@@ -50,14 +49,6 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
 
       assert lv |> element("#deploy-#{target.public_id}") |> render_click() =~
                "A deployment was triggered for this deployment target."
-    end
-
-    test "deploy results become flash messages" do
-      assert {:info, _} = Index.deploy_flash(:ok)
-      assert {:info, _} = Index.deploy_flash({:ok, :started})
-      assert {:error, msg} = Index.deploy_flash({:error, :already_deploying})
-      assert msg =~ "already being deployed"
-      assert {:error, _} = Index.deploy_flash({:error, :boom})
     end
 
     @tag :capture_log

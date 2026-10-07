@@ -117,8 +117,6 @@ if config_env() == :prod do
       System.get_env("STAGING_SITES_PATH") || Path.join(storage_root, "staging_sites"),
     config_encryption_key: config_encryption_key
 
-  config :feather, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
-
   config :feather, FeatherWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [

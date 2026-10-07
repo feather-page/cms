@@ -133,12 +133,6 @@ defmodule Feather.Books do
     Repo.one(from p in Post, where: p.id == ^post_id and p.site_id == ^site_id)
   end
 
-  @doc "Gets the book reviewed by a post, or nil."
-  @spec get_book_for_post(Scope.t(), Post.t()) :: Book.t() | nil
-  def get_book_for_post(%Scope{site: %Site{id: site_id}}, %Post{id: post_id}) do
-    Repo.one(from b in Book, where: b.site_id == ^site_id and b.post_id == ^post_id)
-  end
-
   @doc "Creates a book in the scope's site."
   @spec create_book(Scope.t(), map()) :: {:ok, Book.t()} | {:error, Ecto.Changeset.t()}
   def create_book(%Scope{site: %Site{id: site_id}}, attrs) do

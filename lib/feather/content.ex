@@ -351,15 +351,6 @@ defmodule Feather.Content do
     |> Pagination.paginate(page)
   end
 
-  @doc """
-  Preloads the header and thumbnail image of a post, page or project (for
-  the admin forms).
-  """
-  @spec preload_header_images(record) :: record when record: Post.t() | Page.t() | Project.t()
-  def preload_header_images(record) do
-    Repo.preload(record, [:header_image, :thumbnail_image])
-  end
-
   ## Shared
 
   @doc """

@@ -71,7 +71,7 @@ defmodule FeatherWeb.PostLive.Form do
     post =
       case socket.assigns.live_action do
         :new -> %Post{site_id: scope.site.id}
-        :edit -> scope |> Content.get_post!(params["id"]) |> Content.preload_header_images()
+        :edit -> scope |> Content.get_post!(params["id"]) |> Content.preload_images()
       end
 
     {:ok,

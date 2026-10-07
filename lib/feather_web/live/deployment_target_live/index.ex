@@ -91,11 +91,12 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
   def handle_event("deploy", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
     target = Publishing.get_target!(scope, id)
-    {kind, message} = deploy_flash(Publishing.deploy(scope, target))
+    # Returns at once; a deploy already running coalesces with this one.
+    :ok = Publishing.deploy(scope, target)
 
     {:noreply,
      socket
-     |> put_flash(kind, message)
+     |> put_flash(:info, "A deployment was triggered for this deployment target.")
      |> assign_targets()}
   end
 
@@ -105,17 +106,6 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
-
-  @doc false
-  # Public so the type checker does not prune the error clause while
-  # `Publishing.deploy/2` is a placeholder that always returns :ok.
-  def deploy_flash({:error, :already_deploying}),
-    do: {:error, "This deployment target is already being deployed."}
-
-  def deploy_flash({:error, reason}),
-    do: {:error, "The deployment could not be started: #{inspect(reason)}"}
-
-  def deploy_flash(_ok), do: {:info, "A deployment was triggered for this deployment target."}
 
   defp assign_targets(socket) do
     assign(socket, :targets, Publishing.list_targets(socket.assigns.current_scope))

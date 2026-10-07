@@ -59,7 +59,6 @@ defmodule Feather.BooksTest do
 
     assert Book.review?(book)
     assert book.post_id == post.id
-    assert Books.get_book_for_post(scope, post).id == book.id
     assert {:error, :already_reviewed} = Books.create_review(scope, book, %{title: "again"})
 
     assert {:ok, book} = Books.delete_review(scope, book)
