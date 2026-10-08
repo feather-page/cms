@@ -30,13 +30,13 @@ defmodule Feather.Sites do
   ## Sites
 
   @doc """
-  Lists the sites the scope's user may access, ordered by title.
+  Lists the sites the scope's user may access, ordered by title (ignoring case).
   """
   @spec list_sites(Scope.t()) :: [Site.t()]
   def list_sites(%Scope{} = scope) do
     scope
     |> accessible_sites_query()
-    |> order_by([s], asc: s.title)
+    |> order_by([s], asc: fragment("? COLLATE NOCASE", s.title))
     |> Repo.all()
   end
 

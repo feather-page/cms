@@ -103,6 +103,16 @@ defmodule Feather.SitesTest do
       assert Sites.can_access_site?(scope, site)
     end
 
+    test "lists sites by title, ignoring case", %{owner: owner} do
+      site_fixture(owner, title: "Zipfelmaus")
+      site_fixture(owner, title: "anton")
+
+      titles = owner |> Scope.for_user() |> Sites.list_sites() |> Enum.map(& &1.title)
+      assert titles == Enum.sort_by(titles, &String.downcase/1)
+      assert List.first(titles) == "anton"
+      assert List.last(titles) == "Zipfelmaus"
+    end
+
     test "non-members get NoResultsError or nil", %{site: site} do
       scope = user_scope_fixture()
       assert Sites.list_sites(scope) == []
