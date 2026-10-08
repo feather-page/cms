@@ -62,26 +62,36 @@ defmodule FeatherWeb.CoreComponents do
   Renders a button, or a link styled as a button when `href`, `navigate`
   or `patch` is given.
 
+  Without a variant the button is a neutral `btn-light`. Use `"primary"`
+  for the one main action of a screen and `"danger-outline"` for a
+  destructive action.
+
   ## Examples
 
-      <.button>Send!</.button>
-      <.button phx-click="go" variant="primary">Send!</.button>
-      <.button navigate={~p"/"} variant="outline">Home</.button>
+      <.button>Cancel</.button>
+      <.button phx-click="save" variant="primary">Save</.button>
+      <.button phx-click="delete" variant="danger-outline">Delete</.button>
   """
   attr :rest, :global, include: ~w(href navigate patch method download name value disabled type)
   attr :class, :any, default: nil
-  attr :variant, :string, values: [nil | ~w(primary secondary outline danger link)], default: nil
+
+  attr :variant, :string,
+    values: [nil | ~w(light primary secondary outline danger danger-outline link)],
+    default: nil
+
   attr :size, :string, values: [nil, "sm", "lg"], default: nil
   slot :inner_block, required: true
 
   def button(%{rest: rest} = assigns) do
     variants = %{
+      "light" => "btn-light",
       "primary" => "btn-primary",
       "secondary" => "btn-secondary",
       "outline" => "btn-outline-primary",
       "danger" => "btn-danger",
+      "danger-outline" => "btn-outline-danger",
       "link" => "btn-link",
-      nil => "btn-outline-secondary"
+      nil => "btn-light"
     }
 
     assigns =

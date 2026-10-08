@@ -40,8 +40,19 @@ defmodule FeatherWeb.CoreComponentsTest do
     end
   end
 
-  test "button/1 uses Bootstrap classes" do
-    html = render_component(&button/1, variant: "primary", inner_block: [])
-    assert html =~ ~s(class="btn btn-primary")
+  describe "button/1" do
+    test "uses Bootstrap classes" do
+      html = render_component(&button/1, variant: "primary", inner_block: [])
+      assert html =~ ~s(class="btn btn-primary")
+    end
+
+    test "is a neutral light button without a variant" do
+      assert render_component(&button/1, inner_block: []) =~ ~s(class="btn btn-light")
+    end
+
+    test "has an outlined danger variant for destructive actions" do
+      html = render_component(&button/1, variant: "danger-outline", inner_block: [])
+      assert html =~ ~s(class="btn btn-outline-danger")
+    end
   end
 end
