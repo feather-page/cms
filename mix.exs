@@ -50,7 +50,7 @@ defmodule Feather.MixProject do
       {:lazy_html, ">= 0.1.0", only: :test},
       # Reads docs/api/openapi.yml in the content API tests (schema sync, response checks)
       {:yaml_elixir, "~> 2.12", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.2"},
