@@ -13,33 +13,49 @@ defmodule FeatherWeb.SiteLive.New do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <.header>New site</.header>
+      <.header back={~p"/"} back_label="Sites">New site</.header>
 
-      <.form for={@form} id="site-form" phx-change="validate" phx-submit="save">
-        <.input field={@form[:title]} type="text" label="Title" placeholder="Timon's Blog" />
-        <div class="row">
-          <div class="col-md">
+      <.form
+        for={@form}
+        id="site-form"
+        class="form-narrow"
+        phx-change="validate"
+        phx-submit="save"
+      >
+        <div class="row g-3">
+          <div class="col-12">
+            <.input
+              field={@form[:title]}
+              type="text"
+              label="Title"
+              placeholder="Timon's Blog"
+              wrapper_class={nil}
+            />
+          </div>
+          <div class="col-12 col-sm-8">
             <.input
               field={@form[:domain]}
               type="text"
               label="Domain"
               placeholder="timon.blog"
-              help="Without https://, for example timon.blog"
+              help="Without https://"
+              wrapper_class={nil}
             />
           </div>
-          <div class="col-md">
+          <div class="col-12 col-sm-4">
             <.input
               field={@form[:language_code]}
               type="select"
               label="Language"
               options={Languages.options()}
+              wrapper_class={nil}
             />
           </div>
         </div>
-        <div class="d-flex gap-2">
+        <.action_bar>
           <.button variant="primary" phx-disable-with="Creating...">Create site</.button>
-          <.button navigate={~p"/"}>Cancel</.button>
-        </div>
+          <.link navigate={~p"/"} class="btn btn-light">Cancel</.link>
+        </.action_bar>
       </.form>
     </Layouts.app>
     """

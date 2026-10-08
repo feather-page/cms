@@ -59,7 +59,7 @@ defmodule FeatherWeb.PostLive.Index do
           {display_text(post)}
           <:meta>
             <span class="list-row__date">{format_date(post.publish_at)}</span>
-            <.status_badge draft={post.draft} />
+            <.publication_badge draft={post.draft} />
             <span :if={post.book} class="list-row__review" title="Book review">
               <span :if={post.book.rating} class="text-warning">{stars(post.book.rating)} ·</span>
               {post.book.title}

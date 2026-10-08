@@ -175,6 +175,29 @@ defmodule FeatherWeb.PageLiveTest do
       assert html =~ "can&#39;t be blank"
     end
 
+    test "marks pages in the navigation and deletes the page", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, title: "Services")
+      {:ok, _item} = Sites.add_to_navigation(scope, page)
+      {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
+
+      assert has_element?(lv, "h1", "Services")
+      assert has_element?(lv, "#status-badge", "In navigation")
+
+      {:ok, _lv, html} =
+        lv
+        |> element("#delete-page")
+        |> render_click()
+        |> follow_redirect(conn, pages_path(site))
+
+      assert html =~ "Page was successfully deleted."
+      assert_raise Ecto.NoResultsError, fn -> Content.get_page!(scope, page.public_id) end
+      assert nav_titles(scope) == []
+    end
+
     test "a page of another site is not found", %{conn: conn, site: site} do
       other = page_fixture(site_scope_fixture())
 

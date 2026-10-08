@@ -20,20 +20,44 @@ defmodule FeatherWeb.DeploymentTargetLive.Form do
       preview_path={@site_preview_path}
       active={:deployments}
     >
-      <.header>
-        Edit deployment target
-        <:subtitle>{@target.public_hostname}</:subtitle>
+      <.header back={index_path(@current_scope)} back_label="Deployments" truncate>
+        {@target.public_hostname}
+        <:badge>
+          <.status_badge id="status-badge">{Index.type_label(@target.type)}</.status_badge>
+        </:badge>
       </.header>
 
-      <.form for={@form} id="deployment-target-form" phx-change="validate" phx-submit="save">
-        <.input field={@form[:public_hostname]} type="text" label="Public hostname" />
-        <.input field={@form[:type]} type="select" label="Type" options={@type_options} />
-        <div class="d-flex gap-2">
-          <.button variant="primary" phx-disable-with="Saving...">
-            Update deployment target
-          </.button>
-          <.button navigate={index_path(@current_scope)}>Cancel</.button>
+      <.form
+        for={@form}
+        id="deployment-target-form"
+        class="form-narrow"
+        phx-change="validate"
+        phx-submit="save"
+      >
+        <div class="row g-3">
+          <div class="col-12 col-sm-8">
+            <.input
+              field={@form[:public_hostname]}
+              type="text"
+              label="Public hostname"
+              help="Without https://, for example www.example.org"
+              wrapper_class={nil}
+            />
+          </div>
+          <div class="col-12 col-sm-4">
+            <.input
+              field={@form[:type]}
+              type="select"
+              label="Type"
+              options={@type_options}
+              wrapper_class={nil}
+            />
+          </div>
         </div>
+        <.action_bar>
+          <.button variant="primary" phx-disable-with="Saving..." id="save-target">Save</.button>
+          <.link navigate={index_path(@current_scope)} class="btn btn-light">Cancel</.link>
+        </.action_bar>
       </.form>
     </.site_shell>
     """

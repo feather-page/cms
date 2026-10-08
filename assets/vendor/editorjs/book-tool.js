@@ -121,7 +121,7 @@ export default class BookTool {
     title.textContent = this.data.title
 
     const author = document.createElement('div')
-    author.classList.add('text-muted', 'small')
+    author.classList.add('text-body-secondary', 'small')
     author.textContent = this.data.author
 
     info.appendChild(title)
@@ -132,7 +132,7 @@ export default class BookTool {
     if (!this.readOnly) {
       const changeBtn = document.createElement('button')
       changeBtn.type = 'button'
-      changeBtn.classList.add('btn', 'btn-sm', 'btn-outline-secondary')
+      changeBtn.classList.add('btn', 'btn-sm', 'btn-light')
       changeBtn.textContent = 'Change'
       changeBtn.addEventListener('click', () => {
         this.data = {
@@ -220,7 +220,7 @@ export default class BookTool {
       title.textContent = book.title
 
       const author = document.createElement('div')
-      author.classList.add('text-muted', 'small')
+      author.classList.add('text-body-secondary', 'small')
       author.textContent = book.author
 
       info.appendChild(title)

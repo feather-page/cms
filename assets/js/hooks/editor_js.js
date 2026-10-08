@@ -90,6 +90,7 @@ export default {
     this.editor = new EditorJS({
       holder: this.el.querySelector("[data-editor-holder]"),
       data: parse(this.input.value),
+      placeholder: "Start writing…",
       tools: tools(this.el.dataset),
       onChange: () => this.save()
     })

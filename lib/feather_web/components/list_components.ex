@@ -8,7 +8,7 @@ defmodule FeatherWeb.ListComponents do
         <.list_row :for={{id, post} <- @streams.posts} id={id} navigate={edit_path(post)}>
           <:leading>{post.emoji}</:leading>
           {post.title}
-          <:meta><.status_badge draft={post.draft} /></:meta>
+          <:meta><.publication_badge draft={post.draft} /></:meta>
           <:action
             id={"delete-post-\#{post.public_id}"}
             icon="trash"
@@ -26,7 +26,7 @@ defmodule FeatherWeb.ListComponents do
   """
   use Phoenix.Component
 
-  import FeatherWeb.CoreComponents, only: [icon: 1]
+  import FeatherWeb.CoreComponents, only: [icon: 1, status_badge: 1]
 
   alias Phoenix.LiveView.JS
 
@@ -177,14 +177,10 @@ defmodule FeatherWeb.ListComponents do
   @doc "Renders the published/draft badge of a post or page."
   attr :draft, :boolean, required: true
 
-  def status_badge(assigns) do
+  def publication_badge(assigns) do
     ~H"""
-    <span :if={@draft} class="badge rounded-pill bg-warning-subtle text-warning-emphasis">
-      Draft
-    </span>
-    <span :if={!@draft} class="badge rounded-pill bg-success-subtle text-success-emphasis">
-      Published
-    </span>
+    <.status_badge :if={@draft} kind={:draft}>Draft</.status_badge>
+    <.status_badge :if={!@draft} kind={:published}>Published</.status_badge>
     """
   end
 
@@ -193,9 +189,7 @@ defmodule FeatherWeb.ListComponents do
 
   def neutral_badge(assigns) do
     ~H"""
-    <span class="badge rounded-pill bg-secondary-subtle text-secondary-emphasis">
-      {render_slot(@inner_block)}
-    </span>
+    <.status_badge>{render_slot(@inner_block)}</.status_badge>
     """
   end
 

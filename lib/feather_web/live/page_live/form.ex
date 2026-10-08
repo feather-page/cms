@@ -28,42 +28,83 @@ defmodule FeatherWeb.PageLive.Form do
       preview_path={@site_preview_path}
       active={:pages}
     >
-      <.header>
+      <.header back={~p"/sites/#{@site.public_id}/pages"} back_label="Pages" truncate>
         {@page_title}
-        <:subtitle>
-          <.link navigate={~p"/sites/#{@site.public_id}/pages"}>Pages</.link> / {@page_title}
-        </:subtitle>
+        <:badge :if={@live_action == :edit and @page.add_to_navigation}>
+          <.status_badge id="status-badge">In navigation</.status_badge>
+        </:badge>
       </.header>
 
-      <.live_component
-        module={HeaderImagePicker}
-        id="page-header-image-picker"
-        current_scope={@current_scope}
-        header_image={@header_image}
-        thumbnail_image={@thumbnail_image}
-        emoji={@form[:emoji].value}
-      />
+      <.editor_layout id="page" open={ContentForm.details_open?(@form)}>
+        <:main>
+          <.form for={@form} id="page-form" phx-change="validate" phx-submit="save">
+            <.header_image_fields form={@form} />
+            <.title_field field={@form[:title]} />
+            <.editor
+              id="page-content-editor"
+              field={@form[:content]}
+              value={@editor_json}
+              site={@site}
+            />
+          </.form>
+        </:main>
+        <:details>
+          <.slug_field field={@form[:slug]} form="page-form" />
+          <.input
+            field={@form[:tags]}
+            label="Tags"
+            help="Comma-separated, e.g. travel, photos"
+            form="page-form"
+            phx-debounce="300"
+          />
+          <.input
+            field={@form[:page_type]}
+            type="select"
+            label="Page type"
+            options={@page_types}
+            form="page-form"
+          />
+          <.input
+            field={@form[:add_to_navigation]}
+            type="checkbox"
+            label="Add to navigation"
+            switch
+            form="page-form"
+          />
+          <.live_component
+            module={HeaderImagePicker}
+            id="page-header-image-picker"
+            current_scope={@current_scope}
+            header_image={@header_image}
+            thumbnail_image={@thumbnail_image}
+            emoji={@form[:emoji].value}
+          />
+        </:details>
+      </.editor_layout>
 
-      <.form for={@form} id="page-form" phx-change="validate" phx-submit="save">
-        <.header_image_fields form={@form} />
-        <.title_and_slug form={@form} />
-        <.input
-          field={@form[:tags]}
-          label="Tags"
-          help="Comma-separated, e.g. travel, photos"
-          phx-debounce="300"
-        />
-        <.editor id="page-content-editor" field={@form[:content]} value={@editor_json} site={@site} />
-        <.input field={@form[:page_type]} type="select" label="Page type" options={@page_types} />
-        <.input field={@form[:add_to_navigation]} type="checkbox" label="Add to navigation" />
-
-        <div class="d-flex gap-2">
-          <.button variant="primary" phx-disable-with="Saving..." id="save-page">
-            {if @live_action == :new, do: "Create Page", else: "Update Page"}
-          </.button>
-          <.button navigate={~p"/sites/#{@site.public_id}/pages"}>Cancel</.button>
-        </div>
-      </.form>
+      <.action_bar sticky>
+        <button
+          type="submit"
+          form="page-form"
+          id="save-page"
+          class="btn btn-primary"
+          phx-disable-with="Saving..."
+        >
+          {if @live_action == :new, do: "Create page", else: "Save"}
+        </button>
+        <.link navigate={~p"/sites/#{@site.public_id}/pages"} class="btn btn-light">Cancel</.link>
+        <:danger :if={@live_action == :edit}>
+          <button
+            type="button"
+            id="delete-page"
+            class="btn btn-outline-danger"
+            phx-click="delete"
+            data-confirm="Delete this page?"
+          >
+            <.icon name="trash-2" size={16} /> Delete
+          </button>
+        </:danger>
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -83,7 +124,10 @@ defmodule FeatherWeb.PageLive.Form do
      |> assign(:site, scope.site)
      |> assign(
        :page_title,
-       if(socket.assigns.live_action == :new, do: "New Page", else: "Edit Page")
+       if(socket.assigns.live_action == :new,
+         do: "New page",
+         else: ContentForm.heading(page, "Untitled page")
+       )
      )
      |> assign(:page_types, @page_types)
      |> assign(:page, page)
@@ -138,6 +182,17 @@ defmodule FeatherWeb.PageLive.Form do
         {:noreply,
          assign_form(socket, page_params, if(action == :new, do: :insert, else: :update))}
     end
+  end
+
+  def handle_event("delete", _params, socket) do
+    %{current_scope: scope, page: page} = socket.assigns
+    {:ok, _page} = Content.delete_page(scope, page)
+    if page.add_to_navigation, do: Publishing.publish_site(scope)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Page was successfully deleted.")
+     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/pages")}
   end
 
   @impl true

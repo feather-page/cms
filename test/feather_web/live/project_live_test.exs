@@ -104,6 +104,27 @@ defmodule FeatherWeb.ProjectLiveTest do
     assert html =~ "can&#39;t be blank"
   end
 
+  test "shows the status and deletes the project from its edit page", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    project = project_fixture(scope, title: "Old project", status: "completed")
+    {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
+
+    assert has_element?(lv, "h1", "Old project")
+    assert has_element?(lv, "#status-badge", "Completed")
+
+    {:ok, _lv, html} =
+      lv
+      |> element("#delete-project")
+      |> render_click()
+      |> follow_redirect(conn, projects_path(site))
+
+    assert html =~ "The project was successfully deleted."
+    assert_raise Ecto.NoResultsError, fn -> Content.get_project!(scope, project.public_id) end
+  end
+
   test "a project of another site is not found", %{conn: conn, site: site} do
     other = project_fixture(site_scope_fixture())
 

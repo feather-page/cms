@@ -94,4 +94,84 @@ defmodule FeatherWeb.CoreComponentsTest do
       refute html =~ "dropdown-toggle"
     end
   end
+
+  describe "header/1" do
+    test "renders a back link, a truncated title and a badge" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <.header back="/sites/abc/posts" back_label="Posts" truncate>
+          A long title
+          <:badge><span class="badge">Draft</span></:badge>
+        </.header>
+        """)
+
+      assert text(html, ~s(a.page-header__back[href="/sites/abc/posts"])) =~ "Posts"
+      assert text(html, "h1.page-header__title.text-truncate") =~ "A long title"
+      assert text(html, ".page-header__title-row > .badge") == "Draft"
+    end
+
+    test "keeps plain headers without back link" do
+      assigns = %{}
+      html = rendered_to_string(~H"<.header>Posts</.header>")
+
+      assert text(html, "h1.page-header__title") =~ "Posts"
+      refute has?(html, ".page-header__back")
+      refute has?(html, ".text-truncate")
+    end
+  end
+
+  describe "input/1" do
+    test "renders a checkbox as a switch" do
+      html =
+        render_component(&input/1, type: "checkbox", name: "draft", label: "Draft", switch: true)
+
+      assert has?(html, ~s(.form-check.form-switch input[type="checkbox"][role="switch"]))
+    end
+
+    test "renders a prefix in an input group" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <.input name="title" value="" label="Title">
+          <:prefix><input name="emoji" class="form-control emoji-input" /></:prefix>
+        </.input>
+        """)
+
+      assert has?(html, ~s(.input-group > input[name="emoji"] + input[name="title"]))
+    end
+
+    test "renders labels as form-label" do
+      html = render_component(&input/1, id: "title", name: "title", value: "", label: "Title")
+      assert text(html, ~s(label.form-label[for="title"])) == "Title"
+    end
+  end
+
+  test "action_bar/1 puts the destructive action on the right" do
+    assigns = %{}
+
+    html =
+      rendered_to_string(~H"""
+      <.action_bar sticky>
+        <button>Save</button>
+        <:danger><button>Delete</button></:danger>
+      </.action_bar>
+      """)
+
+    assert has?(html, ".action-bar.action-bar--sticky")
+    assert text(html, ".action-bar > .action-bar__danger > button") == "Delete"
+  end
+
+  defp has?(html, selector),
+    do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> Enum.any?()
+
+  defp text(html, selector),
+    do:
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.query(selector)
+      |> LazyHTML.text()
+      |> String.trim()
 end
