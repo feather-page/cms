@@ -22,9 +22,11 @@ defmodule FeatherWeb.SiteLive.IndexTest do
              )
 
       assert has_element?(lv, ~s(#new-site[href="/sites/new"]))
-      assert has_element?(lv, "#current-user-email", user.email)
-      assert has_element?(lv, ~s(a[href="/users/settings"]))
-      assert has_element?(lv, ~s(a[href="/users/log-out"][data-method="delete"]))
+      assert has_element?(lv, ~s(a.app-brand[href="/"]), "Feather")
+      refute has_element?(lv, "#site-switcher")
+      assert has_element?(lv, "#user-menu #current-user-email", user.email)
+      assert has_element?(lv, ~s(#user-menu a[href="/users/settings"]), "Account settings")
+      assert has_element?(lv, ~s(#user-menu a[href="/users/log-out"][data-method="delete"]))
     end
 
     # Rails: site_management.feature "View site list"

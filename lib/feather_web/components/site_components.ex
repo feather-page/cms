@@ -1,7 +1,7 @@
 defmodule FeatherWeb.SiteComponents do
   @moduledoc """
-  Components of the site admin: the site shell (site title, preview
-  button, site navigation, notices) that wraps every page under
+  Components of the site admin: the site shell (site switcher, preview
+  button, section navigation, notices) that wraps every page under
   `/sites/:site_id`, plus small building blocks shared by its pages (empty
   states, pagination, image URLs).
 
@@ -30,7 +30,8 @@ defmodule FeatherWeb.SiteComponents do
   alias Phoenix.LiveView.JS
 
   @doc """
-  Renders the app layout with the site header and navigation.
+  Renders the app layout with the site switcher and the preview button
+  in the top bar and the section navigation above the page.
 
   `active` marks the current navigation item: `:posts`, `:pages`,
   `:books`, `:projects`, `:settings`, `:users` or `:deployments`.
@@ -47,61 +48,58 @@ defmodule FeatherWeb.SiteComponents do
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="site-navigation card mb-4" id="site-navigation">
-        <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <div class="h4 m-0 d-flex align-items-center gap-2" id="site-title">
-              <span>{@site.emoji}</span>
-              <span>{@site.title}</span>
-            </div>
-            <a
-              :if={@preview_path}
-              href={@preview_path}
-              target="_blank"
-              id="site-preview-link"
-              class="btn btn-outline-primary btn-sm"
+      <:leading>
+        <.live_component module={FeatherWeb.SiteSwitcher} id="site-switcher" scope={@current_scope} />
+      </:leading>
+      <:trailing>
+        <a
+          :if={@preview_path}
+          href={@preview_path}
+          target="_blank"
+          id="site-preview-link"
+          class="btn btn-light btn-sm app-topbar__preview"
+          aria-label="Preview"
+        >
+          <.icon name="eye" size={16} /><span class="d-none d-sm-inline">Preview</span>
+        </a>
+      </:trailing>
+      <:subnav>
+        <nav class="site-nav mb-4" id="site-navigation" aria-label="Site" phx-hook="SiteNav">
+          <ul class="nav nav-underline flex-nowrap overflow-x-auto">
+            <.nav_item active={@active == :posts} navigate={~p"/sites/#{@site.public_id}/posts"}>
+              Posts
+            </.nav_item>
+            <.nav_item active={@active == :pages} navigate={~p"/sites/#{@site.public_id}/pages"}>
+              Pages
+            </.nav_item>
+            <.nav_item active={@active == :books} navigate={~p"/sites/#{@site.public_id}/books"}>
+              Books
+            </.nav_item>
+            <.nav_item
+              active={@active == :projects}
+              navigate={~p"/sites/#{@site.public_id}/projects"}
             >
-              <.icon name="eye" size={16} /> Preview
-            </a>
-          </div>
-          <nav class="site-nav d-flex flex-wrap justify-content-between gap-2">
-            <ul class="nav nav-pills">
-              <.nav_item active={@active == :posts} navigate={~p"/sites/#{@site.public_id}/posts"}>
-                <.icon name="pencil" size={16} /> Posts
-              </.nav_item>
-              <.nav_item active={@active == :pages} navigate={~p"/sites/#{@site.public_id}/pages"}>
-                <.icon name="file-text" size={16} /> Pages
-              </.nav_item>
-              <.nav_item active={@active == :books} navigate={~p"/sites/#{@site.public_id}/books"}>
-                <.icon name="book-open" size={16} /> Books
-              </.nav_item>
-              <.nav_item
-                active={@active == :projects}
-                navigate={~p"/sites/#{@site.public_id}/projects"}
-              >
-                <.icon name="rocket" size={16} /> Projects
-              </.nav_item>
-            </ul>
-            <ul class="nav nav-pills">
-              <.nav_item
-                active={@active == :settings}
-                navigate={~p"/sites/#{@site.public_id}/settings"}
-              >
-                <.icon name="settings" size={16} /> Settings
-              </.nav_item>
-              <.nav_item active={@active == :users} navigate={~p"/sites/#{@site.public_id}/users"}>
-                <.icon name="users" size={16} /> Users
-              </.nav_item>
-              <.nav_item
-                active={@active == :deployments}
-                navigate={~p"/sites/#{@site.public_id}/deployments"}
-              >
-                <.icon name="package" size={16} /> Deployments
-              </.nav_item>
-            </ul>
-          </nav>
-        </div>
-      </div>
+              Projects
+            </.nav_item>
+            <.nav_item
+              class="ms-auto"
+              active={@active == :settings}
+              navigate={~p"/sites/#{@site.public_id}/settings"}
+            >
+              Settings
+            </.nav_item>
+            <.nav_item active={@active == :users} navigate={~p"/sites/#{@site.public_id}/users"}>
+              Users
+            </.nav_item>
+            <.nav_item
+              active={@active == :deployments}
+              navigate={~p"/sites/#{@site.public_id}/deployments"}
+            >
+              Deployments
+            </.nav_item>
+          </ul>
+        </nav>
+      </:subnav>
 
       {render_slot(@inner_block)}
 
@@ -133,11 +131,12 @@ defmodule FeatherWeb.SiteComponents do
 
   attr :active, :boolean, default: false
   attr :navigate, :string, required: true
+  attr :class, :any, default: nil
   slot :inner_block, required: true
 
   defp nav_item(assigns) do
     ~H"""
-    <li class="nav-item">
+    <li class={["nav-item", @class]}>
       <.link
         navigate={@navigate}
         class={["nav-link", @active && "active"]}

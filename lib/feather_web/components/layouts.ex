@@ -15,8 +15,13 @@ defmodule FeatherWeb.Layouts do
   embed_templates "layouts/*"
 
   @doc """
-  Renders the app layout: top navigation (sites, the user's email,
-  settings, log out) and the main container.
+  Renders the app layout: the top bar (brand, user menu) and the main
+  container.
+
+  `FeatherWeb.SiteComponents.site_shell/1` fills the `leading` slot (after
+  the brand) with the site switcher, the `trailing` slot (before the user
+  menu) with the preview button and the `subnav` slot with the site's
+  section navigation.
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
@@ -24,49 +29,60 @@ defmodule FeatherWeb.Layouts do
     default: nil,
     doc: "the current [scope](https://phoenix.hexdocs.pm/scopes.html)"
 
+  slot :leading, doc: "top bar items after the brand"
+  slot :trailing, doc: "top bar items before the user menu"
+  slot :subnav, doc: "navigation below the top bar, at the top of the container"
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
-    <nav class="app-nav border-bottom mb-4">
-      <div class="container d-flex align-items-center gap-3 py-2">
-        <.link navigate={~p"/"} class="app-brand text-decoration-none fw-bold">
-          🪶 Feather
+    <header class="app-topbar border-bottom">
+      <div class="container d-flex align-items-center gap-2 h-100">
+        <.link navigate={~p"/"} class="app-brand" aria-label="Feather, all sites">
+          <span aria-hidden="true">🪶</span><span class={@leading != [] && "d-none d-sm-inline"}>Feather</span>
         </.link>
-        <ul
-          :if={@current_scope && @current_scope.user}
-          class="nav nav-pills ms-auto align-items-center"
-        >
-          <li class="nav-item">
-            <.link navigate={~p"/"} class="nav-link">
-              <.icon name="houses" size={16} /> Sites
-            </.link>
-          </li>
-          <li class="nav-item">
-            <span class="nav-link text-body-secondary" id="current-user-email">
-              <.icon name="user" size={16} /> {@current_scope.user.email}
-            </span>
-          </li>
-          <li class="nav-item">
-            <.link navigate={~p"/users/settings"} class="nav-link">
-              <.icon name="settings" size={16} /> Settings
-            </.link>
-          </li>
-          <li class="nav-item">
-            <.link href={~p"/users/log-out"} method="delete" class="nav-link">
-              <.icon name="log-out" size={16} /> Log out
-            </.link>
-          </li>
-        </ul>
-        <ul :if={!(@current_scope && @current_scope.user)} class="nav nav-pills ms-auto">
-          <li class="nav-item">
-            <.link navigate={~p"/users/log-in"} class="nav-link">Log in</.link>
-          </li>
-        </ul>
+        {render_slot(@leading)}
+        <div class="app-topbar__end d-flex align-items-center gap-2 ms-auto">
+          {render_slot(@trailing)}
+          <.dropdown
+            :if={@current_scope && @current_scope.user}
+            id="user-menu"
+            label="Account"
+            align="end"
+            caret={false}
+            toggle_class="btn-light btn-icon"
+          >
+            <:toggle><.icon name="circle-user" /></:toggle>
+            <li>
+              <span class="dropdown-header text-truncate" id="current-user-email">
+                {@current_scope.user.email}
+              </span>
+            </li>
+            <li>
+              <.link navigate={~p"/users/settings"} class="dropdown-item" id="account-settings-link">
+                <.icon name="settings" size={16} /> Account settings
+              </.link>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete" class="dropdown-item">
+                <.icon name="log-out" size={16} /> Log out
+              </.link>
+            </li>
+          </.dropdown>
+          <.link
+            :if={!(@current_scope && @current_scope.user)}
+            navigate={~p"/users/log-in"}
+            class="btn btn-light btn-sm"
+          >
+            Log in
+          </.link>
+        </div>
       </div>
-    </nav>
+    </header>
 
-    <main class="container pb-5">
+    <main class={["container pb-5", @subnav == [] && "pt-4"]}>
+      {render_slot(@subnav)}
       {render_slot(@inner_block)}
     </main>
 
