@@ -23,6 +23,22 @@ defmodule Feather.MediaFixtures do
   end
 
   @doc """
+  Writes a generated Ultra HDR JPEG (a JPEG with a gain map, as iPhones take
+  them; libvips reads it with `uhdrload`) and returns its path.
+  """
+  def ultra_hdr_image_path(width \\ 64, height \\ 48) do
+    dir = Path.join(System.tmp_dir!(), "feather-test-images")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "test-#{System.unique_integer([:positive])}.jpg")
+
+    {:ok, image} = Operation.black(width, height, bands: 3)
+    {:ok, image} = Operation.linear(image, [1.0], [0.5])
+    {:ok, image} = Operation.colourspace(image, :VIPS_INTERPRETATION_scRGB)
+    :ok = Operation.uhdrsave(image, path)
+    path
+  end
+
+  @doc """
   Creates an image in the scope's site from a generated file.
   """
   def image_fixture(scope, attrs \\ %{}) do

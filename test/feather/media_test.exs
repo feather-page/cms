@@ -47,6 +47,18 @@ defmodule Feather.MediaTest do
       end
     end
 
+    test "accepts Ultra HDR JPEGs (iPhone photos with a gain map) as JPEGs", %{scope: scope} do
+      path = ultra_hdr_image_path(64, 48)
+
+      assert {:ok, %Image{} = image} =
+               Media.create_image_from_upload(scope, path, "IMG_0001.jpeg", %{})
+
+      assert image.content_type == "image/jpeg"
+      assert {image.width, image.height} == {64, 48}
+      assert Path.basename(Media.original_path(image)) == "original.jpg"
+      assert File.exists?(Media.variant_path(image, :desktop_x1_jpg))
+    end
+
     test "variants are never upscaled", %{scope: scope} do
       image = image_fixture(scope, width: 300, height: 200)
 

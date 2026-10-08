@@ -12,6 +12,8 @@ defmodule Feather.Media.Processor do
 
   @loaders %{
     "jpegload" => {"image/jpeg", "jpg"},
+    # Ultra HDR: a JPEG with a gain map, as iPhones take them
+    "uhdrload" => {"image/jpeg", "jpg"},
     "pngload" => {"image/png", "png"},
     "webpload" => {"image/webp", "webp"},
     "gifload" => {"image/gif", "gif"},
