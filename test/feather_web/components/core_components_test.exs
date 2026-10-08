@@ -1,6 +1,7 @@
 defmodule FeatherWeb.CoreComponentsTest do
   use ExUnit.Case, async: true
 
+  import Phoenix.Component, only: [sigil_H: 2]
   import Phoenix.LiveViewTest
   import FeatherWeb.CoreComponents
 
@@ -53,6 +54,44 @@ defmodule FeatherWeb.CoreComponentsTest do
     test "has an outlined danger variant for destructive actions" do
       html = render_component(&button/1, variant: "danger-outline", inner_block: [])
       assert html =~ ~s(class="btn btn-outline-danger")
+    end
+  end
+
+  describe "dropdown/1" do
+    test "renders a closed menu with an accessible toggle" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <.dropdown id="menu" label="Account">
+          <:toggle>Open</:toggle>
+          <li>Item</li>
+        </.dropdown>
+        """)
+
+      assert html =~ ~s(id="menu-toggle")
+      assert html =~ ~s(aria-expanded="false")
+      assert html =~ ~s(aria-controls="menu-menu")
+      assert html =~ ~s(aria-label="Account")
+      assert html =~ ~s(class="btn dropdown-toggle btn-light btn-sm")
+      assert html =~ ~r/class="dropdown-menu\s*"/
+      assert html =~ "phx-click-away"
+      assert html =~ ~s(phx-key="Escape")
+    end
+
+    test "aligns the menu to the end and hides the caret on request" do
+      assigns = %{}
+
+      html =
+        rendered_to_string(~H"""
+        <.dropdown id="menu" align="end" caret={false}>
+          <:toggle>Open</:toggle>
+          <li>Item</li>
+        </.dropdown>
+        """)
+
+      assert html =~ ~s(class="dropdown-menu dropdown-menu-end")
+      refute html =~ "dropdown-toggle"
     end
   end
 end

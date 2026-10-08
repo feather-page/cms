@@ -118,6 +118,71 @@ defmodule FeatherWeb.CoreComponents do
   end
 
   @doc """
+  Renders a dropdown: a toggle button and a menu, opened and closed with
+  `Phoenix.LiveView.JS` (there is no Bootstrap JS). A click outside the
+  dropdown or Escape closes it.
+
+  The inner block holds the menu's `<li>` elements (`dropdown-item`,
+  `dropdown-header`, `dropdown-divider`).
+
+  ## Examples
+
+      <.dropdown id="user-menu" label="Account" align="end" caret={false}>
+        <:toggle><.icon name="circle-user" /></:toggle>
+        <li><.link navigate={~p"/users/settings"} class="dropdown-item">Account settings</.link></li>
+      </.dropdown>
+  """
+  attr :id, :string, required: true
+  attr :label, :string, default: nil, doc: "the accessible name of a toggle without text"
+  attr :class, :any, default: nil
+  attr :toggle_class, :any, default: "btn-light btn-sm"
+  attr :align, :string, values: ~w(start end), default: "start"
+  attr :caret, :boolean, default: true, doc: "shows a chevron after the toggle's content"
+  slot :toggle, required: true
+  slot :inner_block, required: true
+
+  def dropdown(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      class={["dropdown", @class]}
+      phx-click-away={hide_dropdown(@id)}
+      phx-keydown={hide_dropdown(@id) |> JS.focus(to: "##{@id}-toggle")}
+      phx-key="Escape"
+    >
+      <button
+        type="button"
+        id={"#{@id}-toggle"}
+        class={["btn", @caret && "dropdown-toggle", @toggle_class]}
+        aria-label={@label}
+        aria-expanded="false"
+        aria-controls={"#{@id}-menu"}
+        phx-click={toggle_dropdown(@id)}
+      >
+        {render_slot(@toggle)}
+      </button>
+      <ul
+        id={"#{@id}-menu"}
+        class={["dropdown-menu", @align == "end" && "dropdown-menu-end"]}
+        data-bs-popper="static"
+      >
+        {render_slot(@inner_block)}
+      </ul>
+    </div>
+    """
+  end
+
+  defp toggle_dropdown(id) do
+    JS.toggle_class("show", to: "##{id}-menu")
+    |> JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "##{id}-toggle")
+  end
+
+  defp hide_dropdown(id) do
+    JS.remove_class("show", to: "##{id}-menu")
+    |> JS.set_attribute({"aria-expanded", "false"}, to: "##{id}-toggle")
+  end
+
+  @doc """
   Renders an input with label and error messages.
 
   A `Phoenix.HTML.FormField` may be passed as argument, which is used to
