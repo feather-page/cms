@@ -146,6 +146,15 @@ defmodule FeatherWeb.CoreComponents do
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
   attr :class, :any, default: nil, doc: "the input class to use over defaults"
 
+  attr :wrapper_class, :any,
+    default: "mb-3",
+    doc: "the class of the element around label, input and messages"
+
+  attr :switch, :boolean, default: false, doc: "renders a checkbox as a switch"
+
+  slot :prefix,
+    doc: "rendered in an input group before text-like inputs (e.g. a second, narrow input)"
+
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 multiple pattern placeholder readonly required rows size step)
@@ -174,7 +183,7 @@ defmodule FeatherWeb.CoreComponents do
       end)
 
     ~H"""
-    <div class="form-check mb-3">
+    <div class={["form-check", @switch && "form-switch", @wrapper_class]}>
       <input
         type="hidden"
         name={@name}
@@ -188,6 +197,7 @@ defmodule FeatherWeb.CoreComponents do
         name={@name}
         value="true"
         checked={@checked}
+        role={@switch && "switch"}
         class={[@class || "form-check-input", @errors != [] && "is-invalid"]}
         {@rest}
       />
@@ -200,7 +210,7 @@ defmodule FeatherWeb.CoreComponents do
 
   def input(%{type: "select"} = assigns) do
     ~H"""
-    <div class="mb-3">
+    <div class={@wrapper_class}>
       <label :if={@label} for={@id} class="form-label">{@label}</label>
       <select
         id={@id}
@@ -220,7 +230,7 @@ defmodule FeatherWeb.CoreComponents do
 
   def input(%{type: "textarea"} = assigns) do
     ~H"""
-    <div class="mb-3">
+    <div class={@wrapper_class}>
       <label :if={@label} for={@id} class="form-label">{@label}</label>
       <textarea
         id={@id}
@@ -236,9 +246,21 @@ defmodule FeatherWeb.CoreComponents do
 
   def input(assigns) do
     ~H"""
-    <div class="mb-3">
+    <div class={@wrapper_class}>
       <label :if={@label} for={@id} class="form-label">{@label}</label>
+      <div :if={@prefix != []} class="input-group">
+        {render_slot(@prefix)}
+        <input
+          type={@type}
+          name={@name}
+          id={@id}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          class={[@class || "form-control", @errors != [] && "is-invalid"]}
+          {@rest}
+        />
+      </div>
       <input
+        :if={@prefix == []}
         type={@type}
         name={@name}
         id={@id}
@@ -264,30 +286,107 @@ defmodule FeatherWeb.CoreComponents do
   end
 
   @doc """
-  Renders a page header with title, optional subtitle and actions.
+  Renders a page header with title, optional back link, badge, subtitle and
+  actions.
+
+  `back` and `back_label` render a small "‹ Posts" link above the title,
+  back to the collection. `truncate` keeps a long title on one line (edit
+  pages, whose title is the item's title).
+
+  ## Examples
+
+      <.header>Posts</.header>
+
+      <.header back={~p"/sites/abc/posts"} back_label="Posts" truncate>
+        {@post.title}
+        <:badge><span class="badge">Draft</span></:badge>
+      </.header>
   """
   attr :class, :any, default: nil
+  attr :back, :string, default: nil, doc: "the path of the back link"
+  attr :back_label, :string, default: nil
+  attr :truncate, :boolean, default: false, doc: "keeps the title on one line"
   slot :inner_block, required: true
+  slot :badge, doc: "shown right of the title, e.g. a status badge"
   slot :subtitle
   slot :actions
 
   def header(assigns) do
     ~H"""
-    <header class={[
-      "mb-4",
-      @actions != [] && "d-flex align-items-center justify-content-between gap-3",
-      @class
-    ]}>
-      <div>
-        <h1 class="h3 mb-1">
-          {render_slot(@inner_block)}
-        </h1>
-        <p :if={@subtitle != []} class="text-body-secondary mb-0">
-          {render_slot(@subtitle)}
-        </p>
+    <header class={["page-header mb-4", @class]}>
+      <.link :if={@back} navigate={@back} class="page-header__back" id="back-link">
+        <span aria-hidden="true">‹</span> {@back_label}
+      </.link>
+      <div class={@actions != [] && "page-header__row"}>
+        <div class="page-header__main">
+          <div class={["page-header__title-row", @badge != [] && "d-flex align-items-center gap-2"]}>
+            <h1 class={["page-header__title", @truncate && "text-truncate"]}>
+              {render_slot(@inner_block)}
+            </h1>
+            {render_slot(@badge)}
+          </div>
+          <p :if={@subtitle != []} class="page-header__subtitle text-body-secondary mb-0">
+            {render_slot(@subtitle)}
+          </p>
+        </div>
+        <div :if={@actions != []} class="d-flex align-items-center gap-2 flex-shrink-0">
+          {render_slot(@actions)}
+        </div>
       </div>
-      <div :if={@actions != []} class="d-flex gap-2">{render_slot(@actions)}</div>
     </header>
+    """
+  end
+
+  @doc """
+  Renders a status badge: `published`, `draft` or `neutral`.
+
+  ## Examples
+
+      <.status_badge kind={:draft}>Draft</.status_badge>
+  """
+  attr :kind, :atom, values: [:published, :draft, :neutral], default: :neutral
+  attr :id, :string, default: "status-badge"
+  slot :inner_block, required: true
+
+  def status_badge(assigns) do
+    ~H"""
+    <span
+      id={@id}
+      class={[
+        "badge rounded-pill",
+        @kind == :published && "bg-success-subtle text-success-emphasis",
+        @kind == :draft && "bg-warning-subtle text-warning-emphasis",
+        @kind == :neutral && "bg-secondary-subtle text-secondary-emphasis"
+      ]}
+    >
+      {render_slot(@inner_block)}
+    </span>
+    """
+  end
+
+  @doc """
+  Renders the action row of a form: Save and Cancel, a destructive action
+  on the right. `sticky` keeps it at the bottom of the viewport (editor
+  pages).
+
+  ## Examples
+
+      <.action_bar sticky>
+        <button type="submit" form="post-form" class="btn btn-primary">Save</button>
+        <:danger><button type="button" class="btn btn-outline-danger">Delete</button></:danger>
+      </.action_bar>
+  """
+  attr :id, :string, default: "action-bar"
+  attr :sticky, :boolean, default: false
+  slot :inner_block, required: true
+  slot :danger
+
+  def action_bar(assigns) do
+    ~H"""
+    <div id={@id} class={["action-bar", @sticky && "action-bar--sticky"]}>
+      {render_slot(@inner_block)}
+      <div :if={@danger != []} class="action-bar__danger">{render_slot(@danger)}</div>
+    </div>
     """
   end
 
