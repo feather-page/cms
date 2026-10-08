@@ -43,7 +43,7 @@ Phoenix 1.8 application on SQLite rather than translating Rails idioms one to on
 
 Release, database and images live in one container with one volume (`/data`); there is no
 database server and no job container. SQLite has a single writer, so only one app container may
-run against the volume (`config/deploy.yml`) and the app does not scale horizontally. Tests that
+run against the volume (`ops/compose.yml`) and the app does not scale horizontally. Tests that
 touch the database run synchronously for the same reason.
 
 Deliberately dropped or changed in the port:

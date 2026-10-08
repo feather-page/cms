@@ -55,7 +55,7 @@ defmodule FeatherWeb.Router do
     plug FeatherWeb.Plugs.ApiAuth
   end
 
-  # kamal-proxy's health check (config/deploy.yml). No pipeline: no
+  # The container health check (Dockerfile). No pipeline: no
   # session, no CSRF; excluded from force_ssl in config/prod.exs.
   scope "/", FeatherWeb do
     get "/up", HealthController, :show

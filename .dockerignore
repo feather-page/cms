@@ -5,7 +5,6 @@
 /.github/
 /.claude/
 /.worktrees/
-/.kamal/
 /.env*
 
 # Build output and dependencies are fetched and compiled in the image.

@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 #
-# Release image of the CMS. Build: docker build -t feather .
+# Release image of the CMS. CI builds it on main and pushes it to
+# ghcr.io/feather-page/cms; it runs with docker compose (ops/compose.yml).
 #
 # Volumes: /data (SQLite database and image storage) and /static (staging
 # sites, served by Caddy as /static/{host}, see ops/Caddyfile).
@@ -52,11 +53,12 @@ RUN mix release
 FROM ${RUNNER_IMAGE}
 
 # libstdc++6: needed by vix's libvips. rclone: deployments. brotli:
-# precompressed static output. sqlite3: for ops (inspecting /data/feather.db).
+# precompressed static output. sqlite3: for ops (inspecting and backing up
+# /data/feather.db). curl: the health check.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 locales ca-certificates \
-    rclone brotli sqlite3 \
+    rclone brotli sqlite3 curl \
   && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
@@ -84,6 +86,9 @@ USER feather
 
 VOLUME ["/data", "/static"]
 EXPOSE 4000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \
+  CMD curl -fsS "http://localhost:${PORT}/up" || exit 1
 
 # bin/server runs the migrations, then starts the release.
 CMD ["/app/bin/server"]

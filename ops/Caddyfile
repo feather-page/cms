@@ -1,22 +1,21 @@
+# Staging sites (featherpage_caddy in ops/compose.yml, mounted from
+# /web/data/featherpage/caddy/config). Pangolin terminates TLS, so Caddy
+# serves plain HTTP from the directory the CMS writes staging sites to.
 {
-        on_demand_tls {
-                ask https://app.feather.page/api/caddy/check_domain
-        }
+	on_demand_tls {
+		ask https://app.feather.page/api/caddy/check_domain
+	}
 }
 
-https:// {
-        tls {
-                on_demand
-        }
+http:// {
+	root * /static/{host}
+	file_server {
+		precompressed br gzip
+	}
 
-        root * /static/{host}
-        file_server {
-          precompressed br gzip
-        }
-
-        @static {
-          file
-          path *.ico *.css *.js *.gif *.jpg *.jpeg *.png *.svg *.woff *.webp *.avif
-        }
-        header @static Cache-Control max-age=31536000
+	@static {
+		file
+		path *.ico *.css *.js *.gif *.jpg *.jpeg *.png *.svg *.woff *.webp *.avif
+	}
+	header @static Cache-Control max-age=31536000
 }

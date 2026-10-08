@@ -1,6 +1,6 @@
 defmodule FeatherWeb.HealthController do
   @moduledoc """
-  `GET /up`, the health check of kamal-proxy (`config/deploy.yml`): 200
+  `GET /up`, the container health check (`HEALTHCHECK` in the Dockerfile): 200
   "ok" when the app runs and the database answers, 503 otherwise. No
   session, no CSRF, excluded from `force_ssl` (`config/prod.exs`).
   """

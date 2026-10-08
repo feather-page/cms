@@ -1,0 +1,41 @@
+# Production on the home server: /web/config/featherpage/compose.yml, with
+# the secrets in stack.env next to it (keys in ops/stack.env.example).
+#
+#   docker compose up -d
+#
+# CI pushes ghcr.io/feather-page/cms:latest on every push to main; Watchtower
+# pulls it at night and recreates the container, which migrates on start.
+#
+# Exactly one featherpage container: SQLite has a single writer, and a second
+# one would also run the daily image cleanup and deploys twice.
+
+services:
+  featherpage:
+    image: ghcr.io/feather-page/cms:latest
+    restart: unless-stopped
+    env_file:
+      - stack.env
+    volumes:
+      # Database (feather.db), images and build output. Owned by uid 1000.
+      - /web/data/featherpage/phoenix:/data
+      # Staging sites, served by featherpage_caddy as /static/{host}.
+      - /web/data/featherpage/caddy/static:/static
+    networks:
+      # Pangolin (newt) reaches the app as featherpage:4000.
+      - frontend
+      - default
+
+  featherpage_caddy:
+    image: caddy:2
+    restart: unless-stopped
+    volumes:
+      - /web/data/featherpage/caddy/static:/static
+      - /web/data/featherpage/caddy/data:/data
+      - /web/data/featherpage/caddy/config:/etc/caddy
+    networks:
+      - frontend
+      - default
+
+networks:
+  frontend:
+    external: true
