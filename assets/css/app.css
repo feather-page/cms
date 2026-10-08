@@ -237,6 +237,39 @@
   font-weight: 600;
 }
 
+/* Book, review, deployment target and new site forms. */
+.form-narrow {
+  max-width: 48rem;
+}
+
+.form-narrow input[type="date"] {
+  min-width: 10rem;
+}
+
+/* Emoji as a prefix of the title input. */
+.input-group .emoji-input {
+  flex: 0 0 3rem;
+  width: 3rem;
+  padding-inline: 0;
+  text-align: center;
+  font-size: 1.25rem;
+  background-color: var(--felt-field-addon);
+}
+
+.input-group > .form-control + .form-control {
+  margin-left: -1px;
+}
+
+.input-group > .form-control:not(:last-child) {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.input-group > .form-control:not(:first-child) {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
 /* Quiet icon button removing a row (project links). */
 .link-row__remove {
   --felt-btn-color: var(--felt-secondary-color);
@@ -251,6 +284,26 @@
 
 .link-row__remove:is(:hover, :focus-visible) {
   --felt-btn-color: var(--felt-danger-text);
+}
+
+.book-cover-preview {
+  width: 72px;
+  height: 104px;
+  flex-shrink: 0;
+  border-radius: var(--felt-radius-sm);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--felt-surface-raised);
+  border: 1px solid var(--felt-border-color);
+  font-size: 1.75rem;
+}
+
+.book-cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Action row: Save, Cancel, then Delete on the right. On the editor pages
