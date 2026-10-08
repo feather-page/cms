@@ -24,22 +24,25 @@ defmodule FeatherWeb.SiteLive.Index do
       <div :if={@sites == []} id="no-sites" class="text-center text-body-secondary py-5">
         <p class="fs-1 mb-2"><.icon name="house" size={40} /></p>
         <p>No sites yet.</p>
-        <.button variant="primary" navigate={~p"/sites/new"}>Create your first site</.button>
+        <.link navigate={~p"/sites/new"} class="btn btn-light">Create your first site</.link>
       </div>
 
       <div :if={@sites != []} id="sites" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
         <div :for={site <- @sites} class="col">
-          <div id={"site-#{site.public_id}"} class="card h-100">
-            <div class="card-body">
-              <h2 class="h5 card-title">
-                <span :if={site.emoji} class="me-1">{site.emoji}</span>
-                <.link navigate={~p"/sites/#{site.public_id}/posts"} class="stretched-link">
-                  {site.title}
-                </.link>
-              </h2>
-              <p class="card-text text-body-secondary mb-0">
-                <.icon name="globe" size={16} /> {site.domain}
-              </p>
+          <div id={"site-#{site.public_id}"} class="card site-card h-100">
+            <div class="card-body d-flex align-items-center gap-3">
+              <div class="list-row__tile">
+                <span :if={site.emoji}>{site.emoji}</span>
+                <.icon :if={!site.emoji} name="globe" />
+              </div>
+              <div class="site-card__body">
+                <h2 class="site-card__title">
+                  <.link navigate={~p"/sites/#{site.public_id}/posts"} class="stretched-link">
+                    {site.title}
+                  </.link>
+                </h2>
+                <p class="site-card__domain">{site.domain}</p>
+              </div>
             </div>
           </div>
         </div>

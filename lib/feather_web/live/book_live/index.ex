@@ -22,7 +22,7 @@ defmodule FeatherWeb.BookLive.Index do
         Books
         <:actions>
           <.button variant="primary" navigate={~p"/sites/#{@site.public_id}/books/new"} id="new-book">
-            <.icon name="plus" size={16} /> New Book
+            <.icon name="plus" size={16} /> New book
           </.button>
         </:actions>
       </.header>
@@ -33,14 +33,11 @@ defmodule FeatherWeb.BookLive.Index do
         emoji="📚"
         message="Your bookshelf is empty"
         subtitle="Add your first book."
-        action_label="New Book"
-        action_navigate={~p"/sites/#{@site.public_id}/books/new"}
       />
 
       <section :if={@reading != []} id="books-reading" class="bookshelf__section">
-        <h2 class="bookshelf__section-header">
-          <span class="bookshelf__dot bookshelf__dot--reading"></span>
-          Currently Reading · {length(@reading)}
+        <h2 class="bookshelf__heading">
+          Currently reading <span class="bookshelf__count">{count(@reading)}</span>
         </h2>
         <div class="bookshelf__grid">
           <.book_cover :for={book <- @reading} book={book} site={@site} />
@@ -48,9 +45,8 @@ defmodule FeatherWeb.BookLive.Index do
       </section>
 
       <section :if={@want_to_read != []} id="books-want-to-read" class="bookshelf__section">
-        <h2 class="bookshelf__section-header">
-          <span class="bookshelf__dot bookshelf__dot--want"></span>
-          Want to Read · {length(@want_to_read)}
+        <h2 class="bookshelf__heading">
+          Want to read <span class="bookshelf__count">{count(@want_to_read)}</span>
         </h2>
         <div class="bookshelf__grid">
           <.book_cover :for={book <- @want_to_read} book={book} site={@site} />
@@ -63,11 +59,9 @@ defmodule FeatherWeb.BookLive.Index do
         class="bookshelf__year"
         open={index == 0}
       >
-        <summary class="bookshelf__year-header">
-          <span class="bookshelf__year-title">{year || "Unknown"}</span>
-          <span class="bookshelf__year-stats">
-            {length(books)} {if length(books) == 1, do: "book", else: "books"}
-          </span>
+        <summary class="bookshelf__heading bookshelf__toggle">
+          <.icon name="chevron-down" size={18} class="bookshelf__chevron" />
+          {year || "Unknown"} <span class="bookshelf__count">{count(books)}</span>
         </summary>
         <div class="bookshelf__grid">
           <.book_cover :for={book <- books} book={book} site={@site} />
@@ -97,9 +91,12 @@ defmodule FeatherWeb.BookLive.Index do
         />
         <span :if={!@book.cover_image} class="book-cover__emoji">{@book.emoji || "📖"}</span>
       </div>
-      <div class="book-cover__title">{truncate(@book.title, 30)}</div>
-      <div class="book-cover__author">{truncate(@book.author, 25)}</div>
-      <div :if={@book.reading_status == "finished" and @book.rating} class="book-cover__rating">
+      <div class="book-cover__title">{@book.title}</div>
+      <div class="book-cover__author">{@book.author}</div>
+      <div
+        :if={@book.reading_status == "finished" and @book.rating}
+        class="book-cover__rating text-warning"
+      >
         {stars(@book.rating)}
       </div>
     </.link>
@@ -128,6 +125,6 @@ defmodule FeatherWeb.BookLive.Index do
      |> assign(:finished_by_year, finished_by_year)}
   end
 
-  defp truncate(nil, _length), do: ""
-  defp truncate(text, length), do: Feather.Content.Blocks.truncate(text, length)
+  defp count([_book]), do: "1 book"
+  defp count(books), do: "#{length(books)} books"
 end
