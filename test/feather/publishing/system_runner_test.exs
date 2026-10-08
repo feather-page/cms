@@ -34,8 +34,9 @@ defmodule Feather.Publishing.Rclone.SystemRunnerTest do
 
     started = System.monotonic_time(:millisecond)
 
-    assert {:error, "rclone sync timed out after 0 seconds"} =
-             SystemRunner.run(["sync", "a", "b"], timeout: 300, executable: fake)
+    # Long enough for the script to write its pid even on a busy machine.
+    assert {:error, "rclone sync timed out after 2 seconds"} =
+             SystemRunner.run(["sync", "a", "b"], timeout: 2_000, executable: fake)
 
     assert System.monotonic_time(:millisecond) - started < 5_000
 
