@@ -18,7 +18,8 @@ defmodule FeatherWeb.ReviewLiveTest do
 
   test "creates a short review without title", %{conn: conn, site: site, scope: scope, book: book} do
     {:ok, lv, _html} = live(conn, review_path(site, book, "new"))
-    assert has_element?(lv, "#title-and-slug.d-none")
+    assert has_element?(lv, "#title-field.d-none")
+    assert has_element?(lv, "#slug-field.d-none")
 
     lv |> element("#star-rating-5") |> render_click()
     assert has_element?(lv, "#star-rating-5.filled")
@@ -52,7 +53,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     long = editor_json(String.duplicate("A", 350))
     lv |> element("#review-form") |> render_change(%{"post" => %{"content" => long}})
 
-    refute has_element?(lv, "#title-and-slug.d-none")
+    refute has_element?(lv, "#title-field.d-none")
+    refute has_element?(lv, "#slug-field.d-none")
     assert has_element?(lv, ~s(#post_title[value="Review: Clean Code"]))
 
     lv

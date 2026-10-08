@@ -95,6 +95,28 @@ defmodule FeatherWeb.ContentForm do
   def picker_assigns({:thumbnail, image}), do: [thumbnail_image: image]
   def picker_assigns({:emoji, _emoji}), do: []
 
+  @doc """
+  The page title of an edit page: the record's title, else the start of
+  its content (short posts), else `fallback`.
+  """
+  @spec heading(map(), String.t()) :: String.t()
+  def heading(record, fallback) do
+    cond do
+      present?(record.title) -> record.title
+      (excerpt = Content.content_excerpt(record, 80)) != "" -> excerpt
+      true -> fallback
+    end
+  end
+
+  @doc """
+  Whether the details card starts open: after a failed save, so errors in
+  its fields are visible.
+  """
+  @spec details_open?(Phoenix.HTML.Form.t()) :: boolean()
+  def details_open?(%Phoenix.HTML.Form{source: %Ecto.Changeset{} = changeset}) do
+    changeset.action in [:insert, :update] and not changeset.valid?
+  end
+
   @doc "A loaded association, or nil when it is not loaded."
   @spec loaded(term()) :: term()
   def loaded(%Ecto.Association.NotLoaded{}), do: nil

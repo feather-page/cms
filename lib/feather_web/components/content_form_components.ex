@@ -1,12 +1,63 @@
 defmodule FeatherWeb.ContentFormComponents do
   @moduledoc """
-  Form parts of the content forms (posts, pages, projects, reviews): the
-  Editor.js editor, title and slug, the hidden header image fields and the
-  star rating.
+  Parts of the content editor screens (posts, pages, projects, reviews):
+  the two column layout with its "Details" card, the large title input,
+  the slug, the Editor.js editor, the hidden header image fields, the
+  status badge and the star rating.
   """
   use Phoenix.Component
 
   import FeatherWeb.CoreComponents
+
+  alias Phoenix.LiveView.JS
+
+  @doc """
+  Renders the editor layout: title and content in the wide column, the
+  "Details" card next to it (from 992px) or below it, collapsed until
+  opened.
+
+  The fields in the details card live outside the record's form (the
+  header image picker has forms of its own); give them a `form` attribute
+  with the id of the record's form.
+  """
+  attr :id, :string, required: true, doc: "prefix of the ids, e.g. \"post\""
+  attr :open, :boolean, default: false, doc: "opens the details card (e.g. after errors)"
+  slot :main, required: true
+  slot :details, required: true
+
+  def editor_layout(assigns) do
+    ~H"""
+    <div class="row g-4 editor-layout">
+      <div class="col-12 col-lg-8">{render_slot(@main)}</div>
+      <div class="col-12 col-lg-4 editor-details-column">
+        <section
+          id={"#{@id}-details"}
+          class={["card editor-details", @open && "is-open"]}
+          aria-labelledby={"#{@id}-details-toggle"}
+        >
+          <h2 class="editor-details__heading">
+            <button
+              type="button"
+              id={"#{@id}-details-toggle"}
+              class="editor-details__toggle"
+              aria-controls={"#{@id}-details-body"}
+              aria-expanded={to_string(@open)}
+              phx-click={
+                JS.toggle_class("is-open", to: "##{@id}-details")
+                |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+              }
+            >
+              Details <.icon name="chevron-down" size={18} class="editor-details__chevron" />
+            </button>
+          </h2>
+          <div id={"#{@id}-details-body"} class="card-body editor-details__body">
+            {render_slot(@details)}
+          </div>
+        </section>
+      </div>
+    </div>
+    """
+  end
 
   @doc """
   Renders the Editor.js editor (see `assets/js/hooks/editor_js.js`).
@@ -26,7 +77,7 @@ defmodule FeatherWeb.ContentFormComponents do
   def editor(assigns) do
     ~H"""
     <div class="mb-3">
-      <label class="form-label" for={"#{@id}-input"}>{@label}</label>
+      <label class="visually-hidden" for={"#{@id}-input"}>{@label}</label>
       <div
         id={@id}
         class="editor-wrapper"
@@ -51,21 +102,46 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders title and slug. `hidden` hides them (short posts) but keeps them
-  in the form.
+  Renders the title as a large input. `hidden` hides it (short posts) but
+  keeps it in the form.
   """
-  attr :form, Phoenix.HTML.Form, required: true
+  attr :field, Phoenix.HTML.FormField, required: true
   attr :hidden, :boolean, default: false
-  attr :id, :string, default: "title-and-slug"
+  attr :id, :string, default: "title-field"
 
-  def title_and_slug(assigns) do
+  def title_field(assigns) do
     ~H"""
     <div id={@id} class={["mb-3", @hidden && "d-none"]}>
-      <.input field={@form[:title]} label="Title" phx-debounce="300" autocomplete="off" />
       <.input
-        field={@form[:slug]}
+        field={@field}
+        class="form-control editor-title"
+        placeholder="Title"
+        aria-label="Title"
+        wrapper_class={nil}
+        phx-debounce="300"
+        autocomplete="off"
+      />
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the slug input, for the details card (`form` names the record's
+  form). `hidden` hides it (short posts) but keeps it in the form.
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :form, :string, required: true
+  attr :hidden, :boolean, default: false
+  attr :id, :string, default: "slug-field"
+
+  def slug_field(assigns) do
+    ~H"""
+    <div id={@id} class={@hidden && "d-none"}>
+      <.input
+        field={@field}
         label="Slug"
         placeholder="/a-nice-slug"
+        form={@form}
         phx-debounce="300"
         autocomplete="off"
       />
@@ -121,7 +197,7 @@ defmodule FeatherWeb.ContentFormComponents do
     assigns = assign(assigns, :max, FeatherWeb.ContentForm.short_post_length())
 
     ~H"""
-    <div id={@id} class="form-text">{@length} / {@max}</div>
+    <div id={@id} class="form-text text-end">{@length} / {@max}</div>
     """
   end
 end

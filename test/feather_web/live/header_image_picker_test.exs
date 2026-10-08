@@ -58,7 +58,7 @@ defmodule FeatherWeb.HeaderImagePickerTest do
 
       {:ok, lv, _html} = new_post(conn, site)
 
-      lv |> element("#{@picker}-search-cover") |> render_click()
+      lv |> element("#{@picker}-choose-cover") |> render_click()
       lv |> form("#{@picker}-search-form", query: "nature") |> render_change()
 
       assert has_element?(lv, "#unsplash-abc123 img[src='https://images.unsplash.com/thumb.jpg']")
@@ -93,23 +93,56 @@ defmodule FeatherWeb.HeaderImagePickerTest do
       Req.Test.stub(Feather.Unsplash, fn _conn -> flunk("Unsplash must not be called") end)
       {:ok, lv, _html} = new_post(conn, site)
 
-      lv |> element("#{@picker}-search-thumbnail") |> render_click()
+      lv |> element("#{@picker}-choose-thumbnail") |> render_click()
       lv |> form("#{@picker}-search-form", query: "a") |> render_change()
 
       refute has_element?(lv, ".unsplash-result")
+    end
+
+    test "switches between search and upload", %{conn: conn, site: site} do
+      {:ok, lv, _html} = new_post(conn, site)
+
+      lv |> element("#{@picker}-choose-cover") |> render_click()
+      assert has_element?(lv, "#{@picker}-search-cover.active")
+      assert has_element?(lv, "#{@picker}-search-form")
+
+      lv |> element("#{@picker}-upload-cover") |> render_click()
+      assert has_element?(lv, "#{@picker}-upload-cover.active")
+      assert has_element?(lv, "#{@picker}-upload-form")
+      refute has_element?(lv, "#{@picker}-search-form")
     end
   end
 
   test "hides the Unsplash search without an access key", %{conn: conn, site: site} do
     {:ok, lv, _html} = new_post(conn, site)
+    lv |> element("#{@picker}-choose-cover") |> render_click()
+
     refute has_element?(lv, "#{@picker}-search-cover")
-    assert has_element?(lv, "#{@picker}-upload-cover")
+    refute has_element?(lv, "#{@picker}-search-form")
+    assert has_element?(lv, "#{@picker}-upload-form")
+  end
+
+  test "shows empty slots with Add and filled slots with Change and Remove", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    cover = image_fixture(scope)
+    post = post_fixture(scope, header_image_id: cover.id)
+
+    {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts/#{post.public_id}/edit")
+
+    assert has_element?(lv, "#{@picker}-choose-cover", "Change")
+    assert has_element?(lv, "#{@picker}-remove-cover")
+    assert has_element?(lv, "#{@picker}-choose-thumbnail", "Add")
+    refute has_element?(lv, "#{@picker}-remove-thumbnail")
+    assert has_element?(lv, "#{@picker}-thumbnail-slot .media-slot__tile--empty")
   end
 
   test "uploads a thumbnail and removes it", %{conn: conn, site: site, scope: scope} do
     {:ok, lv, _html} = new_post(conn, site)
 
-    lv |> element("#{@picker}-upload-thumbnail") |> render_click()
+    lv |> element("#{@picker}-choose-thumbnail") |> render_click()
 
     upload =
       file_input(lv, "#{@picker}-upload-form", :image, [
@@ -133,7 +166,7 @@ defmodule FeatherWeb.HeaderImagePickerTest do
 
   test "shows an error for files that are not images", %{conn: conn, site: site} do
     {:ok, lv, _html} = new_post(conn, site)
-    lv |> element("#{@picker}-upload-cover") |> render_click()
+    lv |> element("#{@picker}-choose-cover") |> render_click()
 
     upload =
       file_input(lv, "#{@picker}-upload-form", :image, [
@@ -147,7 +180,7 @@ defmodule FeatherWeb.HeaderImagePickerTest do
   test "picks and removes an emoji", %{conn: conn, site: site, scope: scope} do
     {:ok, lv, _html} = new_post(conn, site)
 
-    lv |> element("#{@picker}-add-emoji") |> render_click()
+    lv |> element("#{@picker}-choose-emoji") |> render_click()
     assert has_element?(lv, "#{@picker}-emoji-picker", "Animals")
 
     lv |> element("#{@picker}-emoji-picker button", "🦊") |> render_click()

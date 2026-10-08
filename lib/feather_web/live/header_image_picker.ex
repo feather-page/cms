@@ -1,7 +1,8 @@
 defmodule FeatherWeb.HeaderImagePicker do
   @moduledoc """
   Picks the icon (emoji), thumbnail and cover image of a post, page,
-  project or review (port of the Rails `header_image_picker`).
+  project or review (port of the Rails `header_image_picker`): three
+  media slots, each a preview tile with "Add" or "Change" and "Remove".
 
   Images come from an Unsplash search (downloaded with
   `Feather.Media.create_image_from_url/3`, attribution stored in
@@ -51,54 +52,38 @@ defmodule FeatherWeb.HeaderImagePicker do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={@id} class="header-image-picker mb-3">
-      <div
-        :if={@header_image || @thumbnail_image || present?(@emoji)}
-        id={"#{@id}-preview"}
-        class="header-preview mb-3"
-      >
-        <div :if={@thumbnail_image} class="thumbnail-preview" id={"#{@id}-thumbnail"}>
-          <img
-            src={image_path(@current_scope.site, @thumbnail_image, "mobile_x1.webp")}
-            alt="Thumbnail"
-          />
-        </div>
-        <div :if={@header_image} class="header-preview-image" id={"#{@id}-cover"}>
-          <img src={image_path(@current_scope.site, @header_image, "desktop_x1.webp")} alt="Cover" />
-        </div>
-        <button
-          :if={present?(@emoji)}
-          type="button"
-          id={"#{@id}-emoji"}
-          class={["header-preview-emoji", !@header_image && "header-preview-emoji--inline"]}
-          title="Change icon"
-          phx-click="toggle_emoji"
-          phx-target={@myself}
-        >
-          {@emoji}
-        </button>
-      </div>
-
-      <div class="d-flex gap-3 flex-wrap mb-3 position-relative align-items-start">
-        <div class="d-flex flex-column gap-1">
-          <span class="picker-label">Icon</span>
-          <div class="d-flex gap-1">
+    <div id={@id} class="media-picker">
+      <div class="media-slots">
+        <div class="media-slot" id={"#{@id}-icon-slot"}>
+          <button
+            type="button"
+            class={["media-slot__tile", !present?(@emoji) && "media-slot__tile--empty"]}
+            tabindex="-1"
+            aria-hidden="true"
+            phx-click="toggle_emoji"
+            phx-target={@myself}
+          >
+            <span :if={present?(@emoji)} id={"#{@id}-emoji"}>{@emoji}</span>
+            <.icon :if={!present?(@emoji)} name="smile" size={24} />
+          </button>
+          <span class="media-slot__label">Icon</span>
+          <div class="media-slot__actions">
             <button
               type="button"
-              id={"#{@id}-add-emoji"}
-              class="btn btn-outline-secondary btn-sm"
+              id={"#{@id}-choose-emoji"}
+              class="media-slot__action"
+              aria-label={if present?(@emoji), do: "Change icon", else: "Add icon"}
               phx-click="toggle_emoji"
               phx-target={@myself}
             >
-              <.icon name="smile" size={16} /> {if present?(@emoji),
-                do: "Change icon",
-                else: "Add icon"}
+              {if present?(@emoji), do: "Change", else: "Add"}
             </button>
             <button
               :if={present?(@emoji)}
               type="button"
               id={"#{@id}-remove-emoji"}
-              class="btn btn-outline-danger btn-sm"
+              class="media-slot__action media-slot__action--danger"
+              aria-label="Remove icon"
               phx-click="remove"
               phx-value-target="emoji"
               phx-target={@myself}
@@ -108,51 +93,52 @@ defmodule FeatherWeb.HeaderImagePicker do
           </div>
         </div>
 
-        <.image_section
+        <.image_slot
           :for={
-            {target, label, image} <- [
-              {"thumbnail", "Thumbnail", @thumbnail_image},
-              {"cover", "Cover", @header_image}
+            {target, label, image, version} <- [
+              {"thumbnail", "Thumbnail", @thumbnail_image, "mobile_x1.webp"},
+              {"cover", "Cover", @header_image, "mobile_x1.webp"}
             ]
           }
           id={@id}
           target={target}
           label={label}
           image={image}
-          unsplash?={@unsplash?}
+          src={image && image_path(@current_scope.site, image, version)}
+          mode={if @unsplash?, do: "search", else: "upload"}
           myself={@myself}
         />
+      </div>
 
-        <div
-          :if={@emoji_open?}
-          id={"#{@id}-emoji-picker"}
-          class="emoji-picker"
-          phx-click-away="close_emoji"
-          phx-target={@myself}
-        >
-          <div class="emoji-picker-scroll">
-            <div :for={{category, emojis} <- emoji_categories()} class="emoji-category">
-              <div class="emoji-category-label">{category}</div>
-              <div class="emoji-picker-grid">
-                <button
-                  :for={emoji <- emojis}
-                  type="button"
-                  class="emoji-option"
-                  phx-click="select_emoji"
-                  phx-value-emoji={emoji}
-                  phx-target={@myself}
-                >
-                  {emoji}
-                </button>
-              </div>
+      <div
+        :if={@emoji_open?}
+        id={"#{@id}-emoji-picker"}
+        class="emoji-picker"
+        phx-click-away="close_emoji"
+        phx-target={@myself}
+      >
+        <div class="emoji-picker-scroll">
+          <div :for={{category, emojis} <- emoji_categories()} class="emoji-category">
+            <div class="emoji-category-label">{category}</div>
+            <div class="emoji-picker-grid">
+              <button
+                :for={emoji <- emojis}
+                type="button"
+                class="emoji-option"
+                phx-click="select_emoji"
+                phx-value-emoji={emoji}
+                phx-target={@myself}
+              >
+                {emoji}
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div :if={@mode} id={"#{@id}-panel"} class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <strong>{panel_title(@mode)}</strong>
+      <div :if={@mode} id={"#{@id}-panel"} class="media-panel">
+        <div class="media-panel__header">
+          <span>{panel_title(@mode)}</span>
           <button
             type="button"
             class="btn-close"
@@ -161,7 +147,23 @@ defmodule FeatherWeb.HeaderImagePicker do
             phx-target={@myself}
           ></button>
         </div>
-        <div class="card-body">
+        <div class="media-panel__body">
+          <div :if={@unsplash?} class="btn-group btn-group-sm d-flex mb-3" role="group">
+            <button
+              :for={{mode, label} <- [{:search, "Search Unsplash"}, {:upload, "Upload"}]}
+              type="button"
+              id={"#{@id}-#{mode}-#{elem(@mode, 1)}"}
+              class={["btn btn-light flex-fill", elem(@mode, 0) == mode && "active"]}
+              aria-pressed={to_string(elem(@mode, 0) == mode)}
+              phx-click="open"
+              phx-value-mode={mode}
+              phx-value-target={elem(@mode, 1)}
+              phx-target={@myself}
+            >
+              {label}
+            </button>
+          </div>
+
           <p :if={@error} id={"#{@id}-error"} class="alert alert-danger">{@error}</p>
 
           <div :if={match?({:search, _}, @mode)}>
@@ -177,18 +179,19 @@ defmodule FeatherWeb.HeaderImagePicker do
                 value={@query}
                 class="form-control mb-3"
                 placeholder="Search for images..."
+                aria-label="Search Unsplash"
                 autocomplete="off"
                 phx-debounce="300"
               />
             </form>
             <p
               :if={@results == [] and String.length(@query) >= 2 and is_nil(@error)}
-              class="text-body-secondary text-center"
+              class="text-body-secondary text-center small"
             >
               No results found
             </p>
             <div id={"#{@id}-results"} class="unsplash-results">
-              <div :for={photo <- @results} class="card unsplash-result" id={"unsplash-#{photo.id}"}>
+              <div :for={photo <- @results} class="unsplash-result" id={"unsplash-#{photo.id}"}>
                 <button
                   type="button"
                   class="unsplash-result__choose"
@@ -200,12 +203,12 @@ defmodule FeatherWeb.HeaderImagePicker do
                 >
                   <img src={photo.thumbnail_url} alt={photo.description || ""} />
                 </button>
-                <small class="text-body-secondary p-1">
-                  Photo by
+                <span class="unsplash-result__credit text-truncate">
+                  by
                   <a href={photo.photographer_url} target="_blank" rel="noopener">
                     {photo.photographer_name}
                   </a>
-                </small>
+                </span>
               </div>
             </div>
           </div>
@@ -217,8 +220,12 @@ defmodule FeatherWeb.HeaderImagePicker do
             phx-submit="validate_upload"
             phx-target={@myself}
           >
-            <.live_file_input upload={@uploads.image} class="form-control" />
-            <div class="form-text">Max file size: 25 MB</div>
+            <.live_file_input
+              upload={@uploads.image}
+              class="form-control"
+              aria-label={panel_title(@mode)}
+            />
+            <div class="form-text">At most 25 MB</div>
             <p :for={entry <- @uploads.image.entries} class="small mt-2">
               {entry.client_name} – {entry.progress}%
             </p>
@@ -239,48 +246,51 @@ defmodule FeatherWeb.HeaderImagePicker do
   attr :target, :string, required: true
   attr :label, :string, required: true
   attr :image, :any, required: true
-  attr :unsplash?, :boolean, required: true
+  attr :src, :string, default: nil
+  attr :mode, :string, required: true, doc: "the panel mode to open: search or upload"
   attr :myself, :any, required: true
 
-  defp image_section(assigns) do
+  defp image_slot(assigns) do
     ~H"""
-    <div class="d-flex flex-column gap-1">
-      <span class="picker-label">{@label}</span>
-      <div class="d-flex gap-1">
-        <div class="btn-group" role="group">
-          <button
-            :if={@unsplash?}
-            type="button"
-            id={"#{@id}-search-#{@target}"}
-            class="btn btn-outline-secondary btn-sm"
-            phx-click="open"
-            phx-value-mode="search"
-            phx-value-target={@target}
-            phx-target={@myself}
-          >
-            <.icon name="image" size={16} /> Search
-          </button>
-          <button
-            type="button"
-            id={"#{@id}-upload-#{@target}"}
-            class="btn btn-outline-secondary btn-sm"
-            phx-click="open"
-            phx-value-mode="upload"
-            phx-value-target={@target}
-            phx-target={@myself}
-          >
-            <.icon name="upload" size={16} /> Upload
-          </button>
-        </div>
+    <div class="media-slot" id={"#{@id}-#{@target}-slot"}>
+      <button
+        type="button"
+        id={@image && "#{@id}-#{@target}"}
+        class={["media-slot__tile", !@image && "media-slot__tile--empty"]}
+        tabindex="-1"
+        aria-hidden="true"
+        phx-click="open"
+        phx-value-mode={@mode}
+        phx-value-target={@target}
+        phx-target={@myself}
+      >
+        <img :if={@image} src={@src} alt="" />
+        <.icon :if={!@image} name="image" size={24} />
+      </button>
+      <span class="media-slot__label">{@label}</span>
+      <div class="media-slot__actions">
+        <button
+          type="button"
+          id={"#{@id}-choose-#{@target}"}
+          class="media-slot__action"
+          aria-label={"#{if @image, do: "Change", else: "Add"} #{String.downcase(@label)}"}
+          phx-click="open"
+          phx-value-mode={@mode}
+          phx-value-target={@target}
+          phx-target={@myself}
+        >
+          {if @image, do: "Change", else: "Add"}
+        </button>
         <button
           :if={@image}
           type="button"
           id={"#{@id}-remove-#{@target}"}
-          class="btn btn-outline-danger btn-sm"
+          class="media-slot__action media-slot__action--danger"
+          aria-label={"Remove #{String.downcase(@label)}"}
           phx-click="remove"
           phx-value-target={@target}
           phx-target={@myself}
-          data-confirm={"Are you sure you want to remove the #{String.downcase(@label)}?"}
+          data-confirm={"Remove the #{String.downcase(@label)}?"}
         >
           Remove
         </button>
@@ -393,8 +403,7 @@ defmodule FeatherWeb.HeaderImagePicker do
   defp upload_error_message(:too_many_files), do: "Please choose one file."
   defp upload_error_message(error), do: "Upload failed: #{inspect(error)}"
 
-  defp panel_title({:search, target}), do: "Search Unsplash for a #{target_label(target)}"
-  defp panel_title({:upload, target}), do: "Upload a #{target_label(target)}"
+  defp panel_title({_mode, target}), do: "Choose a #{target_label(target)}"
 
   defp target_label(:cover), do: "cover image"
   defp target_label(:thumbnail), do: "thumbnail"

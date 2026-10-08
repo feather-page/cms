@@ -22,44 +22,80 @@ defmodule FeatherWeb.PostLive.Form do
       preview_path={@site_preview_path}
       active={:posts}
     >
-      <.header>
+      <.header back={~p"/sites/#{@site.public_id}/posts"} back_label="Posts" truncate>
         {@page_title}
-        <:subtitle>
-          <.link navigate={~p"/sites/#{@site.public_id}/posts"}>Posts</.link> / {@page_title}
-        </:subtitle>
+        <:badge :if={@live_action == :edit}>
+          <.status_badge :if={@post.draft} kind={:draft}>Draft</.status_badge>
+          <.status_badge :if={!@post.draft} kind={:published}>Published</.status_badge>
+        </:badge>
       </.header>
 
-      <.live_component
-        module={HeaderImagePicker}
-        id="post-header-image-picker"
-        current_scope={@current_scope}
-        header_image={@header_image}
-        thumbnail_image={@thumbnail_image}
-        emoji={@form[:emoji].value}
-      />
+      <.editor_layout id="post" open={ContentForm.details_open?(@form)}>
+        <:main>
+          <.form for={@form} id="post-form" phx-change="validate" phx-submit="save">
+            <.header_image_fields form={@form} />
+            <.title_field field={@form[:title]} hidden={!@show_title_and_slug?} />
+            <.editor
+              id="post-content-editor"
+              field={@form[:content]}
+              value={@editor_json}
+              site={@site}
+            >
+              <.content_length length={@content_length} />
+            </.editor>
+          </.form>
+        </:main>
+        <:details>
+          <.slug_field field={@form[:slug]} form="post-form" hidden={!@show_title_and_slug?} />
+          <.input
+            field={@form[:tags]}
+            label="Tags"
+            help="Comma-separated, e.g. ruby, rails, web"
+            form="post-form"
+            phx-debounce="300"
+          />
+          <.input
+            field={@form[:publish_at]}
+            type="datetime-local"
+            label="Publish at (UTC)"
+            step="60"
+            form="post-form"
+          />
+          <.input field={@form[:draft]} type="checkbox" label="Draft" switch form="post-form" />
+          <.live_component
+            module={HeaderImagePicker}
+            id="post-header-image-picker"
+            current_scope={@current_scope}
+            header_image={@header_image}
+            thumbnail_image={@thumbnail_image}
+            emoji={@form[:emoji].value}
+          />
+        </:details>
+      </.editor_layout>
 
-      <.form for={@form} id="post-form" phx-change="validate" phx-submit="save">
-        <.header_image_fields form={@form} />
-        <.title_and_slug form={@form} hidden={!@show_title_and_slug?} />
-        <.input
-          field={@form[:tags]}
-          label="Tags"
-          help="Comma-separated, e.g. ruby, rails, web"
-          phx-debounce="300"
-        />
-        <.editor id="post-content-editor" field={@form[:content]} value={@editor_json} site={@site}>
-          <.content_length length={@content_length} />
-        </.editor>
-        <.input field={@form[:publish_at]} type="datetime-local" label="Publish at (UTC)" step="60" />
-        <.input field={@form[:draft]} type="checkbox" label="Draft" />
-
-        <div class="d-flex gap-2">
-          <.button variant="primary" phx-disable-with="Saving..." id="save-post">
-            {if @live_action == :new, do: "Create Post", else: "Update Post"}
-          </.button>
-          <.button navigate={~p"/sites/#{@site.public_id}/posts"}>Cancel</.button>
-        </div>
-      </.form>
+      <.action_bar sticky>
+        <button
+          type="submit"
+          form="post-form"
+          id="save-post"
+          class="btn btn-primary"
+          phx-disable-with="Saving..."
+        >
+          {if @live_action == :new, do: "Create post", else: "Save"}
+        </button>
+        <.link navigate={~p"/sites/#{@site.public_id}/posts"} class="btn btn-light">Cancel</.link>
+        <:danger :if={@live_action == :edit}>
+          <button
+            type="button"
+            id="delete-post"
+            class="btn btn-outline-danger"
+            phx-click="delete"
+            data-confirm="Delete this post?"
+          >
+            <.icon name="trash-2" size={16} /> Delete
+          </button>
+        </:danger>
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -79,7 +115,10 @@ defmodule FeatherWeb.PostLive.Form do
      |> assign(:site, scope.site)
      |> assign(
        :page_title,
-       if(socket.assigns.live_action == :new, do: "New Post", else: "Edit Post")
+       if(socket.assigns.live_action == :new,
+         do: "New post",
+         else: ContentForm.heading(post, "Untitled post")
+       )
      )
      |> assign(:post, post)
      |> assign(:header_image, ContentForm.loaded(post.header_image))
@@ -112,6 +151,15 @@ defmodule FeatherWeb.PostLive.Form do
 
   def handle_event("save", %{"post" => post_params}, socket) do
     save_post(socket, socket.assigns.live_action, post_params)
+  end
+
+  def handle_event("delete", _params, socket) do
+    {:ok, _post} = Content.delete_post(socket.assigns.current_scope, socket.assigns.post)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, "Post was successfully deleted.")
+     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
   end
 
   @impl true

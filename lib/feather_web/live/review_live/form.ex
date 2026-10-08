@@ -23,56 +23,80 @@ defmodule FeatherWeb.ReviewLive.Form do
       preview_path={@site_preview_path}
       active={:books}
     >
-      <.header>
+      <.header back={~p"/sites/#{@site.public_id}/books"} back_label="Books" truncate>
         {@page_title}
+        <:badge :if={@live_action == :edit}>
+          <.status_badge :if={@post.draft} kind={:draft}>Draft</.status_badge>
+          <.status_badge :if={!@post.draft} kind={:published}>Published</.status_badge>
+        </:badge>
         <:subtitle>
-          <.link navigate={~p"/sites/#{@site.public_id}/books"}>Books</.link> / {@book.title}
+          {@book.emoji} {@book.title}<span :if={@book.author}> by {@book.author}</span>
         </:subtitle>
       </.header>
 
-      <.live_component
-        module={HeaderImagePicker}
-        id="review-header-image-picker"
-        current_scope={@current_scope}
-        header_image={@header_image}
-        thumbnail_image={@thumbnail_image}
-        emoji={@form[:emoji].value}
-      />
+      <.editor_layout id="review" open={ContentForm.details_open?(@form)}>
+        <:main>
+          <.form for={@form} id="review-form" phx-change="validate" phx-submit="save">
+            <.header_image_fields form={@form} />
+            <.title_field field={@form[:title]} hidden={!@show_title_and_slug?} />
+            <.editor
+              id="review-content-editor"
+              field={@form[:content]}
+              value={@editor_json}
+              site={@site}
+            >
+              <.content_length length={@content_length} />
+            </.editor>
+          </.form>
+        </:main>
+        <:details>
+          <div class="mb-3">
+            <span class="form-label">Rating</span>
+            <.star_rating value={@rating} />
+          </div>
+          <.slug_field field={@form[:slug]} form="review-form" hidden={!@show_title_and_slug?} />
+          <.input
+            field={@form[:publish_at]}
+            type="datetime-local"
+            label="Publish at (UTC)"
+            step="60"
+            form="review-form"
+          />
+          <.input field={@form[:draft]} type="checkbox" label="Draft" switch form="review-form" />
+          <.live_component
+            module={HeaderImagePicker}
+            id="review-header-image-picker"
+            current_scope={@current_scope}
+            header_image={@header_image}
+            thumbnail_image={@thumbnail_image}
+            emoji={@form[:emoji].value}
+          />
+        </:details>
+      </.editor_layout>
 
-      <div class="mb-3 d-flex align-items-center gap-3">
-        <span :if={@book.emoji} class="display-6">{@book.emoji}</span>
-        <div>
-          <span class="form-label d-block mb-1">Rating</span>
-          <.star_rating value={@rating} />
-        </div>
-      </div>
-
-      <.form for={@form} id="review-form" phx-change="validate" phx-submit="save">
-        <.header_image_fields form={@form} />
-        <.title_and_slug form={@form} hidden={!@show_title_and_slug?} />
-        <.editor id="review-content-editor" field={@form[:content]} value={@editor_json} site={@site}>
-          <.content_length length={@content_length} />
-        </.editor>
-        <.input field={@form[:publish_at]} type="datetime-local" label="Publish at (UTC)" step="60" />
-        <.input field={@form[:draft]} type="checkbox" label="Draft" />
-
-        <div class="d-flex gap-2">
-          <.button variant="primary" phx-disable-with="Saving..." id="save-review">
-            {if @live_action == :new, do: "Create Review", else: "Update Review"}
-          </.button>
-          <.button navigate={~p"/sites/#{@site.public_id}/books"}>Cancel</.button>
+      <.action_bar sticky>
+        <button
+          type="submit"
+          form="review-form"
+          id="save-review"
+          class="btn btn-primary"
+          phx-disable-with="Saving..."
+        >
+          {if @live_action == :new, do: "Create review", else: "Save"}
+        </button>
+        <.link navigate={~p"/sites/#{@site.public_id}/books"} class="btn btn-light">Cancel</.link>
+        <:danger :if={@live_action == :edit}>
           <button
-            :if={@live_action == :edit}
             type="button"
             id="delete-review"
-            class="btn btn-outline-danger ms-auto"
+            class="btn btn-outline-danger"
             phx-click="delete"
-            data-confirm="Are you sure?"
+            data-confirm="Delete this review?"
           >
-            Delete Review
+            <.icon name="trash-2" size={16} /> Delete
           </button>
-        </div>
-      </.form>
+        </:danger>
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -102,7 +126,7 @@ defmodule FeatherWeb.ReviewLive.Form do
 
     socket
     |> assign(:site, scope.site)
-    |> assign(:page_title, page_title(socket.assigns.live_action, book))
+    |> assign(:page_title, page_title(socket.assigns.live_action, book, post))
     |> assign(:book, book)
     |> assign(:post, post)
     |> assign(:rating, book.rating)
@@ -224,8 +248,10 @@ defmodule FeatherWeb.ReviewLive.Form do
     |> to_form()
   end
 
-  defp page_title(:new, book), do: "Write Review for #{book.title}"
-  defp page_title(:edit, book), do: "Edit Review for #{book.title}"
+  defp page_title(:new, _book, _post), do: "New review"
+
+  defp page_title(:edit, book, post),
+    do: ContentForm.heading(post, Book.review_title_suggestion(book))
 
   defp review_path(site, book, action),
     do: "/sites/#{site.public_id}/books/#{book.public_id}/review/#{action}"

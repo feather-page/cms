@@ -182,20 +182,23 @@ defmodule FeatherWeb.PostLiveTest do
       site: site
     } do
       {:ok, lv, _html} = live(conn, posts_path(site) <> "/new")
-      assert has_element?(lv, "#title-and-slug.d-none")
+      assert has_element?(lv, "#title-field.d-none")
+      assert has_element?(lv, "#slug-field.d-none")
       assert has_element?(lv, "#content-length", "0 / 300")
 
       lv
       |> element("#post-form")
       |> render_change(%{"post" => %{"content" => editor_json(String.duplicate("a", 299))}})
 
-      assert has_element?(lv, "#title-and-slug.d-none")
+      assert has_element?(lv, "#title-field.d-none")
+      assert has_element?(lv, "#slug-field.d-none")
 
       lv
       |> element("#post-form")
       |> render_change(%{"post" => %{"content" => editor_json(String.duplicate("a", 300))}})
 
-      refute has_element?(lv, "#title-and-slug.d-none")
+      refute has_element?(lv, "#title-field.d-none")
+      refute has_element?(lv, "#slug-field.d-none")
       assert has_element?(lv, "#content-length", "300 / 300")
     end
 
@@ -254,7 +257,8 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
 
       assert has_element?(lv, "#post-content-editor[phx-hook=EditorJs][phx-update=ignore]")
-      refute has_element?(lv, "#title-and-slug.d-none")
+      refute has_element?(lv, "#title-field.d-none")
+      refute has_element?(lv, "#slug-field.d-none")
 
       lv
       |> form("#post-form", post: %{title: "Published Post"})
@@ -312,6 +316,49 @@ defmodule FeatherWeb.PostLiveTest do
 
       refute data =~ "onerror"
       assert data =~ "<b>bold</b>"
+    end
+
+    test "shows the title, status and a link back to the posts", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Draft Post", draft: true)
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+
+      assert has_element?(lv, "h1", "Draft Post")
+      assert has_element?(lv, "#status-badge", "Draft")
+      assert has_element?(lv, ~s(#back-link[href="#{posts_path(site)}"]), "Posts")
+      assert has_element?(lv, "#post-details #post_slug[form=post-form]")
+      assert has_element?(lv, "#post-details .form-switch #post_draft")
+      assert has_element?(lv, "#action-bar #save-post[form=post-form]", "Save")
+    end
+
+    test "shows the details card open after a failed save", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "A post")
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+      refute has_element?(lv, "#post-details.is-open")
+
+      lv |> form("#post-form", post: %{slug: "/posts/reserved"}) |> render_submit()
+      assert has_element?(lv, "#post-details.is-open")
+    end
+
+    test "deletes the post", %{conn: conn, site: site, scope: scope} do
+      post = post_fixture(scope, title: "Unwanted Post")
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+
+      {:ok, _lv, html} =
+        lv
+        |> element("#delete-post")
+        |> render_click()
+        |> follow_redirect(conn, posts_path(site))
+
+      assert html =~ "Post was successfully deleted."
+      assert_raise Ecto.NoResultsError, fn -> Content.get_post!(scope, post.public_id) end
     end
 
     test "a post of another site is not found", %{conn: conn, site: site} do
