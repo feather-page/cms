@@ -9,10 +9,10 @@ defmodule FeatherWeb.UserLive.Settings do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto narrow">
+      <div class="settings-page">
         <.header>
-          Account Settings
-          <:subtitle>Manage your account email address</:subtitle>
+          Account settings
+          <:subtitle>Your email address and API tokens</:subtitle>
         </.header>
 
         <.form
@@ -29,11 +29,11 @@ defmodule FeatherWeb.UserLive.Settings do
             spellcheck="false"
             required
           />
-          <.button variant="primary" phx-disable-with="Changing...">Change Email</.button>
+          <.button variant="primary" phx-disable-with="Changing...">Change email</.button>
         </.form>
 
-        <section id="api-tokens" class="mt-5">
-          <h2 class="h5">API tokens</h2>
+        <section id="api-tokens" class="mt-5 pt-4 border-top">
+          <h2 class="section-title">API tokens</h2>
           <p class="text-body-secondary">Tokens give programs access to the content API as you.</p>
 
           <div :if={@new_api_token} id="new-api-token" class="alert alert-success">
@@ -41,33 +41,30 @@ defmodule FeatherWeb.UserLive.Settings do
             <code class="d-block text-break">{@new_api_token}</code>
           </div>
 
-          <ul :if={@api_tokens != []} id="api-token-list" class="list-group mb-3">
-            <li
-              :for={token <- @api_tokens}
-              id={"api-token-#{token.id}"}
-              class="list-group-item d-flex align-items-center gap-2"
-            >
-              <span class="flex-grow-1">
-                {token.name || "Unnamed token"}
-                <code class="ms-1 text-body-secondary">{token.token_prefix}…</code>
-              </span>
-              <.button
+          <.list_card :if={@api_tokens != []} id="api-token-list" class="mb-4">
+            <.list_row :for={token <- @api_tokens} id={"api-token-#{token.id}"}>
+              <:leading><.icon name="key-round" /></:leading>
+              {token.name || "Unnamed token"}
+              <:meta>
+                <code class="list-row__code">{token.token_prefix}…</code>
+                <span>Created {Calendar.strftime(token.inserted_at, "%d/%m/%Y")}</span>
+              </:meta>
+              <:action
                 id={"delete-api-token-#{token.id}"}
-                size="sm"
-                variant="danger"
-                phx-click={JS.push("delete_api_token", value: %{id: token.id})}
-                data-confirm="Are you sure? Programs using this token lose access."
-                title="Delete"
-                aria-label="Delete"
-              >
-                <.icon name="trash" size={16} />
-              </.button>
-            </li>
-          </ul>
+                icon="trash"
+                label="Delete"
+                click={JS.push("delete_api_token", value: %{id: token.id})}
+                confirm="Are you sure? Programs using this token lose access."
+                danger
+              />
+            </.list_row>
+          </.list_card>
 
           <.form for={@api_token_form} id="api_token_form" phx-submit="create_api_token">
             <.input field={@api_token_form[:name]} type="text" label="Name" placeholder="Importer" />
-            <.button phx-disable-with="Creating...">Create token</.button>
+            <button type="submit" class="btn btn-light" phx-disable-with="Creating...">
+              Create token
+            </button>
           </.form>
         </section>
       </div>

@@ -11,7 +11,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
-      assert html =~ "Change Email"
+      assert html =~ "Change email"
       refute html =~ ~s(type="password")
     end
 
@@ -69,7 +69,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
           "user" => %{"email" => "with spaces"}
         })
 
-      assert result =~ "Change Email"
+      assert result =~ "Change email"
       assert result =~ "must have the @ sign and no spaces"
     end
 
@@ -83,7 +83,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
         })
         |> render_submit()
 
-      assert result =~ "Change Email"
+      assert result =~ "Change email"
       assert result =~ "did not change"
     end
   end

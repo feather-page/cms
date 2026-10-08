@@ -117,6 +117,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
 
     test "picking a service prefills the name and the URL placeholder", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      lv |> element("#add-link") |> render_click()
 
       lv
       |> form("#social-media-link-form", social_media_link: %{url: "https://x.example/me"})
@@ -139,6 +140,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
 
     test "creates a link", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      lv |> element("#add-link") |> render_click()
 
       lv |> element("#service-github") |> render_click()
 
@@ -155,12 +157,31 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert link.name == "My GitHub"
       assert has_element?(lv, "#social_media_links-#{link.id}", "https://github.com/me")
       refute has_element?(lv, "#no-social-media-links")
-      # The form is reset.
+      # The form closes and opens again empty.
+      refute has_element?(lv, "#social-media-link-form")
+      lv |> element("#add-link") |> render_click()
+      refute has_element?(lv, "#service-github.active")
+    end
+
+    test "the link form is collapsed until asked for", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      refute has_element?(lv, "#social-media-link-form")
+
+      lv |> element("#add-link") |> render_click()
+      assert has_element?(lv, "#social-media-link-form")
+      refute has_element?(lv, "#add-link")
+
+      lv |> element("#service-github") |> render_click()
+      lv |> element("#cancel-link") |> render_click()
+      refute has_element?(lv, "#social-media-link-form")
+
+      lv |> element("#add-link") |> render_click()
       refute has_element?(lv, "#service-github.active")
     end
 
     test "requires a service, a name and a URL", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      lv |> element("#add-link") |> render_click()
 
       html =
         lv

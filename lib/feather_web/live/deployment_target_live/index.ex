@@ -31,49 +31,42 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
         No deployment targets configured.
       </p>
 
-      <ul :if={@targets != []} id="deployment-targets" class="list-group">
-        <li
+      <.list_card :if={@targets != []} id="deployment-targets">
+        <.list_row
           :for={target <- @targets}
           id={"target-#{target.public_id}"}
-          class="list-group-item d-flex align-items-center gap-3"
+          navigate={~p"/sites/#{@current_scope.site.public_id}/deployments/#{target.public_id}/edit"}
         >
-          <.icon name="globe" />
-          <div class="flex-grow-1">
-            <div class="fw-semibold">{target.public_hostname}</div>
-            <div class="small text-body-secondary">
+          <:leading><.icon name="globe" /></:leading>
+          {target.public_hostname}
+          <:meta>
+            <span>
               <span class="target-type">{type_label(target.type)}</span>
               · <span class="target-provider">{target.provider}</span>
-              <span
-                :if={target.deploying}
-                id={"deploying-#{target.public_id}"}
-                class="badge text-bg-warning ms-1"
-              >
-                <.icon name="loader-circle" size={12} class="spin" /> Deploying
-              </span>
-            </div>
-          </div>
-          <.button
-            id={"deploy-#{target.public_id}"}
-            size="sm"
-            variant="primary"
-            phx-click={JS.push("deploy", value: %{id: target.public_id})}
-            disabled={target.deploying}
-          >
-            <.icon name="rocket" size={16} /> Deploy
-          </.button>
-          <.button
-            id={"edit-#{target.public_id}"}
-            size="sm"
-            navigate={
-              ~p"/sites/#{@current_scope.site.public_id}/deployments/#{target.public_id}/edit"
-            }
-            title="Edit"
-            aria-label="Edit"
-          >
-            <.icon name="pencil" size={16} />
-          </.button>
-        </li>
-      </ul>
+            </span>
+            <span
+              :if={target.deploying}
+              id={"deploying-#{target.public_id}"}
+              class="badge rounded-pill bg-warning-subtle text-warning-emphasis"
+            >
+              <.icon name="loader-circle" size={12} class="spin" /> Deploying
+            </span>
+          </:meta>
+          <:trailing>
+            <button
+              type="button"
+              id={"deploy-#{target.public_id}"}
+              class="btn btn-light btn-sm list-row__button"
+              phx-click={JS.push("deploy", value: %{id: target.public_id})}
+              disabled={target.deploying}
+              aria-label="Deploy"
+              title="Deploy"
+            >
+              <.icon name="rocket" size={16} /> <span class="d-none d-sm-inline">Deploy</span>
+            </button>
+          </:trailing>
+        </.list_row>
+      </.list_card>
     </.site_shell>
     """
   end

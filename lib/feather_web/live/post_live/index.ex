@@ -2,8 +2,8 @@ defmodule FeatherWeb.PostLive.Index do
   @moduledoc """
   The posts of a site, newest first, 20 per page (`?page=`). Each row shows
   the thumbnail, emoji or an icon, the title (or an excerpt for short
-  posts), the date, draft/published, a marker for book reviews and the
-  first tags.
+  posts), the date, draft/published, the book of a review and the first
+  tags.
   """
   use FeatherWeb, :live_view
 
@@ -24,7 +24,7 @@ defmodule FeatherWeb.PostLive.Index do
         Posts
         <:actions>
           <.button variant="primary" navigate={~p"/sites/#{@site.public_id}/posts/new"} id="new-post">
-            <.icon name="plus" size={16} /> New Post
+            <.icon name="plus" size={16} /> New post
           </.button>
         </:actions>
       </.header>
@@ -35,73 +35,51 @@ defmodule FeatherWeb.PostLive.Index do
         emoji="✏️"
         message="No posts yet"
         subtitle="Write your first post and share it with the world."
-        action_label="New Post"
-        action_navigate={~p"/sites/#{@site.public_id}/posts/new"}
       />
 
-      <div id="posts" phx-update="stream" class="list-rows">
-        <div :for={{dom_id, post} <- @streams.posts} id={dom_id} class="list-row">
-          <.link navigate={edit_path(@site, post)} class="list-row__link">
-            <div class="list-row__icon">
-              <%= cond do %>
-                <% post.thumbnail_image -> %>
-                  <img
-                    src={image_path(@site, post.thumbnail_image, "mobile_x1.webp")}
-                    class="list-row__thumbnail"
-                    alt=""
-                  />
-                <% post.emoji -> %>
-                  <span>{post.emoji}</span>
-                <% short?(post) -> %>
-                  <.icon name="message-square-text" />
-                <% true -> %>
-                  <.icon name="file-text" />
-              <% end %>
-            </div>
-            <div class="list-row__content">
-              <div class={["list-row__title", short?(post) && "list-row__title--short"]}>
-                {display_text(post)}
-              </div>
-              <div class="list-row__meta">
-                <span>{format_date(post.publish_at)}</span>
-                <span :if={post.draft} class="badge list-row__badge--draft">Draft</span>
-                <span :if={!post.draft} class="badge list-row__badge--published">Published</span>
-                <span :if={post.book} class="badge list-row__badge--review" title="Book review">
-                  <.icon name="book-open" size={12} /> Review: {post.book.title}
-                  <span :if={post.book.rating}>{stars(post.book.rating)}</span>
-                </span>
-              </div>
-            </div>
-            <div :if={Content.tag_list(post) != []} class="list-row__tags">
+      <.list_card id="posts" stream hidden={@pagination.total_entries == 0}>
+        <.list_row
+          :for={{dom_id, post} <- @streams.posts}
+          id={dom_id}
+          navigate={edit_path(@site, post)}
+          excerpt={short?(post)}
+        >
+          <:leading>
+            <%= cond do %>
+              <% post.thumbnail_image -> %>
+                <img src={image_path(@site, post.thumbnail_image, "mobile_x1.webp")} alt="" />
+              <% post.emoji -> %>
+                {post.emoji}
+              <% short?(post) -> %>
+                <.icon name="message-square-text" />
+              <% true -> %>
+                <.icon name="file-text" />
+            <% end %>
+          </:leading>
+          {display_text(post)}
+          <:meta>
+            <span class="list-row__date">{format_date(post.publish_at)}</span>
+            <.status_badge draft={post.draft} />
+            <span :if={post.book} class="list-row__review" title="Book review">
+              <span :if={post.book.rating} class="text-warning">{stars(post.book.rating)} ·</span>
+              {post.book.title}
+            </span>
+            <span :if={Content.tag_list(post) != []} class="list-row__tags d-none d-md-inline">
               <span :for={tag <- Enum.take(Content.tag_list(post), 3)} class="list-row__tag">
-                {tag}
+                #{tag}
               </span>
-            </div>
-          </.link>
-          <div class="list-row__actions">
-            <.link
-              navigate={edit_path(@site, post)}
-              class="btn btn-sm btn-link"
-              title="Edit"
-              aria-label="Edit"
-            >
-              <.icon name="pencil" size={16} />
-            </.link>
-            <button
-              type="button"
-              id={"delete-post-#{post.public_id}"}
-              class="btn btn-sm btn-link text-danger"
-              title="Delete"
-              aria-label="Delete"
-              phx-click="delete"
-              phx-value-id={post.public_id}
-              data-confirm="Are you sure?"
-            >
-              <.icon name="trash" size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+            </span>
+          </:meta>
+          <:action
+            id={"delete-post-#{post.public_id}"}
+            icon="trash"
+            label="Delete"
+            click={JS.push("delete", value: %{id: post.public_id})}
+            confirm="Are you sure?"
+            danger
+          />
+        </.list_row>
+      </.list_card>
 
       <.pagination pagination={@pagination} path={&~p"/sites/#{@site.public_id}/posts?page=#{&1}"} />
     </.site_shell>

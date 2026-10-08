@@ -42,6 +42,8 @@ defmodule FeatherWeb.MemberLive.IndexTest do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
       refute has_element?(lv, "#remove-member-#{own.id}")
+      assert has_element?(lv, "#member-#{own.id} .badge", "You")
+      refute has_element?(lv, "#member-#{other_member.id} .badge", "You")
 
       html = lv |> element("#remove-member-#{other_member.id}") |> render_click()
 

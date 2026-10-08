@@ -25,7 +25,7 @@ defmodule FeatherWeb.ProjectLive.Index do
             navigate={~p"/sites/#{@site.public_id}/projects/new"}
             id="new-project"
           >
-            <.icon name="plus" size={16} /> New Project
+            <.icon name="plus" size={16} /> New project
           </.button>
         </:actions>
       </.header>
@@ -36,46 +36,34 @@ defmodule FeatherWeb.ProjectLive.Index do
         emoji="🏗️"
         message="No projects yet"
         subtitle="Show your work and projects."
-        action_label="New Project"
-        action_navigate={~p"/sites/#{@site.public_id}/projects/new"}
       />
 
-      <div id="projects" phx-update="stream" class="list-rows">
-        <div :for={{dom_id, project} <- @streams.projects} id={dom_id} class="list-row">
-          <.link navigate={edit_path(@site, project)} class="list-row__link">
-            <div class="list-row__icon">
-              <span :if={project.emoji}>{project.emoji}</span>
-              <.icon :if={!project.emoji} name="rocket" />
-            </div>
-            <div class="list-row__content">
-              <div class="list-row__title">{project.title}</div>
-              <div class="list-row__meta">
-                <span :if={project.company}>{project.company}</span>
-                <span :if={project.role}>{project.role}</span>
-                <span>{Project.display_period(project)}</span>
-                <span class="badge list-row__badge--status">{status_label(project.status)}</span>
-              </div>
-            </div>
-          </.link>
-          <div class="list-row__actions">
-            <.link navigate={edit_path(@site, project)} class="btn btn-sm btn-link" title="Edit">
-              <.icon name="pencil" size={16} />
-            </.link>
-            <button
-              type="button"
-              id={"delete-project-#{project.public_id}"}
-              class="btn btn-sm btn-link text-danger"
-              title="Delete"
-              aria-label="Delete"
-              phx-click="delete"
-              phx-value-id={project.public_id}
-              data-confirm="Are you sure?"
-            >
-              <.icon name="trash" size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+      <.list_card id="projects" stream hidden={@empty?}>
+        <.list_row
+          :for={{dom_id, project} <- @streams.projects}
+          id={dom_id}
+          navigate={edit_path(@site, project)}
+        >
+          <:leading>
+            <span :if={project.emoji}>{project.emoji}</span>
+            <.icon :if={!project.emoji} name="rocket" />
+          </:leading>
+          {project.title}
+          <:meta>
+            <span class="list-row__date">{Project.display_period(project)}</span>
+            <.neutral_badge>{status_label(project.status)}</.neutral_badge>
+            <span :if={byline(project) != ""}>{byline(project)}</span>
+          </:meta>
+          <:action
+            id={"delete-project-#{project.public_id}"}
+            icon="trash"
+            label="Delete"
+            click={JS.push("delete", value: %{id: project.public_id})}
+            confirm="Are you sure?"
+            danger
+          />
+        </.list_row>
+      </.list_card>
     </.site_shell>
     """
   end
@@ -108,6 +96,9 @@ defmodule FeatherWeb.ProjectLive.Index do
 
   defp edit_path(site, project),
     do: ~p"/sites/#{site.public_id}/projects/#{project.public_id}/edit"
+
+  defp byline(project),
+    do: [project.company, project.role] |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · ")
 
   @doc false
   def status_label(status), do: status |> String.replace("_", " ") |> String.capitalize()
