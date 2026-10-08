@@ -1,0 +1,132 @@
+[
+  {
+    "id": "d3ed9664-5b57-4ab6-8199-1be1fa12279a",
+    "content": [
+      {
+        "id": "par1",
+        "type": "paragraph",
+        "text": "Some <b>bold</b> text and <a href=\"https://example.com\">a link</a>."
+      },
+      {
+        "id": "hdr1",
+        "type": "header",
+        "level": 2,
+        "text": "A section"
+      },
+      {
+        "id": "lst1",
+        "type": "list",
+        "style": "ol",
+        "items": [
+          {
+            "content": "First",
+            "items": [
+              {
+                "content": "Nested <i>one</i>",
+                "items": []
+              },
+              {
+                "content": "Nested two",
+                "items": []
+              }
+            ]
+          },
+          {
+            "content": "Second",
+            "items": []
+          }
+        ]
+      },
+      {
+        "id": "qte1",
+        "type": "quote",
+        "text": "Simplicity is prerequisite for reliability.",
+        "caption": "Edsger W. Dijkstra"
+      },
+      {
+        "id": "cod1",
+        "type": "code",
+        "code": "puts \"hello\"\n",
+        "language": "ruby"
+      },
+      {
+        "id": "img1",
+        "type": "image",
+        "image_id": "DrqGSEC4zyvZ",
+        "caption": "An inline image"
+      },
+      {
+        "id": "tbl1",
+        "type": "table",
+        "content": [
+          [
+            "Name",
+            "Value"
+          ],
+          [
+            "a",
+            "1"
+          ],
+          [
+            "b",
+            "2"
+          ]
+        ],
+        "with_headings": true
+      },
+      {
+        "id": "emb1",
+        "type": "embed",
+        "service": "youtube",
+        "source": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "embed": "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        "width": 580,
+        "height": 320,
+        "caption": "A video"
+      },
+      {
+        "id": "bok1",
+        "type": "book",
+        "book_public_id": "v5ejxZVJ66q8",
+        "title": "The Pragmatic Programmer",
+        "author": "Andrew Hunt, David Thomas",
+        "cover_url": null,
+        "emoji": "📘"
+      }
+    ],
+    "created_at": "2026-10-06T18:09:33.340415Z",
+    "draft": false,
+    "emoji": "📘",
+    "header_image_id": "d9fe73ec-e149-4235-882a-8776e31b10c7",
+    "public_id": "1yQSJLfwG9dV",
+    "publish_at": "2026-03-15T09:30:00.123456Z",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "slug": "/review-pragmatic-programmer",
+    "tags": "books, programming",
+    "thumbnail_image_id": "19f506f3-e973-4e80-a099-204a6d317cc1",
+    "title": "Review: The Pragmatic Programmer",
+    "updated_at": "2026-10-06T18:09:33.340415Z"
+  },
+  {
+    "id": "6aca6944-efb2-4dde-818b-c78b8489cb42",
+    "content": [
+      {
+        "id": "d1",
+        "type": "paragraph",
+        "text": "Work in progress"
+      }
+    ],
+    "created_at": "2026-10-06T18:09:33.450097Z",
+    "draft": true,
+    "emoji": null,
+    "header_image_id": null,
+    "public_id": "P37Hnj7PbXtN",
+    "publish_at": "2026-10-06T18:09:33.435740Z",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "slug": "/draft-post",
+    "tags": null,
+    "thumbnail_image_id": null,
+    "title": "Draft post",
+    "updated_at": "2026-10-06T18:09:33.450097Z"
+  }
+]

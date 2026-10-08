@@ -1,6 +1,6 @@
 # Export writes through a Sink
 
-Status: proposed
+Status: accepted (implemented in Rails, kept in the Phoenix port; updated 2026-10-06)
 
 `StaticSite::ExportJob` carries four unrelated concerns in one class — deploy lock and retry,
 which content belongs to a site, pagination and artifact rendering, and file IO — and its spec
@@ -64,3 +64,27 @@ leaves the four concerns entangled.
 **Give the Sink a lifecycle — `prepare`, `finalize`, `commit!`.** Rejected: each of these would be
 empty in `RecordingSink`. Preparing the directory belongs in `FileSink`'s constructor, precompressing
 and moving into place belong to the job, which already owns lock, deploy and notify.
+
+## Update (2026-10-06)
+
+The Rails implementation shipped, and the port to Phoenix ([0007](0007-port-to-phoenix-and-sqlite.md))
+kept the seam; the text above uses the Rails names. In the Phoenix app:
+
+| Rails | Phoenix |
+|-------|---------|
+| Sink contract `write(path, content)`, `copy(path, from:)` | behaviour `Feather.StaticSite.Sink`: `write/3`, `copy/3` (`from:` option) |
+| `FileSink`, `#dir`, `#discard!` | `Feather.StaticSite.FileSink`: `new/1`, `dir/1`, `discard/1` |
+| `RecordingSink` (a Hash) | `Feather.StaticSite.RecordingSink` (an `Agent`, copies kept as `{:copy, source}`) |
+| `StaticSite::Export.new(site:, routes:, sink:)` | `Feather.StaticSite.Export.run(site, routes, sink, opts)` |
+| `StaticSite::ExportJob` | `Feather.Publishing.Deploy.run/2`, a task under `Feather.TaskSupervisor` |
+| `PrecompressJob` | `Feather.StaticSite.Precompress.run/2`, a plain function |
+| four threads via `ParallelProcessor` | `Task.async_stream/3`, one task per scheduler by default |
+| `PageRenderer::POSTS_PER_PAGE` | `Feather.StaticSite.Renderer.posts_per_page/0` |
+
+The export still takes no deployment target. The builds of a target live in
+`<storage_root>/static_site/<target id>/`; the `FileSink` directory is created there and swapped in
+as `public/` by two renames, so the live directory is missing only between them. The single
+renderer for preview and export that the consequences anticipated now exists
+(`Feather.StaticSite.Renderer`). Export tests run against `RecordingSink`
+(`test/feather/static_site/export_test.exs`), the `FileSink` has its own small test
+(`sinks_and_precompress_test.exs`), and the deploy tests cover the wiring.

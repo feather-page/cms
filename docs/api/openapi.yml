@@ -15,6 +15,13 @@ info:
     Content is stored as an array of typed blocks. Each block has a `type` field
     that determines which additional fields are available. See the block type
     schemas in this specification for details.
+
+    Inline HTML (paragraph, header and quote text, captions, list items, table
+    cells) is sanitized when it is stored and returned sanitized: only `b`, `i`,
+    `u`, `a` (with a relative, http, https, mailto or tel `href`), `code` and
+    `br` survive; other elements are removed but their text is kept (`script`
+    and `style` with their content). Embed URLs that are not safe link targets
+    become null.
   version: "1.0"
 
 servers:
@@ -136,8 +143,12 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ListItem"
-          description: List items in EditorJS NestedList format.
+            oneOf:
+              - $ref: "#/components/schemas/ListItem"
+              - type: string
+          description: |
+            List items in EditorJS NestedList format. A plain string is shorthand for an
+            item without sub-items; responses always contain ListItem objects.
 
     ListItem:
       type: object
@@ -149,8 +160,10 @@ components:
         items:
           type: array
           items:
-            $ref: "#/components/schemas/ListItem"
-          description: Nested sub-items.
+            oneOf:
+              - $ref: "#/components/schemas/ListItem"
+              - type: string
+          description: Nested sub-items (a plain string is shorthand for an item without sub-items).
 
     TableBlock:
       type: object
@@ -415,14 +428,30 @@ components:
 
     # --- Wrapper Schemas ---
 
+    PaginationMeta:
+      type: object
+      required: [page, pages, count]
+      properties:
+        page:
+          type: integer
+          description: The current page (1-based).
+        pages:
+          type: integer
+          description: The number of pages (at least 1).
+        count:
+          type: integer
+          description: The total number of records.
+
     PostListResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
           items:
             $ref: "#/components/schemas/PostResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     PostDetailResponse:
       type: object
@@ -433,12 +462,14 @@ components:
 
     PageListResponse:
       type: object
-      required: [data]
+      required: [data, meta]
       properties:
         data:
           type: array
           items:
             $ref: "#/components/schemas/PageResponse"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
 
     PageDetailResponse:
       type: object
@@ -468,6 +499,15 @@ paths:
       summary: List all posts
       operationId: listPosts
       tags: [Posts]
+      parameters:
+        - name: p
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based). Pages hold 20 records; a page beyond the last one returns an empty data list.
       responses:
         "200":
           description: List of posts.
@@ -481,8 +521,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-        "403":
-          description: Forbidden.
+        "404":
+          description: Site not found or not accessible with this token.
           content:
             application/json:
               schema:
@@ -622,6 +662,15 @@ paths:
       summary: List all pages
       operationId: listPages
       tags: [Pages]
+      parameters:
+        - name: p
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based). Pages hold 20 records; a page beyond the last one returns an empty data list.
       responses:
         "200":
           description: List of pages.
@@ -787,7 +836,12 @@ paths:
                 url:
                   type: string
                   format: uri
-                  description: Public URL to download the image from.
+                  description: |
+                    Public URL to download the image from: http or https on port 80
+                    or 443, a host that resolves to public addresses only, at most
+                    3 redirects, 25 MB and 30 seconds. A URL refused as given
+                    (scheme, port, localhost, a private IP) names the problem in
+                    the error; any later failure is "Image could not be fetched".
       responses:
         "201":
           description: Image created.

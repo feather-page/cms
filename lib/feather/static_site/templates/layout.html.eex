@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="<%= @site.language_code %>">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= @page_title %></title>
+    <style><%= raw(css()) %></style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22><%= @page_emoji || @site.emoji %></text></svg>">
+    <%= if @rss_url do %>
+    <link rel="alternate" type="application/rss+xml" href="<%= @rss_url %>" title="<%= @site.title %>" />
+    <% end %>
+  </head>
+  <body>
+    <nav>
+      <%= @site.emoji %> <a href="<%= Routes.home_url(@routes) %>"><%= @site.title %></a><%= unless @is_home do %><span class="divider">/</span> <%= @page_emoji %> <%= @page_title %><% end %>
+    </nav>
+    <main>
+      <%= cond do %>
+      <% match?(%Image{}, @header_image) -> %>
+      <div class="header-image-container">
+        <img src="<%= Routes.image_url(@routes, @header_image, :desktop_x1_webp) %>"
+             srcset="<%= Routes.image_srcset(@routes, @header_image) %>"
+             sizes="100vw"
+             alt="<%= @page_title %>"
+             class="header-image">
+        <%= if @page_emoji do %><div class="emoji"><%= @page_emoji %></div><% end %>
+      </div>
+      <% @page_emoji && !@is_home -> %>
+      <div class="emoji"><%= @page_emoji %></div>
+      <% true -> %>
+      <% end %>
+      <h1><%= @page_title %></h1>
+      <%= @inner_content %>
+      <%= if unsplash_credit?(@header_image) do %>
+      <div class="photo-credit">
+        Photo by <a href="<%= Image.unsplash_photographer_url(@header_image) %>" target="_blank" rel="noopener"><%= Image.unsplash_photographer_name(@header_image) %></a> on <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
+      </div>
+      <% end %>
+    </main>
+    <footer>
+      <hr />
+      <p>
+        <%= for link <- @social_links, HTML.safe_url?(link.url) do %>
+        <a href="<%= link.url %>" title="<%= link.name %>" class="socialLink">
+          <%= raw(SocialMediaService.svg(link.icon) || "") %>
+        </a>
+        <% end %>
+      </p>
+      <p><%= copyright(@site.copyright) %></p>
+    </footer>
+  </body>
+</html>

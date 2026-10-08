@@ -1,7 +1,0 @@
-test:
-  service: Disk
-  root: <%= Rails.root.join("tmp/storage") %>
-
-local:
-  service: Disk
-  root: <%= ENV.fetch('ACTIVE_STORAGE_PATH', Rails.root.join('storage')) %>

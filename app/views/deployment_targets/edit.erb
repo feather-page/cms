@@ -1,4 +1,0 @@
-<%= turbo_frame_tag(:content) do %>
-  <%= render PageHeaderComponent.new(title: "Edit Deployment Target", breadcrumb_items: [["Deployments", site_deployment_targets_path(current_site)], ["Edit Target"]]) %>
-  <%= render "form", deployment_target: @deployment_target %>
-<% end %>

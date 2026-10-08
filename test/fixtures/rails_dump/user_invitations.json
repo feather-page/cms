@@ -1,0 +1,12 @@
+[
+  {
+    "id": "f0cf18c9-d403-41d2-a76d-af007c7724fd",
+    "accepted_at": null,
+    "created_at": "2026-10-06T18:09:31.396644Z",
+    "email": "pending@example.com",
+    "inviting_user_id": "66b355ad-332b-469f-8843-68cc9bbb82e3",
+    "public_id": "1rEkwKUyc3Cj",
+    "site_id": "d9ecb81d-e361-430f-a456-00eaff380d36",
+    "updated_at": "2026-10-06T18:09:31.396644Z"
+  }
+]

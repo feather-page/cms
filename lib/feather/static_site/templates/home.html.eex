@@ -1,0 +1,78 @@
+<ul class="page-list">
+  <%= for item <- @data.navigation do %>
+  <li>
+    <%= item.page.emoji %> <a class="page-link" href="<%= Routes.page_url(@routes, item.page) %>"><%= item.page.title %></a>
+  </li>
+  <% end %>
+</ul>
+
+<%= Blocks.render(@data.homepage && @data.homepage.content, @ctx) %>
+
+<hr />
+
+<h2>Blogposts</h2>
+
+<div class="page-list">
+  <%= for post <- @posts do %>
+  <article>
+    <%= if blank?(post.title) do %>
+    <%= if book(post) do %><%= post_book_card(%{book: book(post), routes: @routes}) %><% end %>
+    <div class="post-shortBody">
+      <%= if present?(post.emoji) && is_nil(book(post)) do %>
+      <div class="post-emoji"><%= post.emoji %></div>
+      <% end %>
+      <div class="post-content"><%= Blocks.render(post.content, @ctx) %></div>
+    </div>
+    <div class="post-date"><%= format_date(post.publish_at) %></div>
+    <% else %>
+    <div>
+      <a class="post-title" href="<%= Routes.post_url(@routes, post) %>"><%= post.title %></a>
+      <%= if book(post) && book(post).rating do %>
+      <span class="rating" aria-label="<%= book(post).rating %> out of 5 stars">
+        <%= rating_stars(book(post).rating) %>
+      </span>
+      <% end %>
+    </div>
+    <div class="post-long-body">
+      <%= if present?(post.emoji) do %>
+      <div class="post-emoji"><%= post.emoji %></div>
+      <% end %>
+      <div class="post-long-content">
+        <%= if match?(%Image{}, post.thumbnail_image) do %>
+        <div class="post-thumbnail">
+          <img src="<%= Routes.image_url(@routes, post.thumbnail_image, :mobile_x1_webp) %>" alt="" loading="lazy">
+        </div>
+        <% end %>
+        <%= if post.content not in [nil, []] do %>
+        <div class="post-excerpt"><%= Content.content_excerpt(post) %></div>
+        <% end %>
+      </div>
+    </div>
+    <div class="post-date"><%= format_date(post.publish_at) %></div>
+    <%= tags(%{tags: Content.tag_list(post), class: "post-tags"}) %>
+    <% end %>
+  </article>
+  <hr />
+  <% end %>
+</div>
+
+<%= if @total_pages > 1 do %>
+<nav class="pagination" aria-label="Pagination">
+  <%= if @current_page > 1 do %>
+  <a href="<%= Routes.home_url(@routes, @current_page - 1) %>" class="pagination-link">&larr;</a>
+  <% end %>
+  <%= for page <- pagination_page_numbers(@current_page, @total_pages) do %>
+  <%= cond do %>
+  <% page == :gap -> %>
+  <span class="pagination-gap">&hellip;</span>
+  <% page == @current_page -> %>
+  <span class="pagination-current"><%= page %></span>
+  <% true -> %>
+  <a href="<%= Routes.home_url(@routes, page) %>" class="pagination-link"><%= page %></a>
+  <% end %>
+  <% end %>
+  <%= if @current_page < @total_pages do %>
+  <a href="<%= Routes.home_url(@routes, @current_page + 1) %>" class="pagination-link">&rarr;</a>
+  <% end %>
+</nav>
+<% end %>

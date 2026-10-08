@@ -1,7 +1,0 @@
-<tr id="<%= dom_id(user_invitation) %>" is="turbo-frame">
-  <td><%= user_invitation.email %></td>
-  <td class="text-end">
-    <%= render ButtonComponent.new(label: t('.resend'), variant: :secondary, size: :sm, href: resend_invitation_path(user_invitation), data: { turbo_method: :post }) %>
-    <%= render ButtonComponent.new(label: t('.revoke'), variant: :danger, size: :sm, href: invitation_path(user_invitation), data: { turbo_method: :delete, turbo_confirm: t('are_you_sure') }) %>
-  </td>
-</tr>

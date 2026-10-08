@@ -1,0 +1,18 @@
+<div class="book-card book-card--detail">
+  <div class="book-card-header">
+    <%= cond do %>
+    <% match?(%Image{}, @book.cover_image) -> %>
+    <img src="<%= Routes.image_url(@routes, @book.cover_image, :mobile_x1_webp) %>" alt="<%= @book.title %>" class="book-cover" loading="lazy">
+    <% present?(@book.emoji) -> %>
+    <span class="book-emoji"><%= @book.emoji %></span>
+    <% true -> %>
+    <% end %>
+    <div class="book-info">
+      <div class="book-title"><%= @book.title %></div>
+      <div class="book-author"><%= @book.author %></div>
+      <%= if @book.rating do %>
+      <div class="book-rating" aria-label="<%= @book.rating %> out of 5 stars"><%= rating_stars(@book.rating) %></div>
+      <% end %>
+    </div>
+  </div>
+</div>

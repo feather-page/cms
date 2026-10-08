@@ -1,0 +1,20 @@
+[
+  {
+    "id": "66b355ad-332b-469f-8843-68cc9bbb82e3",
+    "created_at": "2026-10-06T18:09:30.919627Z",
+    "email": "admin@example.com",
+    "last_login_at": "2026-10-06T18:09:30.810303Z",
+    "public_id": "f83l20HmxXqm",
+    "super_admin": true,
+    "updated_at": "2026-10-06T18:09:30.919627Z"
+  },
+  {
+    "id": "2e3c97c4-325f-4419-90d5-3451be037af4",
+    "created_at": "2026-10-06T18:09:30.975133Z",
+    "email": "editor@example.com",
+    "last_login_at": null,
+    "public_id": "3csBa9FbCs9S",
+    "super_admin": false,
+    "updated_at": "2026-10-06T18:09:30.975133Z"
+  }
+]

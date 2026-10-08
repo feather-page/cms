@@ -1,0 +1,12 @@
+[
+  {
+    "id": "3a8c1cce-73e9-46a7-a4e1-efc568162ea2",
+    "created_at": "2026-10-06T18:09:31.616633Z",
+    "name": "Test token",
+    "public_id": "oDvPK97u0n4p",
+    "token_digest": "997af35198ed47f1bce284e912819c5b97550744a468735bce4122594ffc0932",
+    "token_prefix": "f00df00d",
+    "updated_at": "2026-10-06T18:09:31.616633Z",
+    "user_id": "66b355ad-332b-469f-8843-68cc9bbb82e3"
+  }
+]

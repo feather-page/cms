@@ -1,0 +1,21 @@
+{
+  "format": 1,
+  "dumped_at": "2026-10-06T18:11:50.408358Z",
+  "rails_env": "development",
+  "counts": {
+    "users": 2,
+    "sites": 2,
+    "site_users": 3,
+    "user_invitations": 1,
+    "social_media_links": 2,
+    "api_tokens": 1,
+    "images": 4,
+    "posts": 2,
+    "pages": 4,
+    "projects": 1,
+    "books": 2,
+    "navigations": 1,
+    "navigation_items": 2,
+    "deployment_targets": 2
+  }
+}

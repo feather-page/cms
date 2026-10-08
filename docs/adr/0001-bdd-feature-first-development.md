@@ -1,6 +1,6 @@
 # BDD feature-first development
 
-Status: accepted
+Status: superseded by [0008](0008-behaviour-is-specified-in-exunit.md)
 
 Development without an agreed specification produced features that did not match what was asked for, and
 no living record of the intended behaviour. We write Gherkin scenarios in `features/` and get them
