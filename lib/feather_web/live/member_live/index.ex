@@ -24,81 +24,79 @@ defmodule FeatherWeb.MemberLive.Index do
         <:subtitle>The people who can edit {@current_scope.site.title}</:subtitle>
       </.header>
 
-      <ul id="members" class="list-group mb-5">
-        <li
-          :for={member <- @members}
-          id={"member-#{member.id}"}
-          class="list-group-item d-flex align-items-center gap-2"
-        >
-          <.icon name="user" />
-          <span class="flex-grow-1">{member.user.email}</span>
-          <.button
-            :if={member.user_id != @current_scope.user.id}
-            id={"remove-member-#{member.id}"}
-            size="sm"
-            variant="danger"
-            phx-click={JS.push("remove_member", value: %{id: member.id})}
-            data-confirm="Are you sure?"
-            title="Remove"
-            aria-label="Remove"
-          >
-            <.icon name="trash" size={16} />
-          </.button>
-        </li>
-      </ul>
+      <div class="settings-page">
+        <.list_card id="members">
+          <.list_row :for={member <- @members} id={"member-#{member.id}"}>
+            <:leading class={[
+              "list-row__avatar",
+              member.user_id == @current_scope.user.id && "list-row__avatar--primary"
+            ]}>
+              {initials(member.user.email)}
+            </:leading>
+            {member.user.email}
+            <:trailing :if={member.user_id == @current_scope.user.id}>
+              <.neutral_badge>You</.neutral_badge>
+            </:trailing>
+            <:action
+              :if={member.user_id != @current_scope.user.id}
+              id={"remove-member-#{member.id}"}
+              icon="trash"
+              label="Remove"
+              click={JS.push("remove_member", value: %{id: member.id})}
+              confirm="Are you sure?"
+              danger
+            />
+          </.list_row>
+        </.list_card>
 
-      <h2 class="h5 mb-3">Invite another user</h2>
-      <p class="text-body-secondary">
-        Enter the email address of the user you want to invite.
-        They will receive an email with a link to accept the invitation.
-      </p>
-      <.form
-        for={@form}
-        id="invitation-form"
-        phx-change="validate"
-        phx-submit="invite"
-        class="mb-5"
-      >
-        <.input
-          field={@form[:email]}
-          type="email"
-          label="Email"
-          placeholder="john@example.org"
-          autocomplete="off"
-        />
-        <.button variant="primary" phx-disable-with="Sending...">Send invitation</.button>
-      </.form>
+        <section class="mt-5 pt-4 border-top">
+          <h2 class="section-title">
+            Pending invitations
+            <span :if={@invitations != []} class="section-title__count">{length(@invitations)}</span>
+          </h2>
+          <p :if={@invitations == []} id="no-invitations" class="text-body-secondary">
+            No pending invitations.
+          </p>
+          <.list_card :if={@invitations != []} id="invitations">
+            <.list_row :for={invitation <- @invitations} id={"invitation-#{invitation.id}"}>
+              <:leading class="list-row__avatar"><.icon name="mail" size={16} /></:leading>
+              {invitation.email}
+              <:meta>Invited {Calendar.strftime(invitation.inserted_at, "%d/%m/%Y")}</:meta>
+              <:action
+                id={"resend-invitation-#{invitation.id}"}
+                icon="send"
+                label="Resend"
+                click={JS.push("resend_invitation", value: %{id: invitation.id})}
+              />
+              <:action
+                id={"revoke-invitation-#{invitation.id}"}
+                icon="x"
+                label="Revoke"
+                click={JS.push("revoke_invitation", value: %{id: invitation.id})}
+                confirm="Are you sure?"
+                danger
+              />
+            </.list_row>
+          </.list_card>
+        </section>
 
-      <h2 class="h5 mb-3">Pending invitations</h2>
-      <p :if={@invitations == []} id="no-invitations" class="text-body-secondary">
-        Currently there are no pending invitations.
-      </p>
-      <.table
-        :if={@invitations != []}
-        id="invitations"
-        rows={@invitations}
-        row_id={&"invitation-#{&1.id}"}
-      >
-        <:col :let={invitation} label="Email">{invitation.email}</:col>
-        <:action :let={invitation}>
-          <.button
-            id={"resend-invitation-#{invitation.id}"}
-            size="sm"
-            phx-click={JS.push("resend_invitation", value: %{id: invitation.id})}
-          >
-            Resend
-          </.button>
-          <.button
-            id={"revoke-invitation-#{invitation.id}"}
-            size="sm"
-            variant="danger"
-            phx-click={JS.push("revoke_invitation", value: %{id: invitation.id})}
-            data-confirm="Are you sure?"
-          >
-            Revoke
-          </.button>
-        </:action>
-      </.table>
+        <section class="mt-5 pt-4 border-top">
+          <h2 class="section-title">Invite someone</h2>
+          <p class="text-body-secondary">
+            They will receive an email with a link to accept the invitation.
+          </p>
+          <.form for={@form} id="invitation-form" phx-change="validate" phx-submit="invite">
+            <.input
+              field={@form[:email]}
+              type="email"
+              label="Email"
+              placeholder="john@example.org"
+              autocomplete="off"
+            />
+            <.button variant="primary" phx-disable-with="Sending...">Send invitation</.button>
+          </.form>
+        </section>
+      </div>
     </.site_shell>
     """
   end

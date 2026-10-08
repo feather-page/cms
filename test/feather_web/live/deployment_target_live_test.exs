@@ -122,7 +122,7 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
 
       {:ok, lv, _html} =
         lv
-        |> element("#edit-#{target.public_id}")
+        |> element("#target-#{target.public_id} a.stretched-link")
         |> render_click()
         |> follow_redirect(
           conn,

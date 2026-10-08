@@ -431,6 +431,26 @@
   color: #ffc107;
 }
 
+/* ---- Sites and settings pages ---- */
+.settings-page {
+  max-width: 48rem;
+}
+
+.service-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+}
+
+.service-tile.active {
+  border-color: var(--felt-primary);
+  background-color: var(--felt-primary-subtle);
+  color: var(--felt-primary-emphasis);
+}
+
 /* Bookshelf */
 .bookshelf__section {
   margin-bottom: 2rem;
