@@ -1,7 +1,9 @@
 /* App-specific styles. Everything else comes from felt-css
    (https://felt-css.rocu.de/felt.css), loaded in the root layout. */
 
-.icon {
+/* Inline SVG icons (CoreComponents.icon/1). Not `.icon`: felt-css uses
+   that class for its plush icons and sizes it to 2.25rem. */
+.lucide {
   display: inline-block;
   flex-shrink: 0;
   vertical-align: -0.15em;

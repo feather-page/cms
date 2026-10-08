@@ -424,7 +424,7 @@ defmodule FeatherWeb.CoreComponents do
       stroke-width="2"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class={["icon", @class]}
+      class={["lucide", @class]}
       aria-hidden="true"
       {@rest}
     ><path :for={d <- @paths} d={d} /></svg>
@@ -438,7 +438,7 @@ defmodule FeatherWeb.CoreComponents do
       assigns.size |> to_string() |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
     class =
-      ["icon", assigns.class]
+      ["lucide", assigns.class]
       |> List.flatten()
       |> Enum.reject(&is_nil/1)
       |> Enum.join(" ")

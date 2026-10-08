@@ -24,8 +24,14 @@ defmodule FeatherWeb.CoreComponentsTest do
     test "renders brand icons with size and class" do
       html = render_component(&icon/1, name: "github", size: 24, class: "text-primary")
       assert html =~ ~s(width="24")
-      assert html =~ ~s(class="icon text-primary")
+      assert html =~ ~s(class="lucide text-primary")
       assert html =~ ~s(aria-hidden="true")
+    end
+
+    test "does not use felt-css's .icon class, which sizes plush icons to 2.25rem" do
+      html = render_component(&icon/1, name: "pencil", size: 16)
+      assert html =~ ~r/class="lucide\b/
+      refute html =~ ~r/class="[^"]*\bicon\b/
     end
 
     test "falls back to a question mark" do
