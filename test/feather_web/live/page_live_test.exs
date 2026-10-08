@@ -62,6 +62,38 @@ defmodule FeatherWeb.PageLiveTest do
       assert has_element?(lv, "#page-#{first.public_id}")
     end
 
+    test "each row links to the page and folds its actions into a menu on narrow screens", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      first = page_fixture(scope, title: "First", add_to_navigation: true)
+      second = page_fixture(scope, title: "Second", add_to_navigation: true)
+      other = page_fixture(scope, title: "Other")
+
+      {:ok, lv, _html} = live(conn, pages_path(site))
+
+      assert has_element?(
+               lv,
+               ~s(#navigation-item-#{first.public_id} a[href="#{pages_path(site)}/#{first.public_id}/edit"])
+             )
+
+      # The first item cannot move up: hidden in the row, left out of the menu.
+      assert has_element?(lv, "#move-up-#{first.public_id}[disabled]")
+      refute has_element?(lv, "#move-up-#{first.public_id}-menu-item")
+      assert has_element?(lv, "#navigation-item-#{first.public_id}-menu-toggle")
+
+      lv |> element("#move-up-#{second.public_id}-menu-item") |> render_click()
+      assert nav_titles(scope) == ["Second", "First"]
+
+      lv |> element("#add-to-navigation-#{other.public_id}-menu-item") |> render_click()
+      assert nav_titles(scope) == ["Second", "First", "Other"]
+
+      lv |> element("#remove-from-navigation-#{other.public_id}-menu-item") |> render_click()
+      assert nav_titles(scope) == ["Second", "First"]
+      assert has_element?(lv, "#delete-page-#{other.public_id}-menu-item[data-confirm]")
+    end
+
     test "deletes a page", %{conn: conn, site: site, scope: scope} do
       page = page_fixture(scope, title: "Old Page")
       {:ok, lv, _html} = live(conn, pages_path(site))

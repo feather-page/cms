@@ -45,10 +45,18 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, html} = live(conn, posts_path(site))
 
       assert has_element?(lv, "#post-#{new.public_id}", "New post")
-      assert has_element?(lv, "#post-#{new.public_id} .list-row__badge--draft")
+      assert has_element?(lv, "#post-#{new.public_id} .badge", "Draft")
       assert has_element?(lv, "#post-#{new.public_id} .list-row__tag", "phoenix")
-      assert has_element?(lv, "#post-#{old.public_id} .list-row__badge--published")
+      assert has_element?(lv, "#post-#{old.public_id} .badge", "Published")
       assert has_element?(lv, "#post-#{short.public_id}", "Just a short thought")
+
+      # The whole row links to the editor; deleting needs no menu.
+      assert has_element?(
+               lv,
+               ~s(#post-#{old.public_id} a.stretched-link[href="#{posts_path(site)}/#{old.public_id}/edit"])
+             )
+
+      refute has_element?(lv, "#post-#{old.public_id}-menu-toggle")
 
       [first, second, third] =
         Regex.scan(~r/id="post-([^"]+)"/, html) |> Enum.map(&List.last/1)
@@ -88,7 +96,7 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, _book} = Books.update_book(scope, %{book | post_id: post.id}, %{rating: 4})
 
       {:ok, lv, _html} = live(conn, posts_path(site))
-      assert has_element?(lv, "#post-#{post.public_id} .list-row__badge--review", "Clean Code")
+      assert has_element?(lv, "#post-#{post.public_id} .list-row__review", "Clean Code")
       assert has_element?(lv, "#post-#{post.public_id}", "★★★★☆")
     end
 

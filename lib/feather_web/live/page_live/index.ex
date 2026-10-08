@@ -23,132 +23,114 @@ defmodule FeatherWeb.PageLive.Index do
         Pages
         <:actions>
           <.button variant="primary" navigate={~p"/sites/#{@site.public_id}/pages/new"} id="new-page">
-            <.icon name="plus" size={16} /> New Page
+            <.icon name="plus" size={16} /> New page
           </.button>
         </:actions>
       </.header>
 
-      <h2 class="labeled-divider h6 text-body-secondary text-uppercase">Pages in navigation</h2>
-      <p :if={@navigation_items == []} id="no-navigation-items" class="text-body-secondary">
-        No pages in the navigation yet.
-      </p>
-      <div id="navigation-items" class="list-rows mb-4">
-        <div
-          :for={{item, index} <- Enum.with_index(@navigation_items)}
-          id={"navigation-item-#{item.page.public_id}"}
-          class="list-row"
-        >
-          <div class="list-row__icon">
-            <span :if={item.page.emoji}>{item.page.emoji}</span>
-            <.icon :if={!item.page.emoji} name="file-text" />
-          </div>
-          <div class="list-row__content">
-            <div class="list-row__title">{item.page.title}</div>
-            <div class="list-row__meta">{item.page.slug}</div>
-          </div>
-          <div class="list-row__actions">
-            <button
-              type="button"
+      <section class="list-section">
+        <h2 class="section-title">
+          In navigation <span class="section-title__count">{length(@navigation_items)}</span>
+        </h2>
+        <p :if={@navigation_items == []} id="no-navigation-items" class="text-body-secondary">
+          No pages in the navigation yet.
+        </p>
+        <.list_card id="navigation-items" hidden={@navigation_items == []}>
+          <.list_row
+            :for={{item, index} <- Enum.with_index(@navigation_items)}
+            id={"navigation-item-#{item.page.public_id}"}
+            navigate={edit_path(@site, item.page)}
+          >
+            <:leading><.page_tile page={item.page} /></:leading>
+            {item.page.title}
+            <:meta><.page_meta page={item.page} /></:meta>
+            <:action
               id={"move-up-#{item.page.public_id}"}
-              class="btn btn-sm btn-link"
-              title="Move up"
-              aria-label="Move up"
-              disabled={index == 0}
-              phx-click="move_up"
-              phx-value-id={item.page.public_id}
-            >
-              <.icon name="chevron-up" size={16} />
-            </button>
-            <button
-              type="button"
+              icon="chevron-up"
+              label="Move up"
+              click={JS.push("move_up", value: %{id: item.page.public_id})}
+              hidden={index == 0}
+            />
+            <:action
               id={"move-down-#{item.page.public_id}"}
-              class="btn btn-sm btn-link"
-              title="Move down"
-              aria-label="Move down"
-              disabled={index == length(@navigation_items) - 1}
-              phx-click="move_down"
-              phx-value-id={item.page.public_id}
-            >
-              <.icon name="chevron-down" size={16} />
-            </button>
-            <.link navigate={edit_path(@site, item.page)} class="btn btn-sm btn-link" title="Edit">
-              <.icon name="pencil" size={16} />
-            </.link>
-            <button
-              type="button"
+              icon="chevron-down"
+              label="Move down"
+              click={JS.push("move_down", value: %{id: item.page.public_id})}
+              hidden={index == length(@navigation_items) - 1}
+            />
+            <:action
               id={"remove-from-navigation-#{item.page.public_id}"}
-              class="btn btn-sm btn-link text-danger"
-              title="Remove from navigation"
-              aria-label="Remove from navigation"
-              phx-click="remove_from_navigation"
-              phx-value-id={item.page.public_id}
-            >
-              <.icon name="minus" size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+              icon="eye-off"
+              label="Hide from navigation"
+              click={JS.push("remove_from_navigation", value: %{id: item.page.public_id})}
+            />
+          </.list_row>
+        </.list_card>
+      </section>
 
-      <h2 class="labeled-divider h6 text-body-secondary text-uppercase">Other pages</h2>
-      <.empty_state
-        :if={@pagination.total_entries == 0}
-        id="no-pages"
-        emoji="📄"
-        message="No other pages"
-        subtitle="Create pages like an imprint, about or contact page."
-        action_label="New Page"
-        action_navigate={~p"/sites/#{@site.public_id}/pages/new"}
-      />
-      <div id="pages" phx-update="stream" class="list-rows">
-        <div :for={{dom_id, page} <- @streams.pages} id={dom_id} class="list-row">
-          <.link navigate={edit_path(@site, page)} class="list-row__link">
-            <div class="list-row__icon">
-              <span :if={page.emoji}>{page.emoji}</span>
-              <.icon :if={!page.emoji} name="file-text" />
-            </div>
-            <div class="list-row__content">
-              <div class="list-row__title">{page.title}</div>
-              <div class="list-row__meta">
-                {page.slug}
-                <span :if={page.page_type != "default"} class="list-row__tag">
-                  {page_type_label(page.page_type)}
-                </span>
-              </div>
-            </div>
-          </.link>
-          <div class="list-row__actions">
-            <button
-              type="button"
+      <section class="list-section">
+        <h2 class="section-title">
+          Other pages <span class="section-title__count">{@pagination.total_entries}</span>
+        </h2>
+        <.empty_state
+          :if={@pagination.total_entries == 0}
+          id="no-pages"
+          emoji="📄"
+          message="No other pages"
+          subtitle="Create pages like an imprint, about or contact page."
+        />
+        <.list_card id="pages" stream hidden={@pagination.total_entries == 0}>
+          <.list_row
+            :for={{dom_id, page} <- @streams.pages}
+            id={dom_id}
+            navigate={edit_path(@site, page)}
+          >
+            <:leading><.page_tile page={page} /></:leading>
+            {page.title}
+            <:meta><.page_meta page={page} /></:meta>
+            <:action
               id={"add-to-navigation-#{page.public_id}"}
-              class="btn btn-sm btn-link text-success"
-              title="Add to navigation"
-              aria-label="Add to navigation"
-              phx-click="add_to_navigation"
-              phx-value-id={page.public_id}
-            >
-              <.icon name="plus" size={16} />
-            </button>
-            <.link navigate={edit_path(@site, page)} class="btn btn-sm btn-link" title="Edit">
-              <.icon name="pencil" size={16} />
-            </.link>
-            <button
-              type="button"
+              icon="eye"
+              label="Show in navigation"
+              click={JS.push("add_to_navigation", value: %{id: page.public_id})}
+            />
+            <:action
               id={"delete-page-#{page.public_id}"}
-              class="btn btn-sm btn-link text-danger"
-              title="Delete"
-              aria-label="Delete"
-              phx-click="delete"
-              phx-value-id={page.public_id}
-              data-confirm="Are you sure?"
-            >
-              <.icon name="trash" size={16} />
-            </button>
-          </div>
-        </div>
-      </div>
+              icon="trash"
+              label="Delete"
+              click={JS.push("delete", value: %{id: page.public_id})}
+              confirm="Are you sure?"
+              danger
+            />
+          </.list_row>
+        </.list_card>
 
-      <.pagination pagination={@pagination} path={&~p"/sites/#{@site.public_id}/pages?page=#{&1}"} />
+        <.pagination
+          pagination={@pagination}
+          path={&~p"/sites/#{@site.public_id}/pages?page=#{&1}"}
+        />
+      </section>
     </.site_shell>
+    """
+  end
+
+  attr :page, :map, required: true
+
+  defp page_tile(assigns) do
+    ~H"""
+    <span :if={@page.emoji}>{@page.emoji}</span>
+    <.icon :if={!@page.emoji} name="file-text" />
+    """
+  end
+
+  attr :page, :map, required: true
+
+  defp page_meta(assigns) do
+    ~H"""
+    <span>{@page.slug}</span>
+    <.neutral_badge :if={@page.page_type != "default"}>
+      {page_type_label(@page.page_type)}
+    </.neutral_badge>
     """
   end
 

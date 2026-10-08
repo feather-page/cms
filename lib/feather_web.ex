@@ -88,6 +88,8 @@ defmodule FeatherWeb do
       import FeatherWeb.CoreComponents
       # The site admin shell and its building blocks
       import FeatherWeb.SiteComponents
+      # The rows of the admin's collections
+      import FeatherWeb.ListComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
