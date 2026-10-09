@@ -654,7 +654,7 @@ body:has(.action-bar--sticky) .site-notices {
   }
 }
 
-/* ---- Block editor (assets/js/editor): a plain document, no box ---- */
+/* ---- Block editor (assets/js/editor): a document on a card ---- */
 
 .block-editor {
   position: relative;

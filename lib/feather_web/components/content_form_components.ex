@@ -95,7 +95,7 @@ defmodule FeatherWeb.ContentFormComponents do
     <div class="mb-3">
       <div
         id={@id}
-        class="block-editor"
+        class="card block-editor"
         phx-hook="ProseMirror"
         data-label={@label}
         data-lock-version={@record.id && @record.lock_version}
