@@ -367,7 +367,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const atStart = sel.isCollapsed && caretOffset(ed) === 0
             const atEnd = sel.isCollapsed && caretOffset(ed) === ed.textContent.replace(/\n$/, "").length
 
-            if (e.inputType === "insertParagraph") {
+            // Stopgap until there is an own undo: the browser's stack does not know
+            // the splits and merges done through the DOM and replays old typing
+            // into the wrong block.
+            if (e.inputType === "historyUndo" || e.inputType === "historyRedo") {
+              e.preventDefault()
+            } else if (e.inputType === "insertParagraph") {
               e.preventDefault()
               if (this.slash) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
               else if (type === "code") document.execCommand("insertText", false, "\n")
