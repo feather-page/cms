@@ -11,14 +11,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
   editable once the hooks run) and then only changed in the DOM:
 
     * `.BlockEditor` edits: keys as `beforeinput` (Android, IME), slash menu,
-      shortcuts, paste, block selection, gutter, drag and drop. It never
-      talks to the server.
+      shortcuts, paste, the toolbar, block selection, gutter, drag and drop.
+      It never talks to the server.
     * `.BlockSync` observes the list and pushes one idempotent `sync` event
       with the order and the changed texts (for images URL and caption),
       debounced; everything after a failed push or a reconnect. Ids are made
       on the client in the `Blocks` format, so the server never echoes an
       edit back.
-    * `.Toolbar` formats a selection, `.Latency` simulates a far server.
+    * `.Latency` simulates a far server.
 
   The server validates what it gets and keeps the stored format
   (`export/1`), shown as JSON on demand.
@@ -151,7 +151,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               <span class="pe-menu__glyph">{glyph}</span> {label}
             </button>
           </div>
-          <div id="pe-toolbar" class="pe-toolbar" phx-hook=".Toolbar" hidden>
+          <div id="pe-toolbar" class="pe-toolbar" hidden>
             <button type="button" class="pe-toolbar__touch" data-cmd="slash" title="Blocks">/</button>
             <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
             <button type="button" data-cmd="italic" title="Italic"><i>i</i></button>
@@ -179,6 +179,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const SHORTCUTS = {"#": "h2", "##": "h2", "###": "h3", "-": "bulleted", "*": "bulleted",
           "1.": "numbered", ">": "quote", "```": "code"}
         const LIST_TYPES = ["bulleted", "numbered"]
+        const FORMAT_KEYS = {k: "link", e: "code"}
 
         // Ids like Feather.Content.Blocks generates them: 10 characters of [0-9a-zA-Z].
         const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -188,6 +189,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const editableOf = (block) => block?.querySelector(":scope > [data-editable]")
         const isText = (block) => block && block.dataset.type !== "image"
         const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]))
+        // The rule of Feather.Content.HTML.safe_url?/1: relative, or http(s), mailto, tel.
+        const safeUrl = (url) => {
+          const scheme = url.replace(/[\x00-\x20\x7F-\x9F]/g, "").toLowerCase().match(/^([^\/?#]*?):/)
+          return !scheme || ["http", "https", "mailto", "tel"].includes(scheme[1])
+        }
         // The server's rule (web_url?/1): http(s) with a host, normalized as the browser does.
         const webUrl = (value) => {
           try {
@@ -290,6 +296,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
           mounted() {
             this.list = this.el.querySelector("#pe-blocks")
             this.menu = this.el.querySelector("#pe-menu")
+            this.toolbar = this.el.querySelector("#pe-toolbar")
+            // Touch screens: the toolbar is docked above the keyboard while a block
+            // has the focus, where the native selection menu does not cover it.
+            this.touch = matchMedia("(pointer: coarse)").matches
+            this.toolbar.classList.toggle("is-docked", this.touch)
             this.slash = null
             this.dragged = null
             this.selected = []
@@ -313,8 +324,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
                 this.updateMenu()
               }
             })
-            this.onSelection = () => this.menuOpen()
+            this.onSelection = () => {
+              this.menuOpen()
+              this.updateToolbar()
+            }
             document.addEventListener("selectionchange", this.onSelection)
+            visualViewport?.addEventListener("resize", this.onSelection)
+            visualViewport?.addEventListener("scroll", this.onSelection)
             this.onMouseup = () => {
               this.dragSelect = null
               this.list.classList.remove("is-selecting")
@@ -336,6 +352,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
           destroyed() {
             document.removeEventListener("selectionchange", this.onSelection)
             document.removeEventListener("mouseup", this.onMouseup)
+            visualViewport?.removeEventListener("resize", this.onSelection)
+            visualViewport?.removeEventListener("scroll", this.onSelection)
           },
 
           // ---- block operations (they only change the DOM) -----------------
@@ -428,6 +446,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (e.key === "Escape") {
               e.preventDefault()
               return this.selectBlocks(block, block)
+            }
+            if (mod && FORMAT_KEYS[e.key] && this.formatRange()) {
+              e.preventDefault()
+              return this.format(FORMAT_KEYS[e.key])
             }
             if (mod && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
               e.preventDefault()
@@ -749,6 +771,55 @@ defmodule FeatherWeb.PrototypeEditorLive do
             }
           },
 
+          // ---- toolbar: formats the selection in a text block ----------------
+
+          // The selection if it can be formatted: text inside one block, not code.
+          formatRange() {
+            const sel = getSelection()
+            const ed = sel.rangeCount && elOf(sel.anchorNode)?.closest("#pe-blocks [data-editable]")
+            const ok = ed && !sel.isCollapsed && ed.contains(sel.focusNode) && blockOf(ed).dataset.type !== "code"
+            return ok ? sel.getRangeAt(0) : null
+          },
+
+          updateToolbar() {
+            const range = this.formatRange()
+            const caret = this.touch && elOf(getSelection().anchorNode)?.closest("#pe-blocks [data-editable]")
+            this.toolbar.hidden = !range && !caret
+            if (this.toolbar.hidden) return
+            for (const button of this.toolbar.querySelectorAll("[data-cmd]")) {
+              const cmd = button.dataset.cmd
+              const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
+              button.classList.toggle("is-active", !!active)
+            }
+            if (this.touch) {
+              const view = window.visualViewport || {offsetTop: 0, height: innerHeight}
+              this.toolbar.style.top = `${view.offsetTop + view.height - this.toolbar.offsetHeight - 8}px`
+              return
+            }
+            const rect = range.getBoundingClientRect()
+            this.toolbar.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.toolbar.offsetWidth / 2)}px`
+            this.toolbar.style.top = `${Math.max(8, rect.top - this.toolbar.offsetHeight - 8)}px`
+          },
+
+          format(cmd) {
+            if (cmd === "slash") return document.execCommand("insertText", false, "/")
+            const range = this.formatRange()
+            if (!range) return
+            if (cmd === "code") {
+              const code = document.createElement("code")
+              code.textContent = range.toString()
+              range.deleteContents()
+              range.insertNode(code)
+              getSelection().selectAllChildren(code)
+            } else if (cmd === "link") {
+              const url = prompt("Link URL", "https://")
+              if (url && safeUrl(url)) document.execCommand("createLink", false, url)
+            } else {
+              document.execCommand(cmd)
+            }
+            this.updateToolbar()
+          },
+
           // ---- mouse: gutter, menu, drag & drop -----------------------------
 
           onMousedown(e) {
@@ -756,7 +827,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.clearSelection()
             const ed = e.button === 0 && e.target.closest("[data-editable]")
             this.dragSelect = ed ? blockOf(ed) : null
-            if (e.target.closest("#pe-menu")) e.preventDefault()
+            if (e.target.closest("#pe-menu, #pe-toolbar")) e.preventDefault()
           },
 
           // One gutter for the page, moved to the block under the pointer.
@@ -792,6 +863,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const target = e.target
             const item = target.closest("#pe-menu [data-type]")
             if (item && this.slash) return this.choose(item.dataset.type)
+            const cmd = target.closest("#pe-toolbar [data-cmd]")
+            if (cmd) return this.format(cmd.dataset.cmd)
             const move = target.closest("#pe-toolbar [data-move]")
             const editing = move && elOf(getSelection().anchorNode)?.closest("#pe-blocks [data-editable]")
             if (editing) return this.moveWithCaret(editing, move.dataset.move === "up")
@@ -945,101 +1018,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const busy = this.timer || this.pending > 0
             this.status.classList.toggle("is-pending", !!busy)
             this.status.textContent = busy ? "Saving…" : "Server in sync"
-          }
-        }
-      </script>
-
-      <script :type={Phoenix.LiveView.ColocatedHook} name=".Toolbar">
-        // Formats the selection inside a text block. It only changes the DOM;
-        // .BlockSync notices.
-
-        // The rule of Feather.Content.HTML.safe_url?/1: relative, or http(s), mailto, tel.
-        const safeUrl = (url) => {
-          const scheme = url.replace(/[\x00-\x20\x7F-\x9F]/g, "").toLowerCase().match(/^([^\/?#]*?):/)
-          return !scheme || ["http", "https", "mailto", "tel"].includes(scheme[1])
-        }
-        const KEYS = {k: "link", e: "code"}
-
-        export default {
-          mounted() {
-            // Touch screens: docked above the keyboard while a block has the focus,
-            // where the native selection menu does not cover it.
-            this.touch = matchMedia("(pointer: coarse)").matches
-            this.el.classList.toggle("is-docked", this.touch)
-            this.onSelection = () => this.update()
-            this.onKeydown = (e) => {
-              if ((e.metaKey || e.ctrlKey) && KEYS[e.key] && this.range()) {
-                e.preventDefault()
-                this.format(KEYS[e.key])
-              }
-            }
-            document.addEventListener("selectionchange", this.onSelection)
-            document.addEventListener("keydown", this.onKeydown)
-            visualViewport?.addEventListener("resize", this.onSelection)
-            visualViewport?.addEventListener("scroll", this.onSelection)
-            this.el.addEventListener("mousedown", (e) => e.preventDefault())
-            this.el.addEventListener("click", (e) => {
-              const button = e.target.closest("[data-cmd]")
-              if (button) this.format(button.dataset.cmd)
-            })
-          },
-
-          destroyed() {
-            document.removeEventListener("selectionchange", this.onSelection)
-            document.removeEventListener("keydown", this.onKeydown)
-            visualViewport?.removeEventListener("resize", this.onSelection)
-            visualViewport?.removeEventListener("scroll", this.onSelection)
-          },
-
-          editable() {
-            const sel = getSelection()
-            const node = sel.rangeCount && sel.getRangeAt(0).commonAncestorContainer
-            return node ? (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]") : null
-          },
-
-          // The selection if it can be formatted: text inside one block, not code.
-          range() {
-            const ed = this.editable()
-            const sel = getSelection()
-            return ed && !sel.isCollapsed && ed.closest(".pe-block").dataset.type !== "code" ? sel.getRangeAt(0) : null
-          },
-
-          update() {
-            const range = this.range()
-            this.el.hidden = !range && !(this.touch && this.editable())
-            if (this.el.hidden) return
-            for (const button of this.el.querySelectorAll("[data-cmd]")) {
-              const cmd = button.dataset.cmd
-              const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
-              button.classList.toggle("is-active", !!active)
-            }
-            if (this.touch) {
-              const view = window.visualViewport || {offsetTop: 0, height: innerHeight}
-              this.el.style.top = `${view.offsetTop + view.height - this.el.offsetHeight - 8}px`
-              return
-            }
-            const rect = range.getBoundingClientRect()
-            this.el.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.el.offsetWidth / 2)}px`
-            this.el.style.top = `${Math.max(8, rect.top - this.el.offsetHeight - 8)}px`
-          },
-
-          format(cmd) {
-            if (cmd === "slash") return document.execCommand("insertText", false, "/")
-            const range = this.range()
-            if (!range) return
-            if (cmd === "code") {
-              const code = document.createElement("code")
-              code.textContent = range.toString()
-              range.deleteContents()
-              range.insertNode(code)
-              getSelection().selectAllChildren(code)
-            } else if (cmd === "link") {
-              const url = prompt("Link URL", "https://")
-              if (url && safeUrl(url)) document.execCommand("createLink", false, url)
-            } else {
-              document.execCommand(cmd)
-            }
-            this.update()
           }
         }
       </script>
