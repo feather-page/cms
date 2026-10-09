@@ -6,7 +6,7 @@ How the engineering skills should consume this repo's domain documentation when 
 
 - **`CONTEXT.md`** at the repo root, or
 - **`CONTEXT-MAP.md`** at the repo root if it exists — it points at one `CONTEXT.md` per context. Read each one relevant to the topic.
-- **`docs/adr/`** — read ADRs that touch the area you're about to work in. In multi-context repos, also check `src/<context>/docs/adr/` for context-scoped decisions.
+- **`DECISIONS.md`** at the repo root — read the ADRs that touch the area you're about to work in.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
@@ -17,22 +17,14 @@ This repo is single-context:
 ```
 /
 ├── CONTEXT.md
-├── docs/adr/
-│   ├── 0001-bdd-feature-first-development.md   (superseded by 0008)
-│   ├── 0002-documentation-structure.md
-│   ├── 0003-code-coverage-policy.md            (deprecated)
-│   ├── 0004-hugo-theme-feature-parity.md       (superseded by 0005)
-│   ├── 0005-static-sites-with-erb.md           (EEx since the Phoenix port)
-│   ├── 0006-export-writes-through-a-sink.md
-│   ├── 0007-port-to-phoenix-and-sqlite.md
-│   └── 0008-behaviour-is-specified-in-exunit.md
+├── DECISIONS.md       ← all ADRs, numbered, newest last
 ├── docs/api/          ← content API (openapi.yml)
 ├── lib/feather/       ← contexts (domain logic)
 ├── lib/feather_web/   ← Phoenix web layer (LiveView admin)
 └── test/              ← ExUnit tests, the executable specification
 ```
 
-ADRs are written in English and numbered `NNNN-<slug>.md`, seeded from `docs/adr/TEMPLATE.md`.
+ADRs are written in English and numbered on in `DECISIONS.md`, in the format of its newest entries.
 `CONTEXT.md` holds the domain language. All documentation in this repo is written in English.
 
 ## Use the glossary's vocabulary

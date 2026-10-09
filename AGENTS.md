@@ -5,7 +5,7 @@ feather.page CMS: a Phoenix 1.8 / LiveView app with SQLite that manages small st
 ## Read first
 
 `CONTEXT.md` for the domain language, `README.md` for setup and configuration, and only the ADRs
-in `docs/adr/` that touch the area you are about to change. ADR-0007 records the port from Rails;
+in `DECISIONS.md` that touch the area you are about to change. ADR-0007 records the port from Rails;
 older ADRs that name Rails mechanisms carry a status and an "Update (2026-10-06)" section saying
 what holds in the Phoenix app.
 
@@ -62,7 +62,7 @@ GitHub Issues in `feather-page/cms`, driven through the `gh` CLI. See `docs/agen
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` at the root, ADRs in `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: `CONTEXT.md` at the root, ADRs in `DECISIONS.md`. See `docs/agents/domain.md`.
 
 # Phoenix guidelines
 
