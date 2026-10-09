@@ -53,4 +53,11 @@ defmodule Feather.Content.SlugTest do
       assert Slug.suggest("", fn _ -> false end) == ""
     end
   end
+
+  describe "unsafe_validate_unique/1" do
+    test "skips a record without a site" do
+      changeset = Ecto.Changeset.change(%Feather.Content.Post{}, slug: "/about")
+      assert Slug.unsafe_validate_unique(changeset).valid?
+    end
+  end
 end

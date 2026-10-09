@@ -43,7 +43,7 @@ defmodule Feather.Import.RailsDump do
   alias Feather.Accounts.{ApiToken, Scope, User, UserToken}
   alias Feather.Books.Book
   alias Feather.Content
-  alias Feather.Content.{Blocks, Page, Post, Project}
+  alias Feather.Content.{Blocks, Page, Post, Project, Slug}
   alias Feather.Import.{Dump, Report}
   alias Feather.Media
   alias Feather.Media.{Image, Processor}
@@ -154,6 +154,8 @@ defmodule Feather.Import.RailsDump do
       covers: %{},
       # :post_id / :page_id / :project_id => id => %{site_id, label, content}
       records: %{post_id: %{}, page_id: %{}, project_id: %{}},
+      # {site_id, Slug.url_space/1, slug} of the published records
+      published_slugs: MapSet.new(),
       # {site_id, public_id} => id
       books: %{}
     }
@@ -470,7 +472,11 @@ defmodule Feather.Import.RailsDump do
 
           case insert(state, table, label, changeset) do
             {:ok, record, state} ->
-              unless draft_post?(table, row), do: publish_imported(site, record)
+              state =
+                if draft_post?(table, row),
+                  do: state,
+                  else: publish_imported(state, site, record, label)
+
               entry = %{site_id: site.id, label: label, content: record.content}
               put_in(state, [:records, owner_field, record.id], entry)
 
@@ -486,9 +492,18 @@ defmodule Feather.Import.RailsDump do
 
   defp draft_post?(table, row), do: table == "posts" and row["draft"] == true
 
-  defp publish_imported(site, record) do
-    {:ok, _record} = Content.publish(Scope.for_site(site), record)
-    :ok
+  # Rails kept slugs unique per table, so a page may have the slug of a
+  # post: the one imported second stays a draft. Checked here, as
+  # Content.publish/2 refusing it would roll back the import.
+  defp publish_imported(state, site, %schema{slug: slug} = record, label) do
+    key = {site.id, Slug.url_space(schema), slug}
+
+    if slug && MapSet.member?(state.published_slugs, key) do
+      notice(state, "#{label}: not published, another post or page is published with its slug")
+    else
+      {:ok, _record} = Content.publish(Scope.for_site(site), record)
+      update_in(state.published_slugs, &MapSet.put(&1, key))
+    end
   end
 
   defp content_attrs(state, table, row, site, label) do

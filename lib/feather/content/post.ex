@@ -50,10 +50,7 @@ defmodule Feather.Content.Post do
     |> Tags.cast_tags()
     |> Feather.Validations.validate_emoji(:emoji)
     |> put_default_publish_at()
-    |> unsafe_validate_unique([:site_id, :slug], Feather.Repo,
-      error_key: :slug,
-      message: "has already been taken"
-    )
+    |> Slug.unsafe_validate_unique()
     |> unique_constraint([:site_id, :slug], error_key: :slug, message: "has already been taken")
   end
 

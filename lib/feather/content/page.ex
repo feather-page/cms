@@ -62,10 +62,7 @@ defmodule Feather.Content.Page do
     |> validate_required([:page_type])
     |> validate_inclusion(:page_type, @page_types)
     |> Feather.Validations.validate_emoji(:emoji)
-    |> unsafe_validate_unique([:site_id, :slug], Feather.Repo,
-      error_key: :slug,
-      message: "has already been taken"
-    )
+    |> Slug.unsafe_validate_unique()
     |> unique_constraint([:site_id, :slug], error_key: :slug, message: "has already been taken")
   end
 
