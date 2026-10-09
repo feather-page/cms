@@ -203,6 +203,32 @@ defmodule FeatherWeb.PrototypeEditorLive do
           const line = parseFloat(getComputedStyle(ed).lineHeight) || 24
           return edge === "top" ? rect.top - box.top < line * 0.8 : box.bottom - rect.bottom < line * 0.8
         }
+        const textSibling = (block, dir) => {
+          let el = block[dir]
+          while (el && !isText(el)) el = el[dir]
+          return el
+        }
+        // Puts the caret on the first or last line of `ed`, as close to `x` as
+        // possible, the way ArrowUp/Down move within one block.
+        const caretAtX = (ed, x, line) => {
+          ed.scrollIntoView({block: "nearest"})
+          const all = document.createRange()
+          all.selectNodeContents(ed)
+          const rects = [...all.getClientRects()].filter((r) => r.height)
+          if (!rects.length) return setCaret(ed, 0)
+          const rect = line === "first" ? rects[0] : rects.at(-1)
+          const box = ed.getBoundingClientRect()
+          const px = Math.min(Math.max(x, box.left + 1), box.right - 1)
+          const py = rect.top + rect.height / 2
+          const pos = document.caretPositionFromPoint?.(px, py)
+          const range = pos ? document.createRange() : document.caretRangeFromPoint?.(px, py)
+          if (pos) range.setStart(pos.offsetNode, pos.offset)
+          if (!range || !ed.contains(range.startContainer)) return setCaret(ed, line === "first" ? 0 : ed.textContent.length)
+          ed.focus({preventScroll: true})
+          range.collapse(true)
+          getSelection().removeAllRanges()
+          getSelection().addRange(range)
+        }
         const setType = (block, type) => {
           ;[...block.classList].filter((c) => c.startsWith("pe-block--")).forEach((c) => block.classList.remove(c))
           block.classList.add(`pe-block--${type}`)
@@ -217,6 +243,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.dragged = null
 
             this.el.addEventListener("keydown", (e) => this.onKeydown(e))
+            this.el.addEventListener("beforeinput", (e) => this.onBeforeinput(e))
             this.el.addEventListener("input", (e) => this.onInput(e))
             this.el.addEventListener("paste", (e) => this.onPaste(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
@@ -289,7 +316,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           // ---- keyboard ------------------------------------------------------
 
+          // Enter, Backspace and Delete are handled as beforeinput: Android
+          // keyboards send keydown 229 ("Unidentified") for them, and Safari
+          // sends a keydown Enter without isComposing when an IME commits.
           onKeydown(e) {
+            if (e.isComposing || e.keyCode === 229) return
             if (this.slash && this.menuKey(e)) return
             if (e.target.id === "pe-title" && (e.key === "Enter" || e.key === "ArrowDown")) {
               e.preventDefault()
@@ -298,50 +329,60 @@ defmodule FeatherWeb.PrototypeEditorLive do
               return
             }
             const ed = e.target.closest?.("[data-editable]")
+            if (!ed) return
+            const block = blockOf(ed)
+
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && block.dataset.type === "code") {
+              e.preventDefault()
+              return this.split(block)
+            }
+
+            const vertical = (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey
+            if (!vertical) this.goalX = null
+            if (!e.key.startsWith("Arrow") || e.shiftKey || e.altKey || e.metaKey || e.ctrlKey) return
+            const up = e.key === "ArrowUp" || e.key === "ArrowLeft"
+            const target = textSibling(block, up ? "previousElementSibling" : "nextElementSibling")
+            if (!target) return
+            const collapsed = getSelection().isCollapsed
+
+            if (vertical && onEdgeLine(ed, up ? "top" : "bottom")) {
+              e.preventDefault()
+              this.goalX ??= caretRect()?.left ?? ed.getBoundingClientRect().left
+              caretAtX(editableOf(target), this.goalX, up ? "last" : "first")
+            } else if (e.key === "ArrowLeft" && collapsed && caretOffset(ed) === 0) {
+              e.preventDefault()
+              setCaret(editableOf(target), editableOf(target).textContent.length)
+            } else if (e.key === "ArrowRight" && collapsed && caretOffset(ed) === ed.textContent.length) {
+              e.preventDefault()
+              setCaret(editableOf(target), 0)
+            }
+          },
+
+          onBeforeinput(e) {
+            const ed = e.target.closest?.("[data-editable]")
             if (!ed || e.isComposing) return
             const block = blockOf(ed)
             const type = block.dataset.type
             const sel = getSelection()
+            const atStart = sel.isCollapsed && caretOffset(ed) === 0
+            const atEnd = sel.isCollapsed && caretOffset(ed) === ed.textContent.replace(/\n$/, "").length
 
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.inputType === "insertParagraph") {
               e.preventDefault()
-              if (type === "code" && !(e.metaKey || e.ctrlKey)) {
-                document.execCommand("insertText", false, "\n")
-              } else if (ed.textContent === "" && [...LIST_TYPES, "quote"].includes(type)) {
-                this.changeType(block, "paragraph")
-              } else {
-                this.split(block)
-              }
-              return
-            }
-
-            if (e.key === "Backspace" && sel.isCollapsed && caretOffset(ed) === 0) {
+              if (this.slash) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
+              else if (type === "code") document.execCommand("insertText", false, "\n")
+              else if (ed.textContent === "" && [...LIST_TYPES, "quote"].includes(type)) this.changeType(block, "paragraph")
+              else this.split(block)
+            } else if (e.inputType === "deleteContentBackward" && atStart) {
+              e.preventDefault()
               const prev = block.previousElementSibling
-              if (type !== "paragraph") {
-                e.preventDefault()
-                this.changeType(block, "paragraph")
-              } else if (prev && isText(prev)) {
-                e.preventDefault()
-                this.merge(block, prev)
-              } else if (prev && ed.textContent === "") {
-                e.preventDefault()
-                block.remove()
-              }
-              return
-            }
-
-            if (e.key === "ArrowUp" && onEdgeLine(ed, "top")) {
-              const prev = block.previousElementSibling
-              if (isText(prev)) {
-                e.preventDefault()
-                setCaret(editableOf(prev), editableOf(prev).textContent.length)
-              }
-            } else if (e.key === "ArrowDown" && onEdgeLine(ed, "bottom")) {
+              if (type !== "paragraph") this.changeType(block, "paragraph")
+              else if (isText(prev)) this.merge(block, prev)
+              else if (prev && ed.textContent === "") block.remove()
+            } else if (e.inputType === "deleteContentForward" && atEnd) {
+              e.preventDefault()
               const next = block.nextElementSibling
-              if (isText(next)) {
-                e.preventDefault()
-                setCaret(editableOf(next), 0)
-              }
+              if (isText(next)) this.merge(next, block)
             }
           },
 
@@ -461,6 +502,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           // ---- mouse: gutter, menu, drag & drop -----------------------------
 
           onMousedown(e) {
+            this.goalX = null
             if (e.target.closest("#pe-menu")) e.preventDefault()
             const handle = e.target.closest(".pe-handle")
             if (handle) blockOf(handle).draggable = true
