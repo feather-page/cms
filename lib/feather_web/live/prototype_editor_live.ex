@@ -281,6 +281,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("input", (e) => this.onInput(e))
             this.el.addEventListener("compositionend", (e) => this.onCompositionend(e))
             this.el.addEventListener("paste", (e) => this.onPaste(e))
+            this.el.addEventListener("submit", (e) => this.onSubmit(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
             this.el.addEventListener("focusout", () => this.closeMenu())
@@ -384,6 +385,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (e.isComposing || e.keyCode === 229) return
             if (this.menuOpen() && this.menuKey(e)) return
             if (this.selected.length && e.target === this.list) return this.selectionKey(e)
+            if (e.target.name === "url" && e.key === "Backspace" && e.target.value === "") {
+              e.preventDefault()
+              return this.deleteBlocks([blockOf(e.target)])
+            }
+            if (e.target.matches(".pe-caption") && e.key === "Enter") {
+              e.preventDefault()
+              return this.moveOn(blockOf(e.target))
+            }
             if (e.target.id === "pe-title" && (e.key === "Enter" || e.key === "ArrowDown")) {
               e.preventDefault()
               const first = [...this.list.children].find(isText)
@@ -537,6 +546,25 @@ defmodule FeatherWeb.PrototypeEditorLive do
               ref = this.createBlock("paragraph", escapeHtml(line) + (i === lines.length - 1 ? tail.innerHTML : ""), ref)
             })
             setCaret(editableOf(ref), lines.at(-1).length)
+          },
+
+          // ---- image -------------------------------------------------------
+
+          // .BlockSync has pushed the URL by now. The image shows at once and the
+          // caret moves on, as after Enter in the caption.
+          onSubmit(e) {
+            const form = e.target.closest(".pe-image__form")
+            if (!form) return
+            const block = blockOf(form)
+            form.replaceWith(Object.assign(document.createElement("img"), {src: form.elements.url.value, alt: ""}))
+            block.querySelector(".pe-caption").hidden = false
+            this.moveOn(block)
+          },
+
+          moveOn(block) {
+            const next = block.nextElementSibling
+            const empty = isText(next) && editableOf(next).textContent === ""
+            setCaret(editableOf(empty ? next : this.createBlock("paragraph", "", block)), 0)
           },
 
           // ---- block selection (Escape, a click on the handle or an image) ----
@@ -871,15 +899,25 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.push("sync", payload).catch(() => { this.sent = null; this.changed() })
           },
 
-          // The server turns the URL into an image and replies with the block's HTML.
+          // The server turns the URL into an image and replies with the block's
+          // HTML: its image replaces the preview, or the form comes back if the
+          // URL was refused or never sent.
           onSubmit(e) {
             const form = e.target.closest(".pe-image__form")
             if (!form) return
             e.preventDefault()
             const block = form.closest(".pe-block")
+            const replace = (html) => {
+              const fresh = document.createRange().createContextualFragment(html).firstElementChild
+              const [img, preview] = [fresh.querySelector("img"), block.querySelector("img")]
+              if (!block.isConnected) return
+              if (img && preview) preview.replaceWith(img)
+              else block.replaceWith(fresh)
+            }
             this.sync()
             this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
-              .then(({html}) => { if (html && block.isConnected) block.outerHTML = html })
+              .then(({html}) => html && replace(html))
+              .catch(() => replace(document.getElementById("pe-template-image").innerHTML.replaceAll("__ID__", block.dataset.id)))
           },
 
           push(event, payload) {
@@ -1023,25 +1061,24 @@ defmodule FeatherWeb.PrototypeEditorLive do
     >
       <%= if @block.type == "image" do %>
         <div class="pe-image">
-          <%= if @block.url do %>
-            <img src={@block.url} alt="" />
+          <img :if={@block.url} src={@block.url} alt="" />
+          <form :if={!@block.url} id={"#{@id}-url"} class="pe-image__form">
             <input
-              class="pe-caption"
-              value={@block.caption}
-              placeholder="Write a caption…"
-              autocomplete="off"
+              type="url"
+              name="url"
+              class="form-control"
+              placeholder="Paste an image URL and press Enter"
+              pattern="https?://.+"
+              required
             />
-          <% else %>
-            <form id={"#{@id}-url"} class="pe-image__form">
-              <input
-                type="url"
-                name="url"
-                class="form-control"
-                placeholder="Paste an image URL and press Enter"
-                required
-              />
-            </form>
-          <% end %>
+          </form>
+          <input
+            class="pe-caption"
+            value={@block.caption}
+            placeholder="Write a caption…"
+            autocomplete="off"
+            hidden={!@block.url}
+          />
         </div>
       <% else %>
         <div
