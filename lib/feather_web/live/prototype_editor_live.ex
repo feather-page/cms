@@ -673,10 +673,21 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("input", () => this.changed())
             this.el.addEventListener("focusout", () => this.sync())
             this.el.addEventListener("submit", (e) => this.onSubmit(e))
+            // The debounce would lose the last edits when the tab is hidden or
+            // closed; closing also warns while a push is unanswered.
+            this.onHide = () => document.visibilityState === "hidden" && this.sync()
+            this.onUnload = (e) => {
+              this.sync()
+              if (this.pending) e.preventDefault()
+            }
+            document.addEventListener("visibilitychange", this.onHide)
+            window.addEventListener("beforeunload", this.onUnload)
           },
 
           destroyed() {
             this.observer.disconnect()
+            document.removeEventListener("visibilitychange", this.onHide)
+            window.removeEventListener("beforeunload", this.onUnload)
           },
 
           reconnected() {
