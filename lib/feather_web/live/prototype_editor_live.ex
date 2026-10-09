@@ -45,13 +45,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
   def mount(params, _session, socket) do
     # Stands in for the database, so a reconnect finds what the server had.
     reset? = params["reset"] && get_connect_params(socket)["_mounts"] in [nil, 0]
-    blocks = (!reset? && :persistent_term.get(__MODULE__, nil)) || sample_blocks()
+    blocks = (!reset? && :persistent_term.get(__MODULE__, nil)) || store(sample_blocks())
 
     {:ok,
      socket
      |> assign(page_title: "Editor prototype", menu: @menu, events: 0, show_state: false)
-     |> assign(initial: blocks)
-     |> assign_blocks(blocks), temporary_assigns: [initial: []]}
+     |> assign(initial: blocks, blocks: blocks)
+     |> assign_state(), temporary_assigns: [initial: []]}
   end
 
   @impl true
@@ -1155,23 +1155,28 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
   def handle_event("toggle_state", _params, socket) do
     socket = update(socket, :show_state, &(!&1))
-    {:noreply, assign_blocks(socket, socket.assigns.blocks)}
+    {:noreply, assign_state(socket)}
   end
 
   def handle_event(_event, _params, socket), do: {:noreply, socket}
 
   defp change(socket, fun) do
     socket
-    |> assign_blocks(fun.(socket.assigns.blocks))
+    |> assign(blocks: store(fun.(socket.assigns.blocks)))
+    |> assign_state()
     |> update(:events, &(&1 + 1))
   end
 
   # The JSON goes over the wire whole on every event (tens of KB for a long
   # document), so it is only rendered while it is shown.
-  defp assign_blocks(socket, blocks) do
+  defp assign_state(socket) do
+    %{show_state: show?, blocks: blocks} = socket.assigns
+    assign(socket, state: if(show?, do: Jason.encode!(export(blocks), pretty: true)))
+  end
+
+  defp store(blocks) do
     :persistent_term.put(__MODULE__, blocks)
-    state = if socket.assigns.show_state, do: Jason.encode!(export(blocks), pretty: true)
-    assign(socket, blocks: blocks, state: state)
+    blocks
   end
 
   defp apply_sync(blocks, order, texts) do
@@ -1211,7 +1216,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
   end
 
   defp new_block(id, type, text),
-    do: %{id: id, type: type, text: text || "", url: nil, caption: ""}
+    do: %{id: id, type: type, text: text, url: nil, caption: ""}
 
   defp clean("code", text), do: text
   defp clean(_type, text), do: HTML.sanitize(text, :editor)
