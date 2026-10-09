@@ -254,6 +254,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("keydown", (e) => this.onKeydown(e))
             this.el.addEventListener("beforeinput", (e) => this.onBeforeinput(e))
             this.el.addEventListener("input", (e) => this.onInput(e))
+            this.el.addEventListener("compositionend", (e) => this.onCompositionend(e))
             this.el.addEventListener("paste", (e) => this.onPaste(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
@@ -406,22 +407,36 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           onInput(e) {
             const ed = e.target.closest?.("[data-editable]")
-            if (!ed) return
-            const block = blockOf(ed)
+            if (!ed || e.isComposing) return
             tidy(ed)
             if (this.slash) this.updateMenu()
-            else if (e.inputType === "insertText" && e.data === "/" && block.dataset.type !== "code") this.openMenu(ed)
+            if (e.inputType === "insertText") this.afterTyping(ed, e.data)
+          },
 
-            if (e.inputType === "insertText" && e.data === " " && block.dataset.type !== "code") {
-              const before = rangeAt(ed, 0, caretOffset(ed)).toString()
-              const match = before.match(/^(\S+)[\s ]$/)
-              const type = match && SHORTCUTS[match[1]]
-              if (type) {
-                rangeAt(ed, 0, before.length).deleteContents()
-                tidy(ed)
-                this.changeType(block, type)
-              }
-            }
+          // With an IME, and with most Android keyboards, typed text arrives as
+          // insertCompositionText and is final only at compositionend.
+          onCompositionend(e) {
+            const ed = e.target.closest?.("[data-editable]")
+            if (!ed) return
+            tidy(ed)
+            if (this.slash) this.updateMenu()
+            this.afterTyping(ed, e.data)
+          },
+
+          // Opens the slash menu or applies a markdown shortcut (full-width
+          // forms count, as an IME types them).
+          afterTyping(ed, data) {
+            const block = blockOf(ed)
+            if (block.dataset.type === "code") return
+            const char = (data || "").normalize("NFKC").slice(-1)
+            if (char === "/" && !this.slash) return this.openMenu(ed)
+            if (!/\s/.test(char)) return
+            const before = rangeAt(ed, 0, caretOffset(ed)).toString()
+            const type = SHORTCUTS[before.normalize("NFKC").match(/^(\S+)\s$/)?.[1]]
+            if (!type) return
+            rangeAt(ed, 0, before.length).deleteContents()
+            tidy(ed)
+            this.changeType(block, type)
           },
 
           onPaste(e) {
@@ -461,8 +476,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
           updateMenu() {
             const {ed, start} = this.slash
             const caret = caretOffset(ed)
-            if (!ed.isConnected || caret <= start || ed.textContent[start] !== "/") return this.closeMenu()
-            const query = ed.textContent.slice(start + 1, caret).toLowerCase()
+            if (!ed.isConnected || caret <= start || (ed.textContent[start] || "").normalize("NFKC") !== "/") return this.closeMenu()
+            const query = ed.textContent.slice(start + 1, caret).normalize("NFKC").toLowerCase()
             for (const item of this.menu.querySelectorAll("[data-type]")) {
               item.hidden = !item.dataset.label.toLowerCase().includes(query) && !item.dataset.type.includes(query)
             }
