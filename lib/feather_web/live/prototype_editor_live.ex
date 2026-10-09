@@ -250,6 +250,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.menu = this.el.querySelector("#pe-menu")
             this.slash = null
             this.dragged = null
+            // Blocks render read-only: text typed before the hooks exist would
+            // never reach the server.
+            for (const block of this.list.children) setType(block, block.dataset.type)
 
             this.el.addEventListener("keydown", (e) => this.onKeydown(e))
             this.el.addEventListener("beforeinput", (e) => this.onBeforeinput(e))
@@ -830,7 +833,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
         <div
           id={"#{@id}-text"}
           class="pe-text"
-          contenteditable={if @block.type == "code", do: "plaintext-only", else: "true"}
+          contenteditable="false"
           phx-update="ignore"
           data-editable
           phx-no-format
