@@ -218,6 +218,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.onSelection = () => this.updateToolbar()
             document.addEventListener("selectionchange", this.onSelection)
             this.markLatency(window.liveSocket?.getLatencySim() || 0)
+            this.sent = this.snapshot()
           },
 
           destroyed() {
@@ -226,27 +227,38 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           // ---- talking to the server -------------------------------------
 
-          // The whole document in DOM order, debounced. A lost push or a
-          // dropped connection heals with the next snapshot.
+          // The document as {order: [[id, type]], texts: {id: html}}, debounced.
+          // A sync sends only what differs from the last one; after a failed
+          // push or a reconnect it sends everything, which heals any loss.
           changed() {
             clearTimeout(this.timer)
             this.timer = setTimeout(() => this.sync(), 300)
             this.renderStatus()
           },
 
+          snapshot() {
+            const order = [], texts = {}
+            for (const block of this.list.children) {
+              const {id, type} = block.dataset
+              const ed = editableOf(block)
+              order.push([id, type])
+              texts[id] = type === "image" ? block.querySelector(".pe-caption")?.value ?? ""
+                : type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML
+            }
+            return {order: JSON.stringify(order), texts}
+          },
+
           sync() {
             clearTimeout(this.timer)
             this.timer = null
-            const blocks = [...this.list.children].map((block) => {
-              const {id, type} = block.dataset
-              if (type === "image") return {id, type, caption: block.querySelector(".pe-caption")?.value ?? ""}
-              const ed = editableOf(block)
-              return {id, type, text: type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML}
-            })
-            const json = JSON.stringify(blocks)
-            if (json === this.sent) return this.renderStatus()
-            this.sent = json
-            this.push("sync", {blocks}).catch(() => { this.sent = null })
+            const now = this.snapshot(), last = this.sent || {texts: {}}
+            const payload = {}
+            if (now.order !== last.order) payload.order = JSON.parse(now.order)
+            const texts = Object.entries(now.texts).filter(([id, text]) => last.texts[id] !== text)
+            if (texts.length) payload.texts = Object.fromEntries(texts)
+            if (!payload.order && !payload.texts) return this.renderStatus()
+            this.sent = now
+            this.push("sync", payload).catch(() => { this.sent = null; this.changed() })
           },
 
           reconnected() {
@@ -710,25 +722,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
     """
   end
 
-  # The document as the client has it, in DOM order. The client owns order,
+  # What changed in the document: the block order with types (all of it, or
+  # nil when unchanged) and the texts that changed. The client owns order,
   # types, text and captions; the server owns what it made (image URLs).
   @impl true
-  def handle_event("sync", %{"blocks" => params}, socket) do
-    known = Map.new(socket.assigns.blocks, &{&1.id, &1})
-
-    blocks =
-      for %{"id" => id, "type" => type} = p <- params, type in @types do
-        block = known[id] || new_block(id, type, "")
-
-        %{
-          block
-          | type: type,
-            text: clean(type, p["text"]),
-            caption: p["caption"] || block.caption
-        }
-      end
-
-    {:noreply, change(socket, fn _ -> blocks end)}
+  def handle_event("sync", params, socket) do
+    {:noreply, change(socket, &apply_sync(&1, params["order"], params["texts"] || %{}))}
   end
 
   # The one change the server makes itself: the URL becomes an image, and
@@ -752,6 +751,20 @@ defmodule FeatherWeb.PrototypeEditorLive do
     :persistent_term.put(__MODULE__, blocks)
 
     assign(socket, blocks: blocks, state: Jason.encode!(export(blocks), pretty: true))
+  end
+
+  defp apply_sync(blocks, order, texts) do
+    known = Map.new(blocks, &{&1.id, &1})
+
+    for [id, type] <- order || Enum.map(blocks, &[&1.id, &1.type]), type in @types do
+      block = %{(known[id] || new_block(id, type, "")) | type: type}
+
+      case Map.fetch(texts, id) do
+        {:ok, caption} when type == "image" -> %{block | caption: caption}
+        {:ok, text} -> %{block | text: clean(type, text)}
+        :error -> block
+      end
+    end
   end
 
   defp update_block(blocks, id, fun),
