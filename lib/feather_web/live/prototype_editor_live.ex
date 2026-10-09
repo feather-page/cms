@@ -9,10 +9,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
   The `.BlockEditor` hook applies every edit to the DOM at once and only then
   pushes it. New blocks get their id on the client, so the server never
   echoes a client edit back: it applies the edit to `@blocks` and re-renders
-  nothing but the state panel. Only changes the server makes (an image URL
-  becoming an image) go through the `:blocks` stream. A `phx-update="stream"`
-  container keeps the children the hook inserts, and stream inserts of
-  existing elements update them in place.
+  nothing but the state panel. The block list is rendered once and then
+  belongs to the client (`phx-update="ignore"`), also across reconnects. The
+  one change the server makes (an image URL becoming an image) comes back as
+  the block's HTML in the reply to the event.
   """
   use FeatherWeb, :live_view
 
@@ -41,9 +41,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
     {:ok,
      socket
      |> assign(page_title: "Editor prototype", menu: @menu, events: 0)
-     |> assign_blocks(blocks)
-     |> stream_configure(:blocks, dom_id: &"pe-#{&1.id}")
-     |> stream(:blocks, blocks)}
+     |> assign(initial: blocks)
+     |> assign_blocks(blocks), temporary_assigns: [initial: []]}
   end
 
   @impl true
@@ -62,8 +61,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
               autocomplete="off"
             />
           </div>
-          <div id="pe-blocks" class="pe-blocks" phx-update="stream">
-            <.block :for={{dom_id, block} <- @streams.blocks} id={dom_id} block={block} />
+          <div id="pe-blocks" class="pe-blocks" phx-update="ignore">
+            <.block :for={block <- @initial} id={"pe-#{block.id}"} block={block} />
           </div>
           <button type="button" id="pe-append" class="pe-append" data-action="append">
             Click to add a block
@@ -209,6 +208,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("keydown", (e) => this.onKeydown(e))
             this.el.addEventListener("input", (e) => this.onInput(e))
             this.el.addEventListener("paste", (e) => this.onPaste(e))
+            this.el.addEventListener("submit", (e) => this.onSubmit(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
             this.el.addEventListener("focusout", (e) => {
@@ -235,7 +235,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.pending++
             this.renderStatus()
             const done = () => { this.pending--; this.renderStatus() }
-            this.pushEvent(event, payload).then(done, done)
+            const promise = this.pushEvent(event, payload)
+            promise.then(done, done)
+            return promise
           },
 
           renderStatus() {
@@ -576,17 +578,22 @@ defmodule FeatherWeb.PrototypeEditorLive do
               const last = this.list.lastElementChild
               let block
               if (append && last && isText(last) && editableOf(last).textContent === "") block = last
-              else if (append && !last) {
-                // Empty document: the stream container has nothing to hang the block on.
-                const anchor = document.createElement("div")
-                this.list.append(anchor)
-                block = this.createBlock("paragraph", "", anchor)
-                anchor.remove()
-              } else block = this.createBlock("paragraph", "", add ? blockOf(add) : last)
+              else if (append && !last) block = this.createBlock("paragraph", "", this.list, "append")
+              else block = this.createBlock("paragraph", "", add ? blockOf(add) : last)
               const ed = editableOf(block)
               setCaret(ed, 0)
               if (add) document.execCommand("insertText", false, "/")
             }
+          },
+
+          // The server turns the URL into an image and replies with the block's HTML.
+          onSubmit(e) {
+            const form = e.target.closest(".pe-image__form")
+            if (!form) return
+            e.preventDefault()
+            const block = blockOf(form)
+            this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
+              .then(({html}) => { if (html && block.isConnected) block.outerHTML = html })
           },
 
           onDragstart(e) {
@@ -653,6 +660,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
     """
   end
 
+  defp render_block(block) do
+    %{id: "pe-#{block.id}", block: block}
+    |> block()
+    |> Phoenix.HTML.Safe.to_iodata()
+    |> IO.iodata_to_binary()
+  end
+
   attr :id, :string, required: true
   attr :block, :map, required: true
 
@@ -686,8 +700,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               />
             </form>
           <% else %>
-            <form id={"#{@id}-url"} class="pe-image__form" phx-submit="image_url">
-              <input type="hidden" name="block_id" value={@block.id} />
+            <form id={"#{@id}-url"} class="pe-image__form">
               <input
                 type="url"
                 name="url"
@@ -749,14 +762,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
      end)}
   end
 
-  # The one change the server makes itself: the URL becomes an image, so the
-  # block is rendered through the stream.
-  def handle_event("image_url", %{"block_id" => id, "url" => url}, socket) do
+  # The one change the server makes itself: the URL becomes an image, and
+  # the reply carries the block's new HTML.
+  def handle_event("image_url", %{"id" => id, "url" => url}, socket) do
     socket = change(socket, &update_block(&1, id, fn b -> %{b | url: url} end))
 
     case Enum.find(socket.assigns.blocks, &(&1.id == id)) do
-      nil -> {:noreply, socket}
-      block -> {:noreply, stream_insert(socket, :blocks, block)}
+      nil -> {:reply, %{}, socket}
+      block -> {:reply, %{html: render_block(block)}, socket}
     end
   end
 
@@ -864,6 +877,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
       {"code", "def hello, do: :world"},
       {"paragraph", ""}
     ]
-    |> Enum.map(fn {type, text} -> new_block(Ecto.UUID.generate(), type, text) end)
+    |> Enum.with_index(fn {type, text}, i -> new_block("sample-#{i}", type, text) end)
   end
 end
