@@ -284,6 +284,13 @@ Rejected: it would have tied the new schema to the old one (navigations, polymor
 Active Storage tables, integer enums) for the sake of a move that happens once. With two sites, an
 hour of frozen editing for dump and import (`docs/cutover.md`) is the cheaper price.
 
+### Update (2026-10-09)
+
+The admin editor is ProseMirror now ([0010](#0010-prosemirror-replaces-editorjs)): the vendored
+Editor.js builds are removed, and the editor's packages are installed with npm in `assets/`. The
+standalone `esbuild` binary still bundles the JavaScript, but Node and `npm ci` are part of the
+asset build, the Docker image and CI. The rest of the decision holds.
+
 ## 0008. Behaviour is specified in ExUnit
 
 Accepted, 2026-10-06; supersedes [0001](#0001-bdd-feature-first-development)
@@ -330,3 +337,27 @@ Accepted, 2026-10-09
 - **Context:** [0002](#0002-flat-documentation-structure) kept ADRs as separate files in `docs/adr/`; read in order and searched as a whole, one file serves better.
 - **Decision:** All ADRs live in `DECISIONS.md` at the root, the older ones moved word for word; the rest of the flat structure of 0002 holds (`CONTEXT.md`, `AGENTS.md`, `docs/api/`, `docs/cutover.md`, `docs/agents/`).
 - **Consequences:** ADRs link to each other by anchor instead of file name, and new ones follow the format of the newest entries; `docs/adr/TEMPLATE.md` is gone.
+
+## 0010. ProseMirror replaces Editor.js
+
+Accepted, 2026-10-09
+
+- **Context:** Editor.js has no undo, weak selection across blocks and on mobile, and unevenly maintained plugins (`nested-list` has had no release since 2024); a self-built editor prototype showed that undo, input methods, nested lists and tables would still all be ahead of us.
+- **Decision:** ProseMirror (with `prosemirror-history`, `-tables` and `-schema-list`) under our own Notion-style UI in a LiveView hook, installed with npm in `assets/`; content is converted between `Blocks` and ProseMirror JSON on the server.
+- **Consequences:** Node and `npm ci` become part of the asset build, Docker image and CI, and Dependabot watches npm; the editor's JavaScript has no browser tests, only ExUnit, LiveViewTest and a manual test on desktop, iOS and Android.
+
+## 0011. Published versions replace the draft flag
+
+Accepted, 2026-10-09
+
+- **Context:** With autosave ([0012](#0012-autosave-with-a-per-block-delta-sync)) every edit is stored at once, so a deploy would ship half-finished changes, and there was no way back to an earlier state.
+- **Decision:** A post, page or project holds its unpublished changes; publishing copies all its columns into a version table and points `published_version_id` at the copy, and a record without a published version is a draft, replacing the `draft` column. Production and backup targets export published versions; preview and staging show the records as they are.
+- **Consequences:** Every record gets version 1 in a migration and the content API's `draft` changes meaning; there is no history between two publishes except the editor's undo, and publishing does not deploy (a site notice shows published changes not yet deployed).
+
+## 0012. Autosave with a per-block delta sync
+
+Accepted, 2026-10-09
+
+- **Context:** Editor.js wrote the whole document into a hidden form field that a Save button submitted; the prototype showed that a client-owned document with a debounced, idempotent sync keeps typing instant even with a second of latency.
+- **Decision:** The editor pushes the block order when it changes and the changed blocks as ProseMirror JSON; the whole record saves automatically, fields that fail validation are not stored, and a counter column rejects a sync based on a stale state.
+- **Consequences:** There is no Save button and a new record is created on the first input; when two tabs or members edit the same record, the later one has to reload and there is no merge.
