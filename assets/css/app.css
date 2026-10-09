@@ -1,6 +1,9 @@
 /* App-specific styles. Everything else comes from felt-css
    (https://felt-css.rocu.de/felt.css), loaded in the root layout. */
 
+/* PROTOTYPE, throwaway: the block editor at /dev/editor-prototype. */
+@import "./prototype_editor.css";
+
 /* Inline SVG icons (CoreComponents.icon/1). Not `.icon`: felt-css uses
    that class for its plush icons and sizes it to 2.25rem. */
 .lucide {

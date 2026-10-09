@@ -97,6 +97,12 @@ defmodule FeatherWeb.Router do
 
       live_dashboard "/dashboard", metrics: FeatherWeb.Telemetry
       forward "/mailbox", Plug.Swoosh.MailboxPreview
+
+      # PROTOTYPE, throwaway: the block editor (no login, no data). Without
+      # the CSP the image block can show images from anywhere.
+      live_session :prototype, on_mount: [{FeatherWeb.UserAuth, :mount_current_scope}] do
+        live "/editor-prototype", FeatherWeb.PrototypeEditorLive
+      end
     end
   end
 
