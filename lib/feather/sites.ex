@@ -91,20 +91,28 @@ defmodule Feather.Sites do
   Creates a site for the scope's user.
 
   Like Rails' `Sites::CreateSite`, in one transaction: saves the site, adds
-  the creator as a member, creates the homepage (title "Home", slug "/")
-  and the internal staging deployment target.
+  the creator as a member, creates and publishes the homepage (title
+  "Home", slug "/") and the internal staging deployment target.
   """
   @spec create_site(Scope.t(), map()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def create_site(%Scope{user: %User{} = user}, attrs) do
     Repo.transact(fn ->
       with {:ok, site} <- %Site{} |> Site.create_changeset(attrs) |> Repo.insert(),
            {:ok, _site_user} <- add_member(site, user),
-           {:ok, _homepage} <-
-             Feather.Content.create_page(Scope.for_site(site), %{title: "Home", slug: "/"}),
+           {:ok, _homepage} <- create_homepage(site),
            {:ok, _target} <- Feather.Publishing.create_staging_target(site) do
         {:ok, site}
       end
     end)
+  end
+
+  # Published right away, so that a new site deploys with an index page.
+  defp create_homepage(site) do
+    scope = Scope.for_site(site)
+
+    with {:ok, homepage} <- Feather.Content.create_page(scope, %{title: "Home", slug: "/"}) do
+      Feather.Content.publish(scope, homepage)
+    end
   end
 
   @doc """

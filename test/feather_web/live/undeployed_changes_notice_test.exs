@@ -27,12 +27,8 @@ defmodule FeatherWeb.UndeployedChangesNoticeTest do
     {:ok, lv, _html} = live(conn, edit_path(site, post))
     refute has_element?(lv, "#site-notice-undeployed-changes")
 
-    {:ok, lv, _html} =
-      lv
-      |> form("#post-form", post: %{title: "Today"})
-      |> put_submitter("#publish-post")
-      |> render_submit()
-      |> follow_redirect(conn, edit_path(site, post))
+    lv |> form("#post-form", post: %{title: "Today"}) |> render_change()
+    lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
 
     assert has_element?(lv, "#site-notice-undeployed-changes", "not deployed yet")
 

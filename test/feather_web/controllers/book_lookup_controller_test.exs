@@ -1,6 +1,5 @@
 defmodule FeatherWeb.BookLookupControllerTest do
-  # The server side of features/book_block.feature (the block itself is
-  # Editor.js code and runs in the browser only).
+  # The search of the editor's book block (assets/js/editor/books.js).
   use FeatherWeb.ConnCase
 
   setup [:register_and_log_in_user, :create_site_for_user]

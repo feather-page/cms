@@ -4,6 +4,7 @@ defmodule FeatherWeb.Api.V1.PageJSON do
   Expects header and thumbnail images to be preloaded.
   """
 
+  alias Feather.Content
   alias Feather.Content.{Page, Tags}
   alias FeatherWeb.Api.V1.{ApiJSON, Pagination}
 
@@ -20,6 +21,7 @@ defmodule FeatherWeb.Api.V1.PageJSON do
       slug: page.slug,
       emoji: page.emoji,
       page_type: page.page_type,
+      draft: Content.draft?(page),
       tags: Tags.tag_list(page),
       content: ApiJSON.content(page.content),
       header_image_id: ApiJSON.image_id(page.header_image),

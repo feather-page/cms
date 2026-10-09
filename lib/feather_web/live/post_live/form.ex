@@ -1,10 +1,15 @@
 defmodule FeatherWeb.PostLive.Form do
   @moduledoc """
   Creates and edits posts: header image picker, title and slug (hidden for
-  short posts, slug suggested from the title), tags, Editor.js content,
-  publish date and draft flag.
+  short posts, slug suggested from the title), tags, block content and
+  publish date. Every change is saved into the unpublished changes at
+  once, the first input creates the post as a draft (see "Autosave" in
+  `FeatherWeb.ContentForm`). Publish publishes them; Discard puts the
+  published version back; Restore puts an earlier version into the
+  unpublished changes; Unpublish makes the post a draft.
   """
   use FeatherWeb, :live_view
+  @behaviour FeatherWeb.ContentForm
 
   import FeatherWeb.ContentFormComponents
 
@@ -25,23 +30,28 @@ defmodule FeatherWeb.PostLive.Form do
       <.header back={~p"/sites/#{@site.public_id}/posts"} back_label="Posts" truncate>
         {@page_title}
         <:badge :if={@live_action == :edit}>
-          <.status_badge :if={@post.draft} id="status-badge" kind={:draft}>Draft</.status_badge>
-          <.status_badge :if={!@post.draft} id="status-badge" kind={:published}>
-            Published
-          </.status_badge>
+          <.publication_badge id="status-badge" status={@publication_status} />
         </:badge>
       </.header>
 
       <.editor_layout id="post" open={ContentForm.details_open?(@form)}>
         <:main>
-          <.form for={@form} id="post-form" phx-change="validate" phx-submit="save">
+          <.form
+            for={@form}
+            id="post-form"
+            phx-change="autosave"
+            phx-submit="autosave"
+            phx-auto-recover="recover"
+          >
+            <.lock_version_field record={@post} />
             <.header_image_fields form={@form} />
             <.title_field field={@form[:title]} hidden={!@show_title_and_slug?} />
             <.editor
               id="post-content-editor"
-              field={@form[:content]}
+              site={@current_scope.site}
               value={@editor_json}
-              site={@site}
+              record={@post}
+              status={ContentForm.autosave_status(@form, @changed_elsewhere?)}
             >
               <.content_length length={@content_length} />
             </.editor>
@@ -63,7 +73,6 @@ defmodule FeatherWeb.PostLive.Form do
             step="60"
             form="post-form"
           />
-          <.input field={@form[:draft]} type="checkbox" label="Draft" switch form="post-form" />
           <.live_component
             module={HeaderImagePicker}
             id="post-header-image-picker"
@@ -72,32 +81,18 @@ defmodule FeatherWeb.PostLive.Form do
             thumbnail_image={@thumbnail_image}
             emoji={@form[:emoji].value}
           />
+          <.record_versions versions={@versions} record={@post} />
         </:details>
       </.editor_layout>
 
-      <.action_bar sticky>
-        <button
-          type="submit"
-          form="post-form"
-          id="save-post"
-          class="btn btn-primary"
-          phx-disable-with="Saving..."
-        >
-          {if @live_action == :new, do: "Create post", else: "Save"}
-        </button>
-        <.link navigate={~p"/sites/#{@site.public_id}/posts"} class="btn btn-light">Cancel</.link>
-        <:danger :if={@live_action == :edit}>
-          <button
-            type="button"
-            id="delete-post"
-            class="btn btn-outline-danger"
-            phx-click="delete"
-            data-confirm="Delete this post?"
-          >
-            <.icon name="trash-2" size={16} /> Delete
-          </button>
-        </:danger>
-      </.action_bar>
+      <.content_actions
+        id="post"
+        noun="post"
+        record={@post}
+        form={@form}
+        status={@publication_status}
+        changed_elsewhere?={@changed_elsewhere?}
+      />
     </.site_shell>
     """
   end
@@ -112,49 +107,21 @@ defmodule FeatherWeb.PostLive.Form do
         :edit -> scope |> Content.get_post!(params["id"]) |> Content.preload_images()
       end
 
-    {:ok,
-     socket
-     |> assign(:site, scope.site)
-     |> assign(
-       :page_title,
-       if(socket.assigns.live_action == :new,
-         do: "New post",
-         else: ContentForm.heading(post, "Untitled post")
-       )
-     )
-     |> assign(:post, post)
-     |> assign(:header_image, ContentForm.loaded(post.header_image))
-     |> assign(:thumbnail_image, ContentForm.loaded(post.thumbnail_image))
-     |> assign(:slug_touched?, ContentForm.present?(post.slug))
-     |> assign(:editor_json, ContentForm.editor_json(scope, post))
-     |> assign_form(%{})}
+    {:ok, ContentForm.mount_record(socket, post)}
   end
 
   @impl true
-  def handle_event("validate", %{"post" => post_params} = params, socket) do
-    socket =
-      assign(
-        socket,
-        :slug_touched?,
-        socket.assigns.slug_touched? or ContentForm.slug_target?(params, "post")
-      )
+  def handle_params(_params, _uri, socket) do
+    page_title =
+      case socket.assigns.live_action do
+        :new -> "New post"
+        :edit -> ContentForm.heading(socket.assigns.post, "Untitled post")
+      end
 
-    post_params =
-      ContentForm.maybe_suggest_slug(
-        post_params,
-        params,
-        "post",
-        socket.assigns.current_scope,
-        socket.assigns.slug_touched?
-      )
-
-    {:noreply, assign_form(socket, post_params, :validate)}
+    {:noreply, assign(socket, :page_title, page_title)}
   end
 
-  def handle_event("save", %{"post" => post_params}, socket) do
-    save_post(socket, socket.assigns.live_action, post_params)
-  end
-
+  @impl true
   def handle_event("delete", _params, socket) do
     {:ok, _post} = Content.delete_post(socket.assigns.current_scope, socket.assigns.post)
 
@@ -164,43 +131,33 @@ defmodule FeatherWeb.PostLive.Form do
      |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
   end
 
+  def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)
+
   @impl true
-  def handle_info({HeaderImagePicker, change}, socket) do
-    params = ContentForm.put_picker_change(socket.assigns.params, change)
+  def handle_info(message, socket), do: ContentForm.handle_info(message, socket)
 
-    {:noreply,
-     socket
-     |> assign(ContentForm.picker_assigns(change))
-     |> assign_form(params, socket.assigns.form.source.action)}
+  @impl ContentForm
+  def record(socket), do: socket.assigns.post
+
+  @impl ContentForm
+  def save_fields(socket, attrs, opts) do
+    %{current_scope: scope, post: post} = socket.assigns
+
+    with {:ok, post} <- Content.autosave(scope, post, attrs, opts), do: {:ok, post, socket}
   end
 
-  defp save_post(socket, :new, post_params) do
-    case Content.create_post(socket.assigns.current_scope, post_params) do
-      {:ok, _post} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Post was successfully created.")
-         |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
+  @impl ContentForm
+  def edit_path(socket, post),
+    do: ~p"/sites/#{socket.assigns.site.public_id}/posts/#{post.public_id}/edit"
 
-      {:error, %Ecto.Changeset{}} ->
-        {:noreply, assign_form(socket, post_params, :insert)}
-    end
-  end
+  @impl ContentForm
+  def assign_record(socket, post), do: assign(socket, :post, post)
 
-  defp save_post(socket, :edit, post_params) do
-    case Content.update_post(socket.assigns.current_scope, socket.assigns.post, post_params) do
-      {:ok, _post} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Post was successfully updated.")
-         |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
+  @impl ContentForm
+  def noun, do: "Post"
 
-      {:error, %Ecto.Changeset{}} ->
-        {:noreply, assign_form(socket, post_params, :update)}
-    end
-  end
-
-  defp assign_form(socket, params, action \\ nil) do
+  @impl ContentForm
+  def assign_form(socket, params, action \\ nil) do
     %{current_scope: scope, post: post} = socket.assigns
 
     changeset =
@@ -209,7 +166,7 @@ defmodule FeatherWeb.PostLive.Form do
       |> Map.put(:action, action)
 
     form = to_form(changeset)
-    length = ContentForm.content_length(params, post)
+    length = ContentForm.content_length(post)
 
     socket
     |> assign(:params, params)

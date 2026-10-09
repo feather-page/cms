@@ -56,18 +56,15 @@ defmodule Feather.Media.CleanupTest do
           do: assert(exists?(image))
     end
 
-    test "keeps images their owner embeds, deletes those it no longer embeds", %{scope: scope} do
+    test "keeps images their owner embeds, deletes those it does not", %{scope: scope} do
       kept = image_fixture(scope)
-      dropped = image_fixture(scope)
+      post = post_fixture(scope, content: [image_block(kept)])
+      assert Repo.get!(Image, kept.id).post_id == post.id
 
-      post = post_fixture(scope, content: [image_block(kept), image_block(dropped)])
-      assert Repo.get!(Image, dropped.id).post_id == post.id
-
-      {:ok, _post} = Content.update_post(scope, post, %{content: [image_block(kept)]})
-
-      page_image = image_fixture(scope)
-      page = page_fixture(scope, content: [image_block(page_image)])
-      {:ok, _page} = Content.update_page(scope, page, %{content: [paragraph("No image")]})
+      # Owned, but neither the record nor any of its versions embeds them.
+      dropped = image_fixture(scope, post_id: post.id)
+      page = page_fixture(scope, content: [paragraph("No image")])
+      page_image = image_fixture(scope, page_id: page.id)
 
       assert {:ok, %{unreferenced: [], unused: unused}} = Media.cleanup_orphaned_images(later())
       assert public_ids(unused) == public_ids([dropped, page_image])
@@ -85,9 +82,8 @@ defmodule Feather.Media.CleanupTest do
       {:ok, _post} = Content.update_post(scope, post, %{content: []})
 
       # The same public id embedded on another site does not count.
-      dropped = image_fixture(scope)
-      dropping = post_fixture(scope, content: [image_block(dropped)])
-      {:ok, _} = Content.update_post(scope, dropping, %{content: []})
+      dropping = post_fixture(scope, content: [])
+      dropped = image_fixture(scope, post_id: dropping.id)
       post_fixture(site_scope_fixture(), content: [image_block(dropped)])
 
       assert {:ok, %{unreferenced: [], unused: [deleted]}} =
@@ -118,6 +114,39 @@ defmodule Feather.Media.CleanupTest do
       assert {:ok, %{unreferenced: [], unused: []}} = Media.cleanup_orphaned_images(later())
       assert exists?(image)
       assert post.id
+    end
+
+    test "keeps images a version of a post, page or project still uses", %{scope: scope} do
+      embedded = image_fixture(scope)
+      header = image_fixture(scope)
+      thumbnail = image_fixture(scope)
+      page_image = image_fixture(scope)
+      project_image = image_fixture(scope)
+
+      post =
+        post_fixture(scope,
+          content: [image_block(embedded)],
+          header_image_id: header.id,
+          thumbnail_image_id: thumbnail.id
+        )
+
+      {:ok, _post} =
+        Content.update_post(scope, post, %{
+          content: [],
+          header_image_id: nil,
+          thumbnail_image_id: nil
+        })
+
+      page = page_fixture(scope, content: [image_block(page_image)])
+      page |> Ecto.Changeset.change(content: []) |> Repo.update!()
+
+      project = project_fixture(scope, header_image_id: project_image.id)
+      project |> Ecto.Changeset.change(header_image_id: nil) |> Repo.update!()
+
+      assert {:ok, %{unreferenced: [], unused: []}} = Media.cleanup_orphaned_images(later())
+
+      for image <- [embedded, header, thumbnail, page_image, project_image],
+          do: assert(exists?(image))
     end
 
     test "orphaned_images/1 lists without deleting", %{scope: scope} do

@@ -45,6 +45,15 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert html_response(get(conn, path), 200) =~ "Hello from a post."
   end
 
+  test "shows unpublished changes", %{conn: conn, scope: scope, root: root} do
+    post_fixture(scope, %{title: "Published", slug: "/hello"})
+    |> Ecto.Changeset.change(title: "Unpublished change")
+    |> Feather.Repo.update!()
+
+    assert html_response(get(conn, root <> "/"), 200) =~ "Unpublished change"
+    assert html_response(get(conn, root <> "/hello/"), 200) =~ "<h1>Unpublished change</h1>"
+  end
+
   test "serves image variants with their content type", %{
     conn: conn,
     scope: scope,

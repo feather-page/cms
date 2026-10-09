@@ -121,6 +121,16 @@ defmodule Feather.Books do
     Repo.one!(from b in Book, where: b.site_id == ^site_id and b.public_id == ^public_id)
   end
 
+  @doc """
+  The books of the scope's site among `public_ids`, as a map of public id
+  to book. Unknown ids and books of other sites are left out.
+  """
+  @spec books_by_public_id(Scope.t(), [String.t()]) :: %{String.t() => Book.t()}
+  def books_by_public_id(%Scope{site: %Site{id: site_id}}, public_ids) do
+    Repo.all(from b in Book, where: b.site_id == ^site_id and b.public_id in ^public_ids)
+    |> Map.new(&{&1.public_id, &1})
+  end
+
   @doc "Preloads the cover image of a book."
   @spec preload_cover_image(Book.t()) :: Book.t()
   def preload_cover_image(%Book{} = book), do: Repo.preload(book, :cover_image)
@@ -173,6 +183,7 @@ defmodule Feather.Books do
 
   @doc """
   Creates a review: a post with the given attributes linked from the book.
+  Like every new post it is a draft until it is published.
   """
   @spec create_review(Scope.t(), Book.t(), map()) ::
           {:ok, %{book: Book.t(), post: Post.t()}}
@@ -192,6 +203,41 @@ defmodule Feather.Books do
           {:ok, %{book: book, post: post}}
         end
       end)
+    end
+  end
+
+  @doc """
+  Autosaves the review form of a book: `Feather.Content.autosave/4` for
+  the review post. A new post (without id) becomes the book's review when
+  it is created.
+  """
+  @spec autosave_review(Scope.t(), Book.t(), Post.t(), map(), keyword()) ::
+          {:ok, %{book: Book.t(), post: Post.t()}}
+          | {:error, :stale | :already_reviewed | Ecto.Changeset.t()}
+  def autosave_review(scope, book, post, attrs, opts \\ [])
+
+  def autosave_review(%Scope{} = scope, %Book{} = book, %Post{id: nil} = post, attrs, opts) do
+    if Book.review?(book) do
+      {:error, :already_reviewed}
+    else
+      Repo.transact(fn ->
+        with {:ok, post} <- Content.autosave(scope, post, attrs, opts),
+             {:ok, book} <- book |> Ecto.Changeset.change(post_id: post.id) |> Repo.update() do
+          {:ok, %{book: book, post: post}}
+        end
+      end)
+    end
+  end
+
+  def autosave_review(
+        %Scope{} = scope,
+        %Book{post_id: post_id} = book,
+        %Post{id: post_id} = post,
+        attrs,
+        opts
+      ) do
+    with {:ok, post} <- Content.autosave(scope, post, attrs, opts) do
+      {:ok, %{book: book, post: post}}
     end
   end
 

@@ -9,7 +9,7 @@ defmodule FeatherWeb.ImageControllerTest do
     do: %Plug.Upload{path: path, filename: "photo.png", content_type: "image/png"}
 
   describe "POST /sites/:site_id/images" do
-    test "stores the upload and answers like the Editor.js image tool expects", %{
+    test "stores the upload and answers with its public id and URL", %{
       conn: conn,
       site: site,
       scope: scope
@@ -18,19 +18,23 @@ defmodule FeatherWeb.ImageControllerTest do
 
       [image] = Media.list_images(scope)
 
-      assert json_response(conn, 200) == %{
-               "success" => 1,
-               "id" => image.id,
-               "file" => %{"url" => "/sites/#{site.public_id}/images/#{image.public_id}"}
+      assert json_response(conn, 201) == %{
+               "id" => image.public_id,
+               "url" => "/sites/#{site.public_id}/images/#{image.public_id}"
              }
     end
 
-    test "answers success 0 for files that are not images", %{conn: conn, site: site} do
+    test "refuses files that are not images with the reason", %{conn: conn, site: site} do
       path = Path.join(System.tmp_dir!(), "fake-#{System.unique_integer([:positive])}.png")
       File.write!(path, "nope")
 
       conn = post(conn, ~p"/sites/#{site.public_id}/images", %{"image" => upload(path)})
-      assert json_response(conn, 200) == %{"success" => 0}
+      assert json_response(conn, 422) == %{"error" => "The file must be an image."}
+    end
+
+    test "refuses a request without a file", %{conn: conn, site: site} do
+      conn = post(conn, ~p"/sites/#{site.public_id}/images", %{})
+      assert json_response(conn, 422) == %{"error" => "Choose an image file."}
     end
 
     test "is not found for another user's site", %{conn: conn} do
@@ -58,18 +62,46 @@ defmodule FeatherWeb.ImageControllerTest do
         })
 
       [image] = Media.list_images(scope)
-      assert %{"success" => 1, "file" => %{"url" => url}} = json_response(conn, 200)
-      assert url == "/sites/#{site.public_id}/images/#{image.public_id}"
+
+      assert json_response(conn, 201) == %{
+               "id" => image.public_id,
+               "url" => "/sites/#{site.public_id}/images/#{image.public_id}"
+             }
+
       assert image.source_url == "https://example.com/cat.png"
     end
 
-    test "refuses local addresses", %{conn: conn, site: site} do
+    test "refuses local addresses with the reason", %{conn: conn, site: site} do
       conn =
         post(conn, ~p"/sites/#{site.public_id}/images/from-url", %{
           "url" => "http://127.0.0.1/secret.png"
         })
 
-      assert json_response(conn, 200) == %{"success" => 0}
+      assert json_response(conn, 422) == %{"error" => "Forbidden IP: http://127.0.0.1/secret.png"}
+    end
+
+    test "refuses what is not an image", %{conn: conn, site: site} do
+      Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 200, "<html></html>"))
+
+      conn =
+        post(conn, ~p"/sites/#{site.public_id}/images/from-url", %{
+          "url" => "https://example.com/page"
+        })
+
+      assert json_response(conn, 422) == %{"error" => "The file must be an image."}
+    end
+
+    test "refuses a request without a URL", %{conn: conn, site: site} do
+      conn = post(conn, ~p"/sites/#{site.public_id}/images/from-url", %{"url" => ""})
+      assert json_response(conn, 422) == %{"error" => "Enter the URL of an image."}
+    end
+
+    test "is not found for another user's site", %{conn: conn} do
+      other = site_fixture()
+
+      assert_error_sent 404, fn ->
+        post(conn, ~p"/sites/#{other.public_id}/images/from-url", %{"url" => "https://a.b/c"})
+      end
     end
   end
 

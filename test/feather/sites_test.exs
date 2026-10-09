@@ -28,6 +28,7 @@ defmodule Feather.SitesTest do
       homepage = Content.get_homepage(site_scope)
       assert homepage.title == "Home"
       assert homepage.slug == "/"
+      assert Content.publication_status(homepage) == :published
 
       assert [target] = Publishing.list_targets(site_scope)
       assert target.type == "staging"

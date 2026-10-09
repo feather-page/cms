@@ -3,8 +3,6 @@ defmodule Feather.Content.BlocksTest do
 
   alias Feather.Content.Blocks
 
-  @site %{public_id: "SiTe12345678"}
-
   @blocks [
     %{"id" => "par1", "type" => "paragraph", "text" => "Some <b>bold</b> text."},
     %{"id" => "hdr1", "type" => "header", "level" => 3, "text" => "A section"},
@@ -51,107 +49,21 @@ defmodule Feather.Content.BlocksTest do
     }
   ]
 
-  describe "editor.js round trip" do
-    test "every block type survives to_editor_js |> from_editor_js unchanged" do
-      for block <- @blocks do
-        editor_js = Blocks.to_editor_js([block], @site)
-        assert Blocks.from_editor_js(editor_js) == [block], "round trip of #{block["type"]}"
-      end
-    end
-
-    test "the whole content survives a JSON round trip" do
-      json = @blocks |> Blocks.to_editor_js(@site) |> Jason.encode!()
-      assert Blocks.from_editor_js(json) == @blocks
+  describe "JSON round trip" do
+    test "the whole content survives encoding and decoding" do
       assert Blocks.normalize(Jason.decode!(Jason.encode!(@blocks))) == @blocks
     end
   end
 
-  describe "to_editor_js/3" do
-    test "renders the Editor.js format" do
-      %{"time" => time, "blocks" => blocks} = Blocks.to_editor_js(@blocks, @site)
-      assert is_integer(time)
-
-      by_id = Map.new(blocks, &{&1["id"], &1})
-
-      assert by_id["lst1"]["data"]["style"] == "ordered"
-      assert by_id["lst2"]["data"]["style"] == "unordered"
-      assert by_id["qte1"]["data"]["alignment"] == "left"
-      assert by_id["tbl1"]["data"]["withHeadings"] == true
-
-      assert by_id["img1"]["data"] == %{
-               "file" => %{"url" => "/sites/SiTe12345678/images/DrqGSEC4zyvZ"},
-               "caption" => "Inline",
-               "withBorder" => false,
-               "stretched" => false,
-               "withBackground" => false
-             }
-    end
-
-    test "book blocks take title, author and emoji from the book" do
+  describe "put_book/2" do
+    test "takes title, author and emoji from the book" do
       books = %{"v5ejxZVJ66q8" => %{title: "New title", author: "New author", emoji: "📗"}}
-      %{"blocks" => [book]} = Blocks.to_editor_js([List.last(@blocks)], @site, books)
+      book = Blocks.put_book(List.last(@blocks), books)
 
-      assert book["data"]["title"] == "New title"
-      assert book["data"]["author"] == "New author"
-      assert book["data"]["emoji"] == "📗"
-    end
-  end
-
-  describe "from_editor_js/1" do
-    test "drops unknown block types and images without an id" do
-      data = %{
-        "blocks" => [
-          %{"id" => "a", "type" => "paragraph", "data" => %{"text" => "Keep"}},
-          %{"id" => "b", "type" => "checklist", "data" => %{"items" => []}},
-          %{"id" => "c", "type" => "image", "data" => %{"file" => %{"url" => "/nope"}}}
-        ]
-      }
-
-      assert [%{"id" => "a", "type" => "paragraph", "text" => "Keep"}] =
-               Blocks.from_editor_js(data)
-    end
-
-    test "applies defaults" do
-      data = %{
-        "blocks" => [
-          %{"id" => "h", "type" => "header", "data" => %{"level" => 1, "text" => "Big"}},
-          %{"id" => "c", "type" => "code", "data" => %{"code" => "x"}},
-          %{"id" => "l", "type" => "list", "data" => %{"style" => "checklist", "items" => ["a"]}}
-        ]
-      }
-
-      assert [header, code, list] = Blocks.from_editor_js(data)
-      assert header["level"] == 2
-      assert code["language"] == "plaintext"
-      assert list["style"] == "ul"
-      assert list["items"] == [%{"content" => "a", "items" => []}]
-    end
-
-    test "parses image ids from full URLs" do
-      data = %{
-        "blocks" => [
-          %{
-            "id" => "i",
-            "type" => "image",
-            "data" => %{
-              "file" => %{"url" => "https://cms.example.com/sites/x/images/AbCdEf123456"}
-            }
-          }
-        ]
-      }
-
-      assert [%{"image_id" => "AbCdEf123456", "caption" => ""}] = Blocks.from_editor_js(data)
-    end
-
-    test "generates missing block ids" do
-      [block] = Blocks.from_editor_js(%{"blocks" => [%{"type" => "paragraph", "data" => %{}}]})
-      assert block["id"] =~ ~r/\A[0-9a-zA-Z]{10}\z/
-    end
-
-    test "handles invalid input" do
-      assert Blocks.from_editor_js(nil) == []
-      assert Blocks.from_editor_js("not json") == []
-      assert Blocks.from_editor_js(%{}) == []
+      assert book["title"] == "New title"
+      assert book["author"] == "New author"
+      assert book["emoji"] == "📗"
+      assert Blocks.put_book(List.last(@blocks), %{}) == List.last(@blocks)
     end
   end
 
@@ -231,43 +143,10 @@ defmodule Feather.Content.BlocksTest do
       assert e["embed"] == "https://www.youtube.com/embed/x"
     end
 
-    test "from_editor_js/1 sanitizes" do
-      editor_js = %{
-        "blocks" => [
-          %{"type" => "paragraph", "data" => %{"text" => @payload}},
-          %{"type" => "table", "data" => %{"content" => [[@payload]]}},
-          %{"type" => "list", "data" => %{"style" => "ordered", "items" => [@payload]}},
-          %{
-            "type" => "image",
-            "data" => %{
-              "file" => %{"url" => "/sites/x/images/IMAGE1234567"},
-              "caption" => @payload
-            }
-          }
-        ]
-      }
-
-      assert [
-               %{"text" => @clean},
-               %{"content" => [[@clean]]},
-               %{"items" => [%{"content" => @clean}]},
-               %{"caption" => @clean}
-             ] = Blocks.from_editor_js(editor_js)
-    end
-
-    test "to_editor_js/3 sanitizes content stored before sanitizing was in place" do
-      %{"blocks" => blocks} = Blocks.to_editor_js(@dirty_blocks, @site)
-
-      json = Jason.encode!(blocks)
-      refute json =~ "onerror"
-      refute json =~ "javascript:"
-      assert json =~ "<b>b</b>"
-    end
-
-    test "Editor.js markup passes unchanged" do
+    test "the admin editor's markup passes unchanged" do
       text =
-        ~S|It's <b>b</b>&nbsp;<i>i</i> <u class="cdx-underline">u</u> | <>
-          ~S|<code class="inline-code">c</code> <a href="https://e.com/?a=1&amp;b=2" | <>
+        ~S|It's <b>b</b>&nbsp;<i>i</i> <u>u</u> | <>
+          ~S|<code>c</code> <a href="https://e.com/?a=1&amp;b=2" | <>
           ~S|target="_blank" rel="nofollow">a</a><br>next &amp; &lt;line&gt;|
 
       blocks = [%{"id" => "p", "type" => "paragraph", "text" => text}]

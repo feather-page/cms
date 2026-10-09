@@ -1,6 +1,8 @@
 defmodule Feather.ContentFixtures do
   @moduledoc """
   Test helpers for posts, pages and projects. All take a scope with a site.
+
+  The records are published (version 1) unless `draft: true` is given.
   """
 
   alias Feather.Content
@@ -10,6 +12,8 @@ defmodule Feather.ContentFixtures do
   def paragraph(text), do: %{"type" => "paragraph", "text" => text}
 
   def post_fixture(scope, attrs \\ %{}) do
+    {draft, attrs} = pop_draft(attrs)
+
     {:ok, post} =
       Content.create_post(
         scope,
@@ -20,10 +24,12 @@ defmodule Feather.ContentFixtures do
         })
       )
 
-    post
+    publish_unless_draft(scope, post, draft)
   end
 
   def page_fixture(scope, attrs \\ %{}) do
+    {draft, attrs} = pop_draft(attrs)
+
     {:ok, page} =
       Content.create_page(
         scope,
@@ -34,10 +40,12 @@ defmodule Feather.ContentFixtures do
         })
       )
 
-    page
+    publish_unless_draft(scope, page, draft)
   end
 
   def project_fixture(scope, attrs \\ %{}) do
+    {draft, attrs} = pop_draft(attrs)
+
     {:ok, project} =
       Content.create_project(
         scope,
@@ -49,6 +57,15 @@ defmodule Feather.ContentFixtures do
         })
       )
 
-    project
+    publish_unless_draft(scope, project, draft)
+  end
+
+  defp pop_draft(attrs), do: attrs |> Map.new() |> Map.pop(:draft, false)
+
+  defp publish_unless_draft(_scope, record, true), do: record
+
+  defp publish_unless_draft(scope, record, false) do
+    {:ok, record} = Content.publish(scope, record)
+    record
   end
 end

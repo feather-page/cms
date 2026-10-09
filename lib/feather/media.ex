@@ -46,6 +46,16 @@ defmodule Feather.Media do
     Repo.one(from i in Image, where: i.site_id == ^site_id and i.public_id == ^public_id)
   end
 
+  @doc "The public ids among `public_ids` that name images of the scope's site."
+  @spec site_image_ids(Scope.t(), [String.t()]) :: [String.t()]
+  def site_image_ids(%Scope{site: %Site{id: site_id}}, public_ids) do
+    Repo.all(
+      from i in Image,
+        where: i.site_id == ^site_id and i.public_id in ^public_ids,
+        select: i.public_id
+    )
+  end
+
   @doc """
   Lists the images embedded in a post, page or project, given the owner
   column (`:post_id`, `:page_id`, `:project_id`) and the owner's id.

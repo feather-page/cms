@@ -20,6 +20,7 @@ defmodule Feather.Content.Project do
     field :emoji, :string
     field :tags, :string
     field :content, BlocksType, default: []
+    field :lock_version, :integer, default: 1
     field :short_description, :string
     field :company, :string
     field :role, :string
@@ -37,6 +38,7 @@ defmodule Feather.Content.Project do
     belongs_to :site, Feather.Sites.Site
     belongs_to :header_image, Feather.Media.Image
     belongs_to :thumbnail_image, Feather.Media.Image
+    belongs_to :published_version, Feather.Content.ProjectVersion
     has_many :images, Feather.Media.Image
 
     timestamps()
@@ -80,6 +82,10 @@ defmodule Feather.Content.Project do
     |> validate_inclusion(:status, @statuses)
     |> validate_inclusion(:project_type, @project_types)
     |> Feather.Validations.validate_emoji(:emoji)
+    |> unsafe_validate_unique([:site_id, :slug], Feather.Repo,
+      error_key: :slug,
+      message: "has already been taken"
+    )
     |> unique_constraint([:site_id, :slug], error_key: :slug, message: "has already been taken")
   end
 

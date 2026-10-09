@@ -107,13 +107,24 @@ defmodule FeatherWeb.SiteComponents do
         <div
           :for={notice <- @notices}
           id={"site-notice-#{notice.id}"}
-          class="alert alert-info d-flex align-items-start gap-2"
+          class={[
+            "alert d-flex align-items-start gap-2",
+            if(notice.kind == :warning, do: "alert-warning", else: "alert-info")
+          ]}
           role="status"
         >
           <.icon name="info" />
           <div class="flex-grow-1">
             <span>{notice.message}</span>
-            <a :if={notice.url} href={notice.url} target="_blank" class="d-block">
+            <.link :if={notice.link_label} navigate={notice.url} class="d-block">
+              {notice.link_label}
+            </.link>
+            <a
+              :if={notice.url && !notice.link_label}
+              href={notice.url}
+              target="_blank"
+              class="d-block"
+            >
               {notice.url}
             </a>
           </div>

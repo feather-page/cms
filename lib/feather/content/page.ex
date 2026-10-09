@@ -23,12 +23,14 @@ defmodule Feather.Content.Page do
     field :emoji, :string
     field :tags, :string
     field :content, BlocksType, default: []
+    field :lock_version, :integer, default: 1
     field :page_type, :string, default: "default"
     field :add_to_navigation, :boolean, virtual: true, default: false
 
     belongs_to :site, Feather.Sites.Site
     belongs_to :header_image, Feather.Media.Image
     belongs_to :thumbnail_image, Feather.Media.Image
+    belongs_to :published_version, Feather.Content.PageVersion
     has_many :images, Feather.Media.Image
     has_many :navigation_items, Feather.Sites.NavigationItem
 
@@ -60,6 +62,10 @@ defmodule Feather.Content.Page do
     |> validate_required([:page_type])
     |> validate_inclusion(:page_type, @page_types)
     |> Feather.Validations.validate_emoji(:emoji)
+    |> unsafe_validate_unique([:site_id, :slug], Feather.Repo,
+      error_key: :slug,
+      message: "has already been taken"
+    )
     |> unique_constraint([:site_id, :slug], error_key: :slug, message: "has already been taken")
   end
 

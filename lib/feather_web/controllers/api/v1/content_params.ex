@@ -11,6 +11,9 @@ defmodule FeatherWeb.Api.V1.ContentParams do
     * `header_image_id` and `thumbnail_image_id` are image public ids in the
       API. They are resolved to images of the scope's site; an unknown id
       is a validation error, null or `""` clears the image.
+
+  `draft/2` reads the resource's `draft` field, which is not an attribute
+  but decides whether saving publishes (see "Saving" in `Feather.Content`).
   """
 
   alias Feather.Accounts.Scope
@@ -33,6 +36,20 @@ defmodule FeatherWeb.Api.V1.ContentParams do
     with {:ok, resource} <- fetch_resource(params, key),
          {:ok, attrs} <- put_content(Map.take(resource, permitted), resource, action) do
       resolve_images(scope, attrs)
+    end
+  end
+
+  @doc """
+  The `draft` field of the resource `key`: `false` when it is missing or
+  null, so that saving publishes.
+  """
+  @spec draft(map(), String.t()) :: {:ok, boolean()} | {:error, {:validation, map()}}
+  def draft(params, key) do
+    with {:ok, resource} <- fetch_resource(params, key) do
+      case Ecto.Type.cast(:boolean, Map.get(resource, "draft")) do
+        {:ok, draft} -> {:ok, draft == true}
+        :error -> {:error, {:validation, %{"draft" => ["is invalid"]}}}
+      end
     end
   end
 

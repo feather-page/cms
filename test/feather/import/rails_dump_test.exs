@@ -4,7 +4,7 @@ defmodule Feather.Import.RailsDumpTest do
   alias Feather.{Accounts, Media}
   alias Feather.Accounts.{ApiToken, User}
   alias Feather.Books.Book
-  alias Feather.Content.{Page, Post, Project}
+  alias Feather.Content.{Page, Post, PostVersion, Project}
   alias Feather.Import.{RailsDump, Report}
   alias Feather.Media.{Image, Variants}
   alias Feather.Publishing.DeploymentTarget
@@ -115,12 +115,15 @@ defmodule Feather.Import.RailsDumpTest do
       assert post.slug == "/review-pragmatic-programmer"
       assert post.publish_at == ~U[2026-03-15 09:30:00.123456Z]
       assert post.inserted_at == ~U[2026-10-06 18:09:33.340415Z]
+      assert post.updated_at == ~U[2026-10-06 18:09:33.340415Z]
+      assert Repo.get!(PostVersion, post.published_version_id).number == 1
       assert post.tags == "books, programming"
 
       assert Enum.map(post.content, & &1["type"]) ==
                ~w(paragraph header list quote code image table embed book)
 
-      assert Repo.get_by!(Post, public_id: "P37Hnj7PbXtN").draft
+      draft = Repo.get_by!(Post, public_id: "P37Hnj7PbXtN")
+      assert draft.published_version_id == nil
 
       book = Repo.get!(Book, @book_id)
       assert book.read_at == ~D[2026-03-14]

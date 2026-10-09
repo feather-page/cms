@@ -22,15 +22,11 @@ defmodule Feather.Content.Blocks do
   `Feather.Content.HTML.sanitize(html, :editor)` and embed URLs that are
   not safe link targets are dropped whenever content is normalized: before
   it is stored (admin editor, content API, import) and before it is handed
-  to the admin editor, which renders it with `innerHTML`. Content stored
-  before this was in place is therefore sanitized on its way to the
-  editor as well.
+  to the admin editor. Content stored before this was in place is
+  therefore sanitized on its way to the editor as well.
 
-  Blocks of unknown types are dropped. `from_editor_js/1` and
-  `to_editor_js/3` convert from and to the Editor.js format used by the
-  admin editor; `from_editor_js(to_editor_js(blocks, site))` returns the
-  blocks unchanged. `Feather.Content.ProseMirror` converts from and to
-  ProseMirror JSON.
+  Blocks of unknown types are dropped. `Feather.Content.ProseMirror`
+  converts from and to the ProseMirror JSON of the admin editor.
   """
 
   alias Feather.Content.HTML
@@ -39,7 +35,6 @@ defmodule Feather.Content.Blocks do
 
   @types ~w(paragraph header list quote code image table embed book)
   @header_levels [2, 3, 4]
-  @image_id_regex ~r"/images/([0-9a-zA-Z-]{12,36})"
   @text_types ~w(paragraph header quote)
 
   @doc "The known block types."
@@ -117,139 +112,6 @@ defmodule Feather.Content.Blocks do
   end
 
   defp normalize_block(_type, _block), do: nil
-
-  @doc """
-  Converts Editor.js output (a map with `"blocks"`, or its JSON) into
-  content. Unknown block types and image blocks without an image id are
-  dropped.
-  """
-  @spec from_editor_js(map() | String.t() | nil) :: [block()]
-  def from_editor_js(nil), do: []
-
-  def from_editor_js(json) when is_binary(json) do
-    case Jason.decode(json) do
-      {:ok, data} -> from_editor_js(data)
-      {:error, _} -> []
-    end
-  end
-
-  def from_editor_js(%{} = data) do
-    data
-    |> editor_js_blocks()
-    |> normalize()
-  end
-
-  defp editor_js_blocks(data) do
-    data
-    |> stringify_keys()
-    |> Map.get("blocks", [])
-    |> List.wrap()
-    |> Enum.filter(&is_map/1)
-    |> Enum.flat_map(fn block ->
-      block = stringify_keys(block)
-      data = stringify_keys(block["data"] || %{})
-
-      case from_editor_js_block(block["type"], data) do
-        nil -> []
-        converted -> [Map.put(converted, "id", block["id"] || generate_id())]
-      end
-    end)
-  end
-
-  defp from_editor_js_block("list", data) do
-    style =
-      case data["style"] do
-        "ordered" -> "ol"
-        _ -> "ul"
-      end
-
-    %{"type" => "list", "style" => style, "items" => list_items(data["items"])}
-  end
-
-  defp from_editor_js_block("image", data) do
-    url = get_in(data, ["file", "url"])
-
-    case is_binary(url) && Regex.run(@image_id_regex, url) do
-      [_, image_id] ->
-        %{"type" => "image", "image_id" => image_id, "caption" => data["caption"] || ""}
-
-      _ ->
-        nil
-    end
-  end
-
-  defp from_editor_js_block("table", data) do
-    %{"type" => "table", "content" => data["content"], "with_headings" => data["withHeadings"]}
-  end
-
-  defp from_editor_js_block(type, data) when type in @types do
-    normalize_block(type, data)
-  end
-
-  defp from_editor_js_block(_type, _data), do: nil
-
-  @doc """
-  Converts content into the Editor.js format.
-
-  Image URLs point at the admin image route,
-  `/sites/<site public_id>/images/<image public_id>`. Book blocks take
-  title, author and emoji from `books` (a map of book public id to a map or
-  struct with those fields) when the book is in it, like Rails did.
-  """
-  @spec to_editor_js([block()] | nil, %{public_id: String.t()}, map()) :: map()
-  def to_editor_js(blocks, site, books \\ %{}) do
-    %{
-      "time" => System.os_time(:millisecond),
-      "blocks" =>
-        blocks
-        |> normalize()
-        |> Enum.map(fn block ->
-          %{
-            "id" => block["id"],
-            "type" => block["type"],
-            "data" => editor_js_data(block, site, books)
-          }
-        end)
-    }
-  end
-
-  defp editor_js_data(%{"type" => "paragraph"} = b, _site, _books), do: %{"text" => b["text"]}
-
-  defp editor_js_data(%{"type" => "header"} = b, _site, _books),
-    do: %{"level" => b["level"], "text" => b["text"]}
-
-  defp editor_js_data(%{"type" => "list"} = b, _site, _books) do
-    style = if b["style"] == "ol", do: "ordered", else: "unordered"
-    %{"style" => style, "items" => b["items"]}
-  end
-
-  defp editor_js_data(%{"type" => "quote"} = b, _site, _books),
-    do: %{"text" => b["text"], "caption" => b["caption"], "alignment" => "left"}
-
-  defp editor_js_data(%{"type" => "code"} = b, _site, _books),
-    do: %{"code" => b["code"], "language" => b["language"]}
-
-  defp editor_js_data(%{"type" => "image"} = b, site, _books) do
-    %{
-      "file" => %{"url" => image_url(site, b["image_id"])},
-      "caption" => b["caption"],
-      "withBorder" => false,
-      "stretched" => false,
-      "withBackground" => false
-    }
-  end
-
-  defp editor_js_data(%{"type" => "table"} = b, _site, _books),
-    do: %{"withHeadings" => b["with_headings"], "content" => b["content"]}
-
-  defp editor_js_data(%{"type" => "embed"} = b, _site, _books),
-    do: Map.take(b, ~w(service source embed width height caption))
-
-  defp editor_js_data(%{"type" => "book"} = b, _site, books) do
-    b
-    |> put_book(books)
-    |> Map.take(~w(book_public_id title author cover_url emoji))
-  end
 
   @doc """
   Takes title, author and emoji of a book block from `books` (a map of
@@ -450,7 +312,7 @@ defmodule Feather.Content.Blocks do
 
   defp list_items(_items), do: []
 
-  # Inline HTML as the admin editor renders it (innerHTML): sanitized.
+  # Inline HTML of stored content and of the admin editor: sanitized.
   defp inline(nil), do: nil
   defp inline(html) when is_binary(html), do: HTML.sanitize(html, :editor)
   defp inline(value) when is_number(value) or is_boolean(value), do: to_string(value)
@@ -462,7 +324,7 @@ defmodule Feather.Content.Blocks do
 
   defp table_content(_rows), do: nil
 
-  # The editor puts embed URLs into an iframe's src.
+  # Embed URLs end up in an iframe's src.
   defp safe_url(url) when is_binary(url), do: if(HTML.safe_url?(url), do: url)
   defp safe_url(_url), do: nil
 

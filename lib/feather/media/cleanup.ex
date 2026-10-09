@@ -14,6 +14,10 @@ defmodule Feather.Media.Cleanup do
   (copied blocks, content API imports), but only one owns them.
   `delete_released/1` applies the same rule when the owner is deleted.
 
+  Every version of a post, page or project counts like the record: its
+  header, thumbnail and embedded images are used, so the published
+  version and older ones (which can be restored) keep their images.
+
   Images younger than the grace period (2 days) are never touched, so an
   upload whose post has not been saved yet survives.
 
@@ -25,12 +29,13 @@ defmodule Feather.Media.Cleanup do
 
   alias Feather.Repo
   alias Feather.Books.Book
-  alias Feather.Content.{Blocks, Page, Post, Project}
+  alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
   alias Feather.Media
   alias Feather.Media.Image
 
   @grace_period_days 2
   @owners [post_id: Post, page_id: Page, project_id: Project]
+  @versions [post_id: PostVersion, page_id: PageVersion, project_id: ProjectVersion]
 
   @type result :: %{unreferenced: [Image.t()], unused: [Image.t()]}
 
@@ -84,10 +89,11 @@ defmodule Feather.Media.Cleanup do
     end
   end
 
-  # Header, thumbnail and cover images.
+  # Header, thumbnail and cover images, of versions too.
   defp featured_image_ids do
     queries =
-      for {_field, schema} <- @owners, field <- [:header_image_id, :thumbnail_image_id] do
+      for {_field, schema} <- @owners ++ @versions,
+          field <- [:header_image_id, :thumbnail_image_id] do
         from r in schema, where: not is_nil(field(r, ^field)), select: field(r, ^field)
       end
 
@@ -143,21 +149,40 @@ defmodule Feather.Media.Cleanup do
   defp key(%Image{site_id: site_id, public_id: public_id}), do: {site_id, public_id}
 
   # {site_id, image public id} => [{owner field, record id}] of every post,
-  # page and project of the images' sites whose content embeds the image.
+  # page and project of the images' sites whose content or one of whose
+  # versions' content embeds the image.
   defp embedded_by(images) do
     site_ids = images |> Enum.map(& &1.site_id) |> Enum.uniq()
 
     for {field, schema} <- @owners,
-        {site_id, id, content} <-
-          Repo.all(
-            from r in schema,
-              where: r.site_id in ^site_ids,
-              order_by: r.inserted_at,
-              select: {r.site_id, r.id, r.content}
-          ),
+        {site_id, id, content} <- contents(schema, field, site_ids),
         public_id <- Blocks.image_ids(content),
         reduce: %{} do
-      acc -> Map.update(acc, {site_id, public_id}, [{field, id}], &(&1 ++ [{field, id}]))
+      acc ->
+        Map.update(acc, {site_id, public_id}, [{field, id}], fn owners ->
+          if {field, id} in owners, do: owners, else: owners ++ [{field, id}]
+        end)
     end
+  end
+
+  # {site_id, record id, content} of the records, then of their versions.
+  defp contents(schema, field, site_ids) do
+    version_schema = Keyword.fetch!(@versions, field)
+
+    records =
+      from r in schema,
+        where: r.site_id in ^site_ids,
+        order_by: r.inserted_at,
+        select: {r.site_id, r.id, r.content}
+
+    versions =
+      from v in version_schema,
+        join: r in ^schema,
+        on: r.id == field(v, ^field),
+        where: r.site_id in ^site_ids,
+        order_by: [r.inserted_at, v.number],
+        select: {r.site_id, r.id, v.content}
+
+    Repo.all(records) ++ Repo.all(versions)
   end
 end

@@ -26,7 +26,7 @@ site =
 
       site_scope = Scope.put_site(scope, site)
 
-      {:ok, _post} =
+      {:ok, post} =
         Content.create_post(site_scope, %{
           title: "Hello World",
           slug: "/hello-world",
@@ -45,13 +45,16 @@ site =
           ]
         })
 
-      {:ok, _page} =
+      {:ok, page} =
         Content.create_page(site_scope, %{
           title: "About",
           slug: "/about",
           add_to_navigation: true,
           content: [%{"type" => "paragraph", "text" => "About this site."}]
         })
+
+      {:ok, _post} = Content.publish(site_scope, post)
+      {:ok, _page} = Content.publish(site_scope, page)
 
       site
 

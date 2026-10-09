@@ -2,7 +2,7 @@ defmodule FeatherWeb.ProjectLiveTest do
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest
-  import FeatherWeb.EditorJsHelpers
+  import FeatherWeb.EditorHelpers
 
   alias Feather.Content
 
@@ -68,13 +68,24 @@ defmodule FeatherWeb.ProjectLiveTest do
         }
       }
     )
-    |> render_submit(%{"project" => %{"content" => editor_json("All about it")}})
+    |> render_change()
 
     [project] = Content.list_projects(scope)
     assert project.title == "Feather"
     assert project.project_type == "open_source"
     assert Enum.map(project.links, & &1.label) == ["Code", "Site"]
-    assert [%{"text" => "All about it"}] = project.content
+    assert Content.draft?(project)
+    assert_patch(lv, projects_path(site) <> "/#{project.public_id}/edit")
+
+    lv
+    |> element("#project-content-editor")
+    |> render_hook(
+      "sync",
+      sync_params(project, ["block00001"], [paragraph_node("block00001", "All about it")])
+    )
+
+    assert_reply(lv, %{status: "saved"})
+    assert [%{"text" => "All about it"}] = Feather.Repo.reload!(project).content
   end
 
   test "removes a link", %{conn: conn, site: site, scope: scope} do
@@ -89,19 +100,101 @@ defmodule FeatherWeb.ProjectLiveTest do
     {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
     # The "Remove" button sends its name and value with a change event.
     assert has_element?(lv, ~s(#remove-link-0[name="project[links_drop][]"][value="0"]))
-    lv |> element("#project-form") |> render_change(%{"project" => %{"links_drop" => ["0"]}})
+    lv |> form("#project-form") |> render_change(%{"project" => %{"links_drop" => ["0"]}})
     refute has_element?(lv, "#project-link-1")
-
-    lv |> form("#project-form") |> render_submit()
 
     assert [%{label: "Two"}] = Content.get_project!(scope, project.public_id).links
   end
 
-  test "shows validation errors", %{conn: conn, site: site} do
+  test "a new project is created only once its required fields are valid", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
     {:ok, lv, _html} = live(conn, projects_path(site) <> "/new")
 
-    html = lv |> form("#project-form", project: %{title: "Only a title"}) |> render_submit()
+    html = lv |> form("#project-form", project: %{title: "Only a title"}) |> render_change()
+
     assert html =~ "can&#39;t be blank"
+    assert has_element?(lv, ~s(#project-content-editor[data-form-status="invalid"]))
+    assert Content.list_projects(scope) == []
+  end
+
+  test "an invalid field is not saved while the valid ones are", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    project = project_fixture(scope, title: "Old", company: "ACME")
+    {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
+
+    lv
+    |> form("#project-form", project: %{title: "", company: "Feather Inc."})
+    |> render_change()
+
+    assert has_element?(lv, "#project-form .invalid-feedback", "can't be blank")
+    assert has_element?(lv, "#publish-project[disabled]")
+
+    assert %{title: "Old", company: "Feather Inc."} =
+             Content.get_project!(scope, project.public_id)
+  end
+
+  test "unpublishes a project", %{conn: conn, site: site, scope: scope} do
+    project = project_fixture(scope, title: "Old project")
+    {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
+    refute has_element?(lv, "#publication-badge")
+
+    lv |> element("#unpublish-project") |> render_click()
+
+    assert has_element?(lv, "#publication-badge", "Draft")
+    refute has_element?(lv, "#unpublish-project")
+    assert Content.draft?(Content.get_project!(scope, project.public_id))
+  end
+
+  test "publishes and discards the changes of a project", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    project = project_fixture(scope, title: "Old project")
+    edit_path = projects_path(site) <> "/#{project.public_id}/edit"
+    {:ok, lv, _html} = live(conn, edit_path)
+    assert has_element?(lv, "#version-1", "Published")
+
+    lv |> form("#project-form", project: %{title: "New project"}) |> render_change()
+
+    html =
+      lv |> element("#project-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+
+    assert html =~ "Project was published."
+    assert has_element?(lv, "#version-2", "Published")
+
+    {:ok, _project} =
+      Content.update_project(scope, Content.get_project!(scope, project.public_id), %{
+        title: "Draft"
+      })
+
+    {:ok, lv, _html} = live(conn, edit_path)
+    assert has_element?(lv, "#publication-badge", "Unpublished changes")
+
+    {:ok, _lv, _html} =
+      lv |> element("#discard-project") |> render_click() |> follow_redirect(conn, edit_path)
+
+    assert Content.get_project!(scope, project.public_id).title == "New project"
+  end
+
+  test "restores an earlier version of a project", %{conn: conn, site: site, scope: scope} do
+    project = project_fixture(scope, title: "Old project")
+    {:ok, project} = Content.update_project(scope, project, %{title: "New project"})
+    {:ok, project} = Content.publish(scope, project)
+    edit_path = projects_path(site) <> "/#{project.public_id}/edit"
+    {:ok, lv, _html} = live(conn, edit_path)
+
+    {:ok, lv, _html} =
+      lv |> element("#restore-version-1") |> render_click() |> follow_redirect(conn, edit_path)
+
+    assert has_element?(lv, "#project_title[value='Old project']")
+    assert has_element?(lv, "#version-2", "Published")
   end
 
   test "shows the status and deletes the project from its edit page", %{
@@ -131,5 +224,18 @@ defmodule FeatherWeb.ProjectLiveTest do
     assert_raise Ecto.NoResultsError, fn ->
       live(conn, projects_path(site) <> "/#{other.public_id}/edit")
     end
+  end
+
+  test "autosaves the content of a project", %{conn: conn, site: site, scope: scope} do
+    project = project_fixture(scope, content: [paragraph("Built")])
+    [%{"id" => id}] = project.content
+    {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
+
+    lv
+    |> element("#project-content-editor")
+    |> render_hook("sync", sync_params(project, nil, [paragraph_node(id, "Built it")]))
+
+    assert_reply(lv, %{status: "saved"})
+    assert [%{"text" => "Built it"}] = Feather.Repo.reload!(project).content
   end
 end

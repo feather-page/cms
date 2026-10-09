@@ -3,6 +3,7 @@ defmodule Feather.BooksTest do
 
   alias Feather.{Books, Content, Media}
   alias Feather.Books.Book
+  alias Feather.Content.Post
 
   setup do
     %{scope: site_scope_fixture()}
@@ -49,6 +50,14 @@ defmodule Feather.BooksTest do
     assert Enum.map(Books.list_books(scope, status: :want_to_read), & &1.title) == ["next"]
   end
 
+  test "books_by_public_id/2 finds only the site's books", %{scope: scope} do
+    dune = book_fixture(scope, title: "Dune")
+    theirs = book_fixture(site_scope_fixture())
+
+    assert Books.books_by_public_id(scope, [dune.public_id, theirs.public_id, "NoSuchBook12"]) ==
+             %{dune.public_id => dune}
+  end
+
   test "reviews are posts linked from the book", %{scope: scope} do
     book = book_fixture(scope, title: "Dune", rating: 4)
     assert Book.review_title_suggestion(book) == "Review: Dune"
@@ -65,6 +74,28 @@ defmodule Feather.BooksTest do
     refute Book.review?(book)
     assert book.rating == nil
     assert_raise Ecto.NoResultsError, fn -> Content.get_post!(scope, post.public_id) end
+  end
+
+  test "autosaving a new review creates it with the first valid input", %{scope: scope} do
+    book = book_fixture(scope, title: "Dune")
+
+    assert {:ok, %{book: book, post: post}} =
+             Books.autosave_review(scope, book, %Post{site_id: scope.site.id}, %{
+               "title" => "Review: Dune",
+               "slug" => "/posts/reserved"
+             })
+
+    assert book.post_id == post.id
+    assert {post.title, post.slug} == {"Review: Dune", nil}
+    assert Content.draft?(post)
+
+    assert {:ok, %{book: ^book, post: saved}} =
+             Books.autosave_review(scope, book, post, %{"slug" => "/dune"})
+
+    assert saved.slug == "/dune"
+
+    assert {:error, :already_reviewed} =
+             Books.autosave_review(scope, book, %Post{site_id: scope.site.id}, %{"title" => "x"})
   end
 
   test "deleting a book deletes its review and cover", %{scope: scope} do

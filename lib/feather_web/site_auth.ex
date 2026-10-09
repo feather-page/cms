@@ -23,14 +23,24 @@ defmodule FeatherWeb.SiteAuth do
     * checks access again before every event and every `handle_params/3`
       (one `exists?` query; super admins pass): a member removed while
       the LiveView is open is redirected to the site list with an error
-      instead of acting on the site,
+      instead of acting on the site. Events of LiveComponents skip the
+      LiveView's hooks: a component that acts on the site calls
+      `check_component_events/1` on mount (and `check_access/1` where it
+      acts outside events, e.g. on upload progress). The changes the
+      `FeatherWeb.HeaderImagePicker` sends its LiveView are checked too,
     * assigns `site_preview_path`: the preview of the site's internal
       staging target, or nil,
     * subscribes to the site's notices (`Feather.Publishing.subscribe_notices/1`)
       and collects `{:site_notice, %{message: ..., url: ...}}` broadcasts
       (e.g. from the deploy pipeline) in `site_notices`, which
       `FeatherWeb.SiteComponents.site_shell/1` shows as toasts. The event
-      `"dismiss_site_notice"` removes one. A LiveView that assigns
+      `"dismiss_site_notice"` removes one. Besides those, `site_notices`
+      holds a warning linking to the deployment targets while published
+      changes are not deployed to production
+      (`Feather.Publishing.undeployed_changes?/1`), checked on mount,
+      again with every notice, since a deploy ends with one, and when a
+      LiveView calls `refresh_undeployed_notice/1` after publishing in
+      place. A LiveView that assigns
       `forward_site_notices: true` receives the notices in its own
       `handle_info/2` too,
     * swallows `{:deploy_requested, target}`, which `Feather.Publishing`
@@ -59,7 +69,7 @@ defmodule FeatherWeb.SiteAuth do
       socket
       |> Phoenix.Component.assign(:current_scope, scope)
       |> Phoenix.Component.assign(:site_preview_path, preview_path(scope))
-      |> Phoenix.Component.assign(:site_notices, [])
+      |> Phoenix.Component.assign(:site_notices, put_undeployed_notice([], scope))
       |> LiveView.attach_hook(:site_access_on_event, :handle_event, &check_access_on_event/3)
       |> LiveView.attach_hook(:site_access_on_params, :handle_params, &check_access_on_params/3)
       |> LiveView.attach_hook(:site_messages, :handle_info, &handle_message/2)
@@ -73,9 +83,24 @@ defmodule FeatherWeb.SiteAuth do
   defp check_access_on_event(_event, _params, socket), do: check_access(socket)
   defp check_access_on_params(_params, _uri, socket), do: check_access(socket)
 
-  # Membership can be revoked while the LiveView is open; mount only
-  # checked it once.
-  defp check_access(socket) do
+  @doc """
+  For the `mount/1` of a LiveComponent rendered under a site route (it
+  needs `current_scope` with the site): checks access before each of its
+  events, like the LiveView's own.
+  """
+  @spec check_component_events(LiveView.Socket.t()) :: LiveView.Socket.t()
+  def check_component_events(socket),
+    do:
+      LiveView.attach_hook(socket, :site_access_on_event, :handle_event, &check_access_on_event/3)
+
+  @doc """
+  Checks that the scope's user may still access the site: `{:cont,
+  socket}`, or `{:halt, socket}` redirected to the site list with an
+  error. Membership can be revoked while a LiveView is open; mount only
+  checked it once.
+  """
+  @spec check_access(LiveView.Socket.t()) :: {:cont | :halt, LiveView.Socket.t()}
+  def check_access(socket) do
     %Scope{site: site} = scope = socket.assigns.current_scope
 
     if Sites.can_access_site?(scope, site) do
@@ -91,11 +116,17 @@ defmodule FeatherWeb.SiteAuth do
   defp handle_message({:site_notice, %{message: message} = notice}, socket) do
     notice = %{
       id: System.unique_integer([:positive]),
+      kind: :info,
       message: message,
-      url: Map.get(notice, :url)
+      url: Map.get(notice, :url),
+      link_label: nil
     }
 
-    notices = Enum.take([notice | socket.assigns.site_notices], @max_notices)
+    notices =
+      [notice | socket.assigns.site_notices]
+      |> Enum.take(@max_notices)
+      |> put_undeployed_notice(socket.assigns.current_scope)
+
     socket = Phoenix.Component.assign(socket, :site_notices, notices)
 
     # A LiveView that wants to react to notices itself (e.g. refresh a
@@ -105,7 +136,42 @@ defmodule FeatherWeb.SiteAuth do
   end
 
   defp handle_message({:deploy_requested, _target}, socket), do: {:halt, socket}
+
+  # The picker's events are checked in the component; this also covers its
+  # upload progress and any other way a change gets here.
+  defp handle_message({FeatherWeb.HeaderImagePicker, _change}, socket), do: check_access(socket)
   defp handle_message(_message, socket), do: {:cont, socket}
+
+  @undeployed_notice_id "undeployed-changes"
+
+  @doc """
+  Checks again whether published changes are not deployed yet and shows
+  or removes the notice, e.g. after publishing without a navigation.
+  """
+  @spec refresh_undeployed_notice(LiveView.Socket.t()) :: LiveView.Socket.t()
+  def refresh_undeployed_notice(socket) do
+    %{site_notices: notices, current_scope: scope} = socket.assigns
+    Phoenix.Component.assign(socket, :site_notices, put_undeployed_notice(notices, scope))
+  end
+
+  defp put_undeployed_notice(notices, %Scope{site: site} = scope) do
+    notices = Enum.reject(notices, &(&1.id == @undeployed_notice_id))
+
+    if Publishing.undeployed_changes?(scope) do
+      notices ++
+        [
+          %{
+            id: @undeployed_notice_id,
+            kind: :warning,
+            message: "Published changes are not deployed yet.",
+            url: ~p"/sites/#{site.public_id}/deployments",
+            link_label: "Deployment targets"
+          }
+        ]
+    else
+      notices
+    end
+  end
 
   defp handle_dismiss("dismiss_site_notice", %{"id" => id}, socket) do
     notices = Enum.reject(socket.assigns.site_notices, &(to_string(&1.id) == to_string(id)))

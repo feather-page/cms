@@ -10,7 +10,7 @@ defmodule FeatherWeb.Api.V1.PostController do
 
   action_fallback FeatherWeb.Api.V1.FallbackController
 
-  @permitted ~w(title slug draft emoji publish_at header_image_id thumbnail_image_id tags)
+  @permitted ~w(title slug emoji publish_at header_image_id thumbnail_image_id tags)
 
   def index(conn, params) do
     page = Content.paginate_posts(conn.assigns.current_scope, Pagination.page(params))
@@ -27,7 +27,8 @@ defmodule FeatherWeb.Api.V1.PostController do
     scope = conn.assigns.current_scope
 
     with {:ok, attrs} <- ContentParams.attrs(scope, params, "post", @permitted, :create),
-         {:ok, post} <- Content.create_post(scope, attrs) do
+         {:ok, draft} <- ContentParams.draft(params, "post"),
+         {:ok, post} <- Content.create_post(scope, attrs, draft: draft) do
       conn
       |> put_status(:created)
       |> render(:show, post: Content.preload_images(post))
@@ -39,7 +40,8 @@ defmodule FeatherWeb.Api.V1.PostController do
 
     with {:ok, post} <- fetch_post(conn, id),
          {:ok, attrs} <- ContentParams.attrs(scope, params, "post", @permitted, :update),
-         {:ok, post} <- Content.update_post(scope, post, attrs) do
+         {:ok, draft} <- ContentParams.draft(params, "post"),
+         {:ok, post} <- Content.update_post(scope, post, attrs, draft: draft) do
       render(conn, :show, post: Content.preload_images(post))
     end
   end

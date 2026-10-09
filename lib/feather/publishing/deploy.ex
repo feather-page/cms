@@ -6,11 +6,15 @@ defmodule Feather.Publishing.Deploy do
 
     1. take the target's deploy lock (see "Concurrent deploys")
     2. export the site into a fresh directory next to the live one
-       (`Feather.StaticSite.Export` into a `FileSink`)
+       (`Feather.StaticSite.Export` into a `FileSink`), with the content
+       the target shows (`DeploymentTarget.exported_content/1`)
     3. precompress it (`Feather.StaticSite.Precompress`)
     4. swap it in as the live directory `<storage_root>/static_site/<target id>/public`
     5. sync the live directory with rclone (`Feather.Publishing.Rclone`)
-    6. release the lock (always) and broadcast a notice
+    6. record the time the export started as the target's `last_deployed_at`
+       (`Feather.Publishing.record_deploy/2`): what was published later is
+       not in this deploy
+    7. release the lock (always) and broadcast a notice
 
   A failure before step 4 leaves the live directory untouched.
 
@@ -131,10 +135,14 @@ defmodule Feather.Publishing.Deploy do
   ## Pipeline
 
   defp build_and_sync(target, opts) do
+    started_at = DateTime.utc_now()
     sink = FileSink.new(build_path(target))
 
     try do
-      Export.run(target.site, Routes.for(target, :deployed), sink)
+      Export.run(target.site, Routes.for(target, :deployed), sink,
+        content: DeploymentTarget.exported_content(target)
+      )
+
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
       replace_live_dir(FileSink.dir(sink), live_dir(target))
     after
@@ -147,6 +155,7 @@ defmodule Feather.Publishing.Deploy do
              live_dir(target) <> "/",
              Keyword.take(opts, [:runner, :staging_sites_path])
            ) do
+      Publishing.record_deploy(target, started_at)
       {:ok, :deployed}
     end
   end

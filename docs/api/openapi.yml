@@ -22,6 +22,14 @@ info:
     `br` survive; other elements are removed but their text is kept (`script`
     and `style` with their content). Embed URLs that are not safe link targets
     become null.
+
+    ## Publishing
+    Posts and pages are returned as they are stored, including changes that
+    are not published yet. Creating or updating a post or page publishes it
+    at once (publishing does not deploy the site), unless the request sends
+    `draft: true`: then the changes are stored and the record becomes a
+    draft, taken off the site. `draft` in a response is true when the record
+    has no published version.
   version: "1.0"
 
 servers:
@@ -147,7 +155,7 @@ components:
               - $ref: "#/components/schemas/ListItem"
               - type: string
           description: |
-            List items in EditorJS NestedList format. A plain string is shorthand for an
+            Nested list items, each with its own sub-items. A plain string is shorthand for an
             item without sub-items; responses always contain ListItem objects.
 
     ListItem:
@@ -283,6 +291,7 @@ components:
         draft:
           type: boolean
           default: false
+          description: Left out or false, saving publishes the post at once. true stores the changes and makes the post a draft, taken off the site (unpublished if it was published).
         publish_at:
           type: ["string", "null"]
           format: date-time
@@ -313,6 +322,7 @@ components:
           type: ["string", "null"]
         draft:
           type: boolean
+          description: true when the post has no published version.
         publish_at:
           type: ["string", "null"]
           format: date-time
@@ -346,6 +356,10 @@ components:
           description: URL slug. Must start with / -- a slug sent without one is normalised. Use "/" for homepage.
         emoji:
           type: ["string", "null"]
+        draft:
+          type: boolean
+          default: false
+          description: Left out or false, saving publishes the page at once. true stores the changes and makes the page a draft, taken off the site (unpublished if it was published).
         page_type:
           type: string
           enum: [default, books, projects]
@@ -363,7 +377,7 @@ components:
 
     PageResponse:
       type: object
-      required: [id, slug, created_at, updated_at]
+      required: [id, slug, draft, created_at, updated_at]
       properties:
         id:
           type: string
@@ -373,6 +387,9 @@ components:
           type: string
         emoji:
           type: ["string", "null"]
+        draft:
+          type: boolean
+          description: true when the page has no published version.
         page_type:
           type: string
           enum: [default, books, projects]

@@ -2,8 +2,8 @@ defmodule FeatherWeb.PostLive.Index do
   @moduledoc """
   The posts of a site, newest first, 20 per page (`?page=`). Each row shows
   the thumbnail, emoji or an icon, the title (or an excerpt for short
-  posts), the date, draft/published, the book of a review and the first
-  tags.
+  posts), the date, the publication status, the book of a review and the
+  first tags.
   """
   use FeatherWeb, :live_view
 
@@ -59,7 +59,7 @@ defmodule FeatherWeb.PostLive.Index do
           {display_text(post)}
           <:meta>
             <span class="list-row__date">{format_date(post.publish_at)}</span>
-            <.publication_badge draft={post.draft} />
+            <.publication_badge status={Content.publication_status(post)} />
             <span :if={post.book} class="list-row__review" title="Book review">
               <span :if={post.book.rating} class="text-warning">{stars(post.book.rating)} ·</span>
               {post.book.title}

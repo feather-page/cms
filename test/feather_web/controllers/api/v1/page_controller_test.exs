@@ -4,6 +4,7 @@ defmodule FeatherWeb.Api.V1.PageControllerTest do
   import FeatherWeb.ApiHelpers
 
   alias Feather.Content
+  alias Feather.Repo
 
   setup :create_api_user_and_site
 
@@ -180,6 +181,77 @@ defmodule FeatherWeb.Api.V1.PageControllerTest do
 
       assert json_response(conn, 200)
       assert Content.get_page(scope, page.public_id).add_to_navigation
+    end
+  end
+
+  describe "publishing" do
+    test "create without draft or with draft: false publishes the page",
+         %{conn: conn, path: path, scope: scope} do
+      for {params, slug} <- [{%{}, "/plain"}, {%{draft: false}, "/published"}] do
+        conn =
+          json_request(conn, :post, path, %{page: Map.merge(%{title: "T", slug: slug}, params)})
+
+        body = assert_openapi_response(conn, "post", "/sites/{site_id}/pages", 201)
+        assert body["data"]["draft"] == false
+
+        page = Content.get_page(scope, body["data"]["id"])
+        assert Content.publication_status(page) == :published
+      end
+    end
+
+    test "create with draft: true stores a draft", %{conn: conn, path: path, scope: scope} do
+      conn = json_request(conn, :post, path, %{page: %{title: "T", slug: "/t", draft: true}})
+
+      body = assert_openapi_response(conn, "post", "/sites/{site_id}/pages", 201)
+      assert body["data"]["draft"] == true
+      assert Content.draft?(Content.get_page(scope, body["data"]["id"]))
+    end
+
+    test "update without draft publishes the changes, also of a draft",
+         %{conn: conn, path: path, scope: scope} do
+      for page <- [
+            page_fixture(scope, title: "Old"),
+            page_fixture(scope, title: "Old", draft: true)
+          ] do
+        conn = json_request(conn, :patch, "#{path}/#{page.public_id}", %{page: %{title: "New"}})
+
+        assert assert_openapi_response(conn, "patch", "/sites/{site_id}/pages/{id}", 200)["data"][
+                 "draft"
+               ] == false
+
+        page = Content.get_page(scope, page.public_id)
+        assert Content.publication_status(page) == :published
+        assert Repo.preload(page, :published_version).published_version.title == "New"
+      end
+    end
+
+    test "update with draft: true unpublishes and keeps the sent changes",
+         %{conn: conn, path: path, scope: scope} do
+      page = page_fixture(scope, title: "Shown")
+
+      conn =
+        json_request(conn, :patch, "#{path}/#{page.public_id}", %{
+          page: %{title: "Hidden", draft: true}
+        })
+
+      assert json_response(conn, 200)["data"]["draft"] == true
+
+      page = Content.get_page(scope, page.public_id)
+      assert Content.draft?(page)
+      assert page.title == "Hidden"
+      assert [%{title: "Shown"}] = Content.list_versions(scope, page)
+    end
+
+    test "rejects a draft that is not a boolean", %{conn: conn, path: path, scope: scope} do
+      page = page_fixture(scope, title: "Kept")
+
+      conn =
+        json_request(conn, :patch, "#{path}/#{page.public_id}", %{
+          page: %{title: "Changed", draft: "maybe"}
+        })
+
+      assert json_response(conn, 422)["details"] == %{"draft" => ["is invalid"]}
+      assert Content.get_page(scope, page.public_id).title == "Kept"
     end
   end
 
