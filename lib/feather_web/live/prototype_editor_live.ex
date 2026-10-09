@@ -191,7 +191,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const blockOf = (node) => elOf(node)?.closest(".pe-block")
         const editableOf = (block) => block?.querySelector(":scope > [data-editable]")
         const isText = (block) => block && block.dataset.type !== "image"
-        const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]))
         // The rule of Feather.Content.HTML.safe_url?/1: relative, or http(s), mailto, tel.
         const safeUrl = (url) => {
           const scheme = url.replace(/[\x00-\x20\x7F-\x9F]/g, "").toLowerCase().match(/^([^\/?#]*?):/)
@@ -610,10 +609,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
             tail.appendChild(after.extractContents())
             tidy(tail)
             ed.append(first)
+            const type = LIST_TYPES.includes(block.dataset.type) ? block.dataset.type : "paragraph"
             let ref = block
-            lines.forEach((line, i) => {
-              ref = this.createBlock("paragraph", escapeHtml(line) + (i === lines.length - 1 ? tail.innerHTML : ""), ref)
-            })
+            for (const line of lines) {
+              ref = this.createBlock(type, "", ref)
+              editableOf(ref).append(line)
+            }
+            editableOf(ref).append(...tail.childNodes)
             setCaret(editableOf(ref), lines.at(-1).length)
           },
 
