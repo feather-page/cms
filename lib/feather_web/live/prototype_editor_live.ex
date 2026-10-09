@@ -127,8 +127,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
             <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
             <button type="button" data-cmd="italic" title="Italic"><i>i</i></button>
             <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
-            <button type="button" data-cmd="code" title="Inline code"><code>&lt;/&gt;</code></button>
-            <button type="button" data-cmd="link" title="Link">Link</button>
+            <button type="button" data-cmd="code" title="Inline code (Ctrl+E)">
+              <code>&lt;/&gt;</code>
+            </button>
+            <button type="button" data-cmd="link" title="Link (Ctrl+K)">Link</button>
           </div>
         </div>
 
@@ -711,10 +713,24 @@ defmodule FeatherWeb.PrototypeEditorLive do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Toolbar">
         // Formats the selection inside a text block. It only changes the DOM;
         // .BlockSync notices.
+        // The rule of Feather.Content.HTML.safe_url?/1: relative, or http(s), mailto, tel.
+        const safeUrl = (url) => {
+          const scheme = url.replace(/[\x00-\x20\x7F-\x9F]/g, "").toLowerCase().match(/^([^\/?#]*?):/)
+          return !scheme || ["http", "https", "mailto", "tel"].includes(scheme[1])
+        }
+        const KEYS = {k: "link", e: "code"}
+
         export default {
           mounted() {
             this.onSelection = () => this.update()
+            this.onKeydown = (e) => {
+              if ((e.metaKey || e.ctrlKey) && KEYS[e.key] && this.range()) {
+                e.preventDefault()
+                this.format(KEYS[e.key])
+              }
+            }
             document.addEventListener("selectionchange", this.onSelection)
+            document.addEventListener("keydown", this.onKeydown)
             this.el.addEventListener("mousedown", (e) => e.preventDefault())
             this.el.addEventListener("click", (e) => {
               const button = e.target.closest("[data-cmd]")
@@ -724,41 +740,45 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           destroyed() {
             document.removeEventListener("selectionchange", this.onSelection)
+            document.removeEventListener("keydown", this.onKeydown)
+          },
+
+          // The selection if it can be formatted: text inside one block, not code.
+          range() {
+            const sel = getSelection()
+            if (!sel.rangeCount || sel.isCollapsed) return null
+            const range = sel.getRangeAt(0)
+            const node = range.commonAncestorContainer
+            const ed = (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]")
+            return ed && ed.closest(".pe-block").dataset.type !== "code" ? range : null
           },
 
           update() {
-            const sel = getSelection()
-            const range = sel.rangeCount && sel.getRangeAt(0)
-            const node = range && range.commonAncestorContainer
-            const ed = !sel.isCollapsed && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]")
-            if (!ed || ed.closest(".pe-block").dataset.type === "code") {
-              this.el.hidden = true
-              return
-            }
+            const range = this.range()
+            this.el.hidden = !range
+            if (!range) return
             for (const button of this.el.querySelectorAll("[data-cmd]")) {
               const cmd = button.dataset.cmd
               const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
               button.classList.toggle("is-active", !!active)
             }
             const rect = range.getBoundingClientRect()
-            this.el.hidden = false
             this.el.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.el.offsetWidth / 2)}px`
             this.el.style.top = `${Math.max(8, rect.top - this.el.offsetHeight - 8)}px`
           },
 
           format(cmd) {
-            const sel = getSelection()
-            if (!sel.rangeCount) return
-            const range = sel.getRangeAt(0)
+            const range = this.range()
+            if (!range) return
             if (cmd === "code") {
               const code = document.createElement("code")
               code.textContent = range.toString()
               range.deleteContents()
               range.insertNode(code)
-              sel.selectAllChildren(code)
+              getSelection().selectAllChildren(code)
             } else if (cmd === "link") {
               const url = prompt("Link URL", "https://")
-              if (url) document.execCommand("createLink", false, url)
+              if (url && safeUrl(url)) document.execCommand("createLink", false, url)
             } else {
               document.execCommand(cmd)
             }
