@@ -379,7 +379,11 @@
   font-size: 0.875rem;
 }
 
-.pe-toolbar button:hover,
+.pe-toolbar button[aria-disabled="true"] {
+  opacity: 0.35;
+}
+
+.pe-toolbar button:hover:not([aria-disabled="true"]),
 .pe-toolbar button.is-active {
   background: rgba(255, 255, 255, 0.16);
 }

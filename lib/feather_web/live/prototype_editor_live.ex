@@ -180,6 +180,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           "1.": "numbered", ">": "quote", "```": "code"}
         const LIST_TYPES = ["bulleted", "numbered"]
         const FORMAT_KEYS = {k: "link", e: "code"}
+        const HEADINGS = ["h2", "h3"]
 
         // Ids like Feather.Content.Blocks generates them: 10 characters of [0-9a-zA-Z].
         const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -220,14 +221,17 @@ defmodule FeatherWeb.PrototypeEditorLive do
           range.setEnd(...pointAt(ed, to))
           return range
         }
+        const offsetOf = (ed, node, offset) => {
+          const before = document.createRange()
+          before.selectNodeContents(ed)
+          before.setEnd(node, offset)
+          return before.toString().length
+        }
         const caretOffset = (ed) => {
           const sel = getSelection()
           if (!sel.rangeCount) return 0
           const range = sel.getRangeAt(0)
-          const before = document.createRange()
-          before.selectNodeContents(ed)
-          before.setEnd(range.startContainer, range.startOffset)
-          return before.toString().length
+          return offsetOf(ed, range.startContainer, range.startOffset)
         }
         const setCaret = (ed, offset) => {
           ed.focus()
@@ -276,6 +280,25 @@ defmodule FeatherWeb.PrototypeEditorLive do
           range.collapse(true)
           getSelection().removeAllRanges()
           getSelection().addRange(range)
+        }
+        // What Feather.Content.HTML keeps (:editor mode): b, i, u, code, br and a
+        // with its href. The browser adds more (style spans, e.g. for bold in a
+        // heading); drop it in the DOM too, so the editor shows what is stored.
+        const KEEP = ["B", "I", "U", "A", "CODE", "BR"]
+        const extraAttr = (el) => [...el.attributes].some((a) => !(el.tagName === "A" && a.name === "href"))
+        const normalize = (ed) => {
+          const extra = [...ed.querySelectorAll("*")].filter((el) => !KEEP.includes(el.tagName) || extraAttr(el))
+          if (!extra.length) return
+          const range = getSelection().rangeCount && getSelection().getRangeAt(0)
+          const kept = range && ed.contains(range.startContainer) &&
+            [offsetOf(ed, range.startContainer, range.startOffset), offsetOf(ed, range.endContainer, range.endOffset)]
+          for (const el of extra) {
+            if (!KEEP.includes(el.tagName)) el.replaceWith(...el.childNodes)
+            else [...el.attributes].forEach((a) => a.name !== "href" && el.removeAttribute(a.name))
+          }
+          if (!kept) return
+          getSelection().removeAllRanges()
+          getSelection().addRange(rangeAt(ed, ...kept))
         }
         const setType = (block, type) => {
           ;[...block.classList].filter((c) => c.startsWith("pe-block--")).forEach((c) => block.classList.remove(c))
@@ -505,6 +528,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             // into the wrong block.
             if (e.inputType === "historyUndo" || e.inputType === "historyRedo") {
               e.preventDefault()
+            } else if (e.inputType === "formatBold" && HEADINGS.includes(type)) {
+              // Headings are bold already; the browser would add a style span.
+              e.preventDefault()
             } else if (e.inputType === "insertParagraph" && type !== "code") {
               e.preventDefault()
               if (this.menuOpen()) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
@@ -530,6 +556,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const ed = e.target.closest?.("[data-editable]")
             if (!ed || e.isComposing) return
             this.gutter.hidden = true
+            if (blockOf(ed).dataset.type !== "code") normalize(ed)
             tidy(ed)
             if (this.slash) this.updateMenu()
             if (e.inputType === "insertText") this.afterTyping(ed, e.data)
@@ -786,10 +813,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const caret = this.touch && elOf(getSelection().anchorNode)?.closest("#pe-blocks [data-editable]")
             this.toolbar.hidden = !range && !caret
             if (this.toolbar.hidden) return
+            const heading = HEADINGS.includes(blockOf(getSelection().anchorNode)?.dataset.type)
             for (const button of this.toolbar.querySelectorAll("[data-cmd]")) {
               const cmd = button.dataset.cmd
               const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
               button.classList.toggle("is-active", !!active)
+              // Not disabled: a disabled button gets no mousedown to keep the selection.
+              button.ariaDisabled = cmd === "bold" && heading
             }
             if (this.touch) {
               const view = window.visualViewport || {offsetTop: 0, height: innerHeight}
@@ -805,6 +835,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (cmd === "slash") return document.execCommand("insertText", false, "/")
             const range = this.formatRange()
             if (!range) return
+            const block = blockOf(range.startContainer)
             if (cmd === "code") {
               const code = document.createElement("code")
               code.textContent = range.toString()
@@ -814,9 +845,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
             } else if (cmd === "link") {
               const url = prompt("Link URL", "https://")
               if (url && safeUrl(url)) document.execCommand("createLink", false, url)
-            } else {
+            } else if (!(cmd === "bold" && HEADINGS.includes(block.dataset.type))) {
               document.execCommand(cmd)
             }
+            normalize(editableOf(block))
             this.updateToolbar()
           },
 
