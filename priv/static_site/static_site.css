@@ -211,7 +211,7 @@ table.books {
   text-align: center;
 }
 
-/* Book card in detail view (review header & EditorJS book block) */
+/* Book card in detail view (review header & book block) */
 .book-card--detail {
   flex-direction: row;
   align-items: flex-start;

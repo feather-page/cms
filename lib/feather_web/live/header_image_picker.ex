@@ -13,7 +13,7 @@ defmodule FeatherWeb.HeaderImagePicker do
   `{FeatherWeb.HeaderImagePicker, change}` to it, where `change` is
   `{:cover, image | nil}`, `{:thumbnail, image | nil}` or
   `{:emoji, emoji | nil}`. The parent puts the change into its form, see
-  `FeatherWeb.ContentForm.put_picker_change/2`.
+  `FeatherWeb.ContentForm.handle_info/2`.
   """
   use FeatherWeb, :live_component
 
@@ -31,6 +31,7 @@ defmodule FeatherWeb.HeaderImagePicker do
   def mount(socket) do
     {:ok,
      socket
+     |> FeatherWeb.SiteAuth.check_component_events()
      |> assign(mode: nil, query: "", results: [], error: nil, emoji_open?: false)
      |> assign(:unsplash?, Unsplash.configured?())
      |> allow_upload(:image,
@@ -358,7 +359,8 @@ defmodule FeatherWeb.HeaderImagePicker do
 
   defp handle_progress(:image, entry, socket) do
     with true <- entry.done?,
-         {:upload, target} <- socket.assigns.mode do
+         {:upload, target} <- socket.assigns.mode,
+         {:cont, socket} <- FeatherWeb.SiteAuth.check_access(socket) do
       scope = socket.assigns.current_scope
 
       result =
@@ -375,6 +377,7 @@ defmodule FeatherWeb.HeaderImagePicker do
           {:noreply, assign(socket, :error, image_error(changeset))}
       end
     else
+      {:halt, socket} -> {:noreply, socket}
       _ -> {:noreply, socket}
     end
   end

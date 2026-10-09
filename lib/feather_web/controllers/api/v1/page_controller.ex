@@ -27,7 +27,8 @@ defmodule FeatherWeb.Api.V1.PageController do
     scope = conn.assigns.current_scope
 
     with {:ok, attrs} <- ContentParams.attrs(scope, params, "page", @permitted, :create),
-         {:ok, page} <- Content.create_page(scope, attrs) do
+         {:ok, draft} <- ContentParams.draft(params, "page"),
+         {:ok, page} <- Content.create_page(scope, attrs, draft: draft) do
       conn
       |> put_status(:created)
       |> render(:show, page: Content.preload_images(page))
@@ -39,7 +40,8 @@ defmodule FeatherWeb.Api.V1.PageController do
 
     with {:ok, page} <- fetch_page(conn, id),
          {:ok, attrs} <- ContentParams.attrs(scope, params, "page", @permitted, :update),
-         {:ok, page} <- Content.update_page(scope, page, attrs) do
+         {:ok, draft} <- ContentParams.draft(params, "page"),
+         {:ok, page} <- Content.update_page(scope, page, attrs, draft: draft) do
       render(conn, :show, page: Content.preload_images(page))
     end
   end

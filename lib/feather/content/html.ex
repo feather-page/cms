@@ -6,16 +6,16 @@ defmodule Feather.Content.HTML do
     * `Feather.Content.Blocks.normalize/1` sanitizes every inline HTML
       field with `sanitize(html, :editor)` before content is stored (admin
       editor, content API, import) and before it is handed to the admin
-      editor, which renders it with `innerHTML`.
+      editor.
     * The static site inserts `sanitize(html)` unescaped into its pages.
 
   In the default `:published` mode only `b`, `i`, `u`, `a` and `code`
   survive, and only `href` on `a` (the allow list of the Rails renderers).
-  The `:editor` mode keeps what the admin editor (Editor.js) writes on top
-  of that and is harmless: `br`, `target="_blank"` and
-  `rel="nofollow"`/`"noopener"`/`"noreferrer"` on links, and the marker
-  classes of the inline tools (`code class="inline-code"`,
-  `u class="cdx-underline"`). Other elements are removed but their text is
+  The `:editor` mode keeps what the admin editor writes on top of that and
+  is harmless: `br`, and `target="_blank"` and
+  `rel="nofollow"`/`"noopener"`/`"noreferrer"` on links. Other attributes
+  (such as the classes the former editor put on `code` and `u`) are
+  dropped. Other elements are removed but their text is
   kept (like Loofah's strip scrubber Rails used); the content of `script`
   and `style` is dropped. Comments, processing instructions and doctypes
   are dropped.
@@ -31,7 +31,7 @@ defmodule Feather.Content.HTML do
 
   Escaping follows the browsers' `innerHTML` serialization (`&`, `<`, `>`
   and no-break spaces in text; `&`, `"`, `<`, `>` and no-break spaces in
-  attribute values), so the output of the admin editor passes unchanged and
+  attribute values), so HTML serialized by a browser passes unchanged and
   sanitizing is idempotent. The output is meant for element content, never
   for an attribute value.
 
@@ -50,9 +50,8 @@ defmodule Feather.Content.HTML do
   @dropped_content_tags ~w(script style)
   @allowed_schemes ~w(http https mailto tel)
 
-  # Attributes the admin editor writes, kept in :editor mode with these
-  # values only (besides href on links).
-  @editor_classes %{"code" => "inline-code", "u" => "cdx-underline"}
+  # Link attributes the admin editor writes, kept in :editor mode with
+  # these values only (besides href).
   @editor_rel_tokens ~w(nofollow noopener noreferrer)
 
   @doc """
@@ -188,9 +187,6 @@ defmodule Feather.Content.HTML do
   defp editor_attributes("a", attributes, :editor),
     do: [{"target", attributes["target"]}, {"rel", attributes["rel"]}]
 
-  defp editor_attributes(tag, attributes, :editor) when is_map_key(@editor_classes, tag),
-    do: [{"class", attributes["class"]}]
-
   defp editor_attributes(_tag, _attributes, _mode), do: []
 
   defp keep_attribute("a", "href", href) when is_binary(href),
@@ -201,10 +197,6 @@ defmodule Feather.Content.HTML do
   defp keep_attribute("a", "rel", rel) when is_binary(rel) do
     tokens = rel |> String.downcase() |> String.split()
     if tokens != [] and Enum.all?(tokens, &(&1 in @editor_rel_tokens)), do: Enum.join(tokens, " ")
-  end
-
-  defp keep_attribute(tag, "class", class) when is_binary(class) do
-    if String.trim(class) == @editor_classes[tag], do: @editor_classes[tag]
   end
 
   defp keep_attribute(_tag, _name, _value), do: nil

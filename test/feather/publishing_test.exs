@@ -112,6 +112,55 @@ defmodule Feather.PublishingTest do
     end
   end
 
+  describe "undeployed_changes?/1" do
+    defp deployed(target, at) do
+      target |> Ecto.Changeset.change(last_deployed_at: at) |> Repo.update!()
+    end
+
+    defp in_a_minute, do: DateTime.add(DateTime.utc_now(), 60)
+
+    test "is false without a production target", %{scope: scope} do
+      post_fixture(scope)
+      deployment_target_fixture(scope, type: "backup")
+
+      refute Publishing.undeployed_changes?(scope)
+    end
+
+    test "compares the newest publish of posts, pages and projects with the last deploy", %{
+      scope: scope
+    } do
+      target = deployment_target_fixture(scope)
+
+      for publish <- [&post_fixture/1, &page_fixture/1, &project_fixture/1] do
+        deployed(target, DateTime.utc_now())
+        refute Publishing.undeployed_changes?(scope)
+
+        publish.(scope)
+        assert Publishing.undeployed_changes?(scope)
+      end
+    end
+
+    test "ignores drafts and other sites", %{scope: scope} do
+      scope |> deployment_target_fixture() |> deployed(in_a_minute())
+      later = DateTime.add(DateTime.utc_now(), 3600)
+      other = site_scope_fixture()
+      post_fixture(other)
+
+      Repo.update_all(Feather.Content.PostVersion, set: [published_at: later])
+
+      refute Publishing.undeployed_changes?(scope)
+      post_fixture(scope, draft: true)
+      refute Publishing.undeployed_changes?(scope)
+    end
+
+    test "a production target never deployed counts as not deployed", %{scope: scope} do
+      scope |> deployment_target_fixture() |> deployed(in_a_minute())
+      deployment_target_fixture(scope)
+
+      assert Publishing.undeployed_changes?(scope)
+    end
+  end
+
   describe "get_preview_target/2" do
     test "returns the target only for users with access", %{scope: scope} do
       target = Publishing.get_staging_target(scope)

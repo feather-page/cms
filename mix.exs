@@ -78,11 +78,14 @@ defmodule Feather.MixProject do
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
       "assets.setup": ["esbuild.install --if-missing"],
-      "assets.build": ["compile", "esbuild feather"],
+      # npm packages (ProseMirror) from assets/package-lock.json
+      "assets.npm": ["cmd --cd assets npm ci --no-audit --no-fund"],
+      "assets.build": ["compile", "assets.npm", "esbuild feather"],
       "assets.deploy": [
         # compile first: app.js imports phoenix-colocated/feather, which the
         # LiveView compiler writes while compiling (fresh checkouts, CI)
         "compile",
+        "assets.npm",
         "esbuild feather --minify",
         "phx.digest"
       ],

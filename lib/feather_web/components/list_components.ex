@@ -8,7 +8,7 @@ defmodule FeatherWeb.ListComponents do
         <.list_row :for={{id, post} <- @streams.posts} id={id} navigate={edit_path(post)}>
           <:leading>{post.emoji}</:leading>
           {post.title}
-          <:meta><.publication_badge draft={post.draft} /></:meta>
+          <:meta><.publication_badge status={Content.publication_status(post)} /></:meta>
           <:action
             id={"delete-post-\#{post.public_id}"}
             icon="trash"
@@ -174,13 +174,24 @@ defmodule FeatherWeb.ListComponents do
     |> JS.set_attribute({"aria-expanded", "false"}, to: "##{id}-toggle")
   end
 
-  @doc "Renders the published/draft badge of a post or page."
-  attr :draft, :boolean, required: true
+  @doc """
+  Renders the badge of a post, page or project's
+  `Feather.Content.publication_status/1`: Draft, Published or Unpublished
+  changes.
+  """
+  attr :status, :atom, required: true, values: [:draft, :published, :unpublished_changes]
+  attr :id, :string, default: nil
 
   def publication_badge(assigns) do
     ~H"""
-    <.status_badge :if={@draft} kind={:draft}>Draft</.status_badge>
-    <.status_badge :if={!@draft} kind={:published}>Published</.status_badge>
+    <%= case @status do %>
+      <% :draft -> %>
+        <.status_badge id={@id} kind={:draft}>Draft</.status_badge>
+      <% :published -> %>
+        <.status_badge id={@id} kind={:published}>Published</.status_badge>
+      <% :unpublished_changes -> %>
+        <.status_badge id={@id} kind={:changed}>Unpublished changes</.status_badge>
+    <% end %>
     """
   end
 

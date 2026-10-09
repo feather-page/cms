@@ -53,6 +53,22 @@ defmodule Feather.Publishing.DeployTest do
     assert_received {:site_notice, %{message: "Site built.", url: "https://" <> ^host}}
   end
 
+  test "a successful deploy records when its export started", c do
+    before = DateTime.utc_now()
+    assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+
+    deployed_at = Repo.reload!(c.target).last_deployed_at
+    assert DateTime.compare(deployed_at, before) != :lt
+    assert DateTime.compare(deployed_at, DateTime.utc_now()) != :gt
+  end
+
+  test "a failed deploy records nothing", c do
+    opts = Keyword.put(c.opts, :runner, runner({:error, "rclone sync failed (exit 1): nope"}))
+
+    assert {:error, _} = Deploy.run(c.target, opts)
+    assert Repo.reload!(c.target).last_deployed_at == nil
+  end
+
   test "a second deploy replaces the live directory", c do
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
@@ -67,6 +83,25 @@ defmodule Feather.Publishing.DeployTest do
     assert File.exists?(Path.join(live, "moved/index.html"))
     refute File.exists?(Path.join(live, "hello/index.html"))
     assert File.ls!(Deploy.build_path(c.target)) == ["public"]
+  end
+
+  test "staging shows unpublished changes, production and backup the published versions", c do
+    c.scope
+    |> Feather.Content.get_post_by_slug("/hello")
+    |> Ecto.Changeset.change(title: "Unpublished")
+    |> Repo.update!()
+
+    assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+    assert File.read!(Path.join(Deploy.live_dir(c.target), "hello/index.html")) =~ "Unpublished"
+
+    for type <- ~w(production backup) do
+      target = deployment_target_fixture(c.scope, %{type: type, provider: "internal"})
+      on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
+
+      assert {:ok, :deployed} = Deploy.run(target, c.opts)
+      html = File.read!(Path.join(Deploy.live_dir(target), "hello/index.html"))
+      assert html =~ "<h1>Hello</h1>"
+    end
   end
 
   test "a failing rclone sync releases the lock and broadcasts the failure", c do

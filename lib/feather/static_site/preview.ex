@@ -2,9 +2,9 @@ defmodule Feather.StaticSite.Preview do
   @moduledoc """
   Live rendering of a site inside the CMS with the export's templates,
   addressed under `/preview/<target public id>/` (see
-  `Feather.StaticSite.Routes`). Drafts and scheduled posts can be
-  previewed by their address; the post list shows published posts only,
-  like the export.
+  `Feather.StaticSite.Routes`). Shows the records as they are, unpublished
+  changes and drafts included, like a staging export. Scheduled posts can
+  be previewed by their address; the post list leaves them out.
 
   Access control is the caller's job: load the target with
   `Feather.Publishing.get_preview_target/2`.
@@ -47,7 +47,7 @@ defmodule Feather.StaticSite.Preview do
           else: :not_found
 
       route ->
-        render_route(route, SiteData.load(site), routes)
+        render_route(route, SiteData.load(site, content: :current), routes)
     end
   end
 

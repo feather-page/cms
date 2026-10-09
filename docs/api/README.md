@@ -12,6 +12,10 @@ Generic CRUD REST API for managing posts, pages, and images. Designed for AI-dri
 - **Error messages:** AI-friendly, with block index, type, and field-level detail
 - **Pagination:** list endpoints return 20 records per page, selected with `?p=`, and a `meta`
   object (`page`, `pages`, `count`)
+- **Publishing:** posts and pages are read with their unpublished changes. Creating or updating
+  one publishes it at once (no deploy), unless the request sends `draft: true`, which stores the
+  changes and makes it a draft (unpublished if it was published). `draft` in a response means
+  the record has no published version
 
 ## Endpoints
 
@@ -47,8 +51,8 @@ Content is stored as an array of typed blocks. Each block is validated against i
 Inline HTML (paragraph, header and quote text, captions, list items, table cells) is
 sanitized when content is stored, so responses return the sanitized HTML, not the input
 verbatim: only `b`, `i`, `u`, `a` (with a relative, `http`, `https`, `mailto` or `tel`
-`href`), `code` and `br` survive (plus the attributes the admin editor writes:
-`target="_blank"`, `rel="nofollow"` and its classes `inline-code` / `cdx-underline`).
+`href`), `code` and `br` survive (plus the link attributes the admin editor writes:
+`target="_blank"` and `rel` with `nofollow`, `noopener` or `noreferrer`).
 Other elements are removed with their text kept, `script` and `style` with their content.
 Text is re-serialized like a browser's `innerHTML` (`&amp;`, `&lt;`, `&gt;`, `&nbsp;`).
 Embed `source` and `embed` URLs that are not such safe link targets become `null`.

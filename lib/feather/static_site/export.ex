@@ -1,7 +1,7 @@
 defmodule Feather.StaticSite.Export do
   @moduledoc """
-  Renders a whole site into a sink: the pages of the post list, published
-  posts, projects, pages (the homepage is the first page of the post
+  Renders a whole site into a sink: the pages of the post list, the posts
+  that are due, projects, pages (the homepage is the first page of the post
   list), the image variants in use, `feed.xml`, `robots.txt` and
   `sitemap.xml`.
 
@@ -23,12 +23,14 @@ defmodule Feather.StaticSite.Export do
 
   ## Options
 
-    * `:now` - the time that decides which posts are published (default: now)
+    * `:content` - `:published` (the default) or `:current`, see
+      `Feather.StaticSite.SiteData.load/2`
+    * `:now` - the time that decides which posts are due (default: now)
     * `:max_concurrency` - parallel renders and copies (default: number of schedulers)
   """
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
-    data = SiteData.load(site, Keyword.get(opts, :now, DateTime.utc_now()))
+    data = SiteData.load(site, Keyword.take(opts, [:content, :now]))
     images = SiteData.images_in_use(data)
 
     jobs =

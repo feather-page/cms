@@ -4,6 +4,7 @@ defmodule FeatherWeb.Api.V1.PostJSON do
   Expects header and thumbnail images to be preloaded.
   """
 
+  alias Feather.Content
   alias Feather.Content.{Post, Tags}
   alias FeatherWeb.Api.V1.{ApiJSON, Pagination}
 
@@ -19,7 +20,7 @@ defmodule FeatherWeb.Api.V1.PostJSON do
       title: post.title,
       slug: post.slug,
       emoji: post.emoji,
-      draft: post.draft,
+      draft: Content.draft?(post),
       publish_at: ApiJSON.timestamp(post.publish_at),
       tags: Tags.tag_list(post),
       content: ApiJSON.content(post.content),

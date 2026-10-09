@@ -1,5 +1,5 @@
 // External LiveView hooks, passed to the LiveSocket in app.js.
-import EditorJs from "./editor_js"
+import ProseMirror from "./prose_mirror"
 import SiteNav from "./site_nav"
 
-export default {EditorJs, SiteNav}
+export default {ProseMirror, SiteNav}

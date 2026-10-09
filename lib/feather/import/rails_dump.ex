@@ -23,7 +23,8 @@ defmodule Feather.Import.RailsDump do
       the book's `cover_image_id`. Unowned images embedded by an image
       block get that record as owner (as saving it in the CMS would)
     * content is kept, normalized by `Feather.Content.Blocks.normalize/1`
-      (blocks that change are reported)
+      (blocks that change are reported); posts, pages and projects are
+      published as version 1, except draft posts
     * navigation items move from the site's navigation to the site and
       are renumbered 1..n per site in their original order
     * deployment targets take their config from `config_plain` (encrypted
@@ -39,8 +40,9 @@ defmodule Feather.Import.RailsDump do
   import Ecto.Query, warn: false
 
   alias Feather.Repo
-  alias Feather.Accounts.{ApiToken, User, UserToken}
+  alias Feather.Accounts.{ApiToken, Scope, User, UserToken}
   alias Feather.Books.Book
+  alias Feather.Content
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Import.{Dump, Report}
   alias Feather.Media
@@ -468,6 +470,7 @@ defmodule Feather.Import.RailsDump do
 
           case insert(state, table, label, changeset) do
             {:ok, record, state} ->
+              unless draft_post?(table, row), do: publish_imported(site, record)
               entry = %{site_id: site.id, label: label, content: record.content}
               put_in(state, [:records, owner_field, record.id], entry)
 
@@ -481,10 +484,17 @@ defmodule Feather.Import.RailsDump do
     end)
   end
 
+  defp draft_post?(table, row), do: table == "posts" and row["draft"] == true
+
+  defp publish_imported(site, record) do
+    {:ok, _record} = Content.publish(Scope.for_site(site), record)
+    :ok
+  end
+
   defp content_attrs(state, table, row, site, label) do
     fields =
       case table do
-        "posts" -> ~w(title slug emoji tags draft publish_at)
+        "posts" -> ~w(title slug emoji tags publish_at)
         "pages" -> ~w(title slug emoji tags page_type)
         "projects" -> ~w(title slug emoji tags short_description company role period
                          started_at ended_at status project_type)
@@ -506,13 +516,8 @@ defmodule Feather.Import.RailsDump do
 
     case {table, row["publish_at"]} do
       {"posts", nil} ->
-        {attrs
-         |> Map.put("publish_at", row["created_at"])
-         |> Map.put("draft", row["draft"] == true),
+        {Map.put(attrs, "publish_at", row["created_at"]),
          notice(state, "#{label}: had no publish_at, using its creation time")}
-
-      {"posts", _publish_at} ->
-        {Map.put(attrs, "draft", row["draft"] == true), state}
 
       {"projects", _} ->
         project_links(attrs, state, row["links"], label)

@@ -1,8 +1,9 @@
 defmodule FeatherWeb.BookLookupController do
   @moduledoc """
-  `GET /sites/:site_id/books/lookup?q=` for the Editor.js book block: the
-  site's books as JSON (`public_id`, `title`, `author`, `cover_url`,
-  `emoji`), see `Feather.Books.lookup_books/2`.
+  `GET /sites/:site_id/books/lookup?q=` for the editor's book block: the
+  site's books as a JSON list of `public_id`, `title`, `author`,
+  `cover_url` and `emoji` (the book node's attrs, with `public_id` as its
+  `book_public_id`), see `Feather.Books.lookup_books/2`.
   """
   use FeatherWeb, :controller
 

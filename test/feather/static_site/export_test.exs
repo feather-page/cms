@@ -46,6 +46,8 @@ defmodule Feather.StaticSite.ExportTest do
         publish_at: @published_at
       })
 
+    {:ok, review} = Content.publish(scope, review)
+
     everything =
       post_fixture(scope, %{
         title: "Everything",
@@ -100,7 +102,11 @@ defmodule Feather.StaticSite.ExportTest do
     page_fixture(scope, %{title: "Work", slug: "/work", page_type: "projects"})
 
     homepage = Content.get_homepage(scope)
-    {:ok, _} = Content.update_page(scope, homepage, %{content: [paragraph("Welcome home.")]})
+
+    {:ok, homepage} =
+      Content.update_page(scope, homepage, %{content: [paragraph("Welcome home.")]})
+
+    {:ok, _} = Content.publish(scope, homepage)
 
     ongoing =
       project_fixture(scope, %{title: "Ongoing", slug: "/ongoing", started_at: ~D[2020-01-01]})

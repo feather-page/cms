@@ -20,6 +20,8 @@ defmodule Feather.Publishing.DeploymentTarget do
     # which a release only reads at runtime.
     field :config, Feather.Encrypted.Map, default: %{}, skip_default_validation: true
     field :deploying, :boolean, default: false
+    # When the export of the last successful deploy started.
+    field :last_deployed_at, :utc_datetime_usec
 
     belongs_to :site, Feather.Sites.Site
 
@@ -31,6 +33,15 @@ defmodule Feather.Publishing.DeploymentTarget do
 
   @doc "The valid providers."
   def providers, do: @providers
+
+  @doc """
+  What a target's static export shows: staging the records as they are
+  (`:current`), production and backup their published versions
+  (`:published`).
+  """
+  @spec exported_content(t()) :: :current | :published
+  def exported_content(%__MODULE__{type: "staging"}), do: :current
+  def exported_content(%__MODULE__{}), do: :published
 
   @doc false
   def create_changeset(target, attrs) do

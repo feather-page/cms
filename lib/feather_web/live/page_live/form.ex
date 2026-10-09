@@ -1,14 +1,19 @@
 defmodule FeatherWeb.PageLive.Form do
   @moduledoc """
   Creates and edits pages: header image picker, title and slug (slug
-  suggested from the title), tags, Editor.js content, page type and the
+  suggested from the title), tags, block content, page type and the
   "add to navigation" flag. A save that changes the navigation publishes
-  the site.
+  the site. Every change is saved into the unpublished changes at once;
+  the first input that gives the page a valid slug creates it as a draft
+  (see "Autosave" in `FeatherWeb.ContentForm`). Publish publishes them;
+  Discard puts the published version back; Restore puts an earlier
+  version into the unpublished changes.
 
   Unlike Rails, the form has no "created at" field: the creation date of a
   page is not shown anywhere on the generated site.
   """
   use FeatherWeb, :live_view
+  @behaviour FeatherWeb.ContentForm
 
   import FeatherWeb.ContentFormComponents
 
@@ -30,6 +35,9 @@ defmodule FeatherWeb.PageLive.Form do
     >
       <.header back={~p"/sites/#{@site.public_id}/pages"} back_label="Pages" truncate>
         {@page_title}
+        <:badge :if={@live_action == :edit and @publication_status != :published}>
+          <.publication_badge id="publication-badge" status={@publication_status} />
+        </:badge>
         <:badge :if={@live_action == :edit and @page.add_to_navigation}>
           <.status_badge id="status-badge">In navigation</.status_badge>
         </:badge>
@@ -37,14 +45,22 @@ defmodule FeatherWeb.PageLive.Form do
 
       <.editor_layout id="page" open={ContentForm.details_open?(@form)}>
         <:main>
-          <.form for={@form} id="page-form" phx-change="validate" phx-submit="save">
+          <.form
+            for={@form}
+            id="page-form"
+            phx-change="autosave"
+            phx-submit="autosave"
+            phx-auto-recover="recover"
+          >
+            <.lock_version_field record={@page} />
             <.header_image_fields form={@form} />
             <.title_field field={@form[:title]} />
             <.editor
               id="page-content-editor"
-              field={@form[:content]}
+              site={@current_scope.site}
               value={@editor_json}
-              site={@site}
+              record={@page}
+              status={ContentForm.autosave_status(@form, @changed_elsewhere?)}
             />
           </.form>
         </:main>
@@ -79,32 +95,18 @@ defmodule FeatherWeb.PageLive.Form do
             thumbnail_image={@thumbnail_image}
             emoji={@form[:emoji].value}
           />
+          <.record_versions versions={@versions} record={@page} />
         </:details>
       </.editor_layout>
 
-      <.action_bar sticky>
-        <button
-          type="submit"
-          form="page-form"
-          id="save-page"
-          class="btn btn-primary"
-          phx-disable-with="Saving..."
-        >
-          {if @live_action == :new, do: "Create page", else: "Save"}
-        </button>
-        <.link navigate={~p"/sites/#{@site.public_id}/pages"} class="btn btn-light">Cancel</.link>
-        <:danger :if={@live_action == :edit}>
-          <button
-            type="button"
-            id="delete-page"
-            class="btn btn-outline-danger"
-            phx-click="delete"
-            data-confirm="Delete this page?"
-          >
-            <.icon name="trash-2" size={16} /> Delete
-          </button>
-        </:danger>
-      </.action_bar>
+      <.content_actions
+        id="page"
+        noun="page"
+        record={@page}
+        form={@form}
+        status={@publication_status}
+        changed_elsewhere?={@changed_elsewhere?}
+      />
     </.site_shell>
     """
   end
@@ -121,69 +123,22 @@ defmodule FeatherWeb.PageLive.Form do
 
     {:ok,
      socket
-     |> assign(:site, scope.site)
-     |> assign(
-       :page_title,
-       if(socket.assigns.live_action == :new,
-         do: "New page",
-         else: ContentForm.heading(page, "Untitled page")
-       )
-     )
      |> assign(:page_types, @page_types)
-     |> assign(:page, page)
-     |> assign(:header_image, ContentForm.loaded(page.header_image))
-     |> assign(:thumbnail_image, ContentForm.loaded(page.thumbnail_image))
-     |> assign(:slug_touched?, ContentForm.present?(page.slug))
-     |> assign(:editor_json, ContentForm.editor_json(scope, page))
-     |> assign_form(%{})}
+     |> ContentForm.mount_record(page)}
   end
 
   @impl true
-  def handle_event("validate", %{"page" => page_params} = params, socket) do
-    socket =
-      assign(
-        socket,
-        :slug_touched?,
-        socket.assigns.slug_touched? or ContentForm.slug_target?(params, "page")
-      )
-
-    page_params =
-      ContentForm.maybe_suggest_slug(
-        page_params,
-        params,
-        "page",
-        socket.assigns.current_scope,
-        socket.assigns.slug_touched?
-      )
-
-    {:noreply, assign_form(socket, page_params, :validate)}
-  end
-
-  def handle_event("save", %{"page" => page_params}, socket) do
-    %{current_scope: scope, page: page, live_action: action} = socket.assigns
-
-    result =
-      case action do
-        :new -> Content.create_page(scope, page_params)
-        :edit -> Content.update_page(scope, page, page_params)
+  def handle_params(_params, _uri, socket) do
+    page_title =
+      case socket.assigns.live_action do
+        :new -> "New page"
+        :edit -> ContentForm.heading(socket.assigns.page, "Untitled page")
       end
 
-    case result do
-      {:ok, saved} ->
-        if saved.add_to_navigation != page.add_to_navigation, do: Publishing.publish_site(scope)
-        message = if action == :new, do: "created", else: "updated"
-
-        {:noreply,
-         socket
-         |> put_flash(:info, "Page was successfully #{message}.")
-         |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/pages")}
-
-      {:error, %Ecto.Changeset{}} ->
-        {:noreply,
-         assign_form(socket, page_params, if(action == :new, do: :insert, else: :update))}
-    end
+    {:noreply, assign(socket, :page_title, page_title)}
   end
 
+  @impl true
   def handle_event("delete", _params, socket) do
     %{current_scope: scope, page: page} = socket.assigns
     {:ok, _page} = Content.delete_page(scope, page)
@@ -195,17 +150,38 @@ defmodule FeatherWeb.PageLive.Form do
      |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/pages")}
   end
 
-  @impl true
-  def handle_info({HeaderImagePicker, change}, socket) do
-    params = ContentForm.put_picker_change(socket.assigns.params, change)
+  def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)
 
-    {:noreply,
-     socket
-     |> assign(ContentForm.picker_assigns(change))
-     |> assign_form(params, socket.assigns.form.source.action)}
+  @impl true
+  def handle_info(message, socket), do: ContentForm.handle_info(message, socket)
+
+  @impl ContentForm
+  def record(socket), do: socket.assigns.page
+
+  # A change of the navigation publishes the site, the navigation is not
+  # versioned.
+  @impl ContentForm
+  def save_fields(socket, attrs, opts) do
+    %{current_scope: scope, page: page} = socket.assigns
+
+    with {:ok, saved} <- Content.autosave(scope, page, attrs, opts) do
+      if saved.add_to_navigation != page.add_to_navigation, do: Publishing.publish_site(scope)
+      {:ok, saved, socket}
+    end
   end
 
-  defp assign_form(socket, params, action \\ nil) do
+  @impl ContentForm
+  def assign_record(socket, page), do: assign(socket, :page, page)
+
+  @impl ContentForm
+  def noun, do: "Page"
+
+  @impl ContentForm
+  def edit_path(socket, page),
+    do: ~p"/sites/#{socket.assigns.site.public_id}/pages/#{page.public_id}/edit"
+
+  @impl ContentForm
+  def assign_form(socket, params, action \\ nil) do
     changeset =
       socket.assigns.current_scope
       |> Content.change_page(socket.assigns.page, params)

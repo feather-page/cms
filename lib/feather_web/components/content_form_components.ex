@@ -2,10 +2,12 @@ defmodule FeatherWeb.ContentFormComponents do
   @moduledoc """
   Parts of the content editor screens (posts, pages, projects, reviews):
   the two column layout with its "Details" card, the large title input,
-  the slug, the Editor.js editor, the hidden header image fields, the
-  status badge and the star rating.
+  the slug, the block editor with the autosave status, the hidden header
+  image fields, the action bar (Publish, Discard, Unpublish, Delete), the
+  list of versions and the star rating.
   """
   use Phoenix.Component
+  use FeatherWeb, :verified_routes
 
   import FeatherWeb.CoreComponents
 
@@ -60,41 +62,64 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders the Editor.js editor (see `assets/js/hooks/editor_js.js`).
+  Renders the block editor (ProseMirror, see `assets/js/hooks/prose_mirror.js`)
+  and the form's autosave status.
 
-  The hidden input inside carries the Editor.js JSON. LiveView leaves the
-  container alone (`phx-update="ignore"`), so the editor keeps its state
-  across renders; the hook updates the input and fires an input event on
-  every change, which reaches the form's `phx-change`.
+  The hook loads the document from `value` (ProseMirror JSON, see
+  `Feather.Content.ProseMirror`) and autosaves it by pushing `sync` events
+  (see "Autosave" in `FeatherWeb.ContentForm`), building on the
+  `record`'s `lock_version` (none for a new record: the first sync
+  creates it). LiveView leaves the document and the status alone
+  (`phx-update="ignore"`), so the editor keeps its state across renders.
+
+  The status (`#<id>-status`) covers the editor and the form fields
+  (`status`, see `FeatherWeb.ContentForm.autosave_status/2`), with a
+  Reload button (`#<id>-reload`) once the record changed elsewhere.
+
+  Image blocks upload to the `site`'s image endpoints
+  (`FeatherWeb.ImageController`), sending the CSRF token.
   """
   attr :id, :string, required: true
-  attr :field, Phoenix.HTML.FormField, required: true, doc: "names the hidden input"
-  attr :value, :string, required: true, doc: "the initial Editor.js JSON"
-  attr :site, :map, required: true
+  attr :site, :map, required: true, doc: "the record's site, for the image endpoints"
+  attr :value, :string, required: true, doc: "the initial ProseMirror JSON"
+  attr :record, :map, required: true, doc: "the post, page or project (a new one has no id)"
+  attr :status, :string, default: "saved", doc: "the status of the form fields"
   attr :label, :string, default: "Content"
   slot :inner_block, doc: "shown below the editor (e.g. the length counter)"
 
+  # The hook pushes its events from the outer element, which LiveView
+  # locks during a push; its children are ignored, so patches that land
+  # meanwhile cannot reset the document or the status.
   def editor(assigns) do
     ~H"""
     <div class="mb-3">
-      <label class="visually-hidden" for={"#{@id}-input"}>{@label}</label>
       <div
         id={@id}
-        class="editor-wrapper"
-        phx-hook="EditorJs"
-        phx-update="ignore"
-        data-image-endpoint={"/sites/#{@site.public_id}/images"}
-        data-image-from-url-endpoint={"/sites/#{@site.public_id}/images/from-url"}
-        data-book-lookup-endpoint={"/sites/#{@site.public_id}/books/lookup"}
+        class="block-editor"
+        phx-hook="ProseMirror"
+        data-label={@label}
+        data-lock-version={@record.id && @record.lock_version}
+        data-form-status={@status}
+        data-image-upload-url={~p"/sites/#{@site.public_id}/images"}
+        data-image-from-url-url={~p"/sites/#{@site.public_id}/images/from-url"}
+        data-book-lookup-url={~p"/sites/#{@site.public_id}/books/lookup"}
+        data-csrf-token={Plug.CSRFProtection.get_csrf_token()}
       >
-        <div class="editorjs" data-editor-holder></div>
-        <input
-          type="hidden"
-          id={"#{@id}-input"}
-          name={@field.name}
-          value={@value}
-          phx-debounce="300"
-        />
+        <div id={"#{@id}-status"} class="block-editor__status" phx-update="ignore">
+          <span data-status-text role="status">Saved</span>
+          <button
+            type="button"
+            id={"#{@id}-reload"}
+            class="btn btn-sm btn-outline-primary"
+            data-reload
+            hidden
+          >
+            Reload
+          </button>
+        </div>
+        <div id={"#{@id}-document"} phx-update="ignore" data-doc={@value}>
+          <div data-editor-mount></div>
+        </div>
       </div>
       {render_slot(@inner_block)}
     </div>
@@ -150,6 +175,20 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
+  Renders the record's counter as a hidden field of its form (empty for a
+  new record), so the values LiveView recovers after a reconnect name the
+  counter they were shown with (see "Autosave" in
+  `FeatherWeb.ContentForm`). The form needs `phx-auto-recover="recover"`.
+  """
+  attr :record, :map, required: true
+
+  def lock_version_field(assigns) do
+    ~H"""
+    <input type="hidden" name="lock_version" value={@record.id && @record.lock_version} />
+    """
+  end
+
+  @doc """
   Renders the hidden fields set by the header image picker.
   """
   attr :form, Phoenix.HTML.Form, required: true
@@ -186,6 +225,184 @@ defmodule FeatherWeb.ContentFormComponents do
         ★
       </button>
     </div>
+    """
+  end
+
+  @doc """
+  Renders the Unpublish button of a post, page or project, unless it is a
+  draft. Sends `unpublish`.
+  """
+  attr :id, :string, required: true
+  attr :record, :map, required: true
+
+  def unpublish_button(assigns) do
+    ~H"""
+    <button
+      :if={!Feather.Content.draft?(@record)}
+      type="button"
+      id={@id}
+      class="btn btn-outline-secondary"
+      phx-click="unpublish"
+      data-confirm="Take it off the site? It stays here as a draft."
+    >
+      <.icon name="eye-off" size={16} /> Unpublish
+    </button>
+    """
+  end
+
+  @doc """
+  Renders the Publish button. It dispatches `feather:publish`, on which
+  the editor hook sends its pending edits and then pushes `publish` with
+  its status, so no edit typed before the click is missed. Disabled while
+  the record cannot be published (see
+  `FeatherWeb.ContentForm.publishable?/3`).
+  """
+  attr :id, :string, required: true
+  attr :disabled, :boolean, default: false
+
+  def publish_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      id={@id}
+      class="btn btn-success"
+      disabled={@disabled}
+      phx-click={JS.dispatch("feather:publish")}
+    >
+      <.icon name="send" size={16} /> Publish
+    </button>
+    """
+  end
+
+  @doc """
+  Renders the Discard button of a record with unpublished changes
+  (`status`, see `Feather.Content.publication_status/1`). Sends `discard`.
+  """
+  attr :id, :string, required: true
+  attr :status, :atom, required: true
+
+  def discard_button(assigns) do
+    ~H"""
+    <button
+      :if={@status == :unpublished_changes}
+      type="button"
+      id={@id}
+      class="btn btn-outline-secondary"
+      phx-click="discard"
+      data-confirm="Discard the unpublished changes and go back to the published version?"
+    >
+      <.icon name="x" size={16} /> Discard changes
+    </button>
+    """
+  end
+
+  @doc """
+  Renders the Restore button of a version (`#restore-version-<number>`).
+  Sends `restore` with the version's `number`.
+  """
+  attr :version, :map, required: true
+
+  def restore_button(assigns) do
+    ~H"""
+    <button
+      type="button"
+      id={"restore-version-#{@version.number}"}
+      class="btn btn-sm btn-outline-secondary"
+      phx-click="restore"
+      phx-value-number={@version.number}
+      data-confirm={"Restore version #{@version.number}? It replaces the unpublished changes; the published version stays until you publish."}
+    >
+      <.icon name="rotate-ccw" size={14} /> Restore
+    </button>
+    """
+  end
+
+  @doc """
+  Renders the versions of a record, newest first: number, when and by whom
+  it was published, and which one is the published version. The `action`
+  slot renders per version (it gets the version).
+  """
+  attr :id, :string, default: "versions"
+  attr :versions, :list, required: true
+  attr :published_version_id, :string, default: nil
+  slot :action
+
+  def versions_list(assigns) do
+    ~H"""
+    <section :if={@versions != []} class="mt-3" aria-labelledby={"#{@id}-heading"}>
+      <h3 id={"#{@id}-heading"} class="form-label">Versions</h3>
+      <ul id={@id} class="list-unstyled d-flex flex-column gap-2 mb-0">
+        <li
+          :for={version <- @versions}
+          id={"version-#{version.number}"}
+          class="d-flex flex-wrap align-items-center gap-2"
+        >
+          <span class="fw-medium">Version {version.number}</span>
+          <.status_badge :if={version.id == @published_version_id} kind={:published}>
+            Published
+          </.status_badge>
+          <span class="form-text m-0">
+            {Calendar.strftime(version.published_at, "%d/%m/%Y %H:%M")}
+            <span :if={version.published_by}>by {version.published_by.email}</span>
+          </span>
+          {render_slot(@action, version)}
+        </li>
+      </ul>
+    </section>
+    """
+  end
+
+  @doc """
+  Renders the action bar of a post, page or project form: Publish (disabled
+  unless `FeatherWeb.ContentForm.publishable?/3`), Discard, Unpublish and,
+  once the record exists, Delete (sends `delete`). The ids are
+  `#publish-<id>`, `#discard-<id>`, `#unpublish-<id>` and `#delete-<id>`.
+  """
+  attr :id, :string, required: true, doc: ~s(e.g. "post")
+  attr :record, :map, required: true
+  attr :form, Phoenix.HTML.Form, required: true
+  attr :status, :atom, required: true, doc: "the publication status"
+  attr :changed_elsewhere?, :boolean, required: true
+  attr :noun, :string, required: true, doc: ~s(for the delete confirmation, e.g. "post")
+
+  def content_actions(assigns) do
+    ~H"""
+    <.action_bar sticky>
+      <.publish_button
+        id={"publish-#{@id}"}
+        disabled={!FeatherWeb.ContentForm.publishable?(@record, @form, @changed_elsewhere?)}
+      />
+      <.discard_button id={"discard-#{@id}"} status={@status} />
+      <.unpublish_button id={"unpublish-#{@id}"} record={@record} />
+      <:danger :if={@record.id}>
+        <button
+          type="button"
+          id={"delete-#{@id}"}
+          class="btn btn-outline-danger"
+          phx-click="delete"
+          data-confirm={"Delete this #{@noun}?"}
+        >
+          <.icon name="trash-2" size={16} /> Delete
+        </button>
+      </:danger>
+    </.action_bar>
+    """
+  end
+
+  @doc """
+  Renders the versions of a record with a Restore button for every
+  version but the published one.
+  """
+  attr :versions, :list, required: true
+  attr :record, :map, required: true
+
+  def record_versions(assigns) do
+    ~H"""
+    <.versions_list versions={@versions} published_version_id={@record.published_version_id}>
+      <:action :let={version}>
+        <.restore_button :if={version.id != @record.published_version_id} version={version} />
+      </:action>
+    </.versions_list>
     """
   end
 

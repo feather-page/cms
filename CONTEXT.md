@@ -44,6 +44,26 @@ A unit of content inside `content` (paragraph, header, list, quote, code, image,
 projects are lists of blocks; see `Feather.Content.Blocks`.
 _Avoid_: Section, Element, Widget
 
+**Version** · _de:_ Version:
+A published state of a post, page or project: all of its fields, content included, as they were when it was
+published. The newest version is the **published version**, what the site shows; the older ones are its history and
+can be restored into the unpublished changes.
+_Avoid_: Revision, Generation, Snapshot
+
+**Unpublished Changes** · _de:_ unveröffentlichte Änderungen:
+The edits to a post, page or project since its last publish, saved automatically while editing. The site does not
+show them until they are published.
+_Avoid_: Draft, Working Copy
+
+**Publish** · _de:_ Veröffentlichen:
+Turning the unpublished changes into a new version, which becomes the published version. Not a deploy: the site's
+files change only with the next deploy. **Unpublish** takes a record off the site; its versions stay.
+_Avoid_: Save, Release
+
+**Draft**:
+A post, page or project without a published version, because it was never published or was unpublished.
+_Avoid_: using it for unpublished changes of a published record
+
 **Deployment Target**:
 A destination a site is published to, typed `staging`, `production` or `backup`, backed by an rclone provider
 (`internal`, `fastmail`, `hetzner_ftps`).

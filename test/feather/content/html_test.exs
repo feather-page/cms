@@ -190,24 +190,31 @@ defmodule Feather.Content.HTMLTest do
   end
 
   describe "editor mode" do
-    test "keeps what Editor.js writes" do
+    test "keeps line breaks and link targets" do
       html =
-        ~S|a<br><code class="inline-code">c</code> <u class="cdx-underline">u</u> | <>
+        ~S|a<br><code>c</code> <u>u</u> | <>
           ~S|<a href="https://e.com" target="_blank" rel="nofollow">l</a>|
 
       assert sanitize(html, :editor) == html
     end
 
+    test "drops the classes of the former editor's inline tools" do
+      assert sanitize(
+               ~S|<code class="inline-code">c</code> <u class="cdx-underline">u</u>|,
+               :editor
+             ) ==
+               "<code>c</code> <u>u</u>"
+    end
+
     test "the published mode strips the editor extras" do
       html =
-        ~S|a<br><code class="inline-code">c</code> <a href="/x" target="_blank" rel="nofollow">l</a>|
+        ~S|a<br><code>c</code> <a href="/x" target="_blank" rel="nofollow">l</a>|
 
       assert sanitize(html) == ~S|a<code>c</code> <a href="/x">l</a>|
     end
 
     test "other attribute values and elements are removed" do
       assert sanitize(~S|<code class="x" onclick="a()">c</code>|, :editor) == "<code>c</code>"
-      assert sanitize(~S|<u class="inline-code">u</u>|, :editor) == "<u>u</u>"
 
       assert sanitize(~S|<a href="/x" target="evil" rel="opener">l</a>|, :editor) ==
                ~S|<a href="/x">l</a>|
@@ -225,7 +232,7 @@ defmodule Feather.Content.HTMLTest do
           assert tag in ~w(b i u a code br), "unexpected <#{tag}> in #{inspect(output)}"
 
           for {name, value} <- attributes do
-            assert name in ~w(href target rel class), "unexpected #{name} in #{inspect(output)}"
+            assert name in ~w(href target rel), "unexpected #{name} in #{inspect(output)}"
             if name == "href", do: assert(safe_url?(value))
           end
         end

@@ -7,7 +7,7 @@ defmodule FeatherWeb.Router do
   # Content-Security-Policy of the admin (and the preview, which renders on
   # the same origin): scripts only from our own origin, so markup that slips
   # into a page (inline handlers, inline scripts) does not run. Styles and
-  # fonts also come from felt-css; Editor.js injects inline styles. Images
+  # fonts also come from felt-css; the block editor sets inline styles. Images
   # (Unsplash, Open Library covers) and the embeds of the editor may come
   # from any https origin.
   @csp_directives [
@@ -40,7 +40,7 @@ defmodule FeatherWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Session-authenticated JSON and file endpoints of the admin (Editor.js
+  # Session-authenticated JSON and file endpoints of the admin (editor
   # image uploads, the book block lookup, admin image files).
   pipeline :browser_json do
     plug :accepts, ["json"]

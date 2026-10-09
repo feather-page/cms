@@ -231,6 +231,16 @@ defmodule Feather.Publishing do
     count
   end
 
+  @doc "Records a successful deploy of a target whose export started at `deployed_at`."
+  @spec record_deploy(DeploymentTarget.t(), DateTime.t()) :: :ok
+  def record_deploy(%DeploymentTarget{id: id}, %DateTime{} = deployed_at) do
+    Repo.update_all(from(t in DeploymentTarget, where: t.id == ^id),
+      set: [last_deployed_at: deployed_at]
+    )
+
+    :ok
+  end
+
   @doc "Returns true while a deploy of the target holds the lock."
   @spec deploying?(DeploymentTarget.t()) :: boolean()
   def deploying?(%DeploymentTarget{id: id}) do
@@ -297,6 +307,51 @@ defmodule Feather.Publishing do
         send(self(), {:deploy_requested, target})
         :ok
     end
+  end
+
+  ## Undeployed changes
+
+  @doc """
+  Returns true if the scope's site has published changes that a production
+  target does not show yet: a post, page or project was published after
+  the target's last successful deploy, or the target was never deployed.
+
+  Only production counts: staging shows the records as they are anyway, and
+  a backup is not what visitors see. Unpublishing creates no version, so it
+  does not count.
+  """
+  @spec undeployed_changes?(Scope.t()) :: boolean()
+  def undeployed_changes?(%Scope{site: %Site{id: site_id}}) do
+    deploys =
+      Repo.all(
+        from t in DeploymentTarget,
+          where: t.site_id == ^site_id and t.type == "production",
+          select: t.last_deployed_at
+      )
+
+    case {deploys, newest_publish(site_id)} do
+      {[], _} -> false
+      {_, nil} -> false
+      {deploys, published_at} -> Enum.any?(deploys, &(is_nil(&1) or before?(&1, published_at)))
+    end
+  end
+
+  defp before?(deployed_at, published_at),
+    do: DateTime.compare(deployed_at, published_at) == :lt
+
+  defp newest_publish(site_id) do
+    Feather.Content.versioned_schemas()
+    |> Enum.map(fn {record, version, foreign_key} ->
+      from v in version,
+        join: r in ^record,
+        on: r.id == field(v, ^foreign_key),
+        where: r.site_id == ^site_id,
+        select: %{published_at: max(v.published_at)}
+    end)
+    |> Enum.reduce(&union_all(&2, ^&1))
+    |> subquery()
+    |> select([v], max(v.published_at))
+    |> Repo.one()
   end
 
   ## Notices

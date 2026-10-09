@@ -413,13 +413,14 @@ defmodule FeatherWeb.CoreComponents do
   end
 
   @doc """
-  Renders a status badge: `published`, `draft` or `neutral`.
+  Renders a status badge: `published`, `draft`, `changed` (unpublished
+  changes) or `neutral`.
 
   ## Examples
 
       <.status_badge kind={:draft}>Draft</.status_badge>
   """
-  attr :kind, :atom, values: [:published, :draft, :neutral], default: :neutral
+  attr :kind, :atom, values: [:published, :draft, :changed, :neutral], default: :neutral
   attr :id, :string, default: nil
   slot :inner_block, required: true
 
@@ -431,6 +432,7 @@ defmodule FeatherWeb.CoreComponents do
         "badge rounded-pill",
         @kind == :published && "bg-success-subtle text-success-emphasis",
         @kind == :draft && "bg-warning-subtle text-warning-emphasis",
+        @kind == :changed && "bg-info-subtle text-info-emphasis",
         @kind == :neutral && "bg-secondary-subtle text-secondary-emphasis"
       ]}
     >
