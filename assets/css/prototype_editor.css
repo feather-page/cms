@@ -14,6 +14,7 @@
 }
 
 .pe-main {
+  position: relative;
   width: 100%;
   max-width: 45rem;
   margin-inline: auto;
@@ -188,18 +189,17 @@
 
 .pe-gutter {
   position: absolute;
-  top: 0.125rem;
-  left: -3.25rem;
+  z-index: 2;
+  left: 0.25rem;
   display: flex;
   gap: 0.125rem;
-  opacity: 0;
-  transition: opacity 0.12s;
+  translate: 0 -50%;
   user-select: none;
 }
 
-.pe-block:hover > .pe-gutter,
-.pe-block:focus-within > .pe-gutter {
-  opacity: 1;
+.pe-gutter[hidden],
+.pe-drop[hidden] {
+  display: none;
 }
 
 .pe-gutter__btn {
@@ -238,12 +238,15 @@
   opacity: 0.4;
 }
 
-.pe-drop-before {
-  box-shadow: 0 -2px 0 var(--felt-primary, #4a7bd0);
-}
-
-.pe-drop-after {
-  box-shadow: 0 2px 0 var(--felt-primary, #4a7bd0);
+.pe-drop {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  left: 3.5rem;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--felt-primary, #4a7bd0) 55%, transparent);
+  pointer-events: none;
 }
 
 /* ---- image ---- */

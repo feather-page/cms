@@ -61,6 +61,19 @@ defmodule FeatherWeb.PrototypeEditorLive do
               autocomplete="off"
             />
           </div>
+          <div id="pe-gutter" class="pe-gutter" phx-update="ignore" hidden>
+            <button type="button" class="pe-gutter__btn" data-action="add" title="Add a block below">
+              <.icon name="plus" size={16} />
+            </button>
+            <span
+              class="pe-gutter__btn pe-handle"
+              draggable="true"
+              title="Drag to move, click to select"
+            >
+              ⋮⋮
+            </span>
+          </div>
+          <div id="pe-drop" class="pe-drop" phx-update="ignore" hidden></div>
           <div
             id="pe-blocks"
             class="pe-blocks"
@@ -280,10 +293,15 @@ defmodule FeatherWeb.PrototypeEditorLive do
             })
             this.onSelection = () => this.menuOpen()
             document.addEventListener("selectionchange", this.onSelection)
-            this.list.addEventListener("dragstart", (e) => this.onDragstart(e))
-            this.list.addEventListener("dragover", (e) => this.onDragover(e))
-            this.list.addEventListener("drop", (e) => this.onDrop(e))
-            this.list.addEventListener("dragend", () => this.endDrag())
+            this.main = this.el.querySelector(".pe-main")
+            this.gutter = this.el.querySelector("#pe-gutter")
+            this.dropLine = this.el.querySelector("#pe-drop")
+            this.main.addEventListener("mousemove", (e) => this.onMousemove(e))
+            this.main.addEventListener("mouseleave", () => { if (!this.dragged) this.gutter.hidden = true })
+            this.main.addEventListener("dragstart", (e) => this.onDragstart(e))
+            this.main.addEventListener("dragover", (e) => this.onDragover(e))
+            this.main.addEventListener("drop", (e) => this.onDrop(e))
+            this.main.addEventListener("dragend", () => this.endDrag())
           },
 
           destroyed() {
@@ -453,6 +471,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           onInput(e) {
             const ed = e.target.closest?.("[data-editable]")
             if (!ed || e.isComposing) return
+            this.gutter.hidden = true
             tidy(ed)
             if (this.slash) this.updateMenu()
             if (e.inputType === "insertText") this.afterTyping(ed, e.data)
@@ -661,16 +680,39 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.goalX = null
             this.clearSelection()
             if (e.target.closest("#pe-menu")) e.preventDefault()
-            const handle = e.target.closest(".pe-handle")
-            if (handle) blockOf(handle).draggable = true
+          },
+
+          // One gutter for the page, moved to the block under the pointer.
+          blockAtY(y) {
+            const block = blockOf(document.elementFromPoint(this.list.getBoundingClientRect().left + 8, y))
+            return this.list.contains(block) ? block : null
+          },
+
+          onMousemove(e) {
+            if (this.dragged || e.target.closest("#pe-gutter")) return
+            const block = this.blockAtY(e.clientY)
+            if (block) this.placeGutter(block)
+          },
+
+          placeGutter(block) {
+            this.gutterBlock = block
+            const ed = editableOf(block)
+            const style = ed && getComputedStyle(ed)
+            const line = (ed && parseFloat(style.lineHeight)) || 32
+            const pad = ed ? ed.offsetTop + parseFloat(style.paddingTop) : 8
+            this.gutter.style.top = `${block.offsetTop + pad + line / 2}px`
+            this.gutter.hidden = false
           },
 
           onClick(e) {
             const target = e.target
             const item = target.closest("#pe-menu [data-type]")
             if (item && this.slash) return this.choose(item.dataset.type)
-            const selectable = target.closest(".pe-handle, .pe-image img")
-            if (selectable) return this.selectBlocks(blockOf(selectable), blockOf(selectable))
+            if (target.closest(".pe-handle") && this.gutterBlock?.isConnected) {
+              return this.selectBlocks(this.gutterBlock, this.gutterBlock)
+            }
+            const image = target.closest(".pe-image img")
+            if (image) return this.selectBlocks(blockOf(image), blockOf(image))
 
             const add = target.closest("[data-action=add]")
             const append = target.closest("[data-action=append]")
@@ -679,7 +721,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               let block
               if (append && last && isText(last) && editableOf(last).textContent === "") block = last
               else if (append && !last) block = this.createBlock("paragraph", "", this.list, "append")
-              else block = this.createBlock("paragraph", "", add ? blockOf(add) : last)
+              else block = this.createBlock("paragraph", "", add ? this.gutterBlock : last)
               const ed = editableOf(block)
               setCaret(ed, 0)
               if (add) document.execCommand("insertText", false, "/")
@@ -687,24 +729,29 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           onDragstart(e) {
-            const block = e.target.closest?.(".pe-block")
-            if (!block || !block.draggable) return
+            const block = this.gutterBlock
+            if (!e.target.closest?.(".pe-handle") || !block?.isConnected) return
             this.dragged = block
             e.dataTransfer.effectAllowed = "move"
             e.dataTransfer.setData("text/plain", "")
+            e.dataTransfer.setDragImage(block, 0, 0)
             block.classList.add("is-dragging")
           },
 
+          // The target is found by height, so the gaps between blocks and the
+          // gutter count too and the line does not flicker.
           onDragover(e) {
             if (!this.dragged) return
             e.preventDefault()
-            const target = e.target.closest?.(".pe-block")
-            this.clearDrop()
-            if (!target || target === this.dragged) return
+            const target = this.blockAtY(e.clientY)
+            if (!target) return
             const rect = target.getBoundingClientRect()
             const after = e.clientY > rect.top + rect.height / 2
-            target.classList.add(after ? "pe-drop-after" : "pe-drop-before")
-            this.drop = {target, after}
+            const noop = target === this.dragged ||
+              (after ? target.nextElementSibling : target.previousElementSibling) === this.dragged
+            this.drop = noop ? null : {target, after}
+            this.dropLine.hidden = noop
+            this.dropLine.style.top = `${target.offsetTop + (after ? target.offsetHeight : 0) - 2}px`
           },
 
           onDrop(e) {
@@ -716,15 +763,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.endDrag()
           },
 
-          clearDrop() {
-            this.list.querySelectorAll(".pe-drop-before, .pe-drop-after")
-              .forEach((el) => el.classList.remove("pe-drop-before", "pe-drop-after"))
-            this.drop = null
-          },
-
           endDrag() {
-            this.clearDrop()
-            this.list.querySelectorAll("[draggable=true]").forEach((el) => { el.draggable = false })
+            this.drop = null
+            this.dropLine.hidden = true
             this.dragged?.classList.remove("is-dragging")
             this.dragged = null
           }
@@ -953,12 +994,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
       data-id={@block.id}
       data-type={@block.type}
     >
-      <div class="pe-gutter" contenteditable="false">
-        <button type="button" class="pe-gutter__btn" data-action="add" title="Add a block below">
-          <.icon name="plus" size={16} />
-        </button>
-        <span class="pe-gutter__btn pe-handle" title="Drag to move">⋮⋮</span>
-      </div>
       <%= if @block.type == "image" do %>
         <div class="pe-image">
           <%= if @block.url do %>
