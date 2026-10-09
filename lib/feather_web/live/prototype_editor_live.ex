@@ -143,6 +143,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             </button>
           </div>
           <div id="pe-toolbar" class="pe-toolbar" phx-hook=".Toolbar" hidden>
+            <button type="button" class="pe-toolbar__touch" data-cmd="slash" title="Blocks">/</button>
             <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
             <button type="button" data-cmd="italic" title="Italic"><i>i</i></button>
             <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
@@ -150,6 +151,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
               <code>&lt;/&gt;</code>
             </button>
             <button type="button" data-cmd="link" title="Link (Ctrl+K)">Link</button>
+            <button type="button" class="pe-toolbar__touch" data-move="up" title="Move up">↑</button>
+            <button type="button" class="pe-toolbar__touch" data-move="down" title="Move down">↓</button>
           </div>
         </div>
 
@@ -410,9 +413,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             }
             if (mod && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
               e.preventDefault()
-              const offset = caretOffset(ed)
-              this.moveBlocks([block], e.key === "ArrowUp")
-              return setCaret(ed, offset)
+              return this.moveWithCaret(ed, e.key === "ArrowUp")
             }
             // Like Notion: Ctrl+A selects the block's text, a second one all blocks.
             if (mod && e.key === "a" && getSelection().toString().length === ed.textContent.length) {
@@ -621,6 +622,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
             ref?.[up ? "before" : "after"](...blocks)
           },
 
+          moveWithCaret(ed, up) {
+            const offset = caretOffset(ed)
+            this.moveBlocks([blockOf(ed)], up)
+            setCaret(ed, offset)
+          },
+
           deleteBlocks(blocks) {
             const prev = textSibling(blocks[0], "previousElementSibling")
             const next = textSibling(blocks.at(-1), "nextElementSibling")
@@ -670,7 +677,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const rect = caretRect() || ed.getBoundingClientRect()
             this.menu.hidden = false
             const below = rect.bottom + 6
-            const top = below + this.menu.offsetHeight > innerHeight ? rect.top - this.menu.offsetHeight - 6 : below
+            const bottom = window.visualViewport ? visualViewport.offsetTop + visualViewport.height : innerHeight
+            const top = below + this.menu.offsetHeight > bottom ? rect.top - this.menu.offsetHeight - 6 : below
             this.menu.style.left = `${Math.max(8, rect.left)}px`
             this.menu.style.top = `${Math.max(8, top)}px`
             const active = items[this.menuIndex]
@@ -763,6 +771,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const target = e.target
             const item = target.closest("#pe-menu [data-type]")
             if (item && this.slash) return this.choose(item.dataset.type)
+            const move = target.closest("#pe-toolbar [data-move]")
+            const editing = move && elOf(getSelection().anchorNode)?.closest("#pe-blocks [data-editable]")
+            if (editing) return this.moveWithCaret(editing, move.dataset.move === "up")
             if (target.closest(".pe-handle") && this.gutterBlock?.isConnected) {
               return this.selectBlocks(this.gutterBlock, this.gutterBlock)
             }
@@ -949,6 +960,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
         export default {
           mounted() {
+            // Touch screens: docked above the keyboard while a block has the focus,
+            // where the native selection menu does not cover it.
+            this.touch = matchMedia("(pointer: coarse)").matches
+            this.el.classList.toggle("is-docked", this.touch)
             this.onSelection = () => this.update()
             this.onKeydown = (e) => {
               if ((e.metaKey || e.ctrlKey) && KEYS[e.key] && this.range()) {
@@ -958,6 +973,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
             }
             document.addEventListener("selectionchange", this.onSelection)
             document.addEventListener("keydown", this.onKeydown)
+            visualViewport?.addEventListener("resize", this.onSelection)
+            visualViewport?.addEventListener("scroll", this.onSelection)
             this.el.addEventListener("mousedown", (e) => e.preventDefault())
             this.el.addEventListener("click", (e) => {
               const button = e.target.closest("[data-cmd]")
@@ -968,26 +985,36 @@ defmodule FeatherWeb.PrototypeEditorLive do
           destroyed() {
             document.removeEventListener("selectionchange", this.onSelection)
             document.removeEventListener("keydown", this.onKeydown)
+            visualViewport?.removeEventListener("resize", this.onSelection)
+            visualViewport?.removeEventListener("scroll", this.onSelection)
+          },
+
+          editable() {
+            const sel = getSelection()
+            const node = sel.rangeCount && sel.getRangeAt(0).commonAncestorContainer
+            return node ? (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]") : null
           },
 
           // The selection if it can be formatted: text inside one block, not code.
           range() {
+            const ed = this.editable()
             const sel = getSelection()
-            if (!sel.rangeCount || sel.isCollapsed) return null
-            const range = sel.getRangeAt(0)
-            const node = range.commonAncestorContainer
-            const ed = (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]")
-            return ed && ed.closest(".pe-block").dataset.type !== "code" ? range : null
+            return ed && !sel.isCollapsed && ed.closest(".pe-block").dataset.type !== "code" ? sel.getRangeAt(0) : null
           },
 
           update() {
             const range = this.range()
-            this.el.hidden = !range
-            if (!range) return
+            this.el.hidden = !range && !(this.touch && this.editable())
+            if (this.el.hidden) return
             for (const button of this.el.querySelectorAll("[data-cmd]")) {
               const cmd = button.dataset.cmd
               const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
               button.classList.toggle("is-active", !!active)
+            }
+            if (this.touch) {
+              const view = window.visualViewport || {offsetTop: 0, height: innerHeight}
+              this.el.style.top = `${view.offsetTop + view.height - this.el.offsetHeight - 8}px`
+              return
             }
             const rect = range.getBoundingClientRect()
             this.el.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.el.offsetWidth / 2)}px`
@@ -995,6 +1022,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           format(cmd) {
+            if (cmd === "slash") return document.execCommand("insertText", false, "/")
             const range = this.range()
             if (!range) return
             if (cmd === "code") {

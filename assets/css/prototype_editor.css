@@ -378,6 +378,25 @@
   background: rgba(255, 255, 255, 0.16);
 }
 
+.pe-toolbar__touch {
+  display: none;
+}
+
+.pe-toolbar.is-docked {
+  right: 8px;
+  left: 8px;
+  justify-content: space-between;
+}
+
+.pe-toolbar.is-docked .pe-toolbar__touch {
+  display: inline-block;
+}
+
+.pe-toolbar.is-docked button {
+  min-width: 2.5rem;
+  height: 2.5rem;
+}
+
 .pe-toolbar code {
   color: inherit;
   font-size: 0.8125rem;
