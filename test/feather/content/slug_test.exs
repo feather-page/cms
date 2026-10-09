@@ -52,6 +52,10 @@ defmodule Feather.Content.SlugTest do
       assert Slug.suggest("Posts", fn _ -> false end) == "/posts1"
       assert Slug.suggest("", fn _ -> false end) == ""
     end
+
+    test "suggests reserved slugs in an own namespace" do
+      assert Slug.suggest("Posts", fn _ -> false end, own_namespace: true) == "/posts"
+    end
   end
 
   describe "unsafe_validate_unique/1" do

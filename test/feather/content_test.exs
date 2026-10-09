@@ -109,6 +109,17 @@ defmodule Feather.ContentTest do
       assert Content.suggest_slug(scope, "About", page) == "/about"
       assert Content.suggest_slug(scope, "About", post) == "/about1"
     end
+
+    test "suggest_slug/3 suggests a project slug among the site's projects", %{scope: scope} do
+      project = project_fixture(scope, slug: "/tool")
+      post_fixture(scope, slug: "/blog")
+      new = %Project{site_id: scope.site.id}
+
+      assert Content.suggest_slug(scope, "Tool", new) == "/tool1"
+      assert Content.suggest_slug(scope, "Tool", project) == "/tool"
+      assert Content.suggest_slug(scope, "Blog", new) == "/blog"
+      assert Content.suggest_slug(scope, "Images", new) == "/images"
+    end
   end
 
   describe "tags and emoji" do

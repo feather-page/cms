@@ -871,30 +871,26 @@ defmodule Feather.Content do
   ## Shared
 
   @doc """
-  Suggests a free slug for a title in the scope's site (not used by any
-  post or page and not reserved), like Rails' `SlugGenerator`: `/my-title`,
-  then `/my-title1`, `/my-title2`, ... Returns `""` for a blank title.
-  The slug of `except` (the record being edited) counts as free.
+  Suggests a free slug for a title in the scope's site, like Rails'
+  `SlugGenerator`: `/my-title`, then `/my-title1`, `/my-title2`, ...
+  Returns `""` for a blank title. The slug is free in the URL space of
+  `except`, the record being edited (`Feather.Content.Slug.url_space/1`,
+  posts and pages without it), and not reserved unless `except` is a
+  project. The slug of `except` itself counts as free.
   """
   @spec suggest_slug(Scope.t(), String.t(), Post.t() | Page.t() | Project.t() | nil) ::
           String.t()
   def suggest_slug(%Scope{site: %Site{id: site_id}}, title, except \\ nil)
       when is_binary(title) do
-    Slug.suggest(title, fn slug ->
-      slug_taken?(Post, site_id, slug, except) or slug_taken?(Page, site_id, slug, except)
-    end)
-  end
-
-  defp slug_taken?(schema, site_id, slug, except) do
-    query = from r in schema, where: r.site_id == ^site_id and r.slug == ^slug
-
-    query =
+    {schema, except_id} =
       case except do
-        %^schema{id: id} when is_binary(id) -> where(query, [r], r.id != ^id)
-        _other -> query
+        %schema{id: id} -> {schema, id}
+        nil -> {Post, nil}
       end
 
-    Repo.exists?(query)
+    Slug.suggest(title, &Slug.taken?(schema, site_id, &1, except_id),
+      own_namespace: schema == Project
+    )
   end
 
   @doc """

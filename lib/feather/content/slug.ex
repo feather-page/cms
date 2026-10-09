@@ -167,23 +167,23 @@ defmodule Feather.Content.Slug do
   @doc """
   Suggests a free slug for the title. `taken?` is called with candidates
   (`/x`, `/x1`, `/x2`, ...) until it returns false; reserved slugs are
-  never suggested.
+  never suggested, unless `own_namespace: true` (see `cast_slug/2`).
   """
-  @spec suggest(String.t(), (String.t() -> boolean())) :: String.t()
-  def suggest(title, taken?) when is_function(taken?, 1) do
+  @spec suggest(String.t(), (String.t() -> boolean()), keyword()) :: String.t()
+  def suggest(title, taken?, opts \\ []) when is_function(taken?, 1) do
+    reserved? = if opts[:own_namespace], do: fn _slug -> false end, else: &reserved?/1
+
     case from_title(title) do
       "" -> ""
-      base -> find_free(base, 0, taken?)
+      base -> find_free(base, 0, &(reserved?.(&1) or taken?.(&1)))
     end
   end
 
-  defp find_free(base, attempt, taken?) do
+  defp find_free(base, attempt, unavailable?) do
     candidate = if attempt == 0, do: base, else: "#{base}#{attempt}"
 
-    if reserved?(candidate) or taken?.(candidate) do
-      find_free(base, attempt + 1, taken?)
-    else
-      candidate
-    end
+    if unavailable?.(candidate),
+      do: find_free(base, attempt + 1, unavailable?),
+      else: candidate
   end
 end
