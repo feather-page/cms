@@ -1,18 +1,28 @@
 defmodule FeatherWeb.PrototypeEditorLive do
   @moduledoc """
   PROTOTYPE, throwaway: a Notion-like block editor on LiveView. Not for
-  `main`; dev only at `/dev/editor-prototype`, in memory, without tests.
+  `main`; dev only at `/dev/editor-prototype`, without tests. A
+  `:persistent_term` stands in for the database (`?reset=1` starts over).
 
-  It answers one question: do Enter, Backspace, focus and type changes feel
-  instant when the server is far away?
+  It answers one question: do typing, Enter, Backspace, focus and type
+  changes feel instant when the server is far away?
 
-  The `.BlockEditor` hook applies every edit to the DOM at once and only then
-  pushes it. New blocks get their id on the client, so the server never
-  echoes a client edit back: it applies the edit to `@blocks` and re-renders
-  nothing but the state panel. The block list is rendered once and then
-  belongs to the client (`phx-update="ignore"`), also across reconnects. The
-  one change the server makes (an image URL becoming an image) comes back as
-  the block's HTML in the reply to the event.
+  The client owns the block list. It is rendered once (`phx-update="ignore"`,
+  editable once the hooks run) and then only changed in the DOM:
+
+    * `.BlockEditor` edits: keys as `beforeinput` (Android, IME), slash menu,
+      shortcuts, paste, block selection, gutter, drag and drop. It never
+      talks to the server.
+    * `.BlockSync` observes the list and pushes one idempotent `sync` event
+      with the order and the changed texts, debounced; everything after a
+      failed push or a reconnect. Ids are made on the client in the `Blocks`
+      format, so the server never echoes an edit back.
+    * The one thing the server makes, an image from a URL, comes back as the
+      block's HTML in the reply to `image_url`; a preview shows meanwhile.
+    * `.Toolbar` formats a selection, `.Latency` simulates a far server.
+
+  The server validates what it gets and keeps the stored format
+  (`export/1`), shown as JSON on demand.
   """
   use FeatherWeb, :live_view
 
@@ -541,7 +551,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             tail.appendChild(after.extractContents())
             tidy(tail)
             ed.append(first)
-            tidy(ed)
             let ref = block
             lines.forEach((line, i) => {
               ref = this.createBlock("paragraph", escapeHtml(line) + (i === lines.length - 1 ? tail.innerHTML : ""), ref)
@@ -951,6 +960,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Toolbar">
         // Formats the selection inside a text block. It only changes the DOM;
         // .BlockSync notices.
+
         // The rule of Feather.Content.HTML.safe_url?/1: relative, or http(s), mailto, tel.
         const safeUrl = (url) => {
           const scheme = url.replace(/[\x00-\x20\x7F-\x9F]/g, "").toLowerCase().match(/^([^\/?#]*?):/)
