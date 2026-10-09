@@ -233,6 +233,15 @@ defmodule FeatherWeb.PrototypeEditorLive do
           ;[...block.classList].filter((c) => c.startsWith("pe-block--")).forEach((c) => block.classList.remove(c))
           block.classList.add(`pe-block--${type}`)
           block.dataset.type = type
+          // Code is plain text: Enter, Tab and paste insert characters, not markup.
+          const ed = editableOf(block)
+          if (!ed) return
+          if (type === "code" && ed.querySelector("*")) {
+            const caret = document.activeElement === ed ? caretOffset(ed) : null
+            ed.textContent = ed.textContent
+            if (caret !== null) setCaret(ed, caret)
+          }
+          ed.contentEditable = type === "code" ? "plaintext-only" : "true"
         }
 
         export default {
@@ -297,7 +306,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const ed = editableOf(block)
             const ped = editableOf(prev)
             const offset = ped.textContent.length
-            if (prev.dataset.type === "code") ped.append(document.createTextNode(ed.innerText))
+            if (prev.dataset.type === "code") ped.append(document.createTextNode(ed.textContent))
             else while (ed.firstChild) ped.appendChild(ed.firstChild)
             block.remove()
             setCaret(ped, offset)
@@ -336,6 +345,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
               e.preventDefault()
               return this.split(block)
             }
+            if (e.key === "Tab") {
+              e.preventDefault()
+              if (block.dataset.type === "code" && !e.shiftKey) document.execCommand("insertText", false, "  ")
+              return
+            }
 
             const vertical = (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey
             if (!vertical) this.goalX = null
@@ -372,10 +386,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
             // into the wrong block.
             if (e.inputType === "historyUndo" || e.inputType === "historyRedo") {
               e.preventDefault()
-            } else if (e.inputType === "insertParagraph") {
+            } else if (e.inputType === "insertParagraph" && type !== "code") {
               e.preventDefault()
               if (this.slash) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
-              else if (type === "code") document.execCommand("insertText", false, "\n")
               else if (ed.textContent === "" && [...LIST_TYPES, "quote"].includes(type)) this.changeType(block, "paragraph")
               else this.split(block)
             } else if (e.inputType === "deleteContentBackward" && atStart) {
@@ -397,7 +410,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const block = blockOf(ed)
             tidy(ed)
             if (this.slash) this.updateMenu()
-            else if (e.inputType === "insertText" && e.data === "/") this.openMenu(ed)
+            else if (e.inputType === "insertText" && e.data === "/" && block.dataset.type !== "code") this.openMenu(ed)
 
             if (e.inputType === "insertText" && e.data === " " && block.dataset.type !== "code") {
               const before = rangeAt(ed, 0, caretOffset(ed)).toString()
@@ -585,7 +598,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const textOf = (block) => {
           const ed = block.querySelector(":scope > [data-editable]")
           if (block.dataset.type === "image") return block.querySelector(".pe-caption")?.value ?? ""
-          return block.dataset.type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML
+          return block.dataset.type === "code" ? ed.textContent.replace(/\n$/, "") : ed.innerHTML
         }
 
         export default {
@@ -800,7 +813,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
         <div
           id={"#{@id}-text"}
           class="pe-text"
-          contenteditable="true"
+          contenteditable={if @block.type == "code", do: "plaintext-only", else: "true"}
           phx-update="ignore"
           data-editable
           phx-no-format
