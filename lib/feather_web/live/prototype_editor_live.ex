@@ -789,7 +789,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const image = target.closest(".pe-image img")
             if (image) return this.selectBlocks(blockOf(image), blockOf(image))
 
-            const add = target.closest("[data-action=add]")
+            const add = target.closest("[data-action=add]") && this.gutterBlock?.isConnected
             const append = target.closest("[data-action=append]")
             if (add || append) {
               const last = this.list.lastElementChild
