@@ -29,7 +29,8 @@ defmodule Feather.Content.Blocks do
   Blocks of unknown types are dropped. `from_editor_js/1` and
   `to_editor_js/3` convert from and to the Editor.js format used by the
   admin editor; `from_editor_js(to_editor_js(blocks, site))` returns the
-  blocks unchanged.
+  blocks unchanged. `Feather.Content.ProseMirror` converts from and to
+  ProseMirror JSON.
   """
 
   alias Feather.Content.HTML
@@ -245,15 +246,27 @@ defmodule Feather.Content.Blocks do
     do: Map.take(b, ~w(service source embed width height caption))
 
   defp editor_js_data(%{"type" => "book"} = b, _site, books) do
-    book = Map.get(books, b["book_public_id"])
+    b
+    |> put_book(books)
+    |> Map.take(~w(book_public_id title author cover_url emoji))
+  end
 
-    %{
-      "book_public_id" => b["book_public_id"],
-      "title" => (book && book_field(book, :title)) || b["title"],
-      "author" => (book && book_field(book, :author)) || b["author"],
-      "cover_url" => b["cover_url"],
-      "emoji" => (book && book_field(book, :emoji)) || b["emoji"]
-    }
+  @doc """
+  Takes title, author and emoji of a book block from `books` (a map of
+  book public id to a map or struct with those fields) when the book is in
+  it, like Rails did: the bookshelf is the source of truth.
+  """
+  @spec put_book(block(), map()) :: block()
+  def put_book(%{"type" => "book"} = block, books) do
+    case Map.get(books, block["book_public_id"]) do
+      nil ->
+        block
+
+      book ->
+        Enum.reduce(~w(title author emoji)a, block, fn field, block ->
+          Map.put(block, to_string(field), book_field(book, field) || block[to_string(field)])
+        end)
+    end
   end
 
   defp book_field(%{} = book, field), do: Map.get(book, field) || Map.get(book, to_string(field))
