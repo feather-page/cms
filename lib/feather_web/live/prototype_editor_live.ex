@@ -33,8 +33,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
   ]
 
   @impl true
-  def mount(_params, _session, socket) do
-    blocks = sample_blocks()
+  def mount(params, _session, socket) do
+    # Stands in for the database, so a reconnect finds what the server had.
+    reset? = params["reset"] && get_connect_params(socket)["_mounts"] in [nil, 0]
+    blocks = (!reset? && :persistent_term.get(__MODULE__, nil)) || sample_blocks()
 
     {:ok,
      socket
@@ -769,6 +771,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
   end
 
   defp assign_blocks(socket, blocks) do
+    :persistent_term.put(__MODULE__, blocks)
+
     assign(socket, blocks: blocks, state: Jason.encode!(export(blocks), pretty: true))
   end
 
