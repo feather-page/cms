@@ -500,10 +500,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
               e.preventDefault()
               return this.split(block)
             }
-            if (e.key === "Tab") {
+            // Tab indents code; elsewhere, and with Shift, it moves the focus as usual.
+            if (e.key === "Tab" && !e.shiftKey && block.dataset.type === "code") {
               e.preventDefault()
-              if (block.dataset.type === "code" && !e.shiftKey) document.execCommand("insertText", false, "  ")
-              return
+              return document.execCommand("insertText", false, "  ")
             }
 
             const vertical = (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey
@@ -963,8 +963,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           onDrop(e) {
+            if (!this.dragged) return
             e.preventDefault()
-            if (this.dragged && this.drop) {
+            if (this.drop) {
               const {target, after} = this.drop
               target[after ? "after" : "before"](this.dragged)
             }
@@ -1017,6 +1018,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           destroyed() {
             this.observer.disconnect()
+            clearTimeout(this.timer)
             document.removeEventListener("visibilitychange", this.onHide)
             window.removeEventListener("beforeunload", this.onUnload)
           },
