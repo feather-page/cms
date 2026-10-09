@@ -1126,7 +1126,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           phx-update="ignore"
           data-editable
           phx-no-format
-        >{if @block.type == "code", do: @block.text, else: raw(String.replace(@block.text, "<br>", "\n"))}</div>
+        >{if @block.type == "code", do: @block.text, else: raw(@block.text |> HTML.sanitize(:editor) |> String.replace("<br>", "\n"))}</div>
       <% end %>
     </div>
     """
@@ -1184,12 +1184,21 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
     for [id, type] when is_binary(id) and type in @types <-
           order || Enum.map(blocks, &[&1.id, &1.type]) do
-      block = %{(known[id] || new_block(id, type, "")) | type: type}
+      block = known[id] || new_block(id, type, "")
 
       case Map.fetch(texts, id) do
-        {:ok, caption} when type == "image" and is_binary(caption) -> %{block | caption: caption}
-        {:ok, text} when is_binary(text) -> %{block | text: clean(type, text)}
-        _ -> block
+        {:ok, caption} when type == "image" and is_binary(caption) ->
+          %{block | type: type, caption: caption}
+
+        {:ok, text} when is_binary(text) ->
+          %{block | type: type, text: clean(type, text)}
+
+        # Code is stored raw: a new type cleans the old text for its own rules.
+        _ when block.type != type ->
+          %{block | type: type, text: clean(type, block.text)}
+
+        _ ->
+          block
       end
     end
   end
