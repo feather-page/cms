@@ -82,10 +82,7 @@ defmodule Feather.Content.Project do
     |> validate_inclusion(:status, @statuses)
     |> validate_inclusion(:project_type, @project_types)
     |> Feather.Validations.validate_emoji(:emoji)
-    |> unsafe_validate_unique([:site_id, :slug], Feather.Repo,
-      error_key: :slug,
-      message: "has already been taken"
-    )
+    |> Slug.unsafe_validate_unique()
     |> unique_constraint([:site_id, :slug], error_key: :slug, message: "has already been taken")
   end
 

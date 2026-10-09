@@ -121,6 +121,17 @@ defmodule FeatherWeb.Api.V1.PageControllerTest do
       assert json_response(conn, 422)["details"]["slug"] == ["has already been taken"]
     end
 
+    test "rejects the slug of a post", %{conn: conn, path: path, scope: scope} do
+      post_fixture(scope, slug: "/news")
+
+      conn = json_request(conn, :post, path, %{page: %{title: "News", slug: "/news"}})
+
+      assert json_response(conn, 422) == %{
+               "error" => "Validation failed",
+               "details" => %{"slug" => ["has already been taken"]}
+             }
+    end
+
     test "requires a slug", %{conn: conn, path: path} do
       conn = json_request(conn, :post, path, %{page: %{title: "No Slug"}})
 

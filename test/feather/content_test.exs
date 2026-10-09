@@ -69,6 +69,24 @@ defmodule Feather.ContentTest do
       assert {:ok, _} = Content.create_post(other, %{title: "c", slug: "/same"})
     end
 
+    test "a post and a page of a site cannot share a slug", %{scope: scope} do
+      page_fixture(scope, slug: "/about")
+      assert {:error, changeset} = Content.create_post(scope, %{title: "x", slug: "/about"})
+      assert "has already been taken" in errors_on(changeset).slug
+
+      post = post_fixture(scope, slug: "/news")
+      assert {:error, changeset} = Content.create_page(scope, %{title: "x", slug: "/news"})
+      assert "has already been taken" in errors_on(changeset).slug
+
+      page = page_fixture(scope, slug: "/contact")
+      assert {:error, changeset} = Content.update_page(scope, page, %{slug: "/news"})
+      assert "has already been taken" in errors_on(changeset).slug
+      assert {:ok, _post} = Content.update_post(scope, post, %{title: "Keeps its slug"})
+
+      assert project_fixture(scope, slug: "/about").slug == "/about"
+      assert {:ok, _} = Content.create_post(site_scope_fixture(), %{title: "x", slug: "/about"})
+    end
+
     test "pages and projects require a slug", %{scope: scope} do
       assert {:error, changeset} = Content.create_page(scope, %{title: "x"})
       assert "can't be blank" in errors_on(changeset).slug
@@ -90,6 +108,17 @@ defmodule Feather.ContentTest do
       assert Content.suggest_slug(scope, "Hello", post) == "/hello"
       assert Content.suggest_slug(scope, "About", page) == "/about"
       assert Content.suggest_slug(scope, "About", post) == "/about1"
+    end
+
+    test "suggest_slug/3 suggests a project slug among the site's projects", %{scope: scope} do
+      project = project_fixture(scope, slug: "/tool")
+      post_fixture(scope, slug: "/blog")
+      new = %Project{site_id: scope.site.id}
+
+      assert Content.suggest_slug(scope, "Tool", new) == "/tool1"
+      assert Content.suggest_slug(scope, "Tool", project) == "/tool"
+      assert Content.suggest_slug(scope, "Blog", new) == "/blog"
+      assert Content.suggest_slug(scope, "Images", new) == "/images"
     end
   end
 
@@ -454,11 +483,36 @@ defmodule Feather.ContentTest do
 
       other_site = site_scope_fixture()
       post_fixture(other_site, slug: "/elsewhere")
-      page_fixture(scope, slug: "/elsewhere")
+      project_fixture(scope, slug: "/elsewhere")
       assert {:ok, _post} = Content.publish(scope, post_fixture(scope, slug: "/elsewhere"))
 
       {:ok, _} = Content.unpublish(scope, published)
       assert {:ok, _post} = Content.publish(scope, post)
+    end
+
+    test "refuses a slug a post or page of the other type is published with",
+         %{scope: scope} do
+      page = page_fixture(scope, slug: "/page-taken")
+      {:ok, _moved} = Content.update_page(scope, page, %{slug: "/page-moved"})
+      post = post_fixture(scope, slug: "/page-taken", draft: true)
+      assert Content.publish(scope, post) == {:error, :slug_taken}
+
+      post = post_fixture(scope, slug: "/post-taken")
+      {:ok, _moved} = Content.update_post(scope, post, %{slug: "/post-moved"})
+      page = page_fixture(scope, slug: "/post-taken", draft: true)
+      assert Content.publish(scope, page) == {:error, :slug_taken}
+    end
+
+    test "saving with draft: false refuses a slug another record is published with",
+         %{scope: scope} do
+      published = post_fixture(scope, slug: "/taken")
+      {:ok, _moved} = Content.update_post(scope, published, %{slug: "/moved"})
+
+      assert {:error, changeset} =
+               Content.create_post(scope, %{title: "x", slug: "/taken"}, draft: false)
+
+      assert "has already been taken" in errors_on(changeset).slug
+      assert Content.get_post_by_slug(scope, "/taken") == nil
     end
 
     test "only publishes records of the scope's site", %{scope: scope} do
@@ -680,6 +734,13 @@ defmodule Feather.ContentTest do
 
       assert {:error, changeset} = Content.discard_changes(scope, post)
       assert "has already been taken" in errors_on(changeset).slug
+
+      page = page_fixture(scope, slug: "/page-taken")
+      {:ok, page} = Content.update_page(scope, page, %{slug: "/page-moved"})
+      post_fixture(scope, slug: "/page-taken", draft: true)
+
+      assert {:error, changeset} = Content.discard_changes(scope, page)
+      assert "has already been taken" in errors_on(changeset).slug
     end
 
     test "only discards changes of published records of the scope's site", %{scope: scope} do
@@ -850,6 +911,19 @@ defmodule Feather.ContentTest do
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
       {:ok, post} = Content.publish(scope, post)
       post_fixture(scope, slug: "/taken")
+
+      assert {:error, changeset} =
+               Content.restore_version(scope, post, Content.get_version!(scope, post, 1))
+
+      assert "has already been taken" in errors_on(changeset).slug
+      assert Repo.reload!(post).slug == "/moved"
+    end
+
+    test "restoring a version whose slug a page has taken fails", %{scope: scope} do
+      post = post_fixture(scope, slug: "/taken")
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
+      {:ok, post} = Content.publish(scope, post)
+      page_fixture(scope, slug: "/taken")
 
       assert {:error, changeset} =
                Content.restore_version(scope, post, Content.get_version!(scope, post, 1))

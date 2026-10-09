@@ -8,9 +8,15 @@ defmodule Feather.Content.Slug do
   are reserved: everything under `images/`, `page/`, `posts/` and
   `projects/`, plus `feed.xml`, `robots.txt` and `sitemap.xml`. Projects
   live under `projects/`, so their slugs are exempt from the reservation.
+
+  Posts and pages share the site root, so a slug is unique among the
+  posts and pages of a site, see `url_space/1`.
   """
 
   import Ecto.Changeset
+  import Ecto.Query, only: [from: 2, where: 3]
+
+  alias Feather.Content.{Page, Post, Project}
 
   @format ~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z}
   @reserved_prefixes ~w(images page posts projects)
@@ -90,6 +96,56 @@ defmodule Feather.Content.Slug do
   end
 
   @doc """
+  The schemas whose records share the URL space of `schema`'s records:
+  posts and pages are exported at the site root, projects under
+  `projects/`.
+  """
+  @spec url_space(module()) :: [module()]
+  def url_space(schema) when schema in [Post, Page], do: [Post, Page]
+  def url_space(Project), do: [Project]
+
+  @doc """
+  Adds "has already been taken" to a changed `:slug` that another record
+  of the site's URL space (`url_space/1`) has. The unique index of a
+  table only covers its own records. Like
+  `Ecto.Changeset.unsafe_validate_unique/4` it checks without a lock.
+  """
+  @spec unsafe_validate_unique(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  def unsafe_validate_unique(%Ecto.Changeset{data: %schema{id: id}} = changeset) do
+    slug = get_change(changeset, :slug)
+    site_id = get_field(changeset, :site_id)
+
+    if is_binary(slug) and not is_nil(site_id) and not Keyword.has_key?(changeset.errors, :slug) and
+         taken?(schema, site_id, slug, id) do
+      add_error(changeset, :slug, "has already been taken",
+        validation: :unsafe_unique,
+        fields: [:site_id, :slug]
+      )
+    else
+      changeset
+    end
+  end
+
+  @doc """
+  Returns true if a record of the site's URL space of `schema`
+  (`url_space/1`) has the slug. The `schema` record with id `except_id`
+  does not count.
+  """
+  @spec taken?(module(), Ecto.UUID.t(), String.t(), Ecto.UUID.t() | nil) :: boolean()
+  def taken?(schema, site_id, slug, except_id \\ nil) do
+    Enum.any?(url_space(schema), fn other ->
+      query = from r in other, where: r.site_id == ^site_id and r.slug == ^slug
+
+      query =
+        if other == schema and except_id,
+          do: where(query, [r], r.id != ^except_id),
+          else: query
+
+      Feather.Repo.exists?(query)
+    end)
+  end
+
+  @doc """
   Turns a title into a slug candidate the way Rails' `SlugGenerator` did:
   slashes removed, lowercased, trimmed, every character other than `a-z`,
   `0-9` and `-` replaced by a dash, repeated dashes squeezed. Returns `""`
@@ -111,23 +167,23 @@ defmodule Feather.Content.Slug do
   @doc """
   Suggests a free slug for the title. `taken?` is called with candidates
   (`/x`, `/x1`, `/x2`, ...) until it returns false; reserved slugs are
-  never suggested.
+  never suggested, unless `own_namespace: true` (see `cast_slug/2`).
   """
-  @spec suggest(String.t(), (String.t() -> boolean())) :: String.t()
-  def suggest(title, taken?) when is_function(taken?, 1) do
+  @spec suggest(String.t(), (String.t() -> boolean()), keyword()) :: String.t()
+  def suggest(title, taken?, opts \\ []) when is_function(taken?, 1) do
+    reserved? = if opts[:own_namespace], do: fn _slug -> false end, else: &reserved?/1
+
     case from_title(title) do
       "" -> ""
-      base -> find_free(base, 0, taken?)
+      base -> find_free(base, 0, &(reserved?.(&1) or taken?.(&1)))
     end
   end
 
-  defp find_free(base, attempt, taken?) do
+  defp find_free(base, attempt, unavailable?) do
     candidate = if attempt == 0, do: base, else: "#{base}#{attempt}"
 
-    if reserved?(candidate) or taken?.(candidate) do
-      find_free(base, attempt + 1, taken?)
-    else
-      candidate
-    end
+    if unavailable?.(candidate),
+      do: find_free(base, attempt + 1, unavailable?),
+      else: candidate
   end
 end

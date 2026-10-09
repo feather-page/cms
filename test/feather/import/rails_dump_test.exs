@@ -351,6 +351,24 @@ defmodule Feather.Import.RailsDumpTest do
       assert message =~ "language_code"
     end
 
+    test "imports a page with the slug of a published post as a draft and reports it" do
+      dir =
+        dump_with(fn tables ->
+          update_row(tables, "posts", @post_id, &Map.put(&1, "slug", "/about"))
+        end)
+
+      report = import!(dir)
+
+      page = Repo.get!(Page, "7ddf3ca5-baec-46b6-a5ae-ec42a4e281eb")
+      assert page.slug == "/about"
+      assert Feather.Content.draft?(page)
+      refute Feather.Content.draft?(Repo.get!(Post, @post_id))
+
+      assert [bypassed] = Report.findings(report, :validation_bypassed)
+      assert bypassed =~ "page CTu6pDSKycJL (/about): slug has already been taken"
+      assert Enum.any?(Report.findings(report, :notice), &(&1 =~ "(/about): not published"))
+    end
+
     test "skips rows whose parent is missing" do
       dir =
         dump_with(fn tables ->

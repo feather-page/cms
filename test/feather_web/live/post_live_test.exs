@@ -597,6 +597,27 @@ defmodule FeatherWeb.PostLiveTest do
       assert [%{number: 4, slug: "/free"} | _] = Content.list_versions(scope, post)
     end
 
+    test "refuses the slug a page has or is published with", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, slug: "/about")
+      post = post_fixture(scope, slug: "/mine", draft: true)
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+
+      lv |> form("#post-form", post: %{slug: "/about"}) |> render_change()
+      assert has_element?(lv, "#slug-field .invalid-feedback", "has already been taken")
+      assert Content.get_post!(scope, post.public_id).slug == "/mine"
+
+      {:ok, _moved} = Content.update_page(scope, page, %{slug: "/moved"})
+      lv |> form("#post-form", post: %{slug: "/about"}) |> render_change()
+      refute has_element?(lv, "#slug-field .invalid-feedback")
+
+      assert publish(lv) =~ "Not published: another post or page is published with this slug."
+      assert Content.draft?(Content.get_post!(scope, post.public_id))
+    end
+
     test "discards the unpublished changes", %{conn: conn, site: site, scope: scope} do
       post = post_at_version_3(scope)
       {:ok, _post} = Content.update_post(scope, post, %{title: "Unpublished"})
@@ -676,7 +697,7 @@ defmodule FeatherWeb.PostLiveTest do
       post = post_fixture(scope, slug: "/taken", draft: true)
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
-      assert publish(lv) =~ "Not published: another post is published with this slug."
+      assert publish(lv) =~ "Not published: another post or page is published with this slug."
       assert Content.draft?(Content.get_post!(scope, post.public_id))
     end
 

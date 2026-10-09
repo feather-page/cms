@@ -66,7 +66,7 @@ defmodule FeatherWeb.ContentForm do
   """
 
   alias Feather.Content
-  alias Feather.Content.Blocks
+  alias Feather.Content.{Blocks, Project}
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
@@ -456,11 +456,16 @@ defmodule FeatherWeb.ContentForm do
             LiveView.put_flash(
               socket,
               :error,
-              "Not published: another #{String.downcase(socket.view.noun())} is published with this slug."
+              "Not published: another #{slug_rivals(record)} is published with this slug."
             )
         end
     end
   end
+
+  # The records whose published slug a record cannot take, see
+  # Feather.Content.Slug.url_space/1.
+  defp slug_rivals(%Project{}), do: "project"
+  defp slug_rivals(_post_or_page), do: "post or page"
 
   defp editor_json(scope, record), do: Jason.encode!(Content.editor_doc(scope, record))
 

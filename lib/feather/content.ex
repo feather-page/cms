@@ -24,6 +24,8 @@ defmodule Feather.Content do
   (the content API's field), applied in the same transaction as the save:
   `draft: false` publishes the saved record, `draft: true` makes it a draft
   (unpublishing it if it was published) that keeps the saved changes.
+  Where `publish/2` refuses the slug, the save fails with "has already
+  been taken" on `:slug`.
 
   Every save that changes a record's fields (forms, the content API,
   `sync_content/4`, `discard_changes/2`, `restore_version/3`) increments
@@ -610,7 +612,8 @@ defmodule Feather.Content do
   returns `{:error, :stale}` and publishes nothing, so nobody publishes a
   state they have not seen.
 
-  Fails with `{:error, :slug_taken}` when another record of the type is
+  Fails with `{:error, :slug_taken}` when another record of its URL space
+  (`Feather.Content.Slug.url_space/1`, posts and pages share one) is
   published with the record's slug: the unique slug of the current
   records does not cover a published version whose record has moved on.
   """
@@ -642,14 +645,16 @@ defmodule Feather.Content do
   defp published_slug_taken?(%{slug: nil}), do: false
 
   defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}) do
-    {version_schema, _owner_field} = Map.fetch!(@versions, schema)
+    Enum.any?(Slug.url_space(schema), fn other ->
+      {version_schema, _owner_field} = Map.fetch!(@versions, other)
 
-    Repo.exists?(
-      from r in schema,
-        join: v in ^version_schema,
-        on: v.id == r.published_version_id,
-        where: r.site_id == ^site_id and r.id != ^id and v.slug == ^slug
-    )
+      Repo.exists?(
+        from r in other,
+          join: v in ^version_schema,
+          on: v.id == r.published_version_id,
+          where: r.site_id == ^site_id and r.id != ^id and v.slug == ^slug
+      )
+    end)
   end
 
   defp insert_version(%Scope{user: user} = scope, %schema{} = record) do
@@ -777,6 +782,7 @@ defmodule Feather.Content do
   defp put_version_fields(record, %version_schema{} = version) do
     record
     |> Ecto.Changeset.change(Map.take(version, version_schema.copied_fields()))
+    |> Slug.unsafe_validate_unique()
     |> Ecto.Changeset.unique_constraint([:site_id, :slug],
       error_key: :slug,
       message: "has already been taken"
@@ -865,30 +871,26 @@ defmodule Feather.Content do
   ## Shared
 
   @doc """
-  Suggests a free slug for a title in the scope's site (not used by any
-  post or page and not reserved), like Rails' `SlugGenerator`: `/my-title`,
-  then `/my-title1`, `/my-title2`, ... Returns `""` for a blank title.
-  The slug of `except` (the record being edited) counts as free.
+  Suggests a free slug for a title in the scope's site, like Rails'
+  `SlugGenerator`: `/my-title`, then `/my-title1`, `/my-title2`, ...
+  Returns `""` for a blank title. The slug is free in the URL space of
+  `except`, the record being edited (`Feather.Content.Slug.url_space/1`,
+  posts and pages without it), and not reserved unless `except` is a
+  project. The slug of `except` itself counts as free.
   """
   @spec suggest_slug(Scope.t(), String.t(), Post.t() | Page.t() | Project.t() | nil) ::
           String.t()
   def suggest_slug(%Scope{site: %Site{id: site_id}}, title, except \\ nil)
       when is_binary(title) do
-    Slug.suggest(title, fn slug ->
-      slug_taken?(Post, site_id, slug, except) or slug_taken?(Page, site_id, slug, except)
-    end)
-  end
-
-  defp slug_taken?(schema, site_id, slug, except) do
-    query = from r in schema, where: r.site_id == ^site_id and r.slug == ^slug
-
-    query =
+    {schema, except_id} =
       case except do
-        %^schema{id: id} when is_binary(id) -> where(query, [r], r.id != ^id)
-        _other -> query
+        %schema{id: id} -> {schema, id}
+        nil -> {Post, nil}
       end
 
-    Repo.exists?(query)
+    Slug.suggest(title, &Slug.taken?(schema, site_id, &1, except_id),
+      own_namespace: schema == Project
+    )
   end
 
   @doc """
@@ -945,13 +947,21 @@ defmodule Feather.Content do
         )
 
         case Keyword.fetch(opts, :draft) do
-          {:ok, false} -> publish(scope, record)
+          {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
           {:ok, true} -> unpublish(scope, record)
           :error -> {:ok, record}
         end
       end
     end)
   end
+
+  defp slug_taken_error({:error, :slug_taken}, changeset) do
+    action = if changeset.data.__meta__.state == :loaded, do: :update, else: :insert
+    changeset = Ecto.Changeset.add_error(changeset, :slug, "has already been taken")
+    {:error, %{changeset | action: action}}
+  end
+
+  defp slug_taken_error(result, _changeset), do: result
 
   # Updates of a stored record increment `lock_version` and only apply
   # while it still has the value the changeset's data was loaded with.
