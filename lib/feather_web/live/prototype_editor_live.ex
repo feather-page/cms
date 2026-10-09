@@ -221,14 +221,17 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           // ---- block operations (they only change the DOM) -----------------
 
-          createBlock(type, html, ref, where = "after") {
-            const id = newId()
+          fromTemplate(type, id) {
             const kind = type === "image" ? "image" : "text"
-            const holder = document.createElement("div")
-            holder.innerHTML = this.el.querySelector(`#pe-template-${kind}`).innerHTML.replaceAll("__ID__", id).trim()
-            const block = holder.firstElementChild
+            const html = this.el.querySelector(`#pe-template-${kind}`).innerHTML.replaceAll("__ID__", id)
+            const block = document.createRange().createContextualFragment(html).firstElementChild
             setType(block, type)
-            if (kind === "text") editableOf(block).innerHTML = html
+            return block
+          },
+
+          createBlock(type, html, ref, where = "after") {
+            const block = this.fromTemplate(type, newId())
+            if (isText(block)) editableOf(block).innerHTML = html
             ref[where](block)
             return block
           },
@@ -270,9 +273,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           toImage(block) {
-            const holder = document.createElement("div")
-            holder.innerHTML = this.el.querySelector("#pe-template-image").innerHTML.replaceAll("__ID__", block.dataset.id).trim()
-            const image = holder.firstElementChild
+            const image = this.fromTemplate("image", block.dataset.id)
             block.replaceWith(image)
             image.querySelector("input[name=url]")?.focus()
           },
