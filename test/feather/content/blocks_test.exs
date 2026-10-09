@@ -156,6 +156,12 @@ defmodule Feather.Content.BlocksTest do
   end
 
   describe "normalize/1" do
+    test "keeps only string code in code blocks" do
+      for code <- [%{"a" => 1}, ["x"], 42, nil] do
+        assert [%{"code" => ""}] = Blocks.normalize([%{"type" => "code", "code" => code}])
+      end
+    end
+
     test "stringifies keys and drops unknown types" do
       assert [%{"id" => "x", "type" => "paragraph", "text" => "Hi"}] =
                Blocks.normalize([

@@ -76,7 +76,7 @@ defmodule Feather.Content.Blocks do
     do: %{"type" => "quote", "text" => inline(b["text"]), "caption" => inline(b["caption"])}
 
   defp normalize_block("code", b),
-    do: %{"type" => "code", "code" => b["code"], "language" => code_language(b["language"])}
+    do: %{"type" => "code", "code" => code(b["code"]), "language" => code_language(b["language"])}
 
   defp normalize_block("image", b) do
     if is_binary(b["image_id"]) do
@@ -414,6 +414,9 @@ defmodule Feather.Content.Blocks do
 
   defp list_style("ol"), do: "ol"
   defp list_style(_style), do: "ul"
+
+  defp code(code) when is_binary(code), do: code
+  defp code(_code), do: ""
 
   defp code_language(language) when is_binary(language) and language != "", do: language
   defp code_language(_language), do: "plaintext"
