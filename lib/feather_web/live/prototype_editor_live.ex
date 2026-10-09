@@ -220,10 +220,15 @@ defmodule FeatherWeb.PrototypeEditorLive do
             document.addEventListener("selectionchange", this.onSelection)
             this.markLatency(window.liveSocket?.getLatencySim() || 0)
             this.sent = this.snapshot()
+            // The DOM is the document: any change to it (or to a caption) is synced.
+            this.observer = new MutationObserver(() => this.changed())
+            this.observer.observe(this.list, {childList: true, subtree: true, characterData: true, attributeFilter: ["data-type"]})
+            this.list.addEventListener("input", () => this.changed())
           },
 
           destroyed() {
             document.removeEventListener("selectionchange", this.onSelection)
+            this.observer.disconnect()
           },
 
           // ---- talking to the server -------------------------------------
@@ -282,7 +287,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.status.textContent = busy ? "Saving…" : "Server in sync"
           },
 
-          // ---- block operations (DOM first, then push) ---------------------
+          // ---- block operations (they only change the DOM) -----------------
 
           createBlock(type, html, ref, where = "after") {
             const id = newId()
@@ -293,7 +298,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             setType(block, type)
             if (kind === "text") editableOf(block).innerHTML = html
             ref[where](block)
-            this.changed()
             return block
           },
 
@@ -326,13 +330,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
             else while (ed.firstChild) ped.appendChild(ed.firstChild)
             block.remove()
             setCaret(ped, offset)
-            this.changed()
           },
 
           changeType(block, type) {
-            if (type === "image") return this.toImage(block)
-            setType(block, type)
-            this.changed()
+            if (type === "image") this.toImage(block)
+            else setType(block, type)
           },
 
           toImage(block) {
@@ -341,7 +343,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const image = holder.firstElementChild
             block.replaceWith(image)
             image.querySelector("input[name=url]")?.focus()
-            this.changed()
           },
 
           // ---- keyboard ------------------------------------------------------
@@ -383,7 +384,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
               } else if (prev && ed.textContent === "") {
                 e.preventDefault()
                 block.remove()
-                this.changed()
               }
               return
             }
@@ -404,7 +404,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           onInput(e) {
-            this.changed()
             const ed = e.target.closest?.("[data-editable]")
             if (!ed) return
             const block = blockOf(ed)
@@ -554,7 +553,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             } else {
               document.execCommand(cmd)
             }
-            this.changed()
             this.updateToolbar()
           },
 
@@ -626,7 +624,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (this.dragged && this.drop) {
               const {target, after} = this.drop
               target[after ? "after" : "before"](this.dragged)
-              this.changed()
             }
             this.endDrag()
           },
