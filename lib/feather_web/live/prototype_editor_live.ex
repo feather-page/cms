@@ -61,11 +61,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
       <div id="pe-editor" class="pe" phx-hook=".BlockEditor">
         <div class="pe-main">
           <div id="pe-head" phx-update="ignore">
-            <p class="pe-badge">Prototype · in memory, nothing is saved</p>
+            <p class="pe-badge">Prototype · blocks kept in memory, the title is not saved</p>
             <input
               id="pe-title"
               class="pe-title"
-              placeholder="Untitled"
+              placeholder="Untitled (not saved)"
               value="Writing in feather"
               autocomplete="off"
             />
