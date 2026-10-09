@@ -133,8 +133,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
           "1.": "numbered", ">": "quote", "```": "code"}
         const LIST_TYPES = ["bulleted", "numbered"]
 
-        const newId = () => (crypto.randomUUID ? crypto.randomUUID() :
-          Math.random().toString(36).slice(2) + Date.now().toString(36))
+        // Ids like Feather.Content.Blocks generates them: 10 characters of [0-9a-zA-Z].
+        const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        const newId = () => Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => ID_CHARS[b % 62]).join("")
         const elOf = (node) => (node && node.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement)
         const blockOf = (node) => elOf(node)?.closest(".pe-block")
         const editableOf = (block) => block?.querySelector(":scope > [data-editable]")
