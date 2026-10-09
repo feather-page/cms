@@ -40,7 +40,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
     {:ok,
      socket
-     |> assign(page_title: "Editor prototype", menu: @menu, events: 0)
+     |> assign(page_title: "Editor prototype", menu: @menu, events: 0, show_state: false)
      |> assign(initial: blocks)
      |> assign_blocks(blocks), temporary_assigns: [initial: []]}
   end
@@ -93,10 +93,19 @@ defmodule FeatherWeb.PrototypeEditorLive do
           </section>
           <section class="card pe-panel">
             <div class="card-body">
-              <h2 class="pe-panel__title">
-                Server state <span class="pe-muted">· {@events} events applied</span>
+              <h2 class="pe-panel__title d-flex align-items-center gap-2">
+                Server state
+                <span class="pe-muted">· {@events} events · {length(@blocks)} blocks</span>
+                <button
+                  type="button"
+                  id="pe-state-toggle"
+                  class="btn btn-sm btn-link ms-auto p-0"
+                  phx-click="toggle_state"
+                >
+                  {if @show_state, do: "Hide JSON", else: "Show JSON"}
+                </button>
               </h2>
-              <pre id="pe-state" class="pe-state">{@state}</pre>
+              <pre :if={@show_state} id="pe-state" class="pe-state">{@state}</pre>
             </div>
           </section>
         </aside>
@@ -757,15 +766,22 @@ defmodule FeatherWeb.PrototypeEditorLive do
   # What changed in the document: the block order with types (all of it, or
   # nil when unchanged) and the texts that changed. The client owns order,
   # types, text and captions; the server owns what it made (image URLs).
+  # Malformed parts are dropped instead of crashing the process.
   @impl true
   def handle_event("sync", params, socket) do
-    {:noreply, change(socket, &apply_sync(&1, params["order"], params["texts"] || %{}))}
+    order = if is_list(params["order"]), do: params["order"]
+    texts = if is_map(params["texts"]), do: params["texts"], else: %{}
+    {:noreply, change(socket, &apply_sync(&1, order, texts))}
   end
 
-  # The one change the server makes itself: the URL becomes an image, and
-  # the reply carries the block's new HTML.
-  def handle_event("image_url", %{"id" => id, "url" => url}, socket) do
-    socket = change(socket, &update_block(&1, id, fn b -> %{b | url: url} end))
+  # The one change the server makes itself: an http(s) URL becomes an image.
+  # The reply carries the block's HTML, the URL form again if it was refused.
+  def handle_event("image_url", %{"id" => id, "url" => url}, socket)
+      when is_binary(id) and is_binary(url) do
+    socket =
+      if web_url?(url),
+        do: change(socket, &update_block(&1, id, fn b -> %{b | url: url} end)),
+        else: socket
 
     case Enum.find(socket.assigns.blocks, &(&1.id == id)) do
       nil -> {:reply, %{}, socket}
@@ -773,30 +789,45 @@ defmodule FeatherWeb.PrototypeEditorLive do
     end
   end
 
+  def handle_event("toggle_state", _params, socket) do
+    socket = update(socket, :show_state, &(!&1))
+    {:noreply, assign_blocks(socket, socket.assigns.blocks)}
+  end
+
+  def handle_event(_event, _params, socket), do: {:noreply, socket}
+
   defp change(socket, fun) do
     socket
     |> assign_blocks(fun.(socket.assigns.blocks))
     |> update(:events, &(&1 + 1))
   end
 
+  # The JSON goes over the wire whole on every event (tens of KB for a long
+  # document), so it is only rendered while it is shown.
   defp assign_blocks(socket, blocks) do
     :persistent_term.put(__MODULE__, blocks)
-
-    assign(socket, blocks: blocks, state: Jason.encode!(export(blocks), pretty: true))
+    state = if socket.assigns.show_state, do: Jason.encode!(export(blocks), pretty: true)
+    assign(socket, blocks: blocks, state: state)
   end
 
   defp apply_sync(blocks, order, texts) do
     known = Map.new(blocks, &{&1.id, &1})
 
-    for [id, type] <- order || Enum.map(blocks, &[&1.id, &1.type]), type in @types do
+    for [id, type] when is_binary(id) and type in @types <-
+          order || Enum.map(blocks, &[&1.id, &1.type]) do
       block = %{(known[id] || new_block(id, type, "")) | type: type}
 
       case Map.fetch(texts, id) do
-        {:ok, caption} when type == "image" -> %{block | caption: caption}
-        {:ok, text} -> %{block | text: clean(type, text)}
-        :error -> block
+        {:ok, caption} when type == "image" and is_binary(caption) -> %{block | caption: caption}
+        {:ok, text} when is_binary(text) -> %{block | text: clean(type, text)}
+        _ -> block
       end
     end
+  end
+
+  defp web_url?(url) do
+    %URI{scheme: scheme, host: host} = URI.parse(url)
+    scheme in ~w(http https) and host not in [nil, ""]
   end
 
   defp update_block(blocks, id, fun),
@@ -805,9 +836,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
   defp new_block(id, type, text),
     do: %{id: id, type: type, text: text || "", url: nil, caption: ""}
 
-  defp clean(_type, nil), do: ""
   defp clean("code", text), do: text
-  defp clean("image", _text), do: ""
   defp clean(_type, text), do: HTML.sanitize(text, :editor)
 
   @stored %{
@@ -828,7 +857,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
     |> Enum.chunk_by(&if(&1.type in ~w(bulleted numbered), do: &1.type, else: &1.id))
     |> Enum.flat_map(fn
       [%{type: "image"} = b] ->
-        [%{"id" => b.id, "type" => "image", "url" => b.url, "caption" => b.caption}]
+        caption = b.caption |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+        [%{"id" => b.id, "type" => "image", "url" => b.url, "caption" => caption}]
 
       [b | _] = run ->
         fields = %{
