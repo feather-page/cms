@@ -200,7 +200,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.menu = this.el.querySelector("#pe-menu")
             this.toolbar = this.el.querySelector("#pe-toolbar")
             this.status = this.el.querySelector("#pe-status")
-            this.timers = new Map()
             this.pending = 0
             this.slash = null
             this.dragged = null
@@ -211,11 +210,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("submit", (e) => this.onSubmit(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
-            this.el.addEventListener("focusout", (e) => {
-              const block = blockOf(e.target)
-              if (block && e.target.matches("[data-editable]")) this.flush(block)
-              this.closeMenu()
-            })
+            this.el.addEventListener("focusout", () => { this.sync(); this.closeMenu() })
             this.list.addEventListener("dragstart", (e) => this.onDragstart(e))
             this.list.addEventListener("dragover", (e) => this.onDragover(e))
             this.list.addEventListener("drop", (e) => this.onDrop(e))
@@ -231,6 +226,34 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           // ---- talking to the server -------------------------------------
 
+          // The whole document in DOM order, debounced. A lost push or a
+          // dropped connection heals with the next snapshot.
+          changed() {
+            clearTimeout(this.timer)
+            this.timer = setTimeout(() => this.sync(), 300)
+            this.renderStatus()
+          },
+
+          sync() {
+            clearTimeout(this.timer)
+            this.timer = null
+            const blocks = [...this.list.children].map((block) => {
+              const {id, type} = block.dataset
+              if (type === "image") return {id, type, caption: block.querySelector(".pe-caption")?.value ?? ""}
+              const ed = editableOf(block)
+              return {id, type, text: type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML}
+            })
+            const json = JSON.stringify(blocks)
+            if (json === this.sent) return this.renderStatus()
+            this.sent = json
+            this.push("sync", {blocks}).catch(() => { this.sent = null })
+          },
+
+          reconnected() {
+            this.sent = null
+            this.sync()
+          },
+
           push(event, payload) {
             this.pending++
             this.renderStatus()
@@ -241,29 +264,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           renderStatus() {
-            this.status.classList.toggle("is-pending", this.pending > 0)
-            this.status.textContent = this.pending > 0
-              ? `${this.pending} change${this.pending > 1 ? "s" : ""} on the way to the server…`
-              : "Server in sync"
-          },
-
-          textOf(block) {
-            const ed = editableOf(block)
-            return block.dataset.type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML
-          },
-
-          schedule(block) {
-            clearTimeout(this.timers.get(block.dataset.id))
-            this.timers.set(block.dataset.id, setTimeout(() => this.flush(block), 300))
-          },
-
-          flush(block) {
-            clearTimeout(this.timers.get(block.dataset.id))
-            if (!block.isConnected || !isText(block)) return
-            const text = this.textOf(block)
-            if (block.peSent === text) return
-            block.peSent = text
-            this.push("text", {id: block.dataset.id, text})
+            const busy = this.timer || this.pending > 0
+            this.status.classList.toggle("is-pending", !!busy)
+            this.status.textContent = busy ? "Saving…" : "Server in sync"
           },
 
           // ---- block operations (DOM first, then push) ---------------------
@@ -277,9 +280,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             setType(block, type)
             if (kind === "text") editableOf(block).innerHTML = html
             ref[where](block)
-            const prev = block.previousElementSibling
-            block.peSent = html
-            this.push("insert", {id, after: prev ? prev.dataset.id : null, type, text: html})
+            this.changed()
             return block
           },
 
@@ -300,7 +301,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             holder.appendChild(tail.extractContents())
             tidy(ed)
             tidy(holder)
-            this.flush(block)
             const next = this.createBlock(type, holder.innerHTML, block)
             setCaret(editableOf(next), 0)
           },
@@ -311,30 +311,24 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const offset = ped.textContent.length
             if (prev.dataset.type === "code") ped.append(document.createTextNode(ed.innerText))
             else while (ed.firstChild) ped.appendChild(ed.firstChild)
-            clearTimeout(this.timers.get(block.dataset.id))
             block.remove()
             setCaret(ped, offset)
-            this.flush(prev)
-            this.push("delete", {id: block.dataset.id})
+            this.changed()
           },
 
           changeType(block, type) {
             if (type === "image") return this.toImage(block)
             setType(block, type)
-            clearTimeout(this.timers.get(block.dataset.id))
-            const text = this.textOf(block)
-            block.peSent = text
-            this.push("set_type", {id: block.dataset.id, type, text})
+            this.changed()
           },
 
           toImage(block) {
             const holder = document.createElement("div")
             holder.innerHTML = this.el.querySelector("#pe-template-image").innerHTML.replaceAll("__ID__", block.dataset.id).trim()
             const image = holder.firstElementChild
-            clearTimeout(this.timers.get(block.dataset.id))
             block.replaceWith(image)
             image.querySelector("input[name=url]")?.focus()
-            this.push("set_type", {id: block.dataset.id, type: "image", text: ""})
+            this.changed()
           },
 
           // ---- keyboard ------------------------------------------------------
@@ -376,7 +370,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               } else if (prev && ed.textContent === "") {
                 e.preventDefault()
                 block.remove()
-                this.push("delete", {id: block.dataset.id})
+                this.changed()
               }
               return
             }
@@ -397,6 +391,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           },
 
           onInput(e) {
+            this.changed()
             const ed = e.target.closest?.("[data-editable]")
             if (!ed) return
             const block = blockOf(ed)
@@ -412,10 +407,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
                 rangeAt(ed, 0, before.length).deleteContents()
                 tidy(ed)
                 this.changeType(block, type)
-                return
               }
             }
-            this.schedule(block)
           },
 
           onPaste(e) {
@@ -430,7 +423,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             }
             const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "")
             document.execCommand("insertText", false, lines.shift() || "")
-            this.flush(block)
             let ref = block
             for (const line of lines) ref = this.createBlock("paragraph", escapeHtml(line), ref)
             setCaret(editableOf(ref), editableOf(ref).textContent.length)
@@ -506,7 +498,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
               this.changeType(block, type)
               if (type !== "image") setCaret(ed, 0)
             } else {
-              this.flush(block)
               const next = this.createBlock(type, "", block)
               if (type === "image") next.querySelector("input[name=url]")?.focus()
               else setCaret(editableOf(next), 0)
@@ -538,7 +529,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const sel = getSelection()
             if (!sel.rangeCount) return
             const range = sel.getRangeAt(0)
-            const block = blockOf(range.commonAncestorContainer)
             if (cmd === "code") {
               const code = document.createElement("code")
               code.textContent = range.toString()
@@ -551,7 +541,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             } else {
               document.execCommand(cmd)
             }
-            if (block) this.schedule(block)
+            this.changed()
             this.updateToolbar()
           },
 
@@ -592,6 +582,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (!form) return
             e.preventDefault()
             const block = blockOf(form)
+            this.sync()
             this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
               .then(({html}) => { if (html && block.isConnected) block.outerHTML = html })
           },
@@ -622,8 +613,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             if (this.dragged && this.drop) {
               const {target, after} = this.drop
               target[after ? "after" : "before"](this.dragged)
-              const next = this.dragged.nextElementSibling
-              this.push("move", {id: this.dragged.dataset.id, before: next ? next.dataset.id : null})
+              this.changed()
             }
             this.endDrag()
           },
@@ -688,17 +678,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
         <div class="pe-image">
           <%= if @block.url do %>
             <img src={@block.url} alt="" />
-            <form id={"#{@id}-caption"} phx-change="image_caption">
-              <input type="hidden" name="block_id" value={@block.id} />
-              <input
-                name="caption"
-                class="pe-caption"
-                value={@block.caption}
-                placeholder="Write a caption…"
-                autocomplete="off"
-                phx-debounce="300"
-              />
-            </form>
+            <input
+              class="pe-caption"
+              value={@block.caption}
+              placeholder="Write a caption…"
+              autocomplete="off"
+            />
           <% else %>
             <form id={"#{@id}-url"} class="pe-image__form">
               <input
@@ -725,41 +710,25 @@ defmodule FeatherWeb.PrototypeEditorLive do
     """
   end
 
+  # The document as the client has it, in DOM order. The client owns order,
+  # types, text and captions; the server owns what it made (image URLs).
   @impl true
-  def handle_event("text", %{"id" => id, "text" => text}, socket) do
-    {:noreply,
-     change(socket, &update_block(&1, id, fn b -> %{b | text: clean(b.type, text)} end))}
-  end
+  def handle_event("sync", %{"blocks" => params}, socket) do
+    known = Map.new(socket.assigns.blocks, &{&1.id, &1})
 
-  def handle_event("insert", %{"id" => id, "after" => after_id, "type" => type} = params, socket) do
-    block = new_block(id, type, clean(type, params["text"]))
+    blocks =
+      for %{"id" => id, "type" => type} = p <- params, type in @types do
+        block = known[id] || new_block(id, type, "")
 
-    {:noreply,
-     change(socket, fn blocks ->
-       if Enum.any?(blocks, &(&1.id == id)),
-         do: blocks,
-         else: insert_after(blocks, after_id, block)
-     end)}
-  end
+        %{
+          block
+          | type: type,
+            text: clean(type, p["text"]),
+            caption: p["caption"] || block.caption
+        }
+      end
 
-  def handle_event("set_type", %{"id" => id, "type" => type, "text" => text}, socket)
-      when type in @types do
-    {:noreply,
-     change(socket, &update_block(&1, id, fn b -> %{b | type: type, text: clean(type, text)} end))}
-  end
-
-  def handle_event("delete", %{"id" => id}, socket) do
-    {:noreply, change(socket, &Enum.reject(&1, fn b -> b.id == id end))}
-  end
-
-  def handle_event("move", %{"id" => id, "before" => before_id}, socket) do
-    {:noreply,
-     change(socket, fn blocks ->
-       case Enum.split_with(blocks, &(&1.id == id)) do
-         {[block], rest} -> insert_before(rest, before_id, block)
-         _ -> blocks
-       end
-     end)}
+    {:noreply, change(socket, fn _ -> blocks end)}
   end
 
   # The one change the server makes itself: the URL becomes an image, and
@@ -771,10 +740,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
       nil -> {:reply, %{}, socket}
       block -> {:reply, %{html: render_block(block)}, socket}
     end
-  end
-
-  def handle_event("image_caption", %{"block_id" => id, "caption" => caption}, socket) do
-    {:noreply, change(socket, &update_block(&1, id, fn b -> %{b | caption: caption} end))}
   end
 
   defp change(socket, fun) do
@@ -792,28 +757,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
   defp update_block(blocks, id, fun),
     do: Enum.map(blocks, fn b -> if b.id == id, do: fun.(b), else: b end)
 
-  defp insert_after(blocks, nil, block), do: [block | blocks]
-
-  defp insert_after(blocks, after_id, block) do
-    case Enum.find_index(blocks, &(&1.id == after_id)) do
-      nil -> blocks ++ [block]
-      index -> List.insert_at(blocks, index + 1, block)
-    end
-  end
-
-  defp insert_before(blocks, nil, block), do: blocks ++ [block]
-
-  defp insert_before(blocks, before_id, block) do
-    case Enum.find_index(blocks, &(&1.id == before_id)) do
-      nil -> blocks ++ [block]
-      index -> List.insert_at(blocks, index, block)
-    end
-  end
-
   defp new_block(id, type, text),
     do: %{id: id, type: type, text: text || "", url: nil, caption: ""}
 
-  defp clean("code", text), do: text || ""
+  defp clean(_type, nil), do: ""
+  defp clean("code", text), do: text
   defp clean("image", _text), do: ""
   defp clean(_type, text), do: HTML.sanitize(text, :editor)
 
