@@ -61,7 +61,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
               autocomplete="off"
             />
           </div>
-          <div id="pe-blocks" class="pe-blocks" phx-update="ignore" phx-hook=".BlockSync">
+          <div
+            id="pe-blocks"
+            class="pe-blocks"
+            phx-update="ignore"
+            phx-hook=".BlockSync"
+            tabindex="-1"
+          >
             <.block :for={block <- @initial} id={"pe-#{block.id}"} block={block} />
           </div>
           <button type="button" id="pe-append" class="pe-append" data-action="append">
@@ -252,6 +258,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.menu = this.el.querySelector("#pe-menu")
             this.slash = null
             this.dragged = null
+            this.selected = []
             // Blocks render read-only: text typed before the hooks exist would
             // never reach the server.
             for (const block of this.list.children) setType(block, block.dataset.type)
@@ -350,6 +357,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           onKeydown(e) {
             if (e.isComposing || e.keyCode === 229) return
             if (this.menuOpen() && this.menuKey(e)) return
+            if (this.selected.length && e.target === this.list) return this.selectionKey(e)
             if (e.target.id === "pe-title" && (e.key === "Enter" || e.key === "ArrowDown")) {
               e.preventDefault()
               const first = [...this.list.children].find(isText)
@@ -359,8 +367,24 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const ed = e.target.closest?.("[data-editable]")
             if (!ed) return
             const block = blockOf(ed)
+            const mod = e.metaKey || e.ctrlKey
 
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && block.dataset.type === "code") {
+            if (e.key === "Escape") {
+              e.preventDefault()
+              return this.selectBlocks(block, block)
+            }
+            if (mod && e.shiftKey && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
+              e.preventDefault()
+              const offset = caretOffset(ed)
+              this.moveBlocks([block], e.key === "ArrowUp")
+              return setCaret(ed, offset)
+            }
+            // Like Notion: Ctrl+A selects the block's text, a second one all blocks.
+            if (mod && e.key === "a" && getSelection().toString().length === ed.textContent.length) {
+              e.preventDefault()
+              return this.selectBlocks(this.list.firstElementChild, this.list.lastElementChild)
+            }
+            if (e.key === "Enter" && mod && block.dataset.type === "code") {
               e.preventDefault()
               return this.split(block)
             }
@@ -488,6 +512,60 @@ defmodule FeatherWeb.PrototypeEditorLive do
             setCaret(editableOf(ref), lines.at(-1).length)
           },
 
+          // ---- block selection (Escape, a click on the handle or an image) ----
+
+          selectBlocks(anchor, head) {
+            this.clearSelection()
+            const all = [...this.list.children]
+            const [from, to] = [all.indexOf(anchor), all.indexOf(head)].sort((a, b) => a - b)
+            this.selected = all.slice(from, to + 1)
+            this.selected.forEach((b) => b.classList.add("is-selected"))
+            this.anchor = anchor
+            this.head = head
+            getSelection().removeAllRanges()
+            this.list.focus({preventScroll: true})
+            head.scrollIntoView({block: "nearest"})
+          },
+
+          clearSelection() {
+            this.selected.forEach((b) => b.classList.remove("is-selected"))
+            this.selected = []
+          },
+
+          selectionKey(e) {
+            const blocks = this.selected
+            const mod = e.metaKey || e.ctrlKey
+            const up = e.key === "ArrowUp"
+            e.preventDefault()
+            if (e.key === "Escape") this.clearSelection()
+            else if (e.key === "Enter" && isText(this.head)) {
+              this.clearSelection()
+              setCaret(editableOf(this.head), editableOf(this.head).textContent.length)
+            } else if (e.key === "Backspace" || e.key === "Delete") this.deleteBlocks(blocks)
+            else if (mod && e.key === "a") this.selectBlocks(this.list.firstElementChild, this.list.lastElementChild)
+            else if (mod && e.shiftKey && (up || e.key === "ArrowDown")) this.moveBlocks(blocks, up)
+            else if (up || e.key === "ArrowDown") {
+              const edge = up ? blocks[0] : blocks.at(-1)
+              const next = (e.shiftKey ? this.head : edge)[up ? "previousElementSibling" : "nextElementSibling"]
+              if (next) this.selectBlocks(e.shiftKey ? this.anchor : next, next)
+            }
+          },
+
+          moveBlocks(blocks, up) {
+            const ref = up ? blocks[0].previousElementSibling : blocks.at(-1).nextElementSibling
+            ref?.[up ? "before" : "after"](...blocks)
+          },
+
+          deleteBlocks(blocks) {
+            const prev = textSibling(blocks[0], "previousElementSibling")
+            const next = textSibling(blocks.at(-1), "nextElementSibling")
+            this.clearSelection()
+            blocks.forEach((block) => block.remove())
+            if (prev) setCaret(editableOf(prev), editableOf(prev).textContent.length)
+            else if (next) setCaret(editableOf(next), 0)
+            else setCaret(editableOf(this.createBlock("paragraph", "", this.list, "append")), 0)
+          },
+
           // ---- slash menu ----------------------------------------------------
 
           openMenu(ed) {
@@ -581,6 +659,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           onMousedown(e) {
             this.goalX = null
+            this.clearSelection()
             if (e.target.closest("#pe-menu")) e.preventDefault()
             const handle = e.target.closest(".pe-handle")
             if (handle) blockOf(handle).draggable = true
@@ -590,6 +669,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const target = e.target
             const item = target.closest("#pe-menu [data-type]")
             if (item && this.slash) return this.choose(item.dataset.type)
+            const selectable = target.closest(".pe-handle, .pe-image img")
+            if (selectable) return this.selectBlocks(blockOf(selectable), blockOf(selectable))
 
             const add = target.closest("[data-action=add]")
             const append = target.closest("[data-action=append]")

@@ -226,6 +226,14 @@
   cursor: grab;
 }
 
+.pe-blocks:focus {
+  outline: 0;
+}
+
+.pe-block.is-selected {
+  background: color-mix(in srgb, var(--felt-primary, #4a7bd0) 14%, transparent);
+}
+
 .pe-block.is-dragging {
   opacity: 0.4;
 }
