@@ -29,7 +29,9 @@ info:
     at once (publishing does not deploy the site), unless the request sends
     `draft: true`: then the changes are stored and the record becomes a
     draft, taken off the site. `draft` in a response is true when the record
-    has no published version.
+    has no published version. Posts and pages share the site's slugs:
+    publishing fails with `slug` "has already been taken" when another post
+    or page is published with the slug, and nothing is stored.
   version: "1.0"
 
 servers:
@@ -285,7 +287,7 @@ components:
         slug:
           type: ["string", "null"]
           pattern: "^/([a-z0-9-]+(/[a-z0-9-]+)*)?$"
-          description: URL slug. Must start with / and contain only lowercase alphanumeric characters, hyphens and slashes.
+          description: URL slug. Must start with / and contain only lowercase alphanumeric characters, hyphens and slashes. Unique among the site's posts and pages.
         emoji:
           type: ["string", "null"]
         draft:
@@ -353,7 +355,7 @@ components:
         slug:
           type: string
           pattern: "^/([a-z0-9-]+(/[a-z0-9-]+)*)?$"
-          description: URL slug. Must start with / -- a slug sent without one is normalised. Use "/" for homepage.
+          description: URL slug. Must start with / -- a slug sent without one is normalised. Use "/" for homepage. Unique among the site's posts and pages.
         emoji:
           type: ["string", "null"]
         draft:
