@@ -1113,7 +1113,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
       <%= if @block.type == "image" do %>
         <div class="pe-image">
           <img :if={@block.url} src={@block.url} alt="" />
-          <form :if={!@block.url} id={"#{@id}-url"} class="pe-image__form" novalidate>
+          <form :if={!@block.url} class="pe-image__form" novalidate>
             <input
               type="url"
               name="url"
@@ -1132,10 +1132,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
         </div>
       <% else %>
         <div
-          id={"#{@id}-text"}
           class="pe-text"
           contenteditable="false"
-          phx-update="ignore"
           data-editable
           phx-no-format
         >{if @block.type == "code", do: @block.text, else: raw(@block.text |> HTML.sanitize(:editor) |> String.replace("<br>", "\n"))}</div>
