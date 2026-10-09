@@ -301,6 +301,21 @@ defmodule FeatherWeb.Api.V1.PostControllerTest do
              }
     end
 
+    test "rejects a slug another post is published with",
+         %{conn: conn, path: path, scope: scope} do
+      published = post_fixture(scope, slug: "/about")
+      {:ok, _moved} = Content.update_post(scope, published, %{slug: "/moved"})
+
+      conn = json_request(conn, :post, path, %{post: %{title: "About", slug: "/about"}})
+
+      assert json_response(conn, 422) == %{
+               "error" => "Validation failed",
+               "details" => %{"slug" => ["has already been taken"]}
+             }
+
+      assert Content.get_post_by_slug(scope, "/about") == nil
+    end
+
     test "requires the post object", %{conn: conn, path: path} do
       conn = json_request(conn, :post, path, %{title: "Flat"})
 

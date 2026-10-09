@@ -461,6 +461,18 @@ defmodule Feather.ContentTest do
       assert {:ok, _post} = Content.publish(scope, post)
     end
 
+    test "saving with draft: false refuses a slug another record is published with",
+         %{scope: scope} do
+      published = post_fixture(scope, slug: "/taken")
+      {:ok, _moved} = Content.update_post(scope, published, %{slug: "/moved"})
+
+      assert {:error, changeset} =
+               Content.create_post(scope, %{title: "x", slug: "/taken"}, draft: false)
+
+      assert "has already been taken" in errors_on(changeset).slug
+      assert Content.get_post_by_slug(scope, "/taken") == nil
+    end
+
     test "only publishes records of the scope's site", %{scope: scope} do
       post = post_fixture(scope)
       assert_raise FunctionClauseError, fn -> Content.publish(site_scope_fixture(), post) end

@@ -24,6 +24,8 @@ defmodule Feather.Content do
   (the content API's field), applied in the same transaction as the save:
   `draft: false` publishes the saved record, `draft: true` makes it a draft
   (unpublishing it if it was published) that keeps the saved changes.
+  Where `publish/2` refuses the slug, the save fails with "has already
+  been taken" on `:slug`.
 
   Every save that changes a record's fields (forms, the content API,
   `sync_content/4`, `discard_changes/2`, `restore_version/3`) increments
@@ -945,13 +947,21 @@ defmodule Feather.Content do
         )
 
         case Keyword.fetch(opts, :draft) do
-          {:ok, false} -> publish(scope, record)
+          {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
           {:ok, true} -> unpublish(scope, record)
           :error -> {:ok, record}
         end
       end
     end)
   end
+
+  defp slug_taken_error({:error, :slug_taken}, changeset) do
+    action = if changeset.data.__meta__.state == :loaded, do: :update, else: :insert
+    changeset = Ecto.Changeset.add_error(changeset, :slug, "has already been taken")
+    {:error, %{changeset | action: action}}
+  end
+
+  defp slug_taken_error(result, _changeset), do: result
 
   # Updates of a stored record increment `lock_version` and only apply
   # while it still has the value the changeset's data was loaded with.
