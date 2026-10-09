@@ -20,8 +20,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
       edit back.
     * `.Latency` simulates a far server.
 
-  The server validates what it gets and keeps the stored format
-  (`export/1`), shown as JSON on demand.
+  The server validates and sanitizes what it gets and keeps the stored
+  format (`export/1`), shown as JSON on demand. The title is client-only.
+
+  Known limits, on purpose: several tabs on the document are
+  last-writer-wins (each tab's full resync overwrites the others). Undo is
+  only disabled, there is no own undo yet. `enableLatencySim` combined with
+  a dropped connection can wedge the LiveView client; that is an artifact
+  of the simulator, not of the editor.
   """
   use FeatherWeb, :live_view
 
