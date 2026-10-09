@@ -319,8 +319,7 @@
   text-align: left;
 }
 
-.pe-menu__item.is-active,
-.pe-menu__item:hover {
+.pe-menu__item.is-active {
   background: var(--felt-surface-hover, #f0eeea);
 }
 

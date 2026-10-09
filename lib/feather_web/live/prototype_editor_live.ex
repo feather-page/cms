@@ -264,10 +264,23 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
             this.el.addEventListener("focusout", () => this.closeMenu())
+            this.menu.addEventListener("mousemove", (e) => {
+              const index = this.visibleItems().indexOf(e.target.closest("[data-type]"))
+              if (this.slash && index >= 0 && index !== this.menuIndex) {
+                this.menuIndex = index
+                this.updateMenu()
+              }
+            })
+            this.onSelection = () => this.menuOpen()
+            document.addEventListener("selectionchange", this.onSelection)
             this.list.addEventListener("dragstart", (e) => this.onDragstart(e))
             this.list.addEventListener("dragover", (e) => this.onDragover(e))
             this.list.addEventListener("drop", (e) => this.onDrop(e))
             this.list.addEventListener("dragend", () => this.endDrag())
+          },
+
+          destroyed() {
+            document.removeEventListener("selectionchange", this.onSelection)
           },
 
           // ---- block operations (they only change the DOM) -----------------
@@ -336,7 +349,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           // sends a keydown Enter without isComposing when an IME commits.
           onKeydown(e) {
             if (e.isComposing || e.keyCode === 229) return
-            if (this.slash && this.menuKey(e)) return
+            if (this.menuOpen() && this.menuKey(e)) return
             if (e.target.id === "pe-title" && (e.key === "Enter" || e.key === "ArrowDown")) {
               e.preventDefault()
               const first = [...this.list.children].find(isText)
@@ -394,7 +407,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               e.preventDefault()
             } else if (e.inputType === "insertParagraph" && type !== "code") {
               e.preventDefault()
-              if (this.slash) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
+              if (this.menuOpen()) this.choose(this.visibleItems()[this.menuIndex].dataset.type)
               else if (ed.textContent === "" && [...LIST_TYPES, "quote"].includes(type)) this.changeType(block, "paragraph")
               else this.split(block)
             } else if (e.inputType === "deleteContentBackward" && atStart) {
@@ -402,7 +415,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
               const prev = block.previousElementSibling
               if (type !== "paragraph") this.changeType(block, "paragraph")
               else if (isText(prev)) this.merge(block, prev)
-              else if (prev && ed.textContent === "") block.remove()
+              else if (prev && ed.textContent === "") {
+                block.remove()
+                prev.querySelector("input")?.focus()
+              }
             } else if (e.inputType === "deleteContentForward" && atEnd) {
               e.preventDefault()
               const next = block.nextElementSibling
@@ -480,6 +496,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.updateMenu()
           },
 
+          // The menu stays open while the caret is behind its "/". selectionchange
+          // comes late, so the keys check it themselves.
+          menuOpen() {
+            if (this.slash) this.updateMenu()
+            return !!this.slash
+          },
+
           closeMenu() {
             this.slash = null
             this.menu.hidden = true
@@ -507,6 +530,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const top = below + this.menu.offsetHeight > innerHeight ? rect.top - this.menu.offsetHeight - 6 : below
             this.menu.style.left = `${Math.max(8, rect.left)}px`
             this.menu.style.top = `${Math.max(8, top)}px`
+            const active = items[this.menuIndex]
+            const {scrollTop, clientHeight} = this.menu
+            if (active.offsetTop < scrollTop) this.menu.scrollTop = active.offsetTop - 6
+            else if (active.offsetTop + active.offsetHeight > scrollTop + clientHeight) {
+              this.menu.scrollTop = active.offsetTop + active.offsetHeight - clientHeight + 6
+            }
           },
 
           menuKey(e) {
