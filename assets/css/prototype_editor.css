@@ -230,6 +230,10 @@
   outline: 0;
 }
 
+.pe-blocks.is-selecting {
+  user-select: none;
+}
+
 .pe-block.is-selected {
   background: color-mix(in srgb, var(--felt-primary, #4a7bd0) 14%, transparent);
 }

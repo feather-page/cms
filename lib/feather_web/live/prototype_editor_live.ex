@@ -293,6 +293,13 @@ defmodule FeatherWeb.PrototypeEditorLive do
             })
             this.onSelection = () => this.menuOpen()
             document.addEventListener("selectionchange", this.onSelection)
+            this.onMouseup = () => {
+              this.dragSelect = null
+              this.list.classList.remove("is-selecting")
+            }
+            document.addEventListener("mouseup", this.onMouseup)
+            this.el.addEventListener("copy", (e) => this.onCopy(e))
+            this.el.addEventListener("cut", (e) => this.onCopy(e) && this.deleteBlocks(this.selected))
             this.main = this.el.querySelector(".pe-main")
             this.gutter = this.el.querySelector("#pe-gutter")
             this.dropLine = this.el.querySelector("#pe-drop")
@@ -306,6 +313,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           destroyed() {
             document.removeEventListener("selectionchange", this.onSelection)
+            document.removeEventListener("mouseup", this.onMouseup)
           },
 
           // ---- block operations (they only change the DOM) -----------------
@@ -555,6 +563,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const blocks = this.selected
             const mod = e.metaKey || e.ctrlKey
             const up = e.key === "ArrowUp"
+            if (mod && (e.key === "c" || e.key === "x")) return
             e.preventDefault()
             if (e.key === "Escape") this.clearSelection()
             else if (e.key === "Enter" && isText(this.head)) {
@@ -568,6 +577,15 @@ defmodule FeatherWeb.PrototypeEditorLive do
               const next = (e.shiftKey ? this.head : edge)[up ? "previousElementSibling" : "nextElementSibling"]
               if (next) this.selectBlocks(e.shiftKey ? this.anchor : next, next)
             }
+          },
+
+          onCopy(e) {
+            if (!this.selected.length || e.target !== this.list) return false
+            e.preventDefault()
+            const texts = this.selected.filter(isText)
+            e.clipboardData.setData("text/plain", texts.map((b) => editableOf(b).textContent).join("\n"))
+            e.clipboardData.setData("text/html", texts.map((b) => `<p>${editableOf(b).innerHTML}</p>`).join(""))
+            return true
           },
 
           moveBlocks(blocks, up) {
@@ -679,6 +697,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
           onMousedown(e) {
             this.goalX = null
             this.clearSelection()
+            const ed = e.button === 0 && e.target.closest("[data-editable]")
+            this.dragSelect = ed ? blockOf(ed) : null
             if (e.target.closest("#pe-menu")) e.preventDefault()
           },
 
@@ -691,7 +711,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
           onMousemove(e) {
             if (this.dragged || e.target.closest("#pe-gutter")) return
             const block = this.blockAtY(e.clientY)
-            if (block) this.placeGutter(block)
+            if (!block) return
+            // A text selection cannot leave its block: dragging it into another
+            // block turns it into a block selection.
+            if (this.dragSelect && e.buttons === 1 && block !== this.dragSelect) {
+              this.list.classList.add("is-selecting")
+              if (block !== this.head || !this.selected.length) this.selectBlocks(this.dragSelect, block)
+            }
+            this.placeGutter(block)
           },
 
           placeGutter(block) {
