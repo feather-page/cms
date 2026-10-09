@@ -613,7 +613,9 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const textOf = (block) => {
           const ed = block.querySelector(":scope > [data-editable]")
           if (block.dataset.type === "image") return block.querySelector(".pe-caption")?.value ?? ""
-          return block.dataset.type === "code" ? ed.textContent.replace(/\n$/, "") : ed.innerHTML
+          if (block.dataset.type === "code") return ed.textContent.replace(/\n$/, "")
+          // Shift+Enter puts "\n" into the pre-wrap block; the stored text needs <br>.
+          return ed.innerHTML.replace(/\n$/, "").replace(/\n(?![^<]*>)/g, "<br>")
         }
 
         export default {
@@ -832,7 +834,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
           phx-update="ignore"
           data-editable
           phx-no-format
-        >{if @block.type == "code", do: @block.text, else: raw(@block.text)}</div>
+        >{if @block.type == "code", do: @block.text, else: raw(String.replace(@block.text, "<br>", "\n"))}</div>
       <% end %>
     </div>
     """
