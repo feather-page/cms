@@ -778,50 +778,37 @@ defmodule FeatherWeb.PrototypeEditorLive do
   defp clean("image", _text), do: ""
   defp clean(_type, text), do: HTML.sanitize(text, :editor)
 
-  # The blocks in the stored content format (Feather.Content.Blocks): list
-  # items are grouped into lists. Images keep their URL (no image id here).
+  @stored %{
+    "paragraph" => %{"type" => "paragraph"},
+    "h2" => %{"type" => "header", "level" => 2},
+    "h3" => %{"type" => "header", "level" => 3},
+    "quote" => %{"type" => "quote"},
+    "code" => %{"type" => "code"},
+    "bulleted" => %{"type" => "list", "style" => "ul"},
+    "numbered" => %{"type" => "list", "style" => "ol"}
+  }
+
+  # The stored content format (Feather.Content.Blocks): a run of list items
+  # becomes one list. Images keep their URL here, the real editor stores an
+  # image id (Blocks.normalize/1 drops image blocks without one).
   defp export(blocks) do
     blocks
-    |> Enum.reduce([], fn
-      %{type: "bulleted"} = b, [%{"type" => "list", "style" => "ul"} = list | rest] ->
-        [add_item(list, b) | rest]
-
-      %{type: "numbered"} = b, [%{"type" => "list", "style" => "ol"} = list | rest] ->
-        [add_item(list, b) | rest]
-
-      b, acc ->
-        [to_content(b) | acc]
-    end)
-    |> Enum.reverse()
+    |> Enum.chunk_by(&if(&1.type in ~w(bulleted numbered), do: &1.type, else: &1.id))
     |> Enum.flat_map(fn
-      %{"type" => "image"} = image -> [image]
-      block -> Blocks.normalize([block])
+      [%{type: "image"} = b] ->
+        [%{"id" => b.id, "type" => "image", "url" => b.url, "caption" => b.caption}]
+
+      [b | _] = run ->
+        fields = %{
+          "id" => b.id,
+          "text" => b.text,
+          "code" => b.text,
+          "items" => Enum.map(run, & &1.text)
+        }
+
+        Blocks.normalize([Map.merge(@stored[b.type], fields)])
     end)
   end
-
-  defp add_item(list, b),
-    do: Map.update!(list, "items", &(&1 ++ [%{"content" => b.text, "items" => []}]))
-
-  defp to_content(%{type: "paragraph"} = b),
-    do: %{"id" => b.id, "type" => "paragraph", "text" => b.text}
-
-  defp to_content(%{type: "h2"} = b),
-    do: %{"id" => b.id, "type" => "header", "level" => 2, "text" => b.text}
-
-  defp to_content(%{type: "h3"} = b),
-    do: %{"id" => b.id, "type" => "header", "level" => 3, "text" => b.text}
-
-  defp to_content(%{type: "quote"} = b), do: %{"id" => b.id, "type" => "quote", "text" => b.text}
-  defp to_content(%{type: "code"} = b), do: %{"id" => b.id, "type" => "code", "code" => b.text}
-
-  defp to_content(%{type: "bulleted"} = b),
-    do: add_item(%{"id" => b.id, "type" => "list", "style" => "ul", "items" => []}, b)
-
-  defp to_content(%{type: "numbered"} = b),
-    do: add_item(%{"id" => b.id, "type" => "list", "style" => "ol", "items" => []}, b)
-
-  defp to_content(%{type: "image"} = b),
-    do: %{"id" => b.id, "type" => "image", "url" => b.url, "caption" => b.caption}
 
   defp sample_blocks do
     [
