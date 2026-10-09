@@ -444,19 +444,30 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           onPaste(e) {
             const ed = e.target.closest?.("[data-editable]")
-            if (!ed) return
-            e.preventDefault()
             const block = blockOf(ed)
+            // Code blocks are plaintext-only: the browser pastes plain text itself.
+            if (!ed || block.dataset.type === "code") return
+            e.preventDefault()
             const text = e.clipboardData.getData("text/plain")
-            if (block.dataset.type === "code" || !text.includes("\n")) {
-              document.execCommand("insertText", false, text)
-              return
-            }
-            const lines = text.split(/\r?\n/).filter((line) => line.trim() !== "")
-            document.execCommand("insertText", false, lines.shift() || "")
+            const [first = "", ...lines] = text.split(/\r?\n/).filter((line) => line.trim() !== "")
+            if (!text.includes("\n")) return document.execCommand("insertText", false, text)
+            if (!lines.length) return document.execCommand("insertText", false, first)
+            // The text after the caret moves to the end of the last pasted line.
+            const range = getSelection().getRangeAt(0)
+            range.deleteContents()
+            const after = document.createRange()
+            after.selectNodeContents(ed)
+            after.setStart(range.startContainer, range.startOffset)
+            const tail = document.createElement("div")
+            tail.appendChild(after.extractContents())
+            tidy(tail)
+            ed.append(first)
+            tidy(ed)
             let ref = block
-            for (const line of lines) ref = this.createBlock("paragraph", escapeHtml(line), ref)
-            setCaret(editableOf(ref), editableOf(ref).textContent.length)
+            lines.forEach((line, i) => {
+              ref = this.createBlock("paragraph", escapeHtml(line) + (i === lines.length - 1 ? tail.innerHTML : ""), ref)
+            })
+            setCaret(editableOf(ref), lines.at(-1).length)
           },
 
           // ---- slash menu ----------------------------------------------------
