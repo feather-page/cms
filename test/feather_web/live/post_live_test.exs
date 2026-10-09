@@ -654,7 +654,7 @@ defmodule FeatherWeb.PostLiveTest do
     test "shows why the changes could not be discarded", %{conn: conn, site: site, scope: scope} do
       post = post_fixture(scope, slug: "/taken")
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
-      post_fixture(scope, slug: "/taken")
+      post_fixture(scope, slug: "/taken", draft: true)
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
       html = lv |> element("#discard-post") |> render_click()
@@ -665,6 +665,20 @@ defmodule FeatherWeb.PostLiveTest do
 
     defp publish(lv),
       do: lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+
+    test "does not publish a slug another post is published with", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      other = post_fixture(scope, slug: "/taken")
+      {:ok, _other} = Content.update_post(scope, other, %{slug: "/moved"})
+      post = post_fixture(scope, slug: "/taken", draft: true)
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+
+      assert publish(lv) =~ "Not published: another post is published with this slug."
+      assert Content.draft?(Content.get_post!(scope, post.public_id))
+    end
 
     test "Publish lets the editor send its pending edits first", %{
       conn: conn,

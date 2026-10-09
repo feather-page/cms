@@ -49,11 +49,22 @@ defmodule Feather.Content do
 
   @lock_opts [stale_error_field: :lock_version, stale_error_message: "was changed elsewhere"]
 
-  @versions %{
-    Post => {PostVersion, :post_id},
-    Page => {PageVersion, :page_id},
-    Project => {ProjectVersion, :project_id}
-  }
+  @versioned_schemas [
+    {Post, PostVersion, :post_id},
+    {Page, PageVersion, :page_id},
+    {Project, ProjectVersion, :project_id}
+  ]
+  @versions Map.new(@versioned_schemas, fn {schema, version_schema, field} ->
+              {schema, {version_schema, field}}
+            end)
+
+  @doc """
+  The schemas of the records that have versions, each as `{record schema,
+  version schema, owner field}`; the owner field names the record in its
+  versions and in the images it owns.
+  """
+  @spec versioned_schemas() :: [{module(), module(), atom()}]
+  def versioned_schemas, do: @versioned_schemas
 
   ## Posts
 
@@ -598,8 +609,12 @@ defmodule Feather.Content do
   `lock_version` of the given one: a record changed elsewhere since
   returns `{:error, :stale}` and publishes nothing, so nobody publishes a
   state they have not seen.
+
+  Fails with `{:error, :slug_taken}` when another record of the type is
+  published with the record's slug: the unique slug of the current
+  records does not cover a published version whose record has moved on.
   """
-  @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale}
+  @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()
   def publish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
@@ -607,9 +622,10 @@ defmodule Feather.Content do
       with {:ok, current} <- stored(record) do
         current = Repo.preload(current, :published_version)
 
-        case publication_status(current) do
-          :published -> {:ok, current}
-          _status -> insert_version(scope, current)
+        cond do
+          publication_status(current) == :published -> {:ok, current}
+          published_slug_taken?(current) -> {:error, :slug_taken}
+          true -> insert_version(scope, current)
         end
       end
     end)
@@ -621,6 +637,19 @@ defmodule Feather.Content do
       %{lock_version: ^lock_version} = current -> {:ok, put_navigation_flag(current)}
       _changed_or_deleted -> {:error, :stale}
     end
+  end
+
+  defp published_slug_taken?(%{slug: nil}), do: false
+
+  defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}) do
+    {version_schema, _owner_field} = Map.fetch!(@versions, schema)
+
+    Repo.exists?(
+      from r in schema,
+        join: v in ^version_schema,
+        on: v.id == r.published_version_id,
+        where: r.site_id == ^site_id and r.id != ^id and v.slug == ^slug
+    )
   end
 
   defp insert_version(%Scope{user: user} = scope, %schema{} = record) do

@@ -340,12 +340,8 @@ defmodule Feather.Publishing do
     do: DateTime.compare(deployed_at, published_at) == :lt
 
   defp newest_publish(site_id) do
-    [
-      {Feather.Content.PostVersion, Feather.Content.Post, :post_id},
-      {Feather.Content.PageVersion, Feather.Content.Page, :page_id},
-      {Feather.Content.ProjectVersion, Feather.Content.Project, :project_id}
-    ]
-    |> Enum.map(fn {version, record, foreign_key} ->
+    Feather.Content.versioned_schemas()
+    |> Enum.map(fn {record, version, foreign_key} ->
       from v in version,
         join: r in ^record,
         on: r.id == field(v, ^foreign_key),

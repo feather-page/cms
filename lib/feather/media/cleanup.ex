@@ -29,13 +29,12 @@ defmodule Feather.Media.Cleanup do
 
   alias Feather.Repo
   alias Feather.Books.Book
-  alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
+  alias Feather.Content
+  alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Media.Image
 
   @grace_period_days 2
-  @owners [post_id: Post, page_id: Page, project_id: Project]
-  @versions [post_id: PostVersion, page_id: PageVersion, project_id: ProjectVersion]
 
   @type result :: %{unreferenced: [Image.t()], unused: [Image.t()]}
 
@@ -92,7 +91,8 @@ defmodule Feather.Media.Cleanup do
   # Header, thumbnail and cover images, of versions too.
   defp featured_image_ids do
     queries =
-      for {_field, schema} <- @owners ++ @versions,
+      for {record_schema, version_schema, _owner_field} <- Content.versioned_schemas(),
+          schema <- [record_schema, version_schema],
           field <- [:header_image_id, :thumbnail_image_id] do
         from r in schema, where: not is_nil(field(r, ^field)), select: field(r, ^field)
       end
@@ -105,7 +105,7 @@ defmodule Feather.Media.Cleanup do
   end
 
   defp owner(%Image{} = image) do
-    Enum.find_value(@owners, fn {field, schema} ->
+    Enum.find_value(Content.versioned_schemas(), fn {schema, _version_schema, field} ->
       if id = Map.fetch!(image, field), do: {field, schema, id}
     end)
   end
@@ -154,8 +154,8 @@ defmodule Feather.Media.Cleanup do
   defp embedded_by(images) do
     site_ids = images |> Enum.map(& &1.site_id) |> Enum.uniq()
 
-    for {field, schema} <- @owners,
-        {site_id, id, content} <- contents(schema, field, site_ids),
+    for {schema, version_schema, field} <- Content.versioned_schemas(),
+        {site_id, id, content} <- contents(schema, version_schema, field, site_ids),
         public_id <- Blocks.image_ids(content),
         reduce: %{} do
       acc ->
@@ -166,9 +166,7 @@ defmodule Feather.Media.Cleanup do
   end
 
   # {site_id, record id, content} of the records, then of their versions.
-  defp contents(schema, field, site_ids) do
-    version_schema = Keyword.fetch!(@versions, field)
-
+  defp contents(schema, version_schema, field, site_ids) do
     records =
       from r in schema,
         where: r.site_id in ^site_ids,

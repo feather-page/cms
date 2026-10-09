@@ -444,6 +444,23 @@ defmodule Feather.ContentTest do
                Map.take(project, ProjectVersion.copied_fields() -- [:links])
     end
 
+    test "refuses a slug another record of the type is published with", %{scope: scope} do
+      published = post_fixture(scope, slug: "/taken")
+      {:ok, _moved} = Content.update_post(scope, published, %{slug: "/moved"})
+      post = post_fixture(scope, slug: "/taken", draft: true)
+
+      assert Content.publish(scope, post) == {:error, :slug_taken}
+      assert Content.draft?(Repo.reload!(post))
+
+      other_site = site_scope_fixture()
+      post_fixture(other_site, slug: "/elsewhere")
+      page_fixture(scope, slug: "/elsewhere")
+      assert {:ok, _post} = Content.publish(scope, post_fixture(scope, slug: "/elsewhere"))
+
+      {:ok, _} = Content.unpublish(scope, published)
+      assert {:ok, _post} = Content.publish(scope, post)
+    end
+
     test "only publishes records of the scope's site", %{scope: scope} do
       post = post_fixture(scope)
       assert_raise FunctionClauseError, fn -> Content.publish(site_scope_fixture(), post) end
@@ -659,7 +676,7 @@ defmodule Feather.ContentTest do
     test "discarding fails when another record has taken the published slug", %{scope: scope} do
       post = post_fixture(scope, slug: "/taken")
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
-      post_fixture(scope, slug: "/taken")
+      post_fixture(scope, slug: "/taken", draft: true)
 
       assert {:error, changeset} = Content.discard_changes(scope, post)
       assert "has already been taken" in errors_on(changeset).slug

@@ -451,6 +451,13 @@ defmodule FeatherWeb.ContentForm do
             socket
             |> Phoenix.Component.assign(:changed_elsewhere?, true)
             |> LiveView.put_flash(:error, "Not published: this #{@changed_elsewhere}.")
+
+          {:error, :slug_taken} ->
+            LiveView.put_flash(
+              socket,
+              :error,
+              "Not published: another #{String.downcase(socket.view.noun())} is published with this slug."
+            )
         end
     end
   end
