@@ -181,6 +181,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const LIST_TYPES = ["bulleted", "numbered"]
         const FORMAT_KEYS = {k: "link", e: "code"}
         const HEADINGS = ["h2", "h3"]
+        // Cmd on Apple devices, Ctrl elsewhere (Ctrl+A on a Mac moves to the line start).
+        const modKey = (e) => (/Mac|iPhone|iPad/.test(navigator.platform) ? e.metaKey : e.ctrlKey)
 
         // Ids like Feather.Content.Blocks generates them: 10 characters of [0-9a-zA-Z].
         const ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -464,7 +466,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const ed = e.target.closest?.("[data-editable]")
             if (!ed) return
             const block = blockOf(ed)
-            const mod = e.metaKey || e.ctrlKey
+            const mod = modKey(e)
 
             if (e.key === "Escape") {
               e.preventDefault()
@@ -479,7 +481,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               return this.moveWithCaret(ed, e.key === "ArrowUp")
             }
             // Like Notion: Ctrl+A selects the block's text, a second one all blocks.
-            if (mod && e.key === "a" && getSelection().toString().length === ed.textContent.length) {
+            if (mod && e.key === "a" && ed.textContent && getSelection().toString().length === ed.textContent.length) {
               e.preventDefault()
               return this.selectBlocks(this.list.firstElementChild, this.list.lastElementChild)
             }
@@ -660,7 +662,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           selectionKey(e) {
             const blocks = this.selected
-            const mod = e.metaKey || e.ctrlKey
+            const mod = modKey(e)
             const up = e.key === "ArrowUp"
             if (mod && (e.key === "c" || e.key === "x")) return
             e.preventDefault()
