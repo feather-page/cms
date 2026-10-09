@@ -1152,7 +1152,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
     known = Map.new(blocks, &{&1.id, &1})
 
     for [id, type] when is_binary(id) and type in @types <-
-          order || Enum.map(blocks, &[&1.id, &1.type]) do
+          order || Enum.map(blocks, &[&1.id, &1.type]),
+        id =~ ~r/\A[0-9a-zA-Z]{10}\z/ do
       block = known[id] || new_block(id, type, "")
 
       case Map.fetch(texts, id) do
@@ -1237,6 +1238,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
       {"code", "def hello, do: :world"},
       {"paragraph", ""}
     ]
-    |> Enum.with_index(fn {type, text}, i -> new_block("sample-#{i}", type, text) end)
+    # Ids in the Blocks format (10 of [0-9a-zA-Z]), the only ones the sync takes.
+    |> Enum.with_index(fn {type, text}, i -> new_block("sampleBlk#{i}", type, text) end)
   end
 end
