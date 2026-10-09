@@ -61,7 +61,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               autocomplete="off"
             />
           </div>
-          <div id="pe-blocks" class="pe-blocks" phx-update="ignore">
+          <div id="pe-blocks" class="pe-blocks" phx-update="ignore" phx-hook=".BlockSync">
             <.block :for={block <- @initial} id={"pe-#{block.id}"} block={block} />
           </div>
           <button type="button" id="pe-append" class="pe-append" data-action="append">
@@ -73,7 +73,12 @@ defmodule FeatherWeb.PrototypeEditorLive do
           <section class="card pe-panel">
             <div class="card-body">
               <h2 class="pe-panel__title">Simulated latency</h2>
-              <div id="pe-latency" class="d-flex flex-wrap gap-1" phx-update="ignore">
+              <div
+                id="pe-latency"
+                class="d-flex flex-wrap gap-1"
+                phx-update="ignore"
+                phx-hook=".Latency"
+              >
                 <button
                   :for={ms <- [0, 150, 500, 1000]}
                   type="button"
@@ -109,7 +114,7 @@ defmodule FeatherWeb.PrototypeEditorLive do
               <span class="pe-menu__glyph">{glyph}</span> {label}
             </button>
           </div>
-          <div id="pe-toolbar" class="pe-toolbar" hidden>
+          <div id="pe-toolbar" class="pe-toolbar" phx-hook=".Toolbar" hidden>
             <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
             <button type="button" data-cmd="italic" title="Italic"><i>i</i></button>
             <button type="button" data-cmd="underline" title="Underline"><u>U</u></button>
@@ -127,8 +132,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
       </div>
 
       <script :type={Phoenix.LiveView.ColocatedHook} name=".BlockEditor">
-        // PROTOTYPE. Every edit lands in the DOM first and is pushed afterwards;
-        // the server never sends a client edit back.
+        // PROTOTYPE. Editing only changes the DOM; .BlockSync pushes it afterwards
+        // and the server never sends a client edit back.
         const SHORTCUTS = {"#": "h2", "##": "h2", "###": "h3", "-": "bulleted", "*": "bulleted",
           "1.": "numbered", ">": "quote", "```": "code"}
         const LIST_TYPES = ["bulleted", "numbered"]
@@ -199,92 +204,19 @@ defmodule FeatherWeb.PrototypeEditorLive do
           mounted() {
             this.list = this.el.querySelector("#pe-blocks")
             this.menu = this.el.querySelector("#pe-menu")
-            this.toolbar = this.el.querySelector("#pe-toolbar")
-            this.status = this.el.querySelector("#pe-status")
-            this.pending = 0
             this.slash = null
             this.dragged = null
 
             this.el.addEventListener("keydown", (e) => this.onKeydown(e))
             this.el.addEventListener("input", (e) => this.onInput(e))
             this.el.addEventListener("paste", (e) => this.onPaste(e))
-            this.el.addEventListener("submit", (e) => this.onSubmit(e))
             this.el.addEventListener("click", (e) => this.onClick(e))
             this.el.addEventListener("mousedown", (e) => this.onMousedown(e))
-            this.el.addEventListener("focusout", () => { this.sync(); this.closeMenu() })
+            this.el.addEventListener("focusout", () => this.closeMenu())
             this.list.addEventListener("dragstart", (e) => this.onDragstart(e))
             this.list.addEventListener("dragover", (e) => this.onDragover(e))
             this.list.addEventListener("drop", (e) => this.onDrop(e))
             this.list.addEventListener("dragend", () => this.endDrag())
-            this.onSelection = () => this.updateToolbar()
-            document.addEventListener("selectionchange", this.onSelection)
-            this.markLatency(window.liveSocket?.getLatencySim() || 0)
-            this.sent = this.snapshot()
-            // The DOM is the document: any change to it (or to a caption) is synced.
-            this.observer = new MutationObserver(() => this.changed())
-            this.observer.observe(this.list, {childList: true, subtree: true, characterData: true, attributeFilter: ["data-type"]})
-            this.list.addEventListener("input", () => this.changed())
-          },
-
-          destroyed() {
-            document.removeEventListener("selectionchange", this.onSelection)
-            this.observer.disconnect()
-          },
-
-          // ---- talking to the server -------------------------------------
-
-          // The document as {order: [[id, type]], texts: {id: html}}, debounced.
-          // A sync sends only what differs from the last one; after a failed
-          // push or a reconnect it sends everything, which heals any loss.
-          changed() {
-            clearTimeout(this.timer)
-            this.timer = setTimeout(() => this.sync(), 300)
-            this.renderStatus()
-          },
-
-          snapshot() {
-            const order = [], texts = {}
-            for (const block of this.list.children) {
-              const {id, type} = block.dataset
-              const ed = editableOf(block)
-              order.push([id, type])
-              texts[id] = type === "image" ? block.querySelector(".pe-caption")?.value ?? ""
-                : type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML
-            }
-            return {order: JSON.stringify(order), texts}
-          },
-
-          sync() {
-            clearTimeout(this.timer)
-            this.timer = null
-            const now = this.snapshot(), last = this.sent || {texts: {}}
-            const payload = {}
-            if (now.order !== last.order) payload.order = JSON.parse(now.order)
-            const texts = Object.entries(now.texts).filter(([id, text]) => last.texts[id] !== text)
-            if (texts.length) payload.texts = Object.fromEntries(texts)
-            if (!payload.order && !payload.texts) return this.renderStatus()
-            this.sent = now
-            this.push("sync", payload).catch(() => { this.sent = null; this.changed() })
-          },
-
-          reconnected() {
-            this.sent = null
-            this.sync()
-          },
-
-          push(event, payload) {
-            this.pending++
-            this.renderStatus()
-            const done = () => { this.pending--; this.renderStatus() }
-            const promise = this.pushEvent(event, payload)
-            promise.then(done, done)
-            return promise
-          },
-
-          renderStatus() {
-            const busy = this.timer || this.pending > 0
-            this.status.classList.toggle("is-pending", !!busy)
-            this.status.textContent = busy ? "Saving…" : "Server in sync"
           },
 
           // ---- block operations (they only change the DOM) -----------------
@@ -516,62 +448,18 @@ defmodule FeatherWeb.PrototypeEditorLive do
             }
           },
 
-          // ---- inline toolbar ------------------------------------------------
-
-          updateToolbar() {
-            const sel = getSelection()
-            const range = sel.rangeCount && sel.getRangeAt(0)
-            const ed = range && !sel.isCollapsed && elOf(range.commonAncestorContainer).closest("[data-editable]")
-            if (!ed || !this.el.contains(ed) || blockOf(ed).dataset.type === "code") {
-              this.toolbar.hidden = true
-              return
-            }
-            for (const button of this.toolbar.querySelectorAll("[data-cmd]")) {
-              const cmd = button.dataset.cmd
-              const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
-              button.classList.toggle("is-active", !!active)
-            }
-            const rect = range.getBoundingClientRect()
-            this.toolbar.hidden = false
-            this.toolbar.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.toolbar.offsetWidth / 2)}px`
-            this.toolbar.style.top = `${Math.max(8, rect.top - this.toolbar.offsetHeight - 8)}px`
-          },
-
-          format(cmd) {
-            const sel = getSelection()
-            if (!sel.rangeCount) return
-            const range = sel.getRangeAt(0)
-            if (cmd === "code") {
-              const code = document.createElement("code")
-              code.textContent = range.toString()
-              range.deleteContents()
-              range.insertNode(code)
-              sel.selectAllChildren(code)
-            } else if (cmd === "link") {
-              const url = prompt("Link URL", "https://")
-              if (url) document.execCommand("createLink", false, url)
-            } else {
-              document.execCommand(cmd)
-            }
-            this.updateToolbar()
-          },
-
-          // ---- mouse: gutter, menu, toolbar, latency, drag & drop ------------
+          // ---- mouse: gutter, menu, drag & drop -----------------------------
 
           onMousedown(e) {
-            if (e.target.closest("#pe-menu, #pe-toolbar")) e.preventDefault()
+            if (e.target.closest("#pe-menu")) e.preventDefault()
             const handle = e.target.closest(".pe-handle")
             if (handle) blockOf(handle).draggable = true
           },
 
           onClick(e) {
             const target = e.target
-            const latency = target.closest("[data-latency]")
-            if (latency) return this.setLatency(parseInt(latency.dataset.latency))
             const item = target.closest("#pe-menu [data-type]")
             if (item && this.slash) return this.choose(item.dataset.type)
-            const cmd = target.closest("#pe-toolbar [data-cmd]")
-            if (cmd) return this.format(cmd.dataset.cmd)
 
             const add = target.closest("[data-action=add]")
             const append = target.closest("[data-action=append]")
@@ -585,17 +473,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
               setCaret(ed, 0)
               if (add) document.execCommand("insertText", false, "/")
             }
-          },
-
-          // The server turns the URL into an image and replies with the block's HTML.
-          onSubmit(e) {
-            const form = e.target.closest(".pe-image__form")
-            if (!form) return
-            e.preventDefault()
-            const block = blockOf(form)
-            this.sync()
-            this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
-              .then(({html}) => { if (html && block.isConnected) block.outerHTML = html })
           },
 
           onDragstart(e) {
@@ -639,15 +516,171 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.list.querySelectorAll("[draggable=true]").forEach((el) => { el.draggable = false })
             this.dragged?.classList.remove("is-dragging")
             this.dragged = null
+          }
+        }
+      </script>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".BlockSync">
+        // The block list is the document. Every change to it is pushed as
+        // {order?: [[id, type]], texts?: {id: html}}, debounced, with only what
+        // differs from the last push; after a failed push or a reconnect it
+        // sends everything, which heals any loss.
+        const textOf = (block) => {
+          const ed = block.querySelector(":scope > [data-editable]")
+          if (block.dataset.type === "image") return block.querySelector(".pe-caption")?.value ?? ""
+          return block.dataset.type === "code" ? ed.innerText.replace(/\n$/, "") : ed.innerHTML
+        }
+
+        export default {
+          mounted() {
+            this.status = document.getElementById("pe-status")
+            this.pending = 0
+            this.sent = this.snapshot()
+            this.observer = new MutationObserver(() => this.changed())
+            this.observer.observe(this.el, {childList: true, subtree: true, characterData: true, attributeFilter: ["data-type"]})
+            this.el.addEventListener("input", () => this.changed())
+            this.el.addEventListener("focusout", () => this.sync())
+            this.el.addEventListener("submit", (e) => this.onSubmit(e))
           },
 
-          setLatency(ms) {
-            if (ms) window.liveSocket.enableLatencySim(ms)
-            else window.liveSocket.disableLatencySim()
-            this.markLatency(ms)
+          destroyed() {
+            this.observer.disconnect()
           },
 
-          markLatency(ms) {
+          reconnected() {
+            this.sent = null
+            this.sync()
+          },
+
+          changed() {
+            clearTimeout(this.timer)
+            this.timer = setTimeout(() => this.sync(), 300)
+            this.renderStatus()
+          },
+
+          snapshot() {
+            const blocks = [...this.el.children]
+            return {
+              order: JSON.stringify(blocks.map((b) => [b.dataset.id, b.dataset.type])),
+              texts: Object.fromEntries(blocks.map((b) => [b.dataset.id, textOf(b)]))
+            }
+          },
+
+          sync() {
+            clearTimeout(this.timer)
+            this.timer = null
+            const now = this.snapshot(), last = this.sent || {texts: {}}
+            const payload = {}
+            if (now.order !== last.order) payload.order = JSON.parse(now.order)
+            const texts = Object.entries(now.texts).filter(([id, text]) => last.texts[id] !== text)
+            if (texts.length) payload.texts = Object.fromEntries(texts)
+            if (!payload.order && !payload.texts) return this.renderStatus()
+            this.sent = now
+            this.push("sync", payload).catch(() => { this.sent = null; this.changed() })
+          },
+
+          // The server turns the URL into an image and replies with the block's HTML.
+          onSubmit(e) {
+            const form = e.target.closest(".pe-image__form")
+            if (!form) return
+            e.preventDefault()
+            const block = form.closest(".pe-block")
+            this.sync()
+            this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
+              .then(({html}) => { if (html && block.isConnected) block.outerHTML = html })
+          },
+
+          push(event, payload) {
+            this.pending++
+            this.renderStatus()
+            const done = () => { this.pending--; this.renderStatus() }
+            const promise = this.pushEvent(event, payload)
+            promise.then(done, done)
+            return promise
+          },
+
+          renderStatus() {
+            const busy = this.timer || this.pending > 0
+            this.status.classList.toggle("is-pending", !!busy)
+            this.status.textContent = busy ? "Saving…" : "Server in sync"
+          }
+        }
+      </script>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Toolbar">
+        // Formats the selection inside a text block. It only changes the DOM;
+        // .BlockSync notices.
+        export default {
+          mounted() {
+            this.onSelection = () => this.update()
+            document.addEventListener("selectionchange", this.onSelection)
+            this.el.addEventListener("mousedown", (e) => e.preventDefault())
+            this.el.addEventListener("click", (e) => {
+              const button = e.target.closest("[data-cmd]")
+              if (button) this.format(button.dataset.cmd)
+            })
+          },
+
+          destroyed() {
+            document.removeEventListener("selectionchange", this.onSelection)
+          },
+
+          update() {
+            const sel = getSelection()
+            const range = sel.rangeCount && sel.getRangeAt(0)
+            const node = range && range.commonAncestorContainer
+            const ed = !sel.isCollapsed && (node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement).closest("#pe-blocks [data-editable]")
+            if (!ed || ed.closest(".pe-block").dataset.type === "code") {
+              this.el.hidden = true
+              return
+            }
+            for (const button of this.el.querySelectorAll("[data-cmd]")) {
+              const cmd = button.dataset.cmd
+              const active = ["bold", "italic", "underline"].includes(cmd) && document.queryCommandState(cmd)
+              button.classList.toggle("is-active", !!active)
+            }
+            const rect = range.getBoundingClientRect()
+            this.el.hidden = false
+            this.el.style.left = `${Math.max(8, rect.left + rect.width / 2 - this.el.offsetWidth / 2)}px`
+            this.el.style.top = `${Math.max(8, rect.top - this.el.offsetHeight - 8)}px`
+          },
+
+          format(cmd) {
+            const sel = getSelection()
+            if (!sel.rangeCount) return
+            const range = sel.getRangeAt(0)
+            if (cmd === "code") {
+              const code = document.createElement("code")
+              code.textContent = range.toString()
+              range.deleteContents()
+              range.insertNode(code)
+              sel.selectAllChildren(code)
+            } else if (cmd === "link") {
+              const url = prompt("Link URL", "https://")
+              if (url) document.execCommand("createLink", false, url)
+            } else {
+              document.execCommand(cmd)
+            }
+            this.update()
+          }
+        }
+      </script>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Latency">
+        export default {
+          mounted() {
+            this.mark(window.liveSocket?.getLatencySim() || 0)
+            this.el.addEventListener("click", (e) => {
+              const button = e.target.closest("[data-latency]")
+              if (!button) return
+              const ms = parseInt(button.dataset.latency)
+              if (ms) window.liveSocket.enableLatencySim(ms)
+              else window.liveSocket.disableLatencySim()
+              this.mark(ms)
+            })
+          },
+
+          mark(ms) {
             for (const button of this.el.querySelectorAll("[data-latency]")) {
               const active = parseInt(button.dataset.latency) === ms
               button.classList.toggle("btn-secondary", active)
