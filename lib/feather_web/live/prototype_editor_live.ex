@@ -14,11 +14,10 @@ defmodule FeatherWeb.PrototypeEditorLive do
       shortcuts, paste, block selection, gutter, drag and drop. It never
       talks to the server.
     * `.BlockSync` observes the list and pushes one idempotent `sync` event
-      with the order and the changed texts, debounced; everything after a
-      failed push or a reconnect. Ids are made on the client in the `Blocks`
-      format, so the server never echoes an edit back.
-    * The one thing the server makes, an image from a URL, comes back as the
-      block's HTML in the reply to `image_url`; a preview shows meanwhile.
+      with the order and the changed texts (for images URL and caption),
+      debounced; everything after a failed push or a reconnect. Ids are made
+      on the client in the `Blocks` format, so the server never echoes an
+      edit back.
     * `.Toolbar` formats a selection, `.Latency` simulates a far server.
 
   The server validates what it gets and keeps the stored format
@@ -189,6 +188,15 @@ defmodule FeatherWeb.PrototypeEditorLive do
         const editableOf = (block) => block?.querySelector(":scope > [data-editable]")
         const isText = (block) => block && block.dataset.type !== "image"
         const escapeHtml = (text) => text.replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]))
+        // The server's rule (web_url?/1): http(s) with a host, normalized as the browser does.
+        const webUrl = (value) => {
+          try {
+            const url = new URL(value.trim())
+            return ["http:", "https:"].includes(url.protocol) && url.hostname ? url.href : null
+          } catch {
+            return null
+          }
+        }
         const tidy = (node) => { if (node.textContent === "" && !node.querySelector("img")) node.innerHTML = "" }
 
         const pointAt = (ed, offset) => {
@@ -560,13 +568,17 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
           // ---- image -------------------------------------------------------
 
-          // .BlockSync has pushed the URL by now. The image shows at once and the
-          // caret moves on, as after Enter in the caption.
+          // The client owns the URL like the caption: the image shows at once,
+          // .BlockSync sends both, and the caret moves on.
           onSubmit(e) {
             const form = e.target.closest(".pe-image__form")
             if (!form) return
+            e.preventDefault()
+            const url = webUrl(form.elements.url.value)
+            form.querySelector(".pe-hint").hidden = !!url
+            if (!url) return
             const block = blockOf(form)
-            form.replaceWith(Object.assign(document.createElement("img"), {src: form.elements.url.value, alt: ""}))
+            form.replaceWith(Object.assign(document.createElement("img"), {src: url, alt: ""}))
             block.querySelector(".pe-caption").hidden = false
             this.moveOn(block)
           },
@@ -849,12 +861,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
 
       <script :type={Phoenix.LiveView.ColocatedHook} name=".BlockSync">
         // The block list is the document. Every change to it is pushed as
-        // {order?: [[id, type]], texts?: {id: html}}, debounced, with only what
-        // differs from the last push; after a failed push or a reconnect it
-        // sends everything, which heals any loss.
+        // {order?: [[id, type]], texts?: {id: html | {url, caption}}}, debounced,
+        // with only what differs from the last push; after a failed push or a
+        // reconnect it sends everything, which heals any loss.
         const textOf = (block) => {
           const ed = block.querySelector(":scope > [data-editable]")
-          if (block.dataset.type === "image") return block.querySelector(".pe-caption")?.value ?? ""
+          if (block.dataset.type === "image") {
+            return {url: block.querySelector(".pe-image img")?.getAttribute("src") ?? null, caption: block.querySelector(".pe-caption").value}
+          }
           if (block.dataset.type === "code") return ed.textContent.replace(/\n$/, "")
           // Shift+Enter puts "\n" into the pre-wrap block; the stored text needs <br>.
           return ed.innerHTML.replace(/\n$/, "").replace(/\n(?![^<]*>)/g, "<br>")
@@ -869,7 +883,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
             this.observer.observe(this.el, {childList: true, subtree: true, characterData: true, attributeFilter: ["data-type"]})
             this.el.addEventListener("input", () => this.changed())
             this.el.addEventListener("focusout", () => this.sync())
-            this.el.addEventListener("submit", (e) => this.onSubmit(e))
             // The debounce would lose the last edits when the tab is hidden or
             // closed; closing also warns while a push is unanswered.
             this.onHide = () => document.visibilityState === "hidden" && this.sync()
@@ -912,32 +925,11 @@ defmodule FeatherWeb.PrototypeEditorLive do
             const now = this.snapshot(), last = this.sent || {texts: {}}
             const payload = {}
             if (now.order !== last.order) payload.order = JSON.parse(now.order)
-            const texts = Object.entries(now.texts).filter(([id, text]) => last.texts[id] !== text)
+            const texts = Object.entries(now.texts).filter(([id, text]) => JSON.stringify(last.texts[id]) !== JSON.stringify(text))
             if (texts.length) payload.texts = Object.fromEntries(texts)
             if (!payload.order && !payload.texts) return this.renderStatus()
             this.sent = now
             this.push("sync", payload).catch(() => { this.sent = null; this.changed() })
-          },
-
-          // The server turns the URL into an image and replies with the block's
-          // HTML: its image replaces the preview, or the form comes back if the
-          // URL was refused or never sent.
-          onSubmit(e) {
-            const form = e.target.closest(".pe-image__form")
-            if (!form) return
-            e.preventDefault()
-            const block = form.closest(".pe-block")
-            const replace = (html) => {
-              const fresh = document.createRange().createContextualFragment(html).firstElementChild
-              const [img, preview] = [fresh.querySelector("img"), block.querySelector("img")]
-              if (!block.isConnected) return
-              if (img && preview) preview.replaceWith(img)
-              else block.replaceWith(fresh)
-            }
-            this.sync()
-            this.push("image_url", {id: block.dataset.id, url: form.elements.url.value})
-              .then(({html}) => html && replace(html))
-              .catch(() => replace(document.getElementById("pe-template-image").innerHTML.replaceAll("__ID__", block.dataset.id)))
           },
 
           push(event, payload) {
@@ -1079,13 +1071,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
     """
   end
 
-  defp render_block(block) do
-    %{id: "pe-#{block.id}", block: block}
-    |> block()
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-  end
-
   attr :id, :string, required: true
   attr :block, :map, required: true
 
@@ -1100,15 +1085,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
       <%= if @block.type == "image" do %>
         <div class="pe-image">
           <img :if={@block.url} src={@block.url} alt="" />
-          <form :if={!@block.url} id={"#{@id}-url"} class="pe-image__form">
+          <form :if={!@block.url} id={"#{@id}-url"} class="pe-image__form" novalidate>
             <input
               type="url"
               name="url"
               class="form-control"
               placeholder="Paste an image URL and press Enter"
-              pattern="https?://.+"
-              required
             />
+            <p class="pe-hint" hidden>Only http(s) image URLs work here.</p>
           </form>
           <input
             class="pe-caption"
@@ -1133,29 +1117,14 @@ defmodule FeatherWeb.PrototypeEditorLive do
   end
 
   # What changed in the document: the block order with types (all of it, or
-  # nil when unchanged) and the texts that changed. The client owns order,
-  # types, text and captions; the server owns what it made (image URLs).
-  # Malformed parts are dropped instead of crashing the process.
+  # nil when unchanged) and the texts that changed, for an image its URL and
+  # caption. The client owns all of it; malformed parts are dropped instead
+  # of crashing the process.
   @impl true
   def handle_event("sync", params, socket) do
     order = if is_list(params["order"]), do: params["order"]
     texts = if is_map(params["texts"]), do: params["texts"], else: %{}
     {:noreply, change(socket, &apply_sync(&1, order, texts))}
-  end
-
-  # The one change the server makes itself: an http(s) URL becomes an image.
-  # The reply carries the block's HTML, the URL form again if it was refused.
-  def handle_event("image_url", %{"id" => id, "url" => url}, socket)
-      when is_binary(id) and is_binary(url) do
-    socket =
-      if web_url?(url),
-        do: change(socket, &update_block(&1, id, fn b -> %{b | url: url} end)),
-        else: socket
-
-    case Enum.find(socket.assigns.blocks, &(&1.id == id)) do
-      nil -> {:reply, %{}, socket}
-      block -> {:reply, %{html: render_block(block)}, socket}
-    end
   end
 
   def handle_event("toggle_state", _params, socket) do
@@ -1187,10 +1156,16 @@ defmodule FeatherWeb.PrototypeEditorLive do
       block = known[id] || new_block(id, type, "")
 
       case Map.fetch(texts, id) do
-        {:ok, caption} when type == "image" and is_binary(caption) ->
-          %{block | type: type, caption: caption}
+        {:ok, %{"url" => url, "caption" => caption}}
+        when type == "image" and is_binary(caption) ->
+          %{
+            block
+            | type: type,
+              url: if(is_binary(url) and web_url?(url), do: url),
+              caption: caption
+          }
 
-        {:ok, text} when is_binary(text) ->
+        {:ok, text} when is_binary(text) and type != "image" ->
           %{block | type: type, text: clean(type, text)}
 
         # Code is stored raw: a new type cleans the old text for its own rules.
@@ -1207,9 +1182,6 @@ defmodule FeatherWeb.PrototypeEditorLive do
     %URI{scheme: scheme, host: host} = URI.parse(url)
     scheme in ~w(http https) and host not in [nil, ""]
   end
-
-  defp update_block(blocks, id, fun),
-    do: Enum.map(blocks, fn b -> if b.id == id, do: fun.(b), else: b end)
 
   defp new_block(id, type, text),
     do: %{id: id, type: type, text: text || "", url: nil, caption: ""}
