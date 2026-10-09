@@ -16,8 +16,9 @@ ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
 
 FROM ${BUILDER_IMAGE} AS builder
 
+# nodejs and npm: the asset build installs the ProseMirror packages with npm ci.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends build-essential git ca-certificates \
+  && apt-get install -y --no-install-recommends build-essential git ca-certificates nodejs npm \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

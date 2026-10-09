@@ -25,7 +25,8 @@ site owner's own hosting.
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 *   `inotify-tools` (optional, Linux) for live reload in development
-*   No Node.js: `mix setup` downloads the standalone `esbuild` binary
+*   Node.js with npm: the asset build installs the editor's packages from `assets/package-lock.json`
+    (`npm ci`); `mix setup` downloads the standalone `esbuild` binary
 
 ### Setup
 
