@@ -205,7 +205,17 @@ defmodule FeatherWeb.PrototypeEditorLive do
             return null
           }
         }
-        const tidy = (node) => { if (node.textContent === "" && !node.querySelector("img")) node.innerHTML = "" }
+        // A lone "\n" (left by Shift+Enter) shows as an empty line: the block is empty.
+        const tidy = (node) => { if (/^\n?$/.test(node.textContent) && !node.querySelector("img")) node.innerHTML = "" }
+        // Removes a "\n" at the start or end of node, where a block was split.
+        const trimBreak = (node, atEnd) => {
+          const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT)
+          const texts = []
+          while (walker.nextNode()) if (walker.currentNode.length) texts.push(walker.currentNode)
+          const text = atEnd ? texts.at(-1) : texts[0]
+          const at = atEnd ? text?.length - 1 : 0
+          if (text?.data[at] === "\n") text.deleteData(at, 1)
+        }
 
         const pointAt = (ed, offset) => {
           const walker = document.createTreeWalker(ed, NodeFilter.SHOW_TEXT)
@@ -412,6 +422,8 @@ defmodule FeatherWeb.PrototypeEditorLive do
             tail.setStart(range.startContainer, range.startOffset)
             const holder = document.createElement("div")
             holder.appendChild(tail.extractContents())
+            trimBreak(ed, true)
+            trimBreak(holder, false)
             tidy(ed)
             tidy(holder)
             const next = this.createBlock(type, holder.innerHTML, block)
