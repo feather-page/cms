@@ -14,7 +14,7 @@ defmodule FeatherWeb.ReviewLive.Form do
 
   import FeatherWeb.ContentFormComponents
 
-  alias Feather.{Books, Content}
+  alias Feather.{Books, Content, Publishing}
   alias Feather.Books.Book
   alias Feather.Content.Post
   alias FeatherWeb.{ContentForm, HeaderImagePicker}
@@ -26,18 +26,40 @@ defmodule FeatherWeb.ReviewLive.Form do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:books}
     >
-      <.header back={~p"/sites/#{@site.public_id}/books"} back_label="Books" truncate>
-        {@page_title}
-        <:badge :if={@live_action == :edit}>
-          <.publication_badge id="status-badge" status={@publication_status} />
-        </:badge>
-        <:subtitle>
-          {@book.emoji} {@book.title}<span :if={@book.author}> by {@book.author}</span>
-        </:subtitle>
-      </.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/sites/#{@site.public_id}/books"}>Books</:crumb>
+          <:crumb navigate={~p"/sites/#{@site.public_id}/books/#{@book.public_id}/edit"}>
+            {@book.title}
+          </:crumb>
+          <:crumb>{@page_title}</:crumb>
+        </.breadcrumbs>
+        <.publication_badge
+          :if={@live_action == :edit}
+          id="status-badge"
+          status={@publication_status}
+          live={Publishing.live?(@site_deploy.targets, @published_version)}
+        />
+      </:bar>
+      <:bar_actions>
+        <div id="publish-actions" class="flex items-center gap-3">
+          <.editor_status editor="review-content-editor" />
+          <div class="max-md:hidden">
+            <.content_actions
+              id="review"
+              noun="review"
+              record={@post}
+              form={@form}
+              status={@publication_status}
+              changed_elsewhere?={@changed_elsewhere?}
+            />
+          </div>
+        </div>
+      </:bar_actions>
 
       <.editor_layout id="review" open={ContentForm.details_open?(@form)}>
         <:main>
@@ -58,15 +80,18 @@ defmodule FeatherWeb.ReviewLive.Form do
               record={@post}
               status={ContentForm.autosave_status(@form, @changed_elsewhere?)}
             >
-              <.content_length length={@content_length} />
+              <.content_length
+                :if={ContentForm.untitled?(@form)}
+                length={@content_length}
+              />
             </.editor>
           </.form>
         </:main>
         <:details>
-          <div class="mb-3">
-            <span class="form-label">Rating</span>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Rating</legend>
             <.star_rating value={@book.rating} />
-          </div>
+          </fieldset>
           <.slug_field field={@form[:slug]} form="review-form" hidden={!@show_title_and_slug?} />
           <.input
             field={@form[:publish_at]}
@@ -87,14 +112,25 @@ defmodule FeatherWeb.ReviewLive.Form do
         </:details>
       </.editor_layout>
 
-      <.content_actions
-        id="review"
-        noun="review"
-        record={@post}
-        form={@form}
-        status={@publication_status}
-        changed_elsewhere?={@changed_elsewhere?}
-      />
+      <.action_bar
+        sticky
+        id="action-bar"
+        class="mt-6 items-center md:hidden [&_.join]:flex-1 [&_.join>.btn]:flex-1"
+      >
+        <.editor_status
+          editor="review-content-editor"
+          place={:bottom}
+        />
+        <.content_actions
+          id="review"
+          noun="review"
+          record={@post}
+          form={@form}
+          status={@publication_status}
+          changed_elsewhere?={@changed_elsewhere?}
+          place={:bottom}
+        />
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -142,12 +178,21 @@ defmodule FeatherWeb.ReviewLive.Form do
   end
 
   def handle_event("delete", _params, socket) do
-    {:ok, _book} = Books.delete_review(socket.assigns.current_scope, socket.assigns.book)
+    %{current_scope: scope, book: book} = socket.assigns
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Review was successfully deleted.")
-     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/books")}
+    socket =
+      with %Book{} = book <- Books.get_book(scope, book.public_id),
+           {:ok, _book} <- Books.delete_review(scope, book) do
+        put_flash(socket, :info, "Review was successfully deleted.")
+      else
+        no_review when no_review in [nil, {:error, :no_review}] ->
+          put_flash(socket, :error, "This review no longer exists.")
+
+        {:error, _reason} ->
+          put_flash(socket, :error, "The review could not be deleted.")
+      end
+
+    {:noreply, push_navigate(socket, to: ~p"/sites/#{socket.assigns.site.public_id}/books")}
   end
 
   def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)

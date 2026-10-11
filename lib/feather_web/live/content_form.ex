@@ -444,7 +444,7 @@ defmodule FeatherWeb.ContentForm do
           {:ok, published} ->
             socket
             |> put_record(published, versions: true)
-            |> FeatherWeb.SiteAuth.refresh_undeployed_notice()
+            |> FeatherWeb.SiteAuth.refresh_deploy_status()
             |> LiveView.put_flash(:info, "#{socket.view.noun()} was published.")
 
           {:error, :stale} ->
@@ -492,14 +492,17 @@ defmodule FeatherWeb.ContentForm do
   @spec content_length(map()) :: non_neg_integer()
   def content_length(%{content: content}), do: Blocks.content_length(content)
 
+  @doc "Whether the form has neither title nor slug, so the short post rule applies."
+  @spec untitled?(Phoenix.HTML.Form.t()) :: boolean()
+  def untitled?(form), do: not present?(form[:title].value) and not present?(form[:slug].value)
+
   @doc """
   Whether the title and slug fields are shown: when either has a value or
   the content is not short.
   """
   @spec show_title_and_slug?(Phoenix.HTML.Form.t(), non_neg_integer()) :: boolean()
   def show_title_and_slug?(form, content_length) do
-    present?(form[:title].value) or present?(form[:slug].value) or
-      content_length >= @short_post_length
+    not untitled?(form) or content_length >= @short_post_length
   end
 
   defp put_picker_change(params, {:cover, image}),

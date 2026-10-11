@@ -31,6 +31,7 @@ defmodule FeatherWeb.BookLiveTest do
       assert has_element?(lv, "#books-reading #book-#{reading.public_id}")
       assert has_element?(lv, "#books-want-to-read #book-#{want.public_id}")
       assert has_element?(lv, "#books-finished-2024[open] #book-#{recent.public_id}", "★★★★☆")
+      assert has_element?(lv, "#book-#{recent.public_id} .sr-only", "Rated 4 out of 5")
       assert has_element?(lv, "#books-finished-2021 #book-#{older.public_id}")
       refute has_element?(lv, "#books-finished-2021[open]")
     end
@@ -110,6 +111,35 @@ defmodule FeatherWeb.BookLiveTest do
       assert book.cover_image.source_url == "https://covers.openlibrary.org/b/id/42-M.jpg"
     end
 
+    test "searches at the top of a new book and in the cover block of an existing one", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      Req.Test.stub(Feather.OpenLibrary, fn conn ->
+        Req.Test.json(conn, %{
+          "docs" => [%{"title" => "Clean Code", "author_name" => ["Robert C. Martin"]}]
+        })
+      end)
+
+      Req.Test.set_req_test_to_shared()
+      on_exit(&Req.Test.set_req_test_to_private/0)
+
+      {:ok, lv, _html} = live(conn, books_path(site) <> "/new")
+      assert has_element?(lv, "#book-search-form #book-search")
+      assert has_element?(lv, ~s(label[for="book-search"]), "Search OpenLibrary")
+
+      book = book_fixture(scope, title: "Refactoring")
+      {:ok, lv, _html} = live(conn, books_path(site) <> "/#{book.public_id}/edit")
+      refute has_element?(lv, "#book-search-form #book-search")
+      assert has_element?(lv, ~s(#book-form fieldset #book-search[form="book-search-form"]))
+      assert has_element?(lv, ~s(label[for="book-search"]), "Find a cover")
+
+      lv |> form("#book-search-form", query: "clean code") |> render_change()
+      lv |> element("#book-search-result-0") |> render_click()
+      assert has_element?(lv, ~s(#book_title[value="Clean Code"]))
+    end
+
     @tag capture_log: true
     test "shows search errors", %{conn: conn, site: site} do
       Req.Test.stub(Feather.OpenLibrary, fn conn ->
@@ -127,17 +157,35 @@ defmodule FeatherWeb.BookLiveTest do
     test "shows validation errors", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, books_path(site) <> "/new")
       html = lv |> form("#book-form", book: %{title: "No author"}) |> render_submit()
-      assert html =~ "can&#39;t be blank"
+      assert html =~ "Can&#39;t be blank"
     end
 
     test "deletes a book", %{conn: conn, site: site, scope: scope} do
       book = book_fixture(scope)
       {:ok, lv, _html} = live(conn, books_path(site) <> "/#{book.public_id}/edit")
 
+      assert asked(lv, "#delete-book").text ==
+               "Removes the book from Feather. It stays on the live site until the next deploy."
+
       {:ok, _lv, _html} =
-        lv |> element("#delete-book") |> render_click() |> follow_redirect(conn, books_path(site))
+        confirm_click(lv, "#delete-book") |> follow_redirect(conn, books_path(site))
 
       assert Books.list_books(scope) == []
+    end
+
+    test "deleting a book deleted in another tab goes back to the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      book = book_fixture(scope)
+      {:ok, lv, _html} = live(conn, books_path(site) <> "/#{book.public_id}/edit")
+      {:ok, _} = Books.delete_book(scope, book)
+
+      {:ok, _lv, html} =
+        confirm_click(lv, "#delete-book") |> follow_redirect(conn, books_path(site))
+
+      assert html =~ "This book no longer exists."
     end
 
     test "links to writing or editing the review", %{conn: conn, site: site, scope: scope} do

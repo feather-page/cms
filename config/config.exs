@@ -54,6 +54,13 @@ config :phoenix_live_view,
   # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
   root_tag_attribute: "phx-r"
 
+# The admin's components (setzkasten): the app's Lucide icons, its plush
+# images and its Gettext error translation.
+config :setzkasten,
+  icons: FeatherWeb.Icons,
+  plush: FeatherWeb.Plush,
+  translate_error: {FeatherWeb.CoreComponents, :translate_error}
+
 # Configure the mailer
 #
 # By default it uses the "Local" adapter which stores the emails

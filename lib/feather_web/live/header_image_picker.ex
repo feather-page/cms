@@ -2,7 +2,8 @@ defmodule FeatherWeb.HeaderImagePicker do
   @moduledoc """
   Picks the icon (emoji), thumbnail and cover image of a post, page,
   project or review (port of the Rails `header_image_picker`): three
-  media slots, each a preview tile with "Add" or "Change" and "Remove".
+  media slots, each a preview tile with "Add" or "Change" and a remove
+  button (an × after "Change", so every slot ends on one line).
 
   Images come from an Unsplash search (downloaded with
   `Feather.Media.create_image_from_url/3`, attribution stored in
@@ -53,7 +54,8 @@ defmodule FeatherWeb.HeaderImagePicker do
   @impl true
   def render(assigns) do
     ~H"""
-    <div id={@id} class="media-picker">
+    <section id={@id} class="media-picker" aria-labelledby={"#{@id}-heading"}>
+      <h3 id={"#{@id}-heading"} class="media-picker__heading">Images</h3>
       <div class="media-slots">
         <div class="media-slot" id={"#{@id}-icon-slot"}>
           <button
@@ -65,7 +67,7 @@ defmodule FeatherWeb.HeaderImagePicker do
             phx-target={@myself}
           >
             <span :if={present?(@emoji)} id={"#{@id}-emoji"}>{@emoji}</span>
-            <.icon :if={!present?(@emoji)} name="smile" size={24} />
+            <.icon :if={!present?(@emoji)} name="smile" class="size-6" />
           </button>
           <span class="media-slot__label">Icon</span>
           <div class="media-slot__actions">
@@ -85,11 +87,12 @@ defmodule FeatherWeb.HeaderImagePicker do
               id={"#{@id}-remove-emoji"}
               class="media-slot__action media-slot__action--danger"
               aria-label="Remove icon"
+              title="Remove"
               phx-click="remove"
               phx-value-target="emoji"
               phx-target={@myself}
             >
-              Remove
+              <.icon name="x" />
             </button>
           </div>
         </div>
@@ -140,21 +143,23 @@ defmodule FeatherWeb.HeaderImagePicker do
       <div :if={@mode} id={"#{@id}-panel"} class="media-panel">
         <div class="media-panel__header">
           <span>{panel_title(@mode)}</span>
-          <button
-            type="button"
-            class="btn-close"
-            aria-label="Close"
+          <.button
+            variant={:ghost}
+            size={:sm}
+            icon="x"
+            icon_only
+            label="Close"
             phx-click="close"
             phx-target={@myself}
-          ></button>
+          />
         </div>
         <div class="media-panel__body">
-          <div :if={@unsplash?} class="btn-group btn-group-sm d-flex mb-3" role="group">
+          <div :if={@unsplash?} class="join mb-3 flex" role="group">
             <button
               :for={{mode, label} <- [{:search, "Search Unsplash"}, {:upload, "Upload"}]}
               type="button"
               id={"#{@id}-#{mode}-#{elem(@mode, 1)}"}
-              class={["btn btn-light flex-fill", elem(@mode, 0) == mode && "active"]}
+              class={["join-item btn btn-sm flex-1", elem(@mode, 0) == mode && "btn-primary"]}
               aria-pressed={to_string(elem(@mode, 0) == mode)}
               phx-click="open"
               phx-value-mode={mode}
@@ -165,7 +170,7 @@ defmodule FeatherWeb.HeaderImagePicker do
             </button>
           </div>
 
-          <p :if={@error} id={"#{@id}-error"} class="alert alert-danger">{@error}</p>
+          <.alert :if={@error} id={"#{@id}-error"} tone={:error} class="mb-3">{@error}</.alert>
 
           <div :if={match?({:search, _}, @mode)}>
             <form
@@ -178,8 +183,8 @@ defmodule FeatherWeb.HeaderImagePicker do
                 type="search"
                 name="query"
                 value={@query}
-                class="form-control mb-3"
-                placeholder="Search for images..."
+                class="input mb-3 w-full"
+                placeholder="Search for images…"
                 aria-label="Search Unsplash"
                 autocomplete="off"
                 phx-debounce="300"
@@ -187,7 +192,7 @@ defmodule FeatherWeb.HeaderImagePicker do
             </form>
             <p
               :if={@results == [] and String.length(@query) >= 2 and is_nil(@error)}
-              class="text-body-secondary text-center small"
+              class="text-center text-sm text-base-content/70"
             >
               No results found
             </p>
@@ -199,14 +204,14 @@ defmodule FeatherWeb.HeaderImagePicker do
                   phx-click="choose"
                   phx-value-id={photo.id}
                   phx-target={@myself}
-                  phx-disable-with="Loading..."
+                  phx-disable-with="Loading…"
                   title={photo.description}
                 >
                   <img src={photo.thumbnail_url} alt={photo.description || ""} />
                 </button>
-                <span class="unsplash-result__credit text-truncate">
+                <span class="unsplash-result__credit truncate">
                   by
-                  <a href={photo.photographer_url} target="_blank" rel="noopener">
+                  <a href={photo.photographer_url} target="_blank" rel="noopener" class="link">
                     {photo.photographer_name}
                   </a>
                 </span>
@@ -223,23 +228,23 @@ defmodule FeatherWeb.HeaderImagePicker do
           >
             <.live_file_input
               upload={@uploads.image}
-              class="form-control"
+              class="file-input w-full"
               aria-label={panel_title(@mode)}
             />
-            <div class="form-text">At most 25 MB</div>
-            <p :for={entry <- @uploads.image.entries} class="small mt-2">
+            <p class="label mt-1">At most 25 MB</p>
+            <p :for={entry <- @uploads.image.entries} class="mt-2 text-sm">
               {entry.client_name} – {entry.progress}%
             </p>
             <p
               :for={error <- upload_errors(@uploads.image) ++ entry_errors(@uploads.image)}
-              class="text-danger small mt-2"
+              class="mt-2 text-sm text-error-ink"
             >
               {upload_error_message(error)}
             </p>
           </form>
         </div>
       </div>
-    </div>
+    </section>
     """
   end
 
@@ -266,7 +271,7 @@ defmodule FeatherWeb.HeaderImagePicker do
         phx-target={@myself}
       >
         <img :if={@image} src={@src} alt="" />
-        <.icon :if={!@image} name="image" size={24} />
+        <.icon :if={!@image} name="image" class="size-6" />
       </button>
       <span class="media-slot__label">{@label}</span>
       <div class="media-slot__actions">
@@ -288,12 +293,12 @@ defmodule FeatherWeb.HeaderImagePicker do
           id={"#{@id}-remove-#{@target}"}
           class="media-slot__action media-slot__action--danger"
           aria-label={"Remove #{String.downcase(@label)}"}
+          title="Remove"
           phx-click="remove"
           phx-value-target={@target}
           phx-target={@myself}
-          data-confirm={"Remove the #{String.downcase(@label)}?"}
         >
-          Remove
+          <.icon name="x" />
         </button>
       </div>
     </div>

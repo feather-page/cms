@@ -13,7 +13,7 @@ defmodule FeatherWeb.PostLive.Form do
 
   import FeatherWeb.ContentFormComponents
 
-  alias Feather.Content
+  alias Feather.{Content, Publishing}
   alias Feather.Content.Post
   alias FeatherWeb.{ContentForm, HeaderImagePicker}
 
@@ -24,15 +24,37 @@ defmodule FeatherWeb.PostLive.Form do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:posts}
     >
-      <.header back={~p"/sites/#{@site.public_id}/posts"} back_label="Posts" truncate>
-        {@page_title}
-        <:badge :if={@live_action == :edit}>
-          <.publication_badge id="status-badge" status={@publication_status} />
-        </:badge>
-      </.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/sites/#{@site.public_id}/posts"}>Posts</:crumb>
+          <:crumb>{@page_title}</:crumb>
+        </.breadcrumbs>
+        <.publication_badge
+          :if={@live_action == :edit}
+          id="status-badge"
+          status={@publication_status}
+          live={Publishing.live?(@site_deploy.targets, @published_version)}
+        />
+      </:bar>
+      <:bar_actions>
+        <div id="publish-actions" class="flex items-center gap-3">
+          <.editor_status editor="post-content-editor" />
+          <div class="max-md:hidden">
+            <.content_actions
+              id="post"
+              noun="post"
+              record={@post}
+              form={@form}
+              status={@publication_status}
+              changed_elsewhere?={@changed_elsewhere?}
+            />
+          </div>
+        </div>
+      </:bar_actions>
 
       <.editor_layout id="post" open={ContentForm.details_open?(@form)}>
         <:main>
@@ -53,7 +75,10 @@ defmodule FeatherWeb.PostLive.Form do
               record={@post}
               status={ContentForm.autosave_status(@form, @changed_elsewhere?)}
             >
-              <.content_length length={@content_length} />
+              <.content_length
+                :if={ContentForm.untitled?(@form)}
+                length={@content_length}
+              />
             </.editor>
           </.form>
         </:main>
@@ -85,14 +110,25 @@ defmodule FeatherWeb.PostLive.Form do
         </:details>
       </.editor_layout>
 
-      <.content_actions
-        id="post"
-        noun="post"
-        record={@post}
-        form={@form}
-        status={@publication_status}
-        changed_elsewhere?={@changed_elsewhere?}
-      />
+      <.action_bar
+        sticky
+        id="action-bar"
+        class="mt-6 items-center md:hidden [&_.join]:flex-1 [&_.join>.btn]:flex-1"
+      >
+        <.editor_status
+          editor="post-content-editor"
+          place={:bottom}
+        />
+        <.content_actions
+          id="post"
+          noun="post"
+          record={@post}
+          form={@form}
+          status={@publication_status}
+          changed_elsewhere?={@changed_elsewhere?}
+          place={:bottom}
+        />
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -123,12 +159,18 @@ defmodule FeatherWeb.PostLive.Form do
 
   @impl true
   def handle_event("delete", _params, socket) do
-    {:ok, _post} = Content.delete_post(socket.assigns.current_scope, socket.assigns.post)
+    %{current_scope: scope, post: post} = socket.assigns
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Post was successfully deleted.")
-     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
+    socket =
+      with %Post{} = post <- Content.get_post(scope, post.public_id),
+           {:ok, _post} <- Content.delete_post(scope, post) do
+        put_flash(socket, :info, "Post was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This post no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The post could not be deleted.")
+      end
+
+    {:noreply, push_navigate(socket, to: ~p"/sites/#{socket.assigns.site.public_id}/posts")}
   end
 
   def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)

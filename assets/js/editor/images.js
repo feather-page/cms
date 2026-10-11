@@ -135,7 +135,7 @@ export class ImageView {
     this.file.addEventListener("change", () => this.chooseFile())
     this.uploadButton = element("label", "btn btn-sm btn-primary pm-image__upload", {}, ["Upload", this.file])
 
-    this.url = element("input", "form-control form-control-sm pm-image__url", {
+    this.url = element("input", "input input-sm pm-image__url", {
       type: "url",
       inputmode: "url",
       placeholder: "Paste an image URL",
@@ -146,7 +146,7 @@ export class ImageView {
       event.preventDefault()
       this.addUrl()
     })
-    this.urlButton = element("button", "btn btn-sm btn-outline-secondary pm-image__add", {type: "button"}, ["From URL"])
+    this.urlButton = element("button", "btn btn-sm pm-image__add", {type: "button"}, ["From URL"])
     this.urlButton.addEventListener("click", () => this.addUrl())
 
     this.message = element("p", "pm-image__message", {role: "status"})

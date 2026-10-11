@@ -41,11 +41,11 @@ defmodule FeatherWeb.MemberLive.IndexTest do
 
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
-      refute has_element?(lv, "#remove-member-#{own.id}")
+      refute has_element?(lv, "#remove-member-#{own.id}-menu-item")
       assert has_element?(lv, "#member-#{own.id} .badge", "You")
       refute has_element?(lv, "#member-#{other_member.id} .badge", "You")
 
-      html = lv |> element("#remove-member-#{other_member.id}") |> render_click()
+      html = confirm_click(lv, "#remove-member-#{other_member.id}-menu-item")
 
       assert html =~ "The user was successfully removed from the site."
       refute has_element?(lv, "#member-#{other_member.id}")
@@ -68,18 +68,30 @@ defmodule FeatherWeb.MemberLive.IndexTest do
       assert Sites.member?(site, user)
     end
 
-    @tag :capture_log
     test "cannot remove a member of another site", %{conn: conn, site: site} do
       other_scope = site_scope_fixture()
       [other_member] = Sites.list_members(other_scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
-      Process.flag(:trap_exit, true)
-
-      assert {{%Ecto.NoResultsError{}, _}, _} =
-               catch_exit(render_hook(lv, "remove_member", %{"id" => other_member.id}))
+      assert render_hook(lv, "remove_member", %{"id" => other_member.id}) =~
+               "This user is no longer a member of the site."
 
       assert [_] = Sites.list_members(other_scope)
+    end
+
+    test "removing a member removed in another tab refreshes the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      {:ok, other_member} = Sites.add_member(site, user_fixture())
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
+      {:ok, _} = Sites.remove_member(scope, Sites.get_member!(scope, other_member.id))
+
+      assert confirm_click(lv, "#remove-member-#{other_member.id}-menu-item") =~
+               "This user is no longer a member of the site."
+
+      refute has_element?(lv, "#member-#{other_member.id}")
     end
 
     test "a super admin can remove members of any site", %{conn: conn} do
@@ -88,7 +100,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
       conn = log_in_user(conn, super_admin_fixture())
 
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
-      lv |> element("#remove-member-#{member.id}") |> render_click()
+      confirm_click(lv, "#remove-member-#{member.id}-menu-item")
 
       refute has_element?(lv, "#member-#{member.id}")
     end
@@ -104,6 +116,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
 
     test "invites a user by email", %{conn: conn, site: site, scope: scope, user: user} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
+      assert has_element?(lv, "#invitation-actions button[type=submit]", "Send invitation")
 
       html =
         lv
@@ -148,11 +161,11 @@ defmodule FeatherWeb.MemberLive.IndexTest do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
       assert lv |> form("#invitation-form", invitation: %{email: "nope"}) |> render_change() =~
-               "must have the @ sign and no spaces"
+               "Must have the @ sign and no spaces"
 
       assert lv
              |> form("#invitation-form", invitation: %{email: user.email})
-             |> render_submit() =~ "is already a member of this site"
+             |> render_submit() =~ "Is already a member of this site"
 
       refute_email_sent()
     end
@@ -169,7 +182,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
 
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
-      html = lv |> element("#resend-invitation-#{invitation.id}") |> render_click()
+      html = lv |> element("#resend-invitation-#{invitation.id}-menu-item") |> render_click()
 
       assert html =~ "Invitation was successfully resent."
       assert_email_sent(to: [{"", "pending@example.com"}])
@@ -181,11 +194,26 @@ defmodule FeatherWeb.MemberLive.IndexTest do
       invitation = invitation_fixture(scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
 
-      html = lv |> element("#revoke-invitation-#{invitation.id}") |> render_click()
+      html = confirm_click(lv, "#revoke-invitation-#{invitation.id}-menu-item")
 
       assert html =~ "Invitation was successfully revoked."
       refute has_element?(lv, "#invitation-#{invitation.id}")
       assert Sites.list_pending_invitations(scope) == []
+    end
+
+    test "revoking an invitation revoked in another tab refreshes the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      invitation = invitation_fixture(scope)
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
+      {:ok, _} = Sites.delete_invitation(scope, invitation)
+
+      assert confirm_click(lv, "#revoke-invitation-#{invitation.id}-menu-item") =~
+               "This invitation no longer exists."
+
+      refute has_element?(lv, "#invitation-#{invitation.id}")
     end
 
     test "does not list accepted invitations", %{conn: conn, site: site, scope: scope} do

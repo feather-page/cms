@@ -1,22 +1,24 @@
 <Layouts.app flash={@flash} current_scope={@current_scope}>
-  <div class="mx-auto narrow">
+  <div class="mx-auto max-w-md">
     <.header>Welcome to feather.page</.header>
 
-    <div id="invitation-info" class="alert alert-secondary">
+    <div id="invitation-info" class="space-y-2">
       <p>
         You have been invited by <strong>{@invitation.inviting_user.email}</strong>
         to join the site <strong>{@invitation.site.title}</strong>
         ({@invitation.site.domain}).
       </p>
       <p>Click the button below to accept the invitation.</p>
-      <p class="mb-0">If you don't want to join the site, please don't click the button.</p>
+      <p class="text-sm text-base-content/70">
+        If you don't want to join the site, please don't click the button.
+      </p>
     </div>
 
     <.form for={%{}} id="accept-invitation-form" action={~p"/invitations/#{@token}/accept"}>
-      <div class="d-flex gap-2">
-        <.button variant="primary">Accept invitation</.button>
+      <.action_bar class="mt-6">
         <.button href={~p"/"}>Cancel</.button>
-      </div>
+        <.button type="submit" variant={:primary}>Accept invitation</.button>
+      </.action_bar>
     </.form>
   </div>
 </Layouts.app>

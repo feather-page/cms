@@ -14,18 +14,20 @@ defmodule FeatherWeb.ProjectLive.Index do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:projects}
     >
       <.header>
         Projects
-        <:actions>
+        <:actions :if={!@empty?}>
           <.button
-            variant="primary"
+            variant={:primary}
+            icon="plus"
             navigate={~p"/sites/#{@site.public_id}/projects/new"}
             id="new-project"
           >
-            <.icon name="plus" size={16} /> New project
+            New project
           </.button>
         </:actions>
       </.header>
@@ -33,37 +35,62 @@ defmodule FeatherWeb.ProjectLive.Index do
       <.empty_state
         :if={@empty?}
         id="no-projects"
-        emoji="🏗️"
-        message="No projects yet"
-        subtitle="Show your work and projects."
-      />
+        layout={:page}
+        plush_size={:xxl}
+        plush="rocket"
+        title="No projects yet"
+      >
+        Show your work and projects.
+        <:action>
+          <.button
+            navigate={~p"/sites/#{@site.public_id}/projects/new"}
+            variant={:primary}
+            icon="plus"
+          >
+            Add your first project
+          </.button>
+        </:action>
+      </.empty_state>
 
-      <.list_card id="projects" stream hidden={@empty?}>
+      <.list id="projects" phx-update="stream" class={@empty? && "hidden"}>
         <.list_row
           :for={{dom_id, project} <- @streams.projects}
           id={dom_id}
           navigate={edit_path(@site, project)}
+          title={project.title}
+          actions_label="Actions"
+          menu={:always}
+          trailing_on_phone={:meta}
         >
-          <:leading>
-            <span :if={project.emoji}>{project.emoji}</span>
-            <.icon :if={!project.emoji} name="rocket" />
-          </:leading>
-          {project.title}
+          <:leading><.tile emoji={project.emoji} icon="folder-kanban" /></:leading>
           <:meta>
-            <span class="list-row__date">{Project.display_period(project)}</span>
-            <.neutral_badge>{status_label(project.status)}</.neutral_badge>
-            <span :if={byline(project) != ""}>{byline(project)}</span>
+            {period(project)}
+            <span :if={project.status in ~w(paused abandoned)}>
+              · {status_label(project.status)}
+            </span>
+            <span :if={byline(project) != ""}>· {byline(project)}</span>
           </:meta>
+          <:trailing
+            :let={place}
+            :if={Content.publication_status(project) != :published}
+            class="md:w-44 md:justify-start"
+          >
+            <.publication_badge
+              status={Content.publication_status(project)}
+              style={if place == :meta, do: :text, else: :dot}
+            />
+          </:trailing>
           <:action
             id={"delete-project-#{project.public_id}"}
-            icon="trash"
+            icon="trash-2"
             label="Delete"
-            click={JS.push("delete", value: %{id: project.public_id})}
-            confirm="Are you sure?"
+            on_click={JS.push("delete", value: %{id: project.public_id})}
+            confirm={"Delete the project “#{project.title}”?"}
+            confirm_text={delete_text("project", project)}
             danger
           />
         </.list_row>
-      </.list_card>
+      </.list>
     </.site_shell>
     """
   end
@@ -84,18 +111,39 @@ defmodule FeatherWeb.ProjectLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    project = Content.get_project!(scope, id)
-    {:ok, _project} = Content.delete_project(scope, project)
+
+    socket =
+      with %Project{} = project <- Content.get_project(scope, id),
+           {:ok, _project} <- Content.delete_project(scope, project) do
+        put_flash(socket, :info, "The project was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This project no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The project could not be deleted.")
+      end
+
+    projects = Content.list_projects(scope)
 
     {:noreply,
      socket
-     |> put_flash(:info, "The project was successfully deleted.")
-     |> assign(:empty?, Content.list_projects(scope) == [])
-     |> stream_delete(:projects, project)}
+     |> assign(:empty?, projects == [])
+     |> stream(:projects, projects, reset: true)}
   end
 
   defp edit_path(site, project),
     do: ~p"/sites/#{site.public_id}/projects/#{project.public_id}/edit"
+
+  # The admin writes months as dates elsewhere (%d/%m/%Y); Project.display_period/1 keeps the
+  # public site's format.
+  defp period(project) do
+    if is_binary(project.period) and String.trim(project.period) != "" do
+      String.replace(project.period, " - ", " – ")
+    else
+      finish = if project.ended_at, do: month(project.ended_at), else: "ongoing"
+      "#{month(project.started_at)} – #{finish}"
+    end
+  end
+
+  defp month(date), do: Calendar.strftime(date, "%m/%Y")
 
   defp byline(project),
     do: [project.company, project.role] |> Enum.reject(&(&1 in [nil, ""])) |> Enum.join(" · ")

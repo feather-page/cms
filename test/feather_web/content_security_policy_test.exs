@@ -12,7 +12,8 @@ defmodule FeatherWeb.ContentSecurityPolicyTest do
       directives = conn |> get(path) |> directives()
 
       assert "script-src 'self'" in directives, path
-      assert "style-src 'self' 'unsafe-inline' https://felt-css.rocu.de" in directives
+      assert "style-src 'self' 'unsafe-inline'" in directives
+      refute Enum.any?(directives, &String.contains?(&1, "felt-css"))
       assert "object-src 'none'" in directives
     end
   end

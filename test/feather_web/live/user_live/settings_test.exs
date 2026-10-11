@@ -6,13 +6,17 @@ defmodule FeatherWeb.UserLive.SettingsTest do
 
   describe "Settings page" do
     test "renders settings page", %{conn: conn} do
-      {:ok, _lv, html} =
+      {:ok, lv, html} =
         conn
         |> log_in_user(user_fixture())
         |> live(~p"/users/settings")
 
       assert html =~ "Change email"
       refute html =~ ~s(type="password")
+      assert has_element?(lv, "#email-heading", "Email address")
+      assert has_element?(lv, ~s(#email_form label.sr-only[for="user_email"]))
+      assert has_element?(lv, "#email-actions button[type=submit]", "Change email")
+      assert has_element?(lv, "#api-token-actions button[type=submit]", "Create token")
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -70,7 +74,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
         })
 
       assert result =~ "Change email"
-      assert result =~ "must have the @ sign and no spaces"
+      assert result =~ "Must have the @ sign and no spaces"
     end
 
     test "renders errors with invalid data (phx-submit)", %{conn: conn, user: user} do
@@ -84,7 +88,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
         |> render_submit()
 
       assert result =~ "Change email"
-      assert result =~ "did not change"
+      assert result =~ "Did not change"
     end
   end
 
@@ -171,7 +175,7 @@ defmodule FeatherWeb.UserLive.SettingsTest do
       assert has_element?(lv, "#api-token-#{own.id}")
       refute has_element?(lv, "#api-token-#{other.id}")
 
-      lv |> element("#delete-api-token-#{own.id}") |> render_click()
+      confirm_click(lv, "#delete-api-token-#{own.id}-menu-item")
 
       refute has_element?(lv, "#api-token-#{own.id}")
       assert Accounts.list_api_tokens(user) == []

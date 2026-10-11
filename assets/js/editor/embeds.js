@@ -39,7 +39,7 @@ export class EmbedView {
 
     this.preview = element("div", "pm-embed__preview", {contenteditable: "false"})
 
-    this.url = element("input", "form-control form-control-sm pm-embed__url", {
+    this.url = element("input", "input input-sm pm-embed__url", {
       type: "url",
       inputmode: "url",
       placeholder: "Paste a link to a video, post or song",

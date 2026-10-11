@@ -103,11 +103,11 @@ defmodule FeatherWeb.HeaderImagePickerTest do
       {:ok, lv, _html} = new_post(conn, site)
 
       lv |> element("#{@picker}-choose-cover") |> render_click()
-      assert has_element?(lv, "#{@picker}-search-cover.active")
+      assert has_element?(lv, "#{@picker}-search-cover[aria-pressed=true]")
       assert has_element?(lv, "#{@picker}-search-form")
 
       lv |> element("#{@picker}-upload-cover") |> render_click()
-      assert has_element?(lv, "#{@picker}-upload-cover.active")
+      assert has_element?(lv, "#{@picker}-upload-cover[aria-pressed=true]")
       assert has_element?(lv, "#{@picker}-upload-form")
       refute has_element?(lv, "#{@picker}-search-form")
     end
@@ -132,8 +132,9 @@ defmodule FeatherWeb.HeaderImagePickerTest do
 
     {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts/#{post.public_id}/edit")
 
+    assert has_element?(lv, "#{@picker} h3", "Images")
     assert has_element?(lv, "#{@picker}-choose-cover", "Change")
-    assert has_element?(lv, "#{@picker}-remove-cover")
+    assert has_element?(lv, ~s(#{@picker}-remove-cover[aria-label="Remove cover"]))
     assert has_element?(lv, "#{@picker}-choose-thumbnail", "Add")
     refute has_element?(lv, "#{@picker}-remove-thumbnail")
     assert has_element?(lv, "#{@picker}-thumbnail-slot .media-slot__tile--empty")

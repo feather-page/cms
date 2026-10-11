@@ -31,18 +31,23 @@ defmodule FeatherWeb.SiteAuth do
     * assigns `site_preview_path`: the preview of the site's internal
       staging target, or nil,
     * subscribes to the site's notices (`Feather.Publishing.subscribe_notices/1`)
-      and collects `{:site_notice, %{message: ..., url: ...}}` broadcasts
-      (e.g. from the deploy pipeline) in `site_notices`, which
-      `FeatherWeb.SiteComponents.site_shell/1` shows as toasts. The event
-      `"dismiss_site_notice"` removes one. Besides those, `site_notices`
-      holds a warning linking to the deployment targets while published
-      changes are not deployed to production
-      (`Feather.Publishing.undeployed_changes?/1`), checked on mount,
-      again with every notice, since a deploy ends with one, and when a
-      LiveView calls `refresh_undeployed_notice/1` after publishing in
-      place. A LiveView that assigns
+      and collects `{:site_notice, notice}` broadcasts (e.g. from the deploy
+      pipeline) in `site_notices`, which `FeatherWeb.SiteComponents.site_shell/1`
+      shows as alerts above the page content. The event
+      `"dismiss_site_notice"` removes one, `"retry_deploy"` deploys the
+      notice's target again and removes it,
+    * assigns `site_deploy` for the deploy control of the shell: the
+      production targets, how many published changes they do not show yet
+      (`Feather.Publishing.undeployed_count/1`) and the progress of their
+      running deploys. It is loaded on mount, again with every notice
+      (a deploy ends with one), updated with every `{:deploy_progress, _}`
+      and reloaded when a LiveView calls `refresh_deploy_status/1` after
+      publishing in place. The event `"deploy_site"` deploys every
+      production target. A LiveView that assigns
       `forward_site_notices: true` receives the notices in its own
-      `handle_info/2` too,
+      `handle_info/2` too, and the deploy pipeline's
+      `{:deploy_progress, progress}` messages, which other LiveViews never
+      see,
     * swallows `{:deploy_requested, target}`, which `Feather.Publishing`
       sends to the caller instead of deploying when `:deploy_mode` is
       `:manual` (tests), so LiveViews that publish do not crash on it.
@@ -69,11 +74,12 @@ defmodule FeatherWeb.SiteAuth do
       socket
       |> Phoenix.Component.assign(:current_scope, scope)
       |> Phoenix.Component.assign(:site_preview_path, preview_path(scope))
-      |> Phoenix.Component.assign(:site_notices, put_undeployed_notice([], scope))
+      |> Phoenix.Component.assign(:site_notices, [])
+      |> Phoenix.Component.assign(:site_deploy, deploy_status(scope))
       |> LiveView.attach_hook(:site_access_on_event, :handle_event, &check_access_on_event/3)
       |> LiveView.attach_hook(:site_access_on_params, :handle_params, &check_access_on_params/3)
       |> LiveView.attach_hook(:site_messages, :handle_info, &handle_message/2)
-      |> LiveView.attach_hook(:dismiss_site_notice, :handle_event, &handle_dismiss/3)
+      |> LiveView.attach_hook(:site_notice_events, :handle_event, &handle_notice_event/3)
 
     if LiveView.connected?(socket), do: Publishing.subscribe_notices(site)
 
@@ -113,25 +119,42 @@ defmodule FeatherWeb.SiteAuth do
     end
   end
 
-  defp handle_message({:site_notice, %{message: message} = notice}, socket) do
-    notice = %{
-      id: System.unique_integer([:positive]),
-      kind: :info,
-      message: message,
-      url: Map.get(notice, :url),
-      link_label: nil
-    }
+  @notice_defaults %{
+    kind: :info,
+    title: nil,
+    url: nil,
+    link_label: nil,
+    external: false,
+    retry: nil
+  }
 
-    notices =
-      [notice | socket.assigns.site_notices]
-      |> Enum.take(@max_notices)
-      |> put_undeployed_notice(socket.assigns.current_scope)
+  defp handle_message({:site_notice, %{message: _} = notice}, socket) do
+    notice =
+      @notice_defaults
+      |> Map.merge(Map.take(notice, [:message | Map.keys(@notice_defaults)]))
+      |> Map.put(:id, System.unique_integer([:positive]))
 
-    socket = Phoenix.Component.assign(socket, :site_notices, notices)
+    notices = Enum.take([notice | socket.assigns.site_notices], @max_notices)
+
+    socket =
+      socket
+      |> Phoenix.Component.assign(:site_notices, notices)
+      |> refresh_deploy_status()
 
     # A LiveView that wants to react to notices itself (e.g. refresh a
     # list) assigns `forward_site_notices: true` and gets them in its
     # handle_info/2 as well.
+    if socket.assigns[:forward_site_notices], do: {:cont, socket}, else: {:halt, socket}
+  end
+
+  defp handle_message({:deploy_progress, %{target_id: id} = progress}, socket) do
+    socket =
+      Phoenix.Component.update(socket, :site_deploy, fn deploy ->
+        if Enum.any?(deploy.targets, &(&1.public_id == id)),
+          do: put_in(deploy, [:progress, id], progress),
+          else: deploy
+      end)
+
     if socket.assigns[:forward_site_notices], do: {:cont, socket}, else: {:halt, socket}
   end
 
@@ -142,43 +165,58 @@ defmodule FeatherWeb.SiteAuth do
   defp handle_message({FeatherWeb.HeaderImagePicker, _change}, socket), do: check_access(socket)
   defp handle_message(_message, socket), do: {:cont, socket}
 
-  @undeployed_notice_id "undeployed-changes"
-
   @doc """
-  Checks again whether published changes are not deployed yet and shows
-  or removes the notice, e.g. after publishing without a navigation.
+  Loads the deploy status again, e.g. after publishing in place.
   """
-  @spec refresh_undeployed_notice(LiveView.Socket.t()) :: LiveView.Socket.t()
-  def refresh_undeployed_notice(socket) do
-    %{site_notices: notices, current_scope: scope} = socket.assigns
-    Phoenix.Component.assign(socket, :site_notices, put_undeployed_notice(notices, scope))
+  @spec refresh_deploy_status(LiveView.Socket.t()) :: LiveView.Socket.t()
+  def refresh_deploy_status(socket) do
+    Phoenix.Component.assign(socket, :site_deploy, deploy_status(socket.assigns.current_scope))
   end
 
-  defp put_undeployed_notice(notices, %Scope{site: site} = scope) do
-    notices = Enum.reject(notices, &(&1.id == @undeployed_notice_id))
+  defp deploy_status(scope) do
+    targets = Publishing.list_targets(scope, :production)
 
-    if Publishing.undeployed_changes?(scope) do
-      notices ++
-        [
-          %{
-            id: @undeployed_notice_id,
-            kind: :warning,
-            message: "Published changes are not deployed yet.",
-            url: ~p"/sites/#{site.public_id}/deployments",
-            link_label: "Deployment targets"
-          }
-        ]
-    else
-      notices
-    end
+    %{
+      targets: targets,
+      pending: Publishing.undeployed_count(scope),
+      progress: Publishing.deploy_progress_by_target(targets)
+    }
   end
 
-  defp handle_dismiss("dismiss_site_notice", %{"id" => id}, socket) do
+  defp handle_notice_event("dismiss_site_notice", %{"id" => id}, socket),
+    do: {:halt, drop_notice(socket, id)}
+
+  defp handle_notice_event("retry_deploy", params, socket) do
+    scope = socket.assigns.current_scope
+
+    target =
+      case params do
+        %{"target" => id} when is_binary(id) -> Publishing.get_target(scope, id)
+        _params -> nil
+      end
+
+    socket =
+      if target do
+        :ok = Publishing.deploy(scope, target)
+        socket
+      else
+        LiveView.put_flash(socket, :error, "This deployment target no longer exists.")
+      end
+
+    {:halt, drop_notice(socket, params["id"])}
+  end
+
+  defp handle_notice_event("deploy_site", _params, socket) do
+    :ok = Publishing.deploy_production(socket.assigns.current_scope)
+    {:halt, refresh_deploy_status(socket)}
+  end
+
+  defp handle_notice_event(_event, _params, socket), do: {:cont, socket}
+
+  defp drop_notice(socket, id) do
     notices = Enum.reject(socket.assigns.site_notices, &(to_string(&1.id) == to_string(id)))
-    {:halt, Phoenix.Component.assign(socket, :site_notices, notices)}
+    Phoenix.Component.assign(socket, :site_notices, notices)
   end
-
-  defp handle_dismiss(_event, _params, socket), do: {:cont, socket}
 
   defp preview_path(scope) do
     case Publishing.preview_target_public_id(scope) do

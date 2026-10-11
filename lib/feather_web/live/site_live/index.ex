@@ -15,37 +15,39 @@ defmodule FeatherWeb.SiteLive.Index do
         Sites
         <:subtitle>The websites you manage</:subtitle>
         <:actions>
-          <.button id="new-site" variant="primary" navigate={~p"/sites/new"}>
-            <.icon name="plus" size={16} /> New site
+          <.button id="new-site" variant={:primary} icon="plus" navigate={~p"/sites/new"}>
+            New site
           </.button>
         </:actions>
       </.header>
 
-      <div :if={@sites == []} id="no-sites" class="text-center text-body-secondary py-5">
-        <p class="fs-1 mb-2"><.icon name="house" size={40} /></p>
-        <p>No sites yet.</p>
-        <.link navigate={~p"/sites/new"} class="btn btn-light">Create your first site</.link>
-      </div>
+      <.empty_state
+        :if={@sites == []}
+        id="no-sites"
+        layout={:page}
+        plush_size={:xxl}
+        plush="house"
+        title="No sites yet"
+      >
+        A site is one website: its posts, pages, books and projects.
+        <:action>
+          <.button navigate={~p"/sites/new"} variant={:primary} icon="plus">
+            Create your first site
+          </.button>
+        </:action>
+      </.empty_state>
 
-      <div :if={@sites != []} id="sites" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3">
-        <div :for={site <- @sites} class="col">
-          <div id={"site-#{site.public_id}"} class="card site-card h-100">
-            <div class="card-body d-flex align-items-center gap-3">
-              <div class="list-row__tile">
-                <span :if={site.emoji}>{site.emoji}</span>
-                <.icon :if={!site.emoji} name="globe" />
-              </div>
-              <div class="site-card__body">
-                <h2 class="site-card__title">
-                  <.link navigate={~p"/sites/#{site.public_id}/posts"} class="stretched-link">
-                    {site.title}
-                  </.link>
-                </h2>
-                <p class="site-card__domain">{site.domain}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+      <div :if={@sites != []} id="sites" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <.card
+          :for={site <- @sites}
+          id={"site-#{site.public_id}"}
+          title={site.title}
+          subtitle={site.domain}
+          navigate={~p"/sites/#{site.public_id}/posts"}
+          class="transition-colors hover:border-base-content/25"
+        >
+          <:leading><.tile emoji={site.emoji} icon="globe" /></:leading>
+        </.card>
       </div>
     </Layouts.app>
     """

@@ -6,9 +6,9 @@ defmodule FeatherWeb.UserLive.Confirmation do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto narrow">
-        <.header class="text-center">Welcome {@user.email}</.header>
+    <Layouts.app flash={@flash} current_scope={@current_scope} bare>
+      <div class="mx-auto max-w-md">
+        <.header>Welcome {@user.email}</.header>
 
         <.form
           :if={!@user.confirmed_at}
@@ -20,16 +20,17 @@ defmodule FeatherWeb.UserLive.Confirmation do
           phx-trigger-action={@trigger_submit}
         >
           <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
-          <div class="d-grid gap-2">
+          <div class="grid gap-2">
             <.button
+              type="submit"
               name={@form[:remember_me].name}
               value="true"
-              phx-disable-with="Confirming..."
-              variant="primary"
+              phx-disable-with="Confirming…"
+              variant={:primary}
             >
               Confirm and stay logged in
             </.button>
-            <.button phx-disable-with="Confirming...">
+            <.button type="submit" phx-disable-with="Confirming…">
               Confirm and log in only this time
             </.button>
           </div>
@@ -45,21 +46,22 @@ defmodule FeatherWeb.UserLive.Confirmation do
           phx-trigger-action={@trigger_submit}
         >
           <input type="hidden" name={@form[:token].name} value={@form[:token].value} />
-          <div class="d-grid gap-2">
+          <div class="grid gap-2">
             <%= if @current_scope do %>
-              <.button phx-disable-with="Logging in..." variant="primary">
+              <.button type="submit" phx-disable-with="Logging in…" variant={:primary}>
                 Log in
               </.button>
             <% else %>
               <.button
+                type="submit"
                 name={@form[:remember_me].name}
                 value="true"
-                phx-disable-with="Logging in..."
-                variant="primary"
+                phx-disable-with="Logging in…"
+                variant={:primary}
               >
                 Keep me logged in on this device
               </.button>
-              <.button phx-disable-with="Logging in...">
+              <.button type="submit" phx-disable-with="Logging in…">
                 Log me in only this time
               </.button>
             <% end %>

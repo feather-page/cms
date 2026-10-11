@@ -84,12 +84,12 @@ defmodule FeatherWeb do
 
       # HTML escaping functionality
       import Phoenix.HTML
-      # Core UI components
+      # Shared admin components (setzkasten): button, input, header, list, badge, ...
+      use Setzkasten
+      # The admin's own components (brand icons, list tiles, publication badges)
       import FeatherWeb.CoreComponents
       # The site admin shell and its building blocks
       import FeatherWeb.SiteComponents
-      # The rows of the admin's collections
-      import FeatherWeb.ListComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS

@@ -57,7 +57,7 @@ defmodule FeatherWeb.PageLiveTest do
       lv |> element("#move-down-#{second.public_id}") |> render_click()
       assert nav_titles(scope) == ["First", "Second"]
 
-      lv |> element("#remove-from-navigation-#{first.public_id}") |> render_click()
+      lv |> element("#remove-from-navigation-#{first.public_id}-menu-item") |> render_click()
       assert nav_titles(scope) == ["Second"]
       assert has_element?(lv, "#page-#{first.public_id}")
     end
@@ -78,9 +78,9 @@ defmodule FeatherWeb.PageLiveTest do
                ~s(#navigation-item-#{first.public_id} a[href="#{pages_path(site)}/#{first.public_id}/edit"])
              )
 
-      # The first item cannot move up: hidden in the row, left out of the menu.
+      # The first item cannot move up: disabled in the row and in the menu.
       assert has_element?(lv, "#move-up-#{first.public_id}[disabled]")
-      refute has_element?(lv, "#move-up-#{first.public_id}-menu-item")
+      assert has_element?(lv, "#move-up-#{first.public_id}-menu-item[disabled]")
       assert has_element?(lv, "#navigation-item-#{first.public_id}-menu-toggle")
 
       lv |> element("#move-up-#{second.public_id}-menu-item") |> render_click()
@@ -91,17 +91,130 @@ defmodule FeatherWeb.PageLiveTest do
 
       lv |> element("#remove-from-navigation-#{other.public_id}-menu-item") |> render_click()
       assert nav_titles(scope) == ["Second", "First"]
-      assert has_element?(lv, "#delete-page-#{other.public_id}-menu-item[data-confirm]")
+      assert has_element?(lv, "#delete-page-#{other.public_id}-menu-item[aria-haspopup=dialog]")
+
+      assert asked(lv, "#delete-page-#{other.public_id}-menu-item").question ==
+               "Delete the page “Other”?"
     end
 
     test "deletes a page", %{conn: conn, site: site, scope: scope} do
       page = page_fixture(scope, title: "Old Page")
       {:ok, lv, _html} = live(conn, pages_path(site))
 
-      lv |> element("#delete-page-#{page.public_id}") |> render_click()
+      confirm_click(lv, "#delete-page-#{page.public_id}-menu-item")
 
       refute has_element?(lv, "#page-#{page.public_id}")
       assert_raise Ecto.NoResultsError, fn -> Content.get_page!(scope, page.public_id) end
+    end
+
+    test "deleting a page deleted in another tab refreshes the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, title: "Old Page")
+      {:ok, lv, _html} = live(conn, pages_path(site))
+      {:ok, _} = Content.delete_page(scope, page)
+
+      assert confirm_click(lv, "#delete-page-#{page.public_id}-menu-item") =~
+               "This page no longer exists."
+
+      refute has_element?(lv, "#page-#{page.public_id}")
+    end
+
+    test "navigation actions on a page deleted in another tab refresh the lists", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      first = page_fixture(scope, title: "First", add_to_navigation: true)
+      second = page_fixture(scope, title: "Second", add_to_navigation: true)
+      other = page_fixture(scope, title: "Other")
+      {:ok, lv, _html} = live(conn, pages_path(site))
+      {:ok, _} = Content.delete_page(scope, second)
+      {:ok, _} = Content.delete_page(scope, other)
+
+      assert lv |> element("#move-up-#{second.public_id}") |> render_click() =~
+               "This page is no longer in the navigation."
+
+      refute has_element?(lv, "#navigation-item-#{second.public_id}")
+      refute has_element?(lv, "#page-#{other.public_id}")
+
+      # A tab that still shows the other page.
+      assert render_click(lv, "add_to_navigation", %{"id" => other.public_id}) =~
+               "This page no longer exists."
+
+      {:ok, _} = Content.delete_page(scope, first)
+
+      assert lv
+             |> element("#remove-from-navigation-#{first.public_id}-menu-item")
+             |> render_click() =~
+               "This page no longer exists."
+
+      assert nav_titles(scope) == []
+    end
+
+    test "keeps focus on the moved row's move buttons", %{conn: conn, site: site, scope: scope} do
+      first = page_fixture(scope, title: "First", add_to_navigation: true)
+      second = page_fixture(scope, title: "Second", add_to_navigation: true)
+      third = page_fixture(scope, title: "Third", add_to_navigation: true)
+      {:ok, lv, _html} = live(conn, pages_path(site))
+
+      # Second moves to the top, where its "Move up" is disabled: the browser
+      # focuses the first enabled and visible one of these.
+      lv |> element("#move-up-#{second.public_id}") |> render_click()
+      s = second.public_id
+      ids = ["move-up-#{s}", "move-down-#{s}", "navigation-item-#{s}-menu-toggle"]
+      assert_push_event(lv, "focus", %{ids: ^ids})
+
+      lv |> element("#move-down-#{first.public_id}") |> render_click()
+      f = first.public_id
+      ids = ["move-down-#{f}", "move-up-#{f}", "navigation-item-#{f}-menu-toggle"]
+      assert_push_event(lv, "focus", %{ids: ^ids})
+
+      assert nav_titles(scope) == ["Second", "Third", "First"]
+      assert has_element?(lv, "#move-down-#{first.public_id}[disabled]")
+      refute has_element?(lv, "#move-down-#{third.public_id}[disabled]")
+    end
+
+    test "showing and hiding a page keeps focus on its moved row", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, title: "About")
+      {:ok, lv, _html} = live(conn, pages_path(site))
+      id = page.public_id
+
+      # Lucide list-plus (a list with +) and list-minus (with −), not the preview's eye.
+      assert has_element?(lv, ~s(#add-to-navigation-#{id} path[d="M18 9v6"]))
+
+      lv |> element("#add-to-navigation-#{id}") |> render_click()
+      ids = ["navigation-item-#{id}-menu-toggle"]
+      assert_push_event(lv, "focus", %{ids: ^ids})
+      assert has_element?(lv, ~s(#remove-from-navigation-#{id}-menu-item path[d="M21 12h-6"]))
+      refute has_element?(lv, ~s(#remove-from-navigation-#{id}-menu-item path[d="M18 9v6"]))
+
+      lv |> element("#remove-from-navigation-#{id}-menu-item") |> render_click()
+      ids = ["add-to-navigation-#{id}", "page-#{id}-menu-toggle"]
+      assert_push_event(lv, "focus", %{ids: ^ids})
+      assert has_element?(lv, "#page-#{id}")
+    end
+
+    test "hiding a page that lands on another page of the list focuses the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      for n <- 1..20, do: page_fixture(scope, title: "Page #{n}")
+      page = page_fixture(scope, title: "Zebra", add_to_navigation: true)
+      {:ok, lv, _html} = live(conn, pages_path(site))
+
+      lv |> element("#remove-from-navigation-#{page.public_id}-menu-item") |> render_click()
+
+      refute has_element?(lv, "#page-#{page.public_id}")
+      assert_push_event(lv, "focus", %{ids: ["other-pages"]})
+      assert has_element?(lv, ~s(section#other-pages[tabindex="-1"]))
     end
   end
 
@@ -188,7 +301,26 @@ defmodule FeatherWeb.PageLiveTest do
       lv |> form("#page-form", page: %{add_to_navigation: "true"}) |> render_change()
 
       assert Content.get_page!(scope, page.public_id).add_to_navigation
-      assert has_element?(lv, "#status-badge", "In navigation")
+      assert has_element?(lv, "#page_add_to_navigation[checked]")
+      refute has_element?(lv, "#status-badge")
+    end
+
+    test "removes the page from the navigation", %{conn: conn, site: site, scope: scope} do
+      page = page_fixture(scope, title: "Services", add_to_navigation: true)
+      {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
+
+      assert has_element?(
+               lv,
+               ~s(input[type="hidden"][name="page[add_to_navigation]"][value="false"][form="page-form"])
+             )
+
+      lv
+      |> element("#page-form")
+      |> render_change(%{"page" => %{"add_to_navigation" => "false"}})
+
+      refute Content.get_page!(scope, page.public_id).add_to_navigation
+      assert nav_titles(scope) == []
+      refute has_element?(lv, "#page_add_to_navigation[checked]")
     end
 
     test "shows validation errors without saving the invalid field", %{
@@ -199,7 +331,7 @@ defmodule FeatherWeb.PageLiveTest do
       {:ok, lv, _html} = live(conn, pages_path(site) <> "/new")
 
       html = lv |> form("#page-form", page: %{title: "No slug", slug: ""}) |> render_change()
-      assert html =~ "can&#39;t be blank"
+      assert html =~ "Can&#39;t be blank"
       assert has_element?(lv, ~s(#page-content-editor[data-form-status="invalid"]))
       assert Content.list_pages(scope) |> Enum.map(& &1.title) == ["Home"]
 
@@ -208,7 +340,7 @@ defmodule FeatherWeb.PageLiveTest do
 
       lv |> form("#page-form", page: %{title: "Our services", slug: "/"}) |> render_change()
 
-      assert has_element?(lv, "#slug-field .invalid-feedback", "has already been taken")
+      assert has_element?(lv, "#slug-field .text-error-ink", "Has already been taken")
 
       assert %{title: "Our services", slug: "/services"} =
                Content.get_page!(scope, page.public_id)
@@ -217,7 +349,7 @@ defmodule FeatherWeb.PageLiveTest do
     test "unpublishes a page", %{conn: conn, site: site, scope: scope} do
       page = page_fixture(scope, title: "Services")
       {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
-      refute has_element?(lv, "#publication-badge")
+      assert has_element?(lv, "#publication-badge", "Published")
 
       lv |> element("#unpublish-page") |> render_click()
 
@@ -230,7 +362,7 @@ defmodule FeatherWeb.PageLiveTest do
       page = page_fixture(scope, title: "Services")
       edit_path = pages_path(site) <> "/#{page.public_id}/edit"
       {:ok, lv, _html} = live(conn, edit_path)
-      refute has_element?(lv, "#publication-badge")
+      assert has_element?(lv, "#publication-badge", "Published")
       assert has_element?(lv, "#version-1", "Published")
 
       lv |> form("#page-form", page: %{title: "Our services"}) |> render_change()
@@ -245,10 +377,10 @@ defmodule FeatherWeb.PageLiveTest do
         Content.update_page(scope, Content.get_page!(scope, page.public_id), %{title: "Draft"})
 
       {:ok, lv, _html} = live(conn, edit_path)
-      assert has_element?(lv, "#publication-badge", "Unpublished changes")
+      assert has_element?(lv, "#publication-badge", "Changes not published")
 
       {:ok, _lv, _html} =
-        lv |> element("#discard-page") |> render_click() |> follow_redirect(conn, edit_path)
+        confirm_click(lv, "#discard-page") |> follow_redirect(conn, edit_path)
 
       assert Content.get_page!(scope, page.public_id).title == "Our services"
     end
@@ -261,9 +393,9 @@ defmodule FeatherWeb.PageLiveTest do
       {:ok, lv, _html} = live(conn, edit_path)
 
       {:ok, lv, _html} =
-        lv |> element("#restore-version-1") |> render_click() |> follow_redirect(conn, edit_path)
+        confirm_click(lv, "#restore-version-1") |> follow_redirect(conn, edit_path)
 
-      assert has_element?(lv, "#page_title[value='Services']")
+      assert has_element?(lv, "#page_title", "Services")
       assert has_element?(lv, "#version-2", "Published")
     end
 
@@ -283,17 +415,35 @@ defmodule FeatherWeb.PageLiveTest do
       {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
 
       assert has_element?(lv, "h1", "Services")
-      assert has_element?(lv, "#status-badge", "In navigation")
+      assert has_element?(lv, "#page_add_to_navigation[checked]")
+      refute has_element?(lv, "#status-badge")
+
+      assert asked(lv, "#delete-page").text ==
+               "Removes the page from Feather. It stays on the live site until the next deploy."
 
       {:ok, _lv, html} =
-        lv
-        |> element("#delete-page")
-        |> render_click()
+        confirm_click(lv, "#delete-page")
         |> follow_redirect(conn, pages_path(site))
 
       assert html =~ "Page was successfully deleted."
       assert_raise Ecto.NoResultsError, fn -> Content.get_page!(scope, page.public_id) end
       assert nav_titles(scope) == []
+    end
+
+    test "deleting a page deleted in another tab goes back to the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, title: "Services")
+      {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
+      {:ok, _} = Content.delete_page(scope, page)
+
+      {:ok, _lv, html} =
+        confirm_click(lv, "#delete-page")
+        |> follow_redirect(conn, pages_path(site))
+
+      assert html =~ "This page no longer exists."
     end
 
     test "a page of another site is not found", %{conn: conn, site: site} do

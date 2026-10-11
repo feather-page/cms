@@ -13,9 +13,11 @@ defmodule Feather.Publishing do
   alias Feather.Sites
   alias Feather.Sites.Site
 
+  @registry Feather.Publishing.Registry
+
   @doc """
   Lists the deployment targets of the scope's site: staging first, then
-  production, then backup.
+  production, then backup, each type oldest first.
 
   Without the (encrypted) `config`, which stays at its default: listing
   works even when the credentials cannot be decrypted. Use `get_target!/2`
@@ -32,7 +34,7 @@ defmodule Feather.Publishing do
     |> Enum.sort_by(&Enum.find_index(DeploymentTarget.types(), fn type -> type == &1.type end))
   end
 
-  @doc "Lists the deployment targets of the scope's site with the given type."
+  @doc "Lists the deployment targets of the scope's site with the given type, oldest first."
   @spec list_targets(Scope.t(), String.t() | atom()) :: [DeploymentTarget.t()]
   def list_targets(%Scope{site: %Site{id: site_id}}, type) do
     type = to_string(type)
@@ -51,6 +53,14 @@ defmodule Feather.Publishing do
   @spec get_target!(Scope.t(), String.t()) :: DeploymentTarget.t()
   def get_target!(%Scope{site: %Site{id: site_id}}, public_id) do
     Repo.one!(
+      from t in DeploymentTarget, where: t.site_id == ^site_id and t.public_id == ^public_id
+    )
+  end
+
+  @doc "Gets a deployment target of the scope's site by public id, or nil."
+  @spec get_target(Scope.t(), String.t()) :: DeploymentTarget.t() | nil
+  def get_target(%Scope{site: %Site{id: site_id}}, public_id) when is_binary(public_id) do
+    Repo.one(
       from t in DeploymentTarget, where: t.site_id == ^site_id and t.public_id == ^public_id
     )
   end
@@ -288,6 +298,17 @@ defmodule Feather.Publishing do
     |> Enum.each(&start_deploy(&1, opts))
   end
 
+  @doc """
+  Deploys every production target of the scope's site, like `deploy/3`.
+  Returns `:ok` at once.
+  """
+  @spec deploy_production(Scope.t(), keyword()) :: :ok
+  def deploy_production(%Scope{} = scope, opts \\ []) do
+    scope
+    |> list_targets(:production)
+    |> Enum.each(&start_deploy(&1, opts))
+  end
+
   defp start_deploy(%DeploymentTarget{} = target, opts) do
     {mode, opts} =
       Keyword.pop_lazy(opts, :mode, fn -> Application.get_env(:feather, :deploy_mode, :async) end)
@@ -312,16 +333,17 @@ defmodule Feather.Publishing do
   ## Undeployed changes
 
   @doc """
-  Returns true if the scope's site has published changes that a production
-  target does not show yet: a post, page or project was published after
-  the target's last successful deploy, or the target was never deployed.
+  The number of posts, pages and projects whose newest publish a production
+  target does not show yet: published after the oldest production deploy,
+  or every published one if a production target was never deployed. 0
+  without a production target.
 
   Only production counts: staging shows the records as they are anyway, and
   a backup is not what visitors see. Unpublishing creates no version, so it
   does not count.
   """
-  @spec undeployed_changes?(Scope.t()) :: boolean()
-  def undeployed_changes?(%Scope{site: %Site{id: site_id}}) do
+  @spec undeployed_count(Scope.t()) :: non_neg_integer()
+  def undeployed_count(%Scope{site: %Site{id: site_id}}) do
     deploys =
       Repo.all(
         from t in DeploymentTarget,
@@ -329,36 +351,64 @@ defmodule Feather.Publishing do
           select: t.last_deployed_at
       )
 
-    case {deploys, newest_publish(site_id)} do
-      {[], _} -> false
-      {_, nil} -> false
-      {deploys, published_at} -> Enum.any?(deploys, &(is_nil(&1) or before?(&1, published_at)))
+    case deploys do
+      [] ->
+        0
+
+      deploys ->
+        since = if Enum.any?(deploys, &is_nil/1), do: nil, else: Enum.min(deploys, DateTime)
+        count_published_since(site_id, since)
     end
   end
 
-  defp before?(deployed_at, published_at),
-    do: DateTime.compare(deployed_at, published_at) == :lt
-
-  defp newest_publish(site_id) do
+  defp count_published_since(site_id, since) do
     Feather.Content.versioned_schemas()
     |> Enum.map(fn {record, version, foreign_key} ->
-      from v in version,
-        join: r in ^record,
-        on: r.id == field(v, ^foreign_key),
-        where: r.site_id == ^site_id,
-        select: %{published_at: max(v.published_at)}
+      query =
+        from v in version,
+          join: r in ^record,
+          on: r.id == field(v, ^foreign_key),
+          where: r.site_id == ^site_id,
+          select: count(field(v, ^foreign_key), :distinct)
+
+      query = if since, do: where(query, [v], v.published_at > ^since), else: query
+      Repo.one(query)
     end)
-    |> Enum.reduce(&union_all(&2, ^&1))
-    |> subquery()
-    |> select([v], max(v.published_at))
-    |> Repo.one()
+    |> Enum.sum()
+  end
+
+  @doc """
+  Whether a published version is on the live site: every production
+  target in `targets` deployed since it was published and, for a post,
+  since its `publish_at` (the static export leaves out a post until then).
+  A post whose `publish_at` is in the future is never live. True without a
+  published version, and for a due one without a production target, where
+  there is nothing to wait for.
+  """
+  @spec live?([DeploymentTarget.t()], map() | nil, DateTime.t()) :: boolean()
+  def live?(targets, published_version, now \\ DateTime.utc_now())
+
+  def live?(_targets, nil, _now), do: true
+
+  def live?(targets, %{published_at: %DateTime{} = published_at} = version, now) do
+    shown_from =
+      case version do
+        %{publish_at: %DateTime{} = publish_at} -> Enum.max([published_at, publish_at], DateTime)
+        _version -> published_at
+      end
+
+    DateTime.compare(shown_from, now) != :gt and
+      Enum.all?(targets, fn target ->
+        target.last_deployed_at && DateTime.compare(shown_from, target.last_deployed_at) != :gt
+      end)
   end
 
   ## Notices
 
   @doc """
-  The PubSub topic of a site's notices. Messages are
-  `{:site_notice, %{message: String.t(), url: String.t() | nil}}`.
+  The PubSub topic of a site's notices. Messages are `{:site_notice,
+  notice}` (see `broadcast_notice/2`) and `{:deploy_progress, progress}`
+  (see `put_deploy_progress/3`).
   """
   @spec notices_topic(Site.t()) :: String.t()
   def notices_topic(%Site{id: id}), do: "site:#{id}:notices"
@@ -368,13 +418,98 @@ defmodule Feather.Publishing do
   def subscribe_notices(%Site{} = site),
     do: Phoenix.PubSub.subscribe(Feather.PubSub, notices_topic(site))
 
-  @doc "Broadcasts a notice to everyone watching the site."
-  @spec broadcast_notice(Site.t(), String.t(), String.t() | nil) :: :ok | {:error, term()}
-  def broadcast_notice(%Site{} = site, message, url \\ nil) do
-    Phoenix.PubSub.broadcast(
-      Feather.PubSub,
-      notices_topic(site),
-      {:site_notice, %{message: message, url: url}}
-    )
+  @doc """
+  Broadcasts a notice to everyone watching the site: a map with `:message`
+  and any of `:kind` (`:info`, `:success`, `:warning`, `:error`), `:title`,
+  `:url`, `:link_label`, `:external` (the URL opens the site, shown as a
+  button) and `:retry` (the public id of a target to deploy again).
+  """
+  @spec broadcast_notice(Site.t(), map()) :: :ok | {:error, term()}
+  def broadcast_notice(%Site{} = site, %{message: _} = notice),
+    do: Phoenix.PubSub.broadcast(Feather.PubSub, notices_topic(site), {:site_notice, notice})
+
+  ## Deploy progress
+
+  @deploy_steps [:waiting, :build, :compress, :upload]
+
+  @doc """
+  The steps a deploy reports, in order: `:waiting` (for a running deploy
+  of the same target, only when there is one), `:build`, `:compress`,
+  `:upload`.
+  """
+  @spec deploy_steps() :: [atom()]
+  def deploy_steps, do: @deploy_steps
+
+  @doc """
+  Records the step a deploy is at, called by the deploying process, and
+  broadcasts `{:deploy_progress, progress}` to the site's notices.
+  `progress` is `%{target_id: public_id, step: step, started_at:
+  started_at}`. The record lives in `Feather.Publishing.Registry` until
+  `clear_deploy_progress/1` or the end of the process. Does nothing while
+  another deploy of the target holds the record (a deploy waiting for the
+  running one).
+  """
+  @spec put_deploy_progress(DeploymentTarget.t(), atom(), DateTime.t()) :: :ok
+  def put_deploy_progress(%DeploymentTarget{} = target, step, %DateTime{} = started_at)
+      when step in @deploy_steps do
+    progress = %{target_id: target.public_id, step: step, started_at: started_at}
+    key = {:progress, target.id}
+
+    recorded =
+      with {:error, {:already_registered, _owner}} <-
+             Registry.register(@registry, key, progress) do
+        Registry.update_value(@registry, key, fn _old -> progress end)
+      end
+
+    if recorded != :error do
+      Phoenix.PubSub.broadcast(
+        Feather.PubSub,
+        notices_topic(%Site{id: target.site_id}),
+        {:deploy_progress, progress}
+      )
+    end
+
+    :ok
   end
+
+  @doc """
+  The label of a deploy step, e.g. "Exporting pages" while it runs
+  (`:running`) or "Export pages" in a list of the steps (`:checklist`).
+  """
+  @spec deploy_step_label(atom(), :running | :checklist) :: String.t()
+  def deploy_step_label(:waiting, :running), do: "Waiting for the running deploy"
+  def deploy_step_label(:build, :running), do: "Exporting pages"
+  def deploy_step_label(:compress, :running), do: "Compressing"
+  def deploy_step_label(:upload, :running), do: "Uploading"
+  def deploy_step_label(:waiting, :checklist), do: "Wait for the running deploy"
+  def deploy_step_label(:build, :checklist), do: "Export pages"
+  def deploy_step_label(:compress, :checklist), do: "Compress"
+  def deploy_step_label(:upload, :checklist), do: "Upload"
+
+  @doc "The progress of the target's running deploy, or nil."
+  @spec deploy_progress(DeploymentTarget.t()) :: map() | nil
+  def deploy_progress(%DeploymentTarget{id: id}) do
+    case Registry.lookup(@registry, {:progress, id}) do
+      [{_pid, progress}] -> progress
+      [] -> nil
+    end
+  end
+
+  @doc """
+  The progress of the running deploys of `targets` (see
+  `deploy_progress/1`), by target public id.
+  """
+  @spec deploy_progress_by_target([DeploymentTarget.t()]) :: %{String.t() => map()}
+  def deploy_progress_by_target(targets) do
+    for target <- targets,
+        target.deploying,
+        progress = deploy_progress(target),
+        into: %{},
+        do: {target.public_id, progress}
+  end
+
+  @doc "Removes the progress record of the calling process's deploy."
+  @spec clear_deploy_progress(DeploymentTarget.t()) :: :ok
+  def clear_deploy_progress(%DeploymentTarget{id: id}),
+    do: Registry.unregister(@registry, {:progress, id})
 end

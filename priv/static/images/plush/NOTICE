@@ -1,0 +1,13 @@
+Plush images (book-open, feather, house, rocket)
+
+Derived from Noto Emoji 3D (https://github.com/googlefonts/noto-emoji),
+Copyright Google LLC, whose image resources are licensed under the Apache
+License, Version 2.0 (see LICENSE in this directory).
+
+Modified: each image was redrawn as a plush/felt version of the Noto 3D
+emoji with an image model, cropped and scaled to 192px WebP.
+
+  book-open  from emoji_u1f4da (books)
+  feather    from emoji_u1fab6 (feather)
+  house      from emoji_u1f3e0 (house)
+  rocket     from emoji_u1f680 (rocket)

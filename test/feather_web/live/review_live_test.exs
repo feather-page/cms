@@ -33,8 +33,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     book: book
   } do
     {:ok, lv, _html} = live(conn, review_path(site, book, "new"))
-    assert has_element?(lv, "#title-field.d-none")
-    assert has_element?(lv, "#slug-field.d-none")
+    assert has_element?(lv, "#title-field.hidden")
+    assert has_element?(lv, "#slug-field.hidden")
 
     sync_new(lv, "Great book, highly recommended!")
 
@@ -72,9 +72,9 @@ defmodule FeatherWeb.ReviewLiveTest do
 
     sync_new(lv, String.duplicate("A", 350))
 
-    refute has_element?(lv, "#title-field.d-none")
-    refute has_element?(lv, "#slug-field.d-none")
-    assert has_element?(lv, ~s(#post_title[value="Review: Clean Code"]))
+    refute has_element?(lv, "#title-field.hidden")
+    refute has_element?(lv, "#slug-field.hidden")
+    assert has_element?(lv, "#post_title", "Review: Clean Code")
 
     lv
     |> form("#review-form", post: %{title: "Why Clean Code Changed My Life"})
@@ -82,6 +82,22 @@ defmodule FeatherWeb.ReviewLiveTest do
 
     book = Books.get_book!(scope, book.public_id)
     assert Books.get_review_post(scope, book).title == "Why Clean Code Changed My Life"
+  end
+
+  test "the stars follow in reading order, so Tab moves from one star to five", %{
+    conn: conn,
+    site: site,
+    book: book
+  } do
+    {:ok, _lv, html} = live(conn, review_path(site, book, "new"))
+
+    ids =
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("#star-rating button")
+      |> Enum.map(&(&1 |> LazyHTML.attribute("id") |> hd()))
+
+    assert ids == Enum.map(1..5, &"star-rating-#{&1}")
   end
 
   test "the rating belongs to the book: it saves at once and is not versioned", %{
@@ -138,7 +154,7 @@ defmodule FeatherWeb.ReviewLiveTest do
 
     lv |> form("#review-form", post: %{title: "New", slug: "/posts/x"}) |> render_change()
 
-    assert has_element?(lv, "#slug-field .invalid-feedback", "is reserved")
+    assert has_element?(lv, "#slug-field .text-error-ink", "Is reserved")
     assert has_element?(lv, "#publish-review[disabled]")
     assert %{title: "New", slug: "/mine"} = Books.get_review_post(scope, book)
   end
@@ -162,9 +178,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
 
     {:ok, lv, _html} =
-      lv
-      |> element("#delete-review")
-      |> render_click()
+      confirm_click(lv, "#delete-review")
       |> follow_redirect(conn, ~p"/sites/#{site.public_id}/books")
 
     assert has_element?(lv, "#book-#{book.public_id}")
@@ -216,12 +230,10 @@ defmodule FeatherWeb.ReviewLiveTest do
     post = Books.get_review_post(scope, book)
     {:ok, _post} = Content.update_post(scope, post, %{title: "Third take"})
     {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
-    assert has_element?(lv, "#status-badge", "Unpublished changes")
+    assert has_element?(lv, "#status-badge", "Changes not published")
 
     {:ok, lv, _html} =
-      lv
-      |> element("#discard-review")
-      |> render_click()
+      confirm_click(lv, "#discard-review")
       |> follow_redirect(conn, review_path(site, book, "edit"))
 
     assert has_element?(lv, "#status-badge", "Published")
@@ -241,12 +253,10 @@ defmodule FeatherWeb.ReviewLiveTest do
     {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
 
     {:ok, lv, _html} =
-      lv
-      |> element("#restore-version-1")
-      |> render_click()
+      confirm_click(lv, "#restore-version-1")
       |> follow_redirect(conn, review_path(site, book, "edit"))
 
-    assert has_element?(lv, "#status-badge", "Unpublished changes")
+    assert has_element?(lv, "#status-badge", "Changes not published")
     book = Books.get_book!(scope, book.public_id)
     assert Books.get_review_post(scope, book).title == "First take"
   end
@@ -280,5 +290,22 @@ defmodule FeatherWeb.ReviewLiveTest do
 
     assert_reply(lv, %{status: "saved"})
     assert [%{"text" => "Very good"}] = Feather.Repo.reload!(post).content
+  end
+
+  test "deleting a review deleted in another tab goes back to the books", %{
+    conn: conn,
+    site: site,
+    scope: scope,
+    book: book
+  } do
+    {:ok, _} = Books.create_review(scope, book, %{title: "Review: Clean Code"})
+    {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
+    {:ok, _} = Books.delete_review(scope, Books.get_book!(scope, book.public_id))
+
+    {:ok, _lv, html} =
+      confirm_click(lv, "#delete-review")
+      |> follow_redirect(conn, ~p"/sites/#{site.public_id}/books")
+
+    assert html =~ "This review no longer exists."
   end
 end

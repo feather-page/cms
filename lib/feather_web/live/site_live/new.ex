@@ -13,48 +13,43 @@ defmodule FeatherWeb.SiteLive.New do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <.header back={~p"/"} back_label="Sites">New site</.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/"}>Sites</:crumb>
+          <:crumb>New site</:crumb>
+        </.breadcrumbs>
+      </:bar>
 
       <.form
         for={@form}
         id="site-form"
-        class="form-narrow"
+        class="max-w-3xl"
         phx-change="validate"
         phx-submit="save"
       >
-        <div class="row g-3">
-          <div class="col-12">
-            <.input
-              field={@form[:title]}
-              type="text"
-              label="Title"
-              placeholder="Timon's Blog"
-              wrapper_class={nil}
-            />
-          </div>
-          <div class="col-12 col-sm-8">
+        <.input field={@form[:title]} type="text" label="Title" placeholder="Timon's Blog" />
+        <div class="grid gap-x-4 sm:grid-cols-3">
+          <div class="sm:col-span-2">
             <.input
               field={@form[:domain]}
               type="text"
               label="Domain"
               placeholder="timon.blog"
               help="Without https://"
-              wrapper_class={nil}
             />
           </div>
-          <div class="col-12 col-sm-4">
-            <.input
-              field={@form[:language_code]}
-              type="select"
-              label="Language"
-              options={Languages.options()}
-              wrapper_class={nil}
-            />
-          </div>
+          <.input
+            field={@form[:language_code]}
+            type="select"
+            label="Language"
+            options={Languages.options()}
+          />
         </div>
-        <.action_bar>
-          <.button variant="primary" phx-disable-with="Creating...">Create site</.button>
-          <.link navigate={~p"/"} class="btn btn-light">Cancel</.link>
+        <.action_bar class="mt-6">
+          <.button navigate={~p"/"}>Cancel</.button>
+          <.button type="submit" variant={:primary} phx-disable-with="Creating…">
+            Create site
+          </.button>
         </.action_bar>
       </.form>
     </Layouts.app>

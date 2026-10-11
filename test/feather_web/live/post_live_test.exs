@@ -15,8 +15,8 @@ defmodule FeatherWeb.PostLiveTest do
     test "shows an empty state", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, posts_path(site))
       assert has_element?(lv, "#no-posts")
-      assert has_element?(lv, "#site-title", site.title)
-      assert has_element?(lv, "#site-navigation a.active", "Posts")
+      assert has_element?(lv, "#site-switcher-sidebar-title", site.title)
+      assert has_element?(lv, "nav[aria-label=Main] a[aria-current=page]", "Posts")
     end
 
     test "lists posts newest first with draft badge, tags and excerpts", %{
@@ -46,20 +46,23 @@ defmodule FeatherWeb.PostLiveTest do
 
       assert has_element?(lv, "#post-#{new.public_id}", "New post")
       assert has_element?(lv, "#post-#{new.public_id} .badge", "Draft")
-      assert has_element?(lv, "#post-#{new.public_id} .list-row__tag", "phoenix")
-      assert has_element?(lv, "#post-#{old.public_id} .badge", "Published")
+      assert has_element?(lv, "#post-#{new.public_id}", "#phoenix")
+      # Published is the normal state and shows no badge.
+      refute has_element?(lv, "#post-#{old.public_id} .badge")
       assert has_element?(lv, "#post-#{short.public_id}", "Just a short thought")
 
-      # The whole row links to the editor; deleting needs no menu.
+      # The whole row links to the editor; Delete sits in the row's menu.
       assert has_element?(
                lv,
-               ~s(#post-#{old.public_id} a.stretched-link[href="#{posts_path(site)}/#{old.public_id}/edit"])
+               ~s(#post-#{old.public_id} .list-col-grow a[href="#{posts_path(site)}/#{old.public_id}/edit"])
              )
 
-      refute has_element?(lv, "#post-#{old.public_id}-menu-toggle")
+      refute has_element?(lv, "#delete-post-#{old.public_id}")
+      assert has_element?(lv, "#post-#{old.public_id}-menu-toggle")
+      assert has_element?(lv, "#delete-post-#{old.public_id}-menu-item")
 
       [first, second, third] =
-        Regex.scan(~r/id="post-([^"]+)"/, html) |> Enum.map(&List.last/1)
+        Regex.scan(~r/<li[^>]* id="post-([^"]+)"/, html) |> Enum.map(&List.last/1)
 
       assert [first, second, third] == [new.public_id, short.public_id, old.public_id]
     end
@@ -80,11 +83,26 @@ defmodule FeatherWeb.PostLiveTest do
       post = post_fixture(scope, title: "Unwanted Post")
       {:ok, lv, _html} = live(conn, posts_path(site))
 
-      lv |> element("#delete-post-#{post.public_id}") |> render_click()
+      confirm_click(lv, "#delete-post-#{post.public_id}-menu-item")
 
       refute has_element?(lv, "#post-#{post.public_id}")
       assert render(lv) =~ "Post was successfully deleted."
       assert_raise Ecto.NoResultsError, fn -> Content.get_post!(scope, post.public_id) end
+    end
+
+    test "deleting a post deleted in another tab refreshes the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Unwanted Post")
+      {:ok, lv, _html} = live(conn, posts_path(site))
+      {:ok, _} = Content.delete_post(scope, post)
+
+      assert confirm_click(lv, "#delete-post-#{post.public_id}-menu-item") =~
+               "This post no longer exists."
+
+      refute has_element?(lv, "#post-#{post.public_id}")
     end
 
     test "marks book reviews, also short ones", %{conn: conn, site: site, scope: scope} do
@@ -96,8 +114,9 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, _book} = Books.update_book(scope, %{book | post_id: post.id}, %{rating: 4})
 
       {:ok, lv, _html} = live(conn, posts_path(site))
-      assert has_element?(lv, "#post-#{post.public_id} .list-row__review", "Clean Code")
+      assert has_element?(lv, "#post-#{post.public_id} [title=\"Book review\"]", "Clean Code")
       assert has_element?(lv, "#post-#{post.public_id}", "★★★★☆")
+      assert has_element?(lv, "#post-#{post.public_id} .sr-only", "Rated 4 out of 5")
     end
 
     test "deleting a review post from the list removes the review", %{
@@ -112,7 +131,7 @@ defmodule FeatherWeb.PostLiveTest do
 
       {:ok, lv, _html} = live(conn, posts_path(site))
       assert has_element?(lv, "#post-#{post.public_id}", "My Clean Code Review")
-      lv |> element("#delete-post-#{post.public_id}") |> render_click()
+      confirm_click(lv, "#delete-post-#{post.public_id}-menu-item")
 
       refute Books.get_book!(scope, book.public_id).post_id
     end
@@ -247,9 +266,9 @@ defmodule FeatherWeb.PostLiveTest do
       scope: scope
     } do
       {:ok, lv, _html} = new_post(conn, site)
-      assert has_element?(lv, "#title-field.d-none")
-      assert has_element?(lv, "#slug-field.d-none")
-      assert has_element?(lv, "#content-length", "0 / 300")
+      assert has_element?(lv, "#title-field.hidden")
+      assert has_element?(lv, "#slug-field.hidden")
+      assert has_element?(lv, "#content-length", "Short post · 0 / 300 characters")
 
       sync = fn lock_version, text ->
         lv
@@ -263,14 +282,22 @@ defmodule FeatherWeb.PostLiveTest do
 
       sync.(nil, String.duplicate("a", 299))
       assert_reply(lv, %{status: "saved"})
-      assert has_element?(lv, "#title-field.d-none")
-      assert has_element?(lv, "#slug-field.d-none")
+      assert has_element?(lv, "#title-field.hidden")
+      assert has_element?(lv, "#slug-field.hidden")
 
       sync.(created_post(scope).lock_version, String.duplicate("a", 300))
       assert_reply(lv, %{status: "saved"})
-      refute has_element?(lv, "#title-field.d-none")
-      refute has_element?(lv, "#slug-field.d-none")
-      assert has_element?(lv, "#content-length", "300 / 300")
+      refute has_element?(lv, "#title-field.hidden")
+      refute has_element?(lv, "#slug-field.hidden")
+      assert has_element?(lv, "#content-length", "300 characters · no longer a short post")
+    end
+
+    test "shows the length counter only while the post has no title", %{conn: conn, site: site} do
+      {:ok, lv, _html} = new_post(conn, site)
+      assert has_element?(lv, "#content-length", "Short post")
+
+      lv |> form("#post-form", post: %{title: "Hello"}) |> render_change()
+      refute has_element?(lv, "#content-length")
     end
 
     test "an invalid field shows its error and the valid ones are saved", %{
@@ -284,7 +311,7 @@ defmodule FeatherWeb.PostLiveTest do
       |> form("#post-form", post: %{title: "Bad", slug: "/posts/reserved"})
       |> render_change()
 
-      assert has_element?(lv, "#slug-field .invalid-feedback", "is reserved")
+      assert has_element?(lv, "#slug-field .text-error-ink", "Is reserved")
       assert has_element?(lv, ~s(#post-content-editor[data-form-status="invalid"]))
       assert has_element?(lv, "#post-details.is-open")
       assert %{title: "Bad", slug: nil} = created_post(scope)
@@ -325,8 +352,8 @@ defmodule FeatherWeb.PostLiveTest do
                "#post-content-editor > #post-content-editor-document[phx-update=ignore]"
              )
 
-      refute has_element?(lv, "#title-field.d-none")
-      refute has_element?(lv, "#slug-field.d-none")
+      refute has_element?(lv, "#title-field.hidden")
+      refute has_element?(lv, "#slug-field.hidden")
 
       lv |> form("#post-form", post: %{title: "Published Post"}) |> render_change()
 
@@ -434,11 +461,12 @@ defmodule FeatherWeb.PostLiveTest do
 
       assert has_element?(lv, "h1", "Draft Post")
       assert has_element?(lv, "#status-badge", "Draft")
-      assert has_element?(lv, ~s(#back-link[href="#{posts_path(site)}"]), "Posts")
+      assert has_element?(lv, ~s(header a[href="#{posts_path(site)}"]), "Posts")
       assert has_element?(lv, "#post-details #post_slug[form=post-form]")
       refute has_element?(lv, "#post_draft")
       refute has_element?(lv, "#unpublish-post")
-      assert has_element?(lv, "#action-bar #publish-post")
+      assert has_element?(lv, "#publish-actions #publish-post")
+      assert has_element?(lv, "#action-bar #publish-post-bottom")
       refute has_element?(lv, "#save-post")
     end
 
@@ -456,7 +484,7 @@ defmodule FeatherWeb.PostLiveTest do
 
       assert has_element?(lv, "#status-badge", "Draft")
       refute has_element?(lv, "#unpublish-post")
-      assert has_element?(lv, "#post_title[value='Edited title']")
+      assert has_element?(lv, "#post_title", "Edited title")
 
       post = Content.get_post!(scope, post.public_id)
       assert Content.draft?(post)
@@ -481,13 +509,27 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
 
       {:ok, _lv, html} =
-        lv
-        |> element("#delete-post")
-        |> render_click()
+        confirm_click(lv, "#delete-post")
         |> follow_redirect(conn, posts_path(site))
 
       assert html =~ "Post was successfully deleted."
       assert_raise Ecto.NoResultsError, fn -> Content.get_post!(scope, post.public_id) end
+    end
+
+    test "deleting a post deleted in another tab goes back to the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Unwanted Post")
+      {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
+      {:ok, _} = Content.delete_post(scope, post)
+
+      {:ok, _lv, html} =
+        confirm_click(lv, "#delete-post")
+        |> follow_redirect(conn, posts_path(site))
+
+      assert html =~ "This post no longer exists."
     end
 
     test "a post of another site is not found", %{conn: conn, site: site} do
@@ -512,6 +554,73 @@ defmodule FeatherWeb.PostLiveTest do
       end)
     end
 
+    test "the bar says when a published post is not live yet", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Fresh")
+      target = deployment_target_fixture(scope)
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+      assert has_element?(lv, "#status-badge", "Published · not live yet")
+
+      :ok = Feather.Publishing.record_deploy(target, DateTime.utc_now())
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+      assert has_element?(lv, "#status-badge", "Published")
+      refute has_element?(lv, "#status-badge", "not live yet")
+    end
+
+    test "a scheduled post is not live before its publish date", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      tomorrow = DateTime.add(DateTime.utc_now(), 1, :day)
+      post = post_fixture(scope, title: "Scheduled", publish_at: tomorrow)
+      target = deployment_target_fixture(scope)
+      :ok = Feather.Publishing.record_deploy(target, DateTime.utc_now())
+
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+      assert has_element?(lv, "#status-badge", "Published · not live yet")
+    end
+
+    test "the delete confirmation says what happens to the live site", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Live")
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+
+      assert asked(lv, "#delete-post").text ==
+               "Removes the post from Feather. It stays on the live site until the next deploy."
+
+      lv |> element("#unpublish-post") |> render_click()
+      assert asked(lv, "#delete-post").text == nil
+    end
+
+    test "on phones the autosave status sits next to Publish in the bottom bar", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Status")
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+
+      for {id, place} <- [{"", "bar"}, {"-bottom", "bottom"}] do
+        status = ~s(#post-content-editor-status#{id}[data-editor-status="post-content-editor"])
+        assert has_element?(lv, ~s(#{status}[data-place="#{place}"] [role="status"]), "Saved")
+        assert has_element?(lv, "#post-content-editor-reload#{id}[hidden]")
+      end
+
+      assert has_element?(
+               lv,
+               "#action-bar #post-content-editor-status-bottom + .join #publish-post-bottom"
+             )
+
+      assert has_element?(lv, "#publish-actions #post-content-editor-status")
+    end
+
     test "a change keeps the published version and shows the unpublished changes", %{
       conn: conn,
       site: site,
@@ -529,11 +638,11 @@ defmodule FeatherWeb.PostLiveTest do
         sync_params(post, ["block00001"], [paragraph_node("block00001", "Changed")])
       )
 
-      assert has_element?(lv, "#status-badge", "Unpublished changes")
+      assert has_element?(lv, "#status-badge", "Changes not published")
       assert has_element?(lv, "#discard-post")
 
       {:ok, list, _html} = live(conn, posts_path(site))
-      assert has_element?(list, "#post-#{post.public_id} .badge", "Unpublished changes")
+      assert has_element?(list, "#post-#{post.public_id} .badge", "Changes not published")
 
       [published] = Content.as_published([Content.get_post!(scope, post.public_id)])
       assert published.title == "Version 3"
@@ -575,11 +684,11 @@ defmodule FeatherWeb.PostLiveTest do
       post = post_at_version_3(scope)
       {:ok, post} = Content.update_post(scope, post, %{title: "Unpublished", slug: "/mine"})
       {:ok, lv, _html} = live(conn, edit_path(site, post))
-      assert has_element?(lv, "#status-badge", "Unpublished changes")
+      assert has_element?(lv, "#status-badge", "Changes not published")
 
       lv |> form("#post-form", post: %{slug: "/taken"}) |> render_change()
 
-      assert has_element?(lv, "#slug-field .invalid-feedback", "has already been taken")
+      assert has_element?(lv, "#slug-field .text-error-ink", "Has already been taken")
       assert has_element?(lv, ~s(#post-content-editor[data-form-status="invalid"]))
       assert Content.get_post!(scope, post.public_id).slug == "/mine"
 
@@ -607,12 +716,12 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
       lv |> form("#post-form", post: %{slug: "/about"}) |> render_change()
-      assert has_element?(lv, "#slug-field .invalid-feedback", "has already been taken")
+      assert has_element?(lv, "#slug-field .text-error-ink", "Has already been taken")
       assert Content.get_post!(scope, post.public_id).slug == "/mine"
 
       {:ok, _moved} = Content.update_page(scope, page, %{slug: "/moved"})
       lv |> form("#post-form", post: %{slug: "/about"}) |> render_change()
-      refute has_element?(lv, "#slug-field .invalid-feedback")
+      refute has_element?(lv, "#slug-field .text-error-ink")
 
       assert publish(lv) =~ "Not published: another post or page is published with this slug."
       assert Content.draft?(Content.get_post!(scope, post.public_id))
@@ -624,14 +733,12 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
       {:ok, lv, html} =
-        lv
-        |> element("#discard-post")
-        |> render_click()
+        confirm_click(lv, "#discard-post")
         |> follow_redirect(conn, edit_path(site, post))
 
       assert html =~ "Changes were discarded."
       assert has_element?(lv, "#status-badge", "Published")
-      assert has_element?(lv, "#post_title[value='Version 3']")
+      assert has_element?(lv, "#post_title", "Version 3")
       assert Content.get_post!(scope, post.public_id).title == "Version 3"
     end
 
@@ -645,14 +752,12 @@ defmodule FeatherWeb.PostLiveTest do
       refute has_element?(lv, "#restore-version-3")
 
       {:ok, lv, html} =
-        lv
-        |> element("#restore-version-2")
-        |> render_click()
+        confirm_click(lv, "#restore-version-2")
         |> follow_redirect(conn, edit_path(site, post))
 
       assert html =~ "Version 2 was restored."
-      assert has_element?(lv, "#post_title[value='Version 2']")
-      assert has_element?(lv, "#status-badge", "Unpublished changes")
+      assert has_element?(lv, "#post_title", "Version 2")
+      assert has_element?(lv, "#status-badge", "Changes not published")
       assert has_element?(lv, "#version-3", "Published")
 
       [published] = Content.as_published([Content.get_post!(scope, post.public_id)])
@@ -666,7 +771,7 @@ defmodule FeatherWeb.PostLiveTest do
       post_fixture(scope, slug: "/taken")
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
-      html = lv |> element("#restore-version-1") |> render_click()
+      html = confirm_click(lv, "#restore-version-1")
 
       assert html =~ "Version 1 could not be restored: slug has already been taken."
       assert Content.get_post!(scope, post.public_id).slug == "/moved"
@@ -678,7 +783,7 @@ defmodule FeatherWeb.PostLiveTest do
       post_fixture(scope, slug: "/taken", draft: true)
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
-      html = lv |> element("#discard-post") |> render_click()
+      html = confirm_click(lv, "#discard-post")
 
       assert html =~ "The changes could not be discarded: slug has already been taken."
       assert Content.get_post!(scope, post.public_id).slug == "/moved"
@@ -751,12 +856,12 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, edit_path(site, post))
       {:ok, _elsewhere} = Content.unpublish(scope, post)
 
-      assert lv |> element("#discard-post") |> render_click() =~
+      assert confirm_click(lv, "#discard-post") =~
                "The changes could not be discarded: it is not published."
 
       {:ok, _elsewhere} = Content.update_post(scope, post, %{title: "Elsewhere"})
 
-      assert lv |> element("#discard-post") |> render_click() =~
+      assert confirm_click(lv, "#discard-post") =~
                "The changes could not be discarded: it was changed elsewhere"
 
       assert Content.get_post!(scope, post.public_id).title == "Elsewhere"
@@ -844,7 +949,7 @@ defmodule FeatherWeb.PostLiveTest do
       lock_version = post.lock_version + 1
       assert_reply(lv, %{status: "saved", lock_version: ^lock_version})
       assert texts(scope, post) == ["One", "Two, edited"]
-      assert has_element?(lv, "#status-badge", "Unpublished changes")
+      assert has_element?(lv, "#status-badge", "Changes not published")
     end
 
     test "an order alone rearranges the blocks", %{
@@ -1121,7 +1226,7 @@ defmodule FeatherWeb.PostLiveTest do
       assert has_element?(lv, "#site-notices", "Deployed to production")
       assert has_element?(lv, ~s(#site-notices a[href="https://example.com"]))
 
-      lv |> element("#site-notices .btn-close") |> render_click()
+      lv |> element("#site-notices button[aria-label=close]") |> render_click()
       refute has_element?(lv, "#site-notices", "Deployed to production")
     end
 
@@ -1132,7 +1237,7 @@ defmodule FeatherWeb.PostLiveTest do
     } do
       target = Feather.Publishing.get_staging_target(scope)
       {:ok, lv, _html} = live(conn, posts_path(site))
-      assert has_element?(lv, ~s(#site-preview-link[href="/preview/#{target.public_id}"]))
+      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{target.public_id}"]))
     end
   end
 

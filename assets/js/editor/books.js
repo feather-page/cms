@@ -95,7 +95,7 @@ export class BookView {
 
     this.card = element("div", "pm-book__card")
 
-    this.search = element("input", "form-control form-control-sm pm-book__search", {
+    this.search = element("input", "input input-sm pm-book__search", {
       type: "search",
       enterkeyhint: "search",
       autocomplete: "off",

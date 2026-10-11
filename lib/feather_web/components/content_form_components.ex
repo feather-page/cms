@@ -1,69 +1,76 @@
 defmodule FeatherWeb.ContentFormComponents do
   @moduledoc """
   Parts of the content editor screens (posts, pages, projects, reviews):
-  the two column layout with its "Details" card, the large title input,
-  the slug, the block editor with the autosave status, the hidden header
-  image fields, the action bar (Publish, Discard, Unpublish, Delete), the
-  list of versions and the star rating.
+  the two column layout with its "Details" section, the large title, the
+  slug, the block editor and its autosave status, the hidden header image
+  fields, the publish actions (Publish ▾ with Unpublish, Discard, Delete),
+  the list of versions and the star rating.
+
+  The editor screens are a writing mode: title and text stand on the page
+  without frames, the page bar carries where the record sits, its status,
+  the autosave status and the publish actions (on phones the publish
+  actions sit in a bar at the bottom).
   """
   use Phoenix.Component
   use FeatherWeb, :verified_routes
 
-  import FeatherWeb.CoreComponents
+  use Setzkasten
 
   alias Phoenix.LiveView.JS
 
   @doc """
   Renders the editor layout: title and content in the wide column, the
-  "Details" card next to it (from 992px) or below it, collapsed until
+  "Details" section next to it (from 1024px) or below it, collapsed until
   opened.
 
-  The fields in the details card live outside the record's form (the
+  The fields in the details section live outside the record's form (the
   header image picker has forms of its own); give them a `form` attribute
   with the id of the record's form.
   """
   attr :id, :string, required: true, doc: "prefix of the ids, e.g. \"post\""
-  attr :open, :boolean, default: false, doc: "opens the details card (e.g. after errors)"
+  attr :open, :boolean, default: false, doc: "opens the details section (e.g. after errors)"
   slot :main, required: true
   slot :details, required: true
 
   def editor_layout(assigns) do
     ~H"""
-    <div class="row g-4 editor-layout">
-      <div class="col-12 col-lg-8">{render_slot(@main)}</div>
-      <div class="col-12 col-lg-4 editor-details-column">
-        <section
-          id={"#{@id}-details"}
-          class={["card editor-details", @open && "is-open"]}
-          aria-labelledby={"#{@id}-details-toggle"}
-        >
-          <h2 class="editor-details__heading">
-            <button
-              type="button"
-              id={"#{@id}-details-toggle"}
-              class="editor-details__toggle"
-              aria-controls={"#{@id}-details-body"}
-              aria-expanded={to_string(@open)}
-              phx-click={
-                JS.toggle_class("is-open", to: "##{@id}-details")
-                |> JS.toggle_attribute({"aria-expanded", "true", "false"})
-              }
-            >
-              Details <.icon name="chevron-down" size={18} class="editor-details__chevron" />
-            </button>
-          </h2>
-          <div id={"#{@id}-details-body"} class="card-body editor-details__body">
-            {render_slot(@details)}
-          </div>
-        </section>
-      </div>
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div class="min-w-0">{render_slot(@main)}</div>
+      <section
+        id={"#{@id}-details"}
+        class={[
+          "editor-details min-w-0 border-t border-base-content/10 pt-2",
+          "lg:border-t-0 lg:border-s lg:ps-6 lg:pt-0",
+          @open && "is-open"
+        ]}
+        aria-labelledby={"#{@id}-details-toggle"}
+      >
+        <h2 class="editor-details__heading">
+          <button
+            type="button"
+            id={"#{@id}-details-toggle"}
+            class="editor-details__toggle"
+            aria-controls={"#{@id}-details-body"}
+            aria-expanded={to_string(@open)}
+            phx-click={
+              JS.toggle_class("is-open", to: "##{@id}-details")
+              |> JS.toggle_attribute({"aria-expanded", "true", "false"})
+            }
+          >
+            Details <.icon name="chevron-down" class="editor-details__chevron size-4" />
+          </button>
+        </h2>
+        <div id={"#{@id}-details-body"} class="editor-details__body">
+          {render_slot(@details)}
+        </div>
+      </section>
     </div>
     """
   end
 
   @doc """
-  Renders the block editor (ProseMirror, see `assets/js/hooks/prose_mirror.js`)
-  and the form's autosave status.
+  Renders the block editor (ProseMirror, see `assets/js/hooks/prose_mirror.js`).
+  Its autosave status is `editor_status/1`, in the page bar.
 
   The hook loads the document from `value` (ProseMirror JSON, see
   `Feather.Content.ProseMirror`) and autosaves it by pushing `sync` events
@@ -72,9 +79,8 @@ defmodule FeatherWeb.ContentFormComponents do
   creates it). LiveView leaves the document and the status alone
   (`phx-update="ignore"`), so the editor keeps its state across renders.
 
-  The status (`#<id>-status`) covers the editor and the form fields
-  (`status`, see `FeatherWeb.ContentForm.autosave_status/2`), with a
-  Reload button (`#<id>-reload`) once the record changed elsewhere.
+  The status covers the editor and the form fields (`status`, see
+  `FeatherWeb.ContentForm.autosave_status/2`).
 
   Image blocks upload to the `site`'s image endpoints
   (`FeatherWeb.ImageController`), sending the CSRF token.
@@ -92,10 +98,10 @@ defmodule FeatherWeb.ContentFormComponents do
   # meanwhile cannot reset the document or the status.
   def editor(assigns) do
     ~H"""
-    <div class="mb-3">
+    <div class="mt-4">
       <div
         id={@id}
-        class="card block-editor"
+        class="block-editor"
         phx-hook="ProseMirror"
         data-label={@label}
         data-lock-version={@record.id && @record.lock_version}
@@ -105,18 +111,6 @@ defmodule FeatherWeb.ContentFormComponents do
         data-book-lookup-url={~p"/sites/#{@site.public_id}/books/lookup"}
         data-csrf-token={Plug.CSRFProtection.get_csrf_token()}
       >
-        <div id={"#{@id}-status"} class="block-editor__status" phx-update="ignore">
-          <span data-status-text role="status">Saved</span>
-          <button
-            type="button"
-            id={"#{@id}-reload"}
-            class="btn btn-sm btn-outline-primary"
-            data-reload
-            hidden
-          >
-            Reload
-          </button>
-        </div>
         <div id={"#{@id}-document"} phx-update="ignore" data-doc={@value}>
           <div data-editor-mount></div>
         </div>
@@ -127,8 +121,45 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders the title as a large input. `hidden` hides it (short posts) but
-  keeps it in the form.
+  Renders the autosave status of the editor `editor` (its id): "Saved",
+  "Saving…", "Not saved" and so on, written by the editor hook, with a
+  Reload button (`#<editor>-reload`) once the record changed elsewhere.
+  It shows in the page bar from `md` (`place={:bar}`) and next to Publish
+  in the bottom bar on phones (`place={:bottom}`, the ids with `-bottom`).
+  """
+  attr :editor, :string, required: true
+  attr :place, :atom, default: :bar, values: [:bar, :bottom]
+
+  def editor_status(assigns) do
+    assigns = assign(assigns, :suffix, if(assigns.place == :bottom, do: "-bottom", else: ""))
+
+    ~H"""
+    <div
+      id={"#{@editor}-status#{@suffix}"}
+      class="block-editor__status"
+      data-editor-status={@editor}
+      data-place={@place}
+      phx-update="ignore"
+    >
+      <span data-status-text role="status">Saved</span>
+      <button
+        type="button"
+        id={"#{@editor}-reload#{@suffix}"}
+        class="btn btn-sm btn-primary btn-outline"
+        data-reload
+        hidden
+      >
+        Reload
+      </button>
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the title as a large heading-like field without a frame. It
+  wraps and grows with the title; Enter moves on to the text and line
+  breaks (e.g. pasted) become spaces, so the title stays one line of
+  text. `hidden` hides it (short posts) but keeps it in the form.
   """
   attr :field, Phoenix.HTML.FormField, required: true
   attr :hidden, :boolean, default: false
@@ -136,22 +167,53 @@ defmodule FeatherWeb.ContentFormComponents do
 
   def title_field(assigns) do
     ~H"""
-    <div id={@id} class={["mb-3", @hidden && "d-none"]}>
+    <div id={@id} class={@hidden && "hidden"}>
       <.input
         field={@field}
-        class="form-control editor-title"
+        type="textarea"
+        rows="1"
+        label="Title"
+        hide_label
+        class="editor-title textarea-ghost"
         placeholder="Title"
-        aria-label="Title"
-        wrapper_class={nil}
         phx-debounce="300"
+        phx-hook=".TitleField"
         autocomplete="off"
       />
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".TitleField">
+        export default {
+          mounted() {
+            this.fit()
+            this.el.addEventListener("input", () => {
+              if (this.el.value.includes("\n")) {
+                const at = this.el.selectionStart
+                this.el.value = this.el.value.replace(/\r?\n/g, " ")
+                this.el.setSelectionRange(at, at)
+              }
+              this.fit()
+            })
+            this.el.addEventListener("keydown", (event) => {
+              if (event.key !== "Enter" || event.isComposing) return
+              event.preventDefault()
+              document.querySelector(".block-editor .ProseMirror")?.focus()
+            })
+            this.resize = () => this.fit()
+            window.addEventListener("resize", this.resize)
+          },
+          updated() { this.fit() },
+          destroyed() { window.removeEventListener("resize", this.resize) },
+          fit() {
+            this.el.style.height = "auto"
+            this.el.style.height = `${this.el.scrollHeight}px`
+          }
+        }
+      </script>
     </div>
     """
   end
 
   @doc """
-  Renders the slug input, for the details card (`form` names the record's
+  Renders the slug input, for the details section (`form` names the record's
   form). `hidden` hides it (short posts) but keeps it in the form.
   """
   attr :field, Phoenix.HTML.FormField, required: true
@@ -161,7 +223,7 @@ defmodule FeatherWeb.ContentFormComponents do
 
   def slug_field(assigns) do
     ~H"""
-    <div id={@id} class={@hidden && "d-none"}>
+    <div id={@id} class={@hidden && "hidden"}>
       <.input
         field={@field}
         label="Slug"
@@ -203,6 +265,7 @@ defmodule FeatherWeb.ContentFormComponents do
 
   @doc """
   Renders a five star rating; clicking a star sends `event` with the value.
+  The stars come in reading order, so Tab walks from one star to five.
   """
   attr :id, :string, default: "star-rating"
   attr :value, :integer, default: nil
@@ -212,7 +275,7 @@ defmodule FeatherWeb.ContentFormComponents do
     ~H"""
     <div id={@id} class="star-rating" role="radiogroup" aria-label="Rating">
       <button
-        :for={star <- 5..1//-1}
+        :for={star <- 1..5}
         type="button"
         id={"#{@id}-#{star}"}
         class={["star", @value && star <= @value && "filled"]}
@@ -229,28 +292,6 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders the Unpublish button of a post, page or project, unless it is a
-  draft. Sends `unpublish`.
-  """
-  attr :id, :string, required: true
-  attr :record, :map, required: true
-
-  def unpublish_button(assigns) do
-    ~H"""
-    <button
-      :if={!Feather.Content.draft?(@record)}
-      type="button"
-      id={@id}
-      class="btn btn-outline-secondary"
-      phx-click="unpublish"
-      data-confirm="Take it off the site? It stays here as a draft."
-    >
-      <.icon name="eye-off" size={16} /> Unpublish
-    </button>
-    """
-  end
-
-  @doc """
   Renders the Publish button. It dispatches `feather:publish`, on which
   the editor hook sends its pending edits and then pushes `publish` with
   its status, so no edit typed before the click is missed. Disabled while
@@ -259,40 +300,20 @@ defmodule FeatherWeb.ContentFormComponents do
   """
   attr :id, :string, required: true
   attr :disabled, :boolean, default: false
+  attr :class, :any, default: nil
 
   def publish_button(assigns) do
     ~H"""
-    <button
-      type="button"
+    <.button
       id={@id}
-      class="btn btn-success"
+      class={@class}
+      variant={:primary}
+      icon="send"
       disabled={@disabled}
       phx-click={JS.dispatch("feather:publish")}
     >
-      <.icon name="send" size={16} /> Publish
-    </button>
-    """
-  end
-
-  @doc """
-  Renders the Discard button of a record with unpublished changes
-  (`status`, see `Feather.Content.publication_status/1`). Sends `discard`.
-  """
-  attr :id, :string, required: true
-  attr :status, :atom, required: true
-
-  def discard_button(assigns) do
-    ~H"""
-    <button
-      :if={@status == :unpublished_changes}
-      type="button"
-      id={@id}
-      class="btn btn-outline-secondary"
-      phx-click="discard"
-      data-confirm="Discard the unpublished changes and go back to the published version?"
-    >
-      <.icon name="x" size={16} /> Discard changes
-    </button>
+      Publish
+    </.button>
     """
   end
 
@@ -304,16 +325,18 @@ defmodule FeatherWeb.ContentFormComponents do
 
   def restore_button(assigns) do
     ~H"""
-    <button
-      type="button"
+    <.button
       id={"restore-version-#{@version.number}"}
-      class="btn btn-sm btn-outline-secondary"
+      size={:sm}
+      icon="rotate-ccw"
       phx-click="restore"
       phx-value-number={@version.number}
-      data-confirm={"Restore version #{@version.number}? It replaces the unpublished changes; the published version stays until you publish."}
+      confirm={"Restore version #{@version.number}?"}
+      confirm_text="It replaces the unpublished changes; the published version stays until you publish."
+      confirm_label="Restore"
     >
-      <.icon name="rotate-ccw" size={14} /> Restore
-    </button>
+      Restore
+    </.button>
     """
   end
 
@@ -329,19 +352,17 @@ defmodule FeatherWeb.ContentFormComponents do
 
   def versions_list(assigns) do
     ~H"""
-    <section :if={@versions != []} class="mt-3" aria-labelledby={"#{@id}-heading"}>
-      <h3 id={"#{@id}-heading"} class="form-label">Versions</h3>
-      <ul id={@id} class="list-unstyled d-flex flex-column gap-2 mb-0">
+    <section :if={@versions != []} class="editor-details__group" aria-labelledby={"#{@id}-heading"}>
+      <h3 id={"#{@id}-heading"} class="editor-details__group-heading">Versions</h3>
+      <ul id={@id} class="flex flex-col gap-3">
         <li
           :for={version <- @versions}
           id={"version-#{version.number}"}
-          class="d-flex flex-wrap align-items-center gap-2"
+          class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
         >
-          <span class="fw-medium">Version {version.number}</span>
-          <.status_badge :if={version.id == @published_version_id} kind={:published}>
-            Published
-          </.status_badge>
-          <span class="form-text m-0">
+          <span class="font-medium">Version {version.number}</span>
+          <.badge :if={version.id == @published_version_id} tone={:success}>Published</.badge>
+          <span class="basis-full text-base-content/70">
             {Calendar.strftime(version.published_at, "%d/%m/%Y %H:%M")}
             <span :if={version.published_by}>by {version.published_by.email}</span>
           </span>
@@ -353,10 +374,13 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders the action bar of a post, page or project form: Publish (disabled
-  unless `FeatherWeb.ContentForm.publishable?/3`), Discard, Unpublish and,
-  once the record exists, Delete (sends `delete`). The ids are
-  `#publish-<id>`, `#discard-<id>`, `#unpublish-<id>` and `#delete-<id>`.
+  Renders the publish actions of a post, page or project form: Publish
+  (disabled unless `FeatherWeb.ContentForm.publishable?/3`) and a menu
+  with Unpublish (once published), Discard changes (with unpublished
+  changes) and Delete (once the record exists). From `md` they sit in the
+  page bar (`place={:bar}`, ids `#publish-<id>`, `#unpublish-<id>`,
+  `#discard-<id>`, `#delete-<id>`); on phones in a bar at the bottom
+  (`place={:bottom}`, the same ids with `-bottom`).
   """
   attr :id, :string, required: true, doc: ~s(e.g. "post")
   attr :record, :map, required: true
@@ -364,28 +388,65 @@ defmodule FeatherWeb.ContentFormComponents do
   attr :status, :atom, required: true, doc: "the publication status"
   attr :changed_elsewhere?, :boolean, required: true
   attr :noun, :string, required: true, doc: ~s(for the delete confirmation, e.g. "post")
+  attr :place, :atom, default: :bar, values: [:bar, :bottom]
 
   def content_actions(assigns) do
+    assigns =
+      assign(assigns,
+        suffix: if(assigns.place == :bottom, do: "-bottom", else: ""),
+        unpublish?: !Feather.Content.draft?(assigns.record),
+        discard?: assigns.status == :unpublished_changes
+      )
+
     ~H"""
-    <.action_bar sticky>
+    <div class="join">
       <.publish_button
-        id={"publish-#{@id}"}
+        id={"publish-#{@id}#{@suffix}"}
+        class={(@unpublish? or @discard? or @record.id) && "join-item"}
         disabled={!FeatherWeb.ContentForm.publishable?(@record, @form, @changed_elsewhere?)}
       />
-      <.discard_button id={"discard-#{@id}"} status={@status} />
-      <.unpublish_button id={"unpublish-#{@id}"} record={@record} />
-      <:danger :if={@record.id}>
-        <button
-          type="button"
-          id={"delete-#{@id}"}
-          class="btn btn-outline-danger"
-          phx-click="delete"
-          data-confirm={"Delete this #{@noun}?"}
+      <.dropdown
+        :if={@unpublish? or @discard? or @record.id}
+        id={"publish-menu-#{@id}#{@suffix}"}
+        label="More publishing actions"
+        align={:end}
+        position={if @place == :bottom, do: :top, else: :bottom}
+        trigger_class="btn-primary join-item px-2"
+      >
+        <:trigger></:trigger>
+        <:item
+          :if={@unpublish?}
+          id={"unpublish-#{@id}#{@suffix}"}
+          icon="eye-off"
+          on_click="unpublish"
         >
-          <.icon name="trash-2" size={16} /> Delete
-        </button>
-      </:danger>
-    </.action_bar>
+          Unpublish
+        </:item>
+        <:item
+          :if={@discard?}
+          id={"discard-#{@id}#{@suffix}"}
+          icon="x"
+          on_click="discard"
+          confirm="Discard the unpublished changes?"
+          confirm_text="The published version comes back; your changes since then are gone."
+          confirm_label="Discard"
+        >
+          Discard changes
+        </:item>
+        <:item
+          :if={@record.id}
+          id={"delete-#{@id}#{@suffix}"}
+          icon="trash-2"
+          on_click="delete"
+          confirm={"Delete this #{@noun}?"}
+          confirm_text={FeatherWeb.SiteComponents.delete_text(@noun, @record)}
+          danger
+          divider={@unpublish? or @discard?}
+        >
+          Delete
+        </:item>
+      </.dropdown>
+    </div>
     """
   end
 
@@ -406,7 +467,12 @@ defmodule FeatherWeb.ContentFormComponents do
     """
   end
 
-  @doc "Renders the content length counter (`123 / 300`)."
+  @doc """
+  Renders how the content length stands against the short post rule (see
+  "Short posts" in `FeatherWeb.ContentForm`): `Short post · 123 / 300
+  characters`, from 300 characters that it is no longer a short post. For
+  posts without title and slug, where the rule applies.
+  """
   attr :length, :integer, required: true
   attr :id, :string, default: "content-length"
 
@@ -414,7 +480,13 @@ defmodule FeatherWeb.ContentFormComponents do
     assigns = assign(assigns, :max, FeatherWeb.ContentForm.short_post_length())
 
     ~H"""
-    <div id={@id} class="form-text text-end">{@length} / {@max}</div>
+    <p id={@id} class="mt-1 text-end text-sm text-base-content/70 tabular-nums">
+      <%= if @length < @max do %>
+        Short post · {@length} / {@max} characters
+      <% else %>
+        {@length} characters · no longer a short post
+      <% end %>
+    </p>
     """
   end
 end

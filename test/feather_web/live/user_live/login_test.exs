@@ -50,14 +50,16 @@ defmodule FeatherWeb.UserLive.LoginTest do
     end
 
     test "shows login page with email filled in", %{conn: conn, user: user} do
-      {:ok, _lv, html} = live(conn, ~p"/users/log-in")
+      {:ok, lv, html} = live(conn, ~p"/users/log-in")
 
       assert html =~ "You need to reauthenticate"
       refute html =~ "Register"
       assert html =~ "Log in with email"
 
-      assert html =~
-               ~s(<input type="email" name="user[email]" id="login_form_magic_email" value="#{user.email}")
+      assert has_element?(
+               lv,
+               ~s(input#login_form_magic_email[type="email"][name="user[email]"][value="#{user.email}"][readonly])
+             )
     end
   end
 end

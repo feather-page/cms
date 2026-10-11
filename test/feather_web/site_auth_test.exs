@@ -25,7 +25,7 @@ defmodule FeatherWeb.SiteAuthTest do
 
       remove_user(site, user)
 
-      view |> element("#delete-post-#{post.public_id}") |> render_click()
+      confirm_click(view, "#delete-post-#{post.public_id}-menu-item")
 
       assert %{"error" => message} = assert_redirect(view, "/")
       assert message =~ "no longer have access"
@@ -104,7 +104,7 @@ defmodule FeatherWeb.SiteAuthTest do
 
       remove_user(site, user)
 
-      view |> element("#delete-post-#{post.public_id}") |> render_click()
+      confirm_click(view, "#delete-post-#{post.public_id}-menu-item")
       refute Repo.get(Content.Post, post.id)
     end
   end

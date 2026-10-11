@@ -357,6 +357,15 @@ defmodule Feather.ContentTest do
   end
 
   describe "projects" do
+    test "get_project/2 returns nil for a missing project or one of another site" do
+      scope = site_scope_fixture()
+      project = project_fixture(scope)
+      assert Content.get_project(scope, project.public_id).id == project.id
+      assert Content.get_project(site_scope_fixture(), project.public_id) == nil
+      {:ok, _} = Content.delete_project(scope, project)
+      assert Content.get_project(scope, project.public_id) == nil
+    end
+
     test "validations", %{scope: scope} do
       assert {:error, changeset} = Content.create_project(scope, %{status: "done"})
       errors = errors_on(changeset)

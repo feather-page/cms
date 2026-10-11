@@ -17,14 +17,20 @@ defmodule FeatherWeb.PostLive.Index do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:posts}
     >
       <.header>
         Posts
-        <:actions>
-          <.button variant="primary" navigate={~p"/sites/#{@site.public_id}/posts/new"} id="new-post">
-            <.icon name="plus" size={16} /> New post
+        <:actions :if={@pagination.total_entries > 0}>
+          <.button
+            variant={:primary}
+            icon="plus"
+            navigate={~p"/sites/#{@site.public_id}/posts/new"}
+            id="new-post"
+          >
+            New post
           </.button>
         </:actions>
       </.header>
@@ -32,54 +38,69 @@ defmodule FeatherWeb.PostLive.Index do
       <.empty_state
         :if={@pagination.total_entries == 0}
         id="no-posts"
-        emoji="✏️"
-        message="No posts yet"
-        subtitle="Write your first post and share it with the world."
-      />
+        layout={:page}
+        plush_size={:xxl}
+        plush="feather"
+        title="No posts yet"
+      >
+        Write your first post and share it with the world.
+        <:action>
+          <.button navigate={~p"/sites/#{@site.public_id}/posts/new"} variant={:primary} icon="plus">
+            Write your first post
+          </.button>
+        </:action>
+      </.empty_state>
 
-      <.list_card id="posts" stream hidden={@pagination.total_entries == 0}>
+      <.list id="posts" phx-update="stream" class={@pagination.total_entries == 0 && "hidden"}>
         <.list_row
           :for={{dom_id, post} <- @streams.posts}
           id={dom_id}
           navigate={edit_path(@site, post)}
-          excerpt={short?(post)}
+          title={display_text(post)}
+          actions_label="Actions"
+          menu={:always}
+          trailing_on_phone={:meta}
         >
           <:leading>
-            <%= cond do %>
-              <% post.thumbnail_image -> %>
-                <img src={image_path(@site, post.thumbnail_image, "mobile_x1.webp")} alt="" />
-              <% post.emoji -> %>
-                {post.emoji}
-              <% short?(post) -> %>
-                <.icon name="message-square-text" />
-              <% true -> %>
-                <.icon name="file-text" />
-            <% end %>
+            <.tile
+              image={
+                post.thumbnail_image && image_path(@site, post.thumbnail_image, "mobile_x1.webp")
+              }
+              emoji={post.emoji}
+              icon={if short?(post), do: "message-square-text", else: "file-text"}
+            />
           </:leading>
-          {display_text(post)}
           <:meta>
-            <span class="list-row__date">{format_date(post.publish_at)}</span>
-            <.publication_badge status={Content.publication_status(post)} />
-            <span :if={post.book} class="list-row__review" title="Book review">
-              <span :if={post.book.rating} class="text-warning">{stars(post.book.rating)} ·</span>
+            <span>{format_date(post.publish_at)}</span>
+            <span :if={post.book} title="Book review">
+              · <.rating value={post.book.rating} class="text-warning-content dark:text-warning" />
               {post.book.title}
             </span>
-            <span :if={Content.tag_list(post) != []} class="list-row__tags d-none d-md-inline">
-              <span :for={tag <- Enum.take(Content.tag_list(post), 3)} class="list-row__tag">
-                #{tag}
-              </span>
+            <span :if={Content.tag_list(post) != []} class="max-md:hidden">
+              · {Enum.map_join(Enum.take(Content.tag_list(post), 3), " ", &"##{&1}")}
             </span>
           </:meta>
+          <:trailing
+            :let={place}
+            :if={Content.publication_status(post) != :published}
+            class="md:w-44 md:justify-start"
+          >
+            <.publication_badge
+              status={Content.publication_status(post)}
+              style={if place == :meta, do: :text, else: :dot}
+            />
+          </:trailing>
           <:action
             id={"delete-post-#{post.public_id}"}
-            icon="trash"
+            icon="trash-2"
             label="Delete"
-            click={JS.push("delete", value: %{id: post.public_id})}
-            confirm="Are you sure?"
+            on_click={JS.push("delete", value: %{id: post.public_id})}
+            confirm={"Delete “#{display_text(post)}”?"}
+            confirm_text={delete_text("post", post)}
             danger
           />
         </.list_row>
-      </.list_card>
+      </.list>
 
       <.pagination pagination={@pagination} path={&~p"/sites/#{@site.public_id}/posts?page=#{&1}"} />
     </.site_shell>
@@ -103,13 +124,17 @@ defmodule FeatherWeb.PostLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    post = Content.get_post!(scope, id)
-    {:ok, _post} = Content.delete_post(scope, post)
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Post was successfully deleted.")
-     |> load_posts(socket.assigns.pagination.page)}
+    socket =
+      with %Post{} = post <- Content.get_post(scope, id),
+           {:ok, _post} <- Content.delete_post(scope, post) do
+        put_flash(socket, :info, "Post was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This post no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The post could not be deleted.")
+      end
+
+    {:noreply, load_posts(socket, socket.assigns.pagination.page)}
   end
 
   defp load_posts(socket, page) do

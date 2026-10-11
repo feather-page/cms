@@ -57,7 +57,7 @@ export class CodeBlockView {
     this.getPos = getPos
 
     this.select = document.createElement("select")
-    this.select.className = "form-select form-select-sm pm-code__language"
+    this.select.className = "select select-sm pm-code__language"
     this.select.setAttribute("aria-label", "Code language")
     this.select.addEventListener("change", () => this.choose(this.select.value))
 

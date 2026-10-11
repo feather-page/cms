@@ -6,26 +6,24 @@ defmodule FeatherWeb.UserLive.Login do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto narrow">
-        <.header class="text-center">
-          Log in
-          <:subtitle>
+    <Layouts.app flash={@flash} current_scope={@current_scope} bare>
+      <div class="mx-auto max-w-md">
+        <div class="mb-8 flex flex-col items-center text-center">
+          <.plush name="feather" size={:xxl} />
+          <h1 class="mt-4 text-2xl font-semibold">Log in to Feather</h1>
+          <p class="mt-1 text-sm text-base-content/70">
             <%= if @current_scope do %>
               You need to reauthenticate to perform sensitive actions on your account.
             <% else %>
               We will email you a link to log in. There is no password.
             <% end %>
-          </:subtitle>
-        </.header>
-
-        <div :if={local_mail_adapter?()} class="alert alert-info d-flex gap-2">
-          <.icon name="info" />
-          <div>
-            You are running the local mail adapter.
-            To see sent emails, visit <.link href="/dev/mailbox">the mailbox page</.link>.
-          </div>
+          </p>
         </div>
+
+        <.alert :if={local_mail_adapter?()} tone={:info} class="mb-4">
+          You are running the local mail adapter.
+          To see sent emails, visit <.link href="/dev/mailbox" class="link">the mailbox page</.link>.
+        </.alert>
 
         <.form
           :let={f}
@@ -44,7 +42,7 @@ defmodule FeatherWeb.UserLive.Login do
             required
             phx-mounted={JS.focus()}
           />
-          <.button variant="primary" class="w-100">
+          <.button type="submit" variant={:primary} class="mt-4 w-full">
             Log in with email <span aria-hidden="true">→</span>
           </.button>
         </.form>

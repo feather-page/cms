@@ -7,7 +7,7 @@ defmodule FeatherWeb.MemberLive.Index do
   use FeatherWeb, :live_view
 
   alias Feather.Sites
-  alias Feather.Sites.Invitation
+  alias Feather.Sites.{Invitation, SiteUser}
 
   @impl true
   def render(assigns) do
@@ -16,6 +16,7 @@ defmodule FeatherWeb.MemberLive.Index do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:users}
     >
@@ -24,68 +25,91 @@ defmodule FeatherWeb.MemberLive.Index do
         <:subtitle>The people who can edit {@current_scope.site.title}</:subtitle>
       </.header>
 
-      <div class="settings-page">
-        <.list_card id="members">
-          <.list_row :for={member <- @members} id={"member-#{member.id}"}>
-            <:leading class={[
-              "list-row__avatar",
-              member.user_id == @current_scope.user.id && "list-row__avatar--primary"
-            ]}>
-              {initials(member.user.email)}
+      <div class="max-w-3xl">
+        <.list id="members">
+          <.list_row
+            :for={member <- @members}
+            id={"member-#{member.id}"}
+            title={member.user.email}
+            actions_label="Actions"
+            menu={:always}
+          >
+            <:leading>
+              <.avatar
+                initials={initials(member.user.email)}
+                shape={:round}
+                tone={if member.user_id == @current_scope.user.id, do: :primary, else: :base}
+              />
             </:leading>
-            {member.user.email}
             <:trailing :if={member.user_id == @current_scope.user.id}>
-              <.neutral_badge>You</.neutral_badge>
+              <.badge style={:plain}>You</.badge>
             </:trailing>
             <:action
               :if={member.user_id != @current_scope.user.id}
               id={"remove-member-#{member.id}"}
-              icon="trash"
+              icon="trash-2"
               label="Remove"
-              click={JS.push("remove_member", value: %{id: member.id})}
-              confirm="Are you sure?"
+              on_click={JS.push("remove_member", value: %{id: member.id})}
+              confirm={"Remove #{member.user.email} from this site?"}
+              confirm_text="They lose access to the site at once. You can invite them again."
+              confirm_label="Remove"
               danger
             />
           </.list_row>
-        </.list_card>
+        </.list>
 
-        <section class="mt-5 pt-4 border-top">
-          <h2 class="section-title">
+        <section aria-labelledby="invitations-heading" class="mt-8">
+          <.section_heading
+            id="invitations-heading"
+            count={if @invitations != [], do: length(@invitations)}
+          >
             Pending invitations
-            <span :if={@invitations != []} class="section-title__count">{length(@invitations)}</span>
-          </h2>
-          <p :if={@invitations == []} id="no-invitations" class="text-body-secondary">
+          </.section_heading>
+          <.empty_state :if={@invitations == []} id="no-invitations" icon="mail">
             No pending invitations.
-          </p>
-          <.list_card :if={@invitations != []} id="invitations">
-            <.list_row :for={invitation <- @invitations} id={"invitation-#{invitation.id}"}>
-              <:leading class="list-row__avatar"><.icon name="mail" size={16} /></:leading>
-              {invitation.email}
+          </.empty_state>
+          <.list :if={@invitations != []} id="invitations">
+            <.list_row
+              :for={invitation <- @invitations}
+              id={"invitation-#{invitation.id}"}
+              title={invitation.email}
+              actions_label="Actions"
+              menu={:always}
+            >
+              <:leading><.avatar icon="mail" shape={:round} tone={:base} /></:leading>
               <:meta>Invited {Calendar.strftime(invitation.inserted_at, "%d/%m/%Y")}</:meta>
               <:action
                 id={"resend-invitation-#{invitation.id}"}
                 icon="send"
                 label="Resend"
-                click={JS.push("resend_invitation", value: %{id: invitation.id})}
+                on_click={JS.push("resend_invitation", value: %{id: invitation.id})}
               />
               <:action
                 id={"revoke-invitation-#{invitation.id}"}
                 icon="x"
                 label="Revoke"
-                click={JS.push("revoke_invitation", value: %{id: invitation.id})}
-                confirm="Are you sure?"
+                on_click={JS.push("revoke_invitation", value: %{id: invitation.id})}
+                confirm={"Revoke the invitation for #{invitation.email}?"}
+                confirm_text="The link in the email stops working."
+                confirm_label="Revoke"
                 danger
               />
             </.list_row>
-          </.list_card>
+          </.list>
         </section>
 
-        <section class="mt-5 pt-4 border-top">
-          <h2 class="section-title">Invite someone</h2>
-          <p class="text-body-secondary">
+        <section aria-labelledby="invite-heading" class="mt-8">
+          <.section_heading id="invite-heading">Invite someone</.section_heading>
+          <p class="text-sm text-base-content/70">
             They will receive an email with a link to accept the invitation.
           </p>
-          <.form for={@form} id="invitation-form" phx-change="validate" phx-submit="invite">
+          <.form
+            for={@form}
+            id="invitation-form"
+            phx-change="validate"
+            phx-submit="invite"
+            class="max-w-md"
+          >
             <.input
               field={@form[:email]}
               type="email"
@@ -93,7 +117,11 @@ defmodule FeatherWeb.MemberLive.Index do
               placeholder="john@example.org"
               autocomplete="off"
             />
-            <.button variant="primary" phx-disable-with="Sending...">Send invitation</.button>
+            <.action_bar id="invitation-actions" class="mt-4">
+              <.button type="submit" variant={:primary} phx-disable-with="Sending…">
+                Send invitation
+              </.button>
+            </.action_bar>
           </.form>
         </section>
       </div>
@@ -135,12 +163,14 @@ defmodule FeatherWeb.MemberLive.Index do
 
   def handle_event("resend_invitation", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    invitation = Sites.get_invitation!(scope, id)
 
     socket =
-      case Sites.resend_invitation(scope, invitation, &accept_url/1) do
-        {:ok, _invitation} ->
-          put_flash(socket, :info, "Invitation was successfully resent.")
+      with %Invitation{} = invitation <- Sites.get_invitation(scope, id),
+           {:ok, _invitation} <- Sites.resend_invitation(scope, invitation, &accept_url/1) do
+        put_flash(socket, :info, "Invitation was successfully resent.")
+      else
+        nil ->
+          put_flash(socket, :error, "This invitation no longer exists.")
 
         {:error, :already_accepted} ->
           put_flash(socket, :error, "The invitation has already been accepted.")
@@ -151,26 +181,35 @@ defmodule FeatherWeb.MemberLive.Index do
 
   def handle_event("revoke_invitation", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    invitation = Sites.get_invitation!(scope, id)
-    {:ok, _} = Sites.delete_invitation(scope, invitation)
 
-    {:noreply,
-     socket
-     |> assign_lists()
-     |> put_flash(:info, "Invitation was successfully revoked.")}
+    socket =
+      with %Invitation{} = invitation <- Sites.get_invitation(scope, id),
+           {:ok, _} <- Sites.delete_invitation(scope, invitation) do
+        put_flash(socket, :info, "Invitation was successfully revoked.")
+      else
+        nil -> put_flash(socket, :error, "This invitation no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The invitation could not be revoked.")
+      end
+
+    {:noreply, assign_lists(socket)}
   end
 
   def handle_event("remove_member", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    member = Sites.get_member!(scope, id)
 
     socket =
-      case Sites.remove_member(scope, member) do
-        {:ok, _} ->
-          put_flash(socket, :info, "The user was successfully removed from the site.")
+      with %SiteUser{} = member <- Sites.get_member(scope, id),
+           {:ok, _} <- Sites.remove_member(scope, member) do
+        put_flash(socket, :info, "The user was successfully removed from the site.")
+      else
+        nil ->
+          put_flash(socket, :error, "This user is no longer a member of the site.")
 
         {:error, :cannot_remove_self} ->
           put_flash(socket, :error, "You cannot remove yourself from the site.")
+
+        {:error, _reason} ->
+          put_flash(socket, :error, "The user could not be removed from the site.")
       end
 
     {:noreply, assign_lists(socket)}

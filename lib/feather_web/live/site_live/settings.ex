@@ -19,6 +19,7 @@ defmodule FeatherWeb.SiteLive.Settings do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:settings}
     >
@@ -27,24 +28,19 @@ defmodule FeatherWeb.SiteLive.Settings do
         <:subtitle>{@current_scope.site.title}</:subtitle>
       </.header>
 
-      <div class="settings-page">
+      <div class="max-w-3xl">
+        <.section_heading id="general-heading">General</.section_heading>
         <.form for={@form} id="site-form" phx-change="validate" phx-submit="save">
           <.input field={@form[:title]} type="text" label="Title" placeholder="Timon's Blog" />
-          <div class="row gx-3">
-            <div class="col-12 col-sm-2">
-              <.input field={@form[:emoji]} type="text" label="Emoji" />
-            </div>
-            <div class="col-12 col-sm">
-              <.input field={@form[:domain]} type="text" label="Domain" placeholder="timon.blog" />
-            </div>
-            <div class="col-12 col-sm-4">
-              <.input
-                field={@form[:language_code]}
-                type="select"
-                label="Language"
-                options={Languages.options()}
-              />
-            </div>
+          <div class="grid gap-x-4 sm:grid-cols-[6rem_minmax(0,1fr)_12rem]">
+            <.input field={@form[:emoji]} type="text" label="Emoji" class="text-center text-xl" />
+            <.input field={@form[:domain]} type="text" label="Domain" placeholder="timon.blog" />
+            <.input
+              field={@form[:language_code]}
+              type="select"
+              label="Language"
+              options={Languages.options()}
+            />
           </div>
           <.input
             field={@form[:copyright]}
@@ -52,123 +48,121 @@ defmodule FeatherWeb.SiteLive.Settings do
             label="Copyright notice"
             help="The copyright notice in the footer of your site. {{CurrentYear}} is replaced with the current year."
           />
-          <div class="d-flex gap-2">
-            <.button variant="primary" phx-disable-with="Saving...">Save</.button>
-            <.link
-              navigate={~p"/sites/#{@current_scope.site.public_id}/posts"}
-              class="btn btn-light"
-            >
-              Cancel
-            </.link>
-          </div>
+          <.action_bar class="mt-6">
+            <.button type="submit" variant={:primary} phx-disable-with="Saving…">Save</.button>
+          </.action_bar>
         </.form>
 
-        <section id="social-media" class="mt-5 pt-4 border-top">
-          <h2 class="section-title">Social media links</h2>
-          <p :if={@links_empty?} id="no-social-media-links" class="text-body-secondary">
+        <section id="social-media" aria-labelledby="social-media-heading" class="mt-10">
+          <.section_heading id="social-media-heading">Social media links</.section_heading>
+          <.empty_state :if={@links_empty?} id="no-social-media-links" icon="globe">
             Add links to your social profiles. They are shown in the footer of your site.
-          </p>
+          </.empty_state>
 
-          <.list_card id="social-media-links" stream hidden={@links_empty?} class="mb-3">
-            <.list_row :for={{id, link} <- @streams.social_media_links} id={id}>
-              <:leading><.icon name={link.icon} /></:leading>
-              {link.name}
+          <.list
+            id="social-media-links"
+            phx-update="stream"
+            class={["mb-4", @links_empty? && "hidden"]}
+          >
+            <.list_row
+              :for={{id, link} <- @streams.social_media_links}
+              id={id}
+              title={link.name}
+              actions_label="Actions"
+              menu={:always}
+            >
+              <:leading>
+                <.tile><.brand_icon name={link.icon} class="size-5" /></.tile>
+              </:leading>
               <:meta>
-                <a href={link.url} target="_blank" rel="noopener" class="link-secondary">
+                <a href={link.url} target="_blank" rel="noopener" class="link link-hover">
                   {link.url}
                 </a>
               </:meta>
               <:action
                 id={"delete-#{id}"}
-                icon="trash"
+                icon="trash-2"
                 label="Delete"
-                click={JS.push("delete_link", value: %{id: link.id})}
-                confirm="Are you sure?"
+                on_click={JS.push("delete_link", value: %{id: link.id})}
+                confirm={"Delete the link to #{link.name}?"}
                 danger
               />
             </.list_row>
-          </.list_card>
+          </.list>
 
-          <button
+          <.button
             :if={!@adding_link?}
-            type="button"
             id="add-link"
-            class="btn btn-light"
+            variant={:ghost}
+            size={:sm}
+            icon="plus"
             phx-click="add_link"
           >
-            <.icon name="plus" size={16} /> Add link
-          </button>
+            Add link
+          </.button>
 
-          <div :if={@adding_link?} class="card">
-            <div class="card-body">
-              <.form
-                for={@link_form}
-                id="social-media-link-form"
-                phx-change="validate_link"
-                phx-submit="save_link"
+          <.form
+            :if={@adding_link?}
+            for={@link_form}
+            id="social-media-link-form"
+            class="mt-6"
+            phx-change="validate_link"
+            phx-submit="save_link"
+            aria-labelledby="new-link-heading"
+          >
+            <.section_heading id="new-link-heading" level={3}>New link</.section_heading>
+            <fieldset class="fieldset">
+              <legend class="fieldset-legend">Service</legend>
+              <div id="social-media-services" class="flex flex-wrap gap-2">
+                <button
+                  :for={service <- @services}
+                  type="button"
+                  id={"service-#{service.icon}"}
+                  class={[
+                    "btn btn-square",
+                    @link_form[:icon].value == service.icon &&
+                      "btn-primary btn-soft ring-2 ring-primary"
+                  ]}
+                  title={service.name}
+                  aria-label={service.name}
+                  aria-pressed={to_string(@link_form[:icon].value == service.icon)}
+                  phx-click={JS.push("pick_service", value: %{icon: service.icon})}
+                >
+                  <.brand_icon name={service.icon} class="size-5" />
+                </button>
+              </div>
+              <p id="selected-service" class="text-sm" aria-live="polite">
+                <%= if service = selected_service(@services, @link_form) do %>
+                  {service.name}
+                <% else %>
+                  <span class="text-base-content/70">Pick a service</span>
+                <% end %>
+              </p>
+              <.input field={@link_form[:icon]} type="hidden" />
+              <p
+                :for={msg <- link_icon_errors(@link_form)}
+                class="flex items-center gap-1.5 text-sm text-error-ink"
+                id="social-media-link-icon-error"
               >
-                <fieldset class="mb-3">
-                  <legend class="form-label">Service</legend>
-                  <div id="social-media-services" class="d-flex flex-wrap gap-2">
-                    <button
-                      :for={service <- @services}
-                      type="button"
-                      id={"service-#{service.icon}"}
-                      class={[
-                        "btn btn-light service-tile",
-                        @link_form[:icon].value == service.icon && "active"
-                      ]}
-                      title={service.name}
-                      aria-label={service.name}
-                      aria-pressed={to_string(@link_form[:icon].value == service.icon)}
-                      phx-click={JS.push("pick_service", value: %{icon: service.icon})}
-                    >
-                      <.icon name={service.icon} />
-                    </button>
-                  </div>
-                  <.input field={@link_form[:icon]} type="hidden" />
-                  <p
-                    :for={msg <- link_icon_errors(@link_form)}
-                    class="text-danger small mt-1 mb-0"
-                    id="social-media-link-icon-error"
-                  >
-                    {msg}
-                  </p>
-                </fieldset>
-                <div class="row gx-3">
-                  <div class="col-12 col-sm-4">
-                    <.input
-                      field={@link_form[:name]}
-                      type="text"
-                      label="Name"
-                      placeholder="Mastodon"
-                    />
-                  </div>
-                  <div class="col-12 col-sm-8">
-                    <.input
-                      field={@link_form[:url]}
-                      type="url"
-                      label="URL"
-                      placeholder={@url_placeholder}
-                    />
-                  </div>
-                </div>
-                <div class="d-flex gap-2">
-                  <button type="submit" class="btn btn-light" phx-disable-with="Saving...">
-                    Add link
-                  </button>
-                  <button
-                    type="button"
-                    id="cancel-link"
-                    class="btn btn-light"
-                    phx-click="cancel_link"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </.form>
+                <.icon name="circle-alert" class="size-4 shrink-0" />{msg}
+              </p>
+            </fieldset>
+            <div class="grid gap-x-4 sm:grid-cols-[12rem_minmax(0,1fr)]">
+              <.input field={@link_form[:name]} type="text" label="Name" placeholder="Link name" />
+              <.input
+                field={@link_form[:url]}
+                type="url"
+                label="URL"
+                placeholder={@url_placeholder}
+              />
             </div>
-          </div>
+            <.action_bar class="mt-4">
+              <.button id="cancel-link" phx-click="cancel_link">Cancel</.button>
+              <.button type="submit" variant={:primary} phx-disable-with="Saving…">
+                Add link
+              </.button>
+            </.action_bar>
+          </.form>
         </section>
       </div>
     </.site_shell>
@@ -270,15 +264,23 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   def handle_event("delete_link", %{"id" => id}, socket) do
     scope = socket.assigns.current_scope
-    link = Sites.get_social_media_link!(scope, id)
-    {:ok, _} = Sites.delete_social_media_link(scope, link)
-    Publishing.publish_site(scope)
+
+    socket =
+      with %SocialMediaLink{} = link <- Sites.get_social_media_link(scope, id),
+           {:ok, _} <- Sites.delete_social_media_link(scope, link) do
+        Publishing.publish_site(scope)
+        put_flash(socket, :info, "Social media link was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This link no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The link could not be deleted.")
+      end
+
+    links = Sites.list_social_media_links(scope)
 
     {:noreply,
      socket
-     |> stream_delete(:social_media_links, link)
-     |> assign(:links_empty?, Sites.list_social_media_links(scope) == [])
-     |> put_flash(:info, "Social media link was successfully deleted.")}
+     |> stream(:social_media_links, links, reset: true)
+     |> assign(:links_empty?, links == [])}
   end
 
   defp reset_link_form(socket) do
@@ -295,6 +297,9 @@ defmodule FeatherWeb.SiteLive.Settings do
     |> assign(:link_params, params)
     |> assign(:link_form, to_form(changeset, action: action))
   end
+
+  defp selected_service(services, form),
+    do: Enum.find(services, &(&1.icon == form[:icon].value))
 
   # The icon is a hidden field, so `<.input>` shows no errors for it. The
   # form only carries errors once it has an action (validate or submit).

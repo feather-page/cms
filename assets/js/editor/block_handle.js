@@ -131,7 +131,11 @@ class HandleView {
     const firstLine = rect.top + (parseFloat(style.paddingTop) || 0) + lineHeight / 2
 
     this.handle.style.top = `${firstLine - mountRect.top - this.handle.offsetHeight / 2}px`
-    this.handle.style.left = `${rect.left - mountRect.left - this.handle.offsetWidth - 4}px`
+    // The gap between handle and text comes from --block-handle-gap (CSS, in px): 4px in the page
+    // margin with a mouse; on touch screens the handle overlaps the text start a little,
+    // so the text keeps the content's edge and the handle still fits the narrow margin.
+    const gap = parseFloat(getComputedStyle(this.handle).getPropertyValue("--block-handle-gap")) || 0
+    this.handle.style.left = `${rect.left - mountRect.left - this.handle.offsetWidth - gap}px`
   }
 
   pointerDown(event) {

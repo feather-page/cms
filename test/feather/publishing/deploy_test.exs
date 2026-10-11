@@ -50,7 +50,26 @@ defmodule Feather.Publishing.DeployTest do
     assert "index.html" in files
 
     refute Publishing.deploying?(c.target)
-    assert_received {:site_notice, %{message: "Site built.", url: "https://" <> ^host}}
+    url = "https://" <> host
+
+    assert_received {:site_notice,
+                     %{kind: :success, title: title, message: message, url: ^url, external: true}}
+
+    assert title == "#{c.scope.site.title} is live"
+    assert message =~ ~r/^#{Regex.escape(host)} · deployed in (under a second|\d+ seconds?)$/
+  end
+
+  test "reports each step and forgets the progress at the end", c do
+    assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+
+    id = c.target.public_id
+
+    for step <- [:build, :compress, :upload] do
+      assert_received {:deploy_progress, %{target_id: ^id, step: ^step, started_at: %DateTime{}}}
+    end
+
+    refute_received {:deploy_progress, %{step: :waiting}}
+    assert Publishing.deploy_progress(c.target) == nil
   end
 
   test "a successful deploy records when its export started", c do
@@ -109,8 +128,13 @@ defmodule Feather.Publishing.DeployTest do
 
     assert {:error, "rclone sync failed (exit 1): nope"} = Deploy.run(c.target, opts)
     refute Publishing.deploying?(c.target)
-    assert_received {:site_notice, %{message: "Deploying to " <> message, url: nil}}
-    assert message =~ "nope"
+
+    assert_received {:site_notice, %{kind: :error, title: title, message: message, retry: retry}}
+
+    assert title == "Deploy to #{c.target.public_hostname} failed"
+    # The live directory was already swapped in: no claim the site is unchanged.
+    assert message == "Uploading: rclone sync failed (exit 1): nope."
+    assert retry == c.target.public_id
   end
 
   test "a failing export or precompression leaves the live directory alone", c do
@@ -127,7 +151,8 @@ defmodule Feather.Publishing.DeployTest do
     assert File.read!(live_index) == before
     assert File.ls!(Deploy.build_path(c.target)) == ["public"]
     refute Publishing.deploying?(c.target)
-    assert_received {:site_notice, %{message: "Deploying to " <> _, url: nil}}
+    assert_received {:site_notice, %{kind: :error, message: "Compressing: " <> message}}
+    assert message =~ ~r/brotli failed.*\. The site online is unchanged\.$/s
   end
 
   test "gives up when the lock stays taken", c do
@@ -136,8 +161,44 @@ defmodule Feather.Publishing.DeployTest do
 
     assert {:error, "another deploy is still running"} = Deploy.run(c.target, opts)
     refute_received {:synced, _, _, _}
+    assert_received {:deploy_progress, %{step: :waiting}}
+
+    assert_received {:site_notice,
+                     %{
+                       kind: :error,
+                       message:
+                         "Waiting for the running deploy: another deploy is still running. " <>
+                           "The site online is unchanged."
+                     }}
+
     # The lock belongs to the other deploy and stays.
     assert Publishing.deploying?(c.target)
+  end
+
+  test "a waiting deploy leaves the progress of the running one alone", c do
+    test = self()
+
+    running =
+      Task.async(fn ->
+        assert Publishing.acquire_deploy_lock(c.target)
+        :ok = Publishing.put_deploy_progress(c.target, :build, DateTime.utc_now())
+        send(test, :running)
+        receive do: (:done -> :ok)
+      end)
+
+    assert_receive :running
+    assert_received {:deploy_progress, %{step: :build}}
+    opts = c.opts ++ [lock_retries: 2, lock_retry_interval: 1]
+
+    assert {:error, "another deploy is still running"} = Deploy.run(c.target, opts)
+    refute_received {:deploy_progress, _progress}
+    assert %{step: :build} = Publishing.deploy_progress(c.target)
+
+    assert_received {:site_notice,
+                     %{kind: :error, message: "Waiting for the running deploy: " <> _message}}
+
+    send(running.pid, :done)
+    Task.await(running)
   end
 
   test "waits for the lock and coalesces further requests", c do
@@ -178,7 +239,8 @@ defmodule Feather.Publishing.DeployTest do
     test "deploy/3 runs under the task supervisor and reports through a notice", c do
       assert :ok = Publishing.deploy(c.scope, c.target, Keyword.put(c.opts, :mode, :async))
       host = c.target.public_hostname
-      assert_receive {:site_notice, %{message: "Site built.", url: "https://" <> ^host}}, 10_000
+      url = "https://" <> host
+      assert_receive {:site_notice, %{kind: :success, url: ^url}}, 10_000
       wait_until(fn -> not Publishing.deploying?(c.target) end)
     end
 
@@ -205,10 +267,20 @@ defmodule Feather.Publishing.DeployTest do
       assert_received {:deploy_requested, %{type: "staging"}}
     end
 
+    test "deploy_production/1 deploys the production targets only", c do
+      %{id: first} = deployment_target_fixture(c.scope, type: "production")
+      %{id: second} = deployment_target_fixture(c.scope, type: "production")
+
+      assert :ok = Publishing.deploy_production(c.scope)
+      assert_received {:deploy_requested, %{id: ^first}}
+      assert_received {:deploy_requested, %{id: ^second}}
+      refute_received {:deploy_requested, %{type: "staging"}}
+    end
+
     test "notices go to the site's topic", c do
       assert Publishing.notices_topic(c.scope.site) == "site:#{c.scope.site.id}:notices"
-      Publishing.broadcast_notice(c.scope.site, "Hello")
-      assert_received {:site_notice, %{message: "Hello", url: nil}}
+      Publishing.broadcast_notice(c.scope.site, %{message: "Hello"})
+      assert_received {:site_notice, %{message: "Hello"}}
     end
   end
 end

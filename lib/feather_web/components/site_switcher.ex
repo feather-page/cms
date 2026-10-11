@@ -1,8 +1,8 @@
 defmodule FeatherWeb.SiteSwitcher do
   @moduledoc """
-  The site switcher in the top bar of `FeatherWeb.SiteComponents.site_shell/1`:
-  a dropdown showing the current site that lists the user's other sites
-  and links to the site list.
+  The site switcher below the brand of `FeatherWeb.SiteComponents.site_shell/1`:
+  setzkasten's dropdown showing the current site, listing the user's sites
+  (the current one marked) and linking to the site list.
 
   A LiveComponent, so the shell can show the user's sites without every
   LiveView under `/sites/:site_id` loading them.
@@ -11,8 +11,7 @@ defmodule FeatherWeb.SiteSwitcher do
   """
   use Phoenix.LiveComponent
   use FeatherWeb, :verified_routes
-
-  import FeatherWeb.CoreComponents
+  use Setzkasten
 
   alias Feather.Sites
 
@@ -25,33 +24,32 @@ defmodule FeatherWeb.SiteSwitcher do
      |> assign(:sites, Sites.list_sites(scope))}
   end
 
+  # A LiveComponent needs a static tag at its root, so the dropdown sits in a div.
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="site-switcher">
-      <.dropdown id={@id} class="mw-100" toggle_class="btn-light btn-sm site-switcher__toggle">
-        <:toggle>
+    <div class="min-w-0">
+      <.dropdown
+        id={@id}
+        label={"Site: #{@site.title}"}
+        variant={:ghost}
+        class="min-w-0"
+        trigger_class="max-w-full flex-nowrap px-2 sm:max-w-72"
+      >
+        <:trigger>
           <span aria-hidden="true">{@site.emoji}</span>
-          <span class="text-truncate" id="site-title">{@site.title}</span>
-        </:toggle>
-        <li><span class="dropdown-header">Switch site</span></li>
-        <li :for={site <- @sites}>
-          <.link
-            navigate={~p"/sites/#{site.public_id}/posts"}
-            class="dropdown-item"
-            aria-current={site.id == @site.id && "page"}
-          >
-            <span aria-hidden="true">{site.emoji}</span>
-            <span class="text-truncate flex-grow-1">{site.title}</span>
-            <.icon :if={site.id == @site.id} name="check" size={16} class="text-primary" />
-          </.link>
-        </li>
-        <li><hr class="dropdown-divider" /></li>
-        <li>
-          <.link navigate={~p"/"} class="dropdown-item" id="all-sites-link">
-            <.icon name="building-2" size={16} /> All sites
-          </.link>
-        </li>
+          <span class="truncate" id={"#{@id}-title"}>{@site.title}</span>
+        </:trigger>
+        <:header>Switch site</:header>
+        <:item
+          :for={site <- @sites}
+          navigate={~p"/sites/#{site.public_id}/posts"}
+          active={site.id == @site.id}
+        >
+          <span aria-hidden="true">{site.emoji}</span>
+          <span class="min-w-0 flex-1 truncate">{site.title}</span>
+        </:item>
+        <:item navigate={~p"/"} icon="building-2" divider>All sites</:item>
       </.dropdown>
     </div>
     """
