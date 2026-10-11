@@ -54,6 +54,13 @@ config :phoenix_live_view,
   # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
   root_tag_attribute: "phx-r"
 
+# The admin's components (setzkasten): the app's Lucide icons, its plush
+# images and its Gettext error translation.
+config :setzkasten,
+  icons: FeatherWeb.Icons,
+  plush: FeatherWeb.Plush,
+  translate_error: {FeatherWeb.CoreComponents, :translate_error}
+
 # Configure the mailer
 #
 # By default it uses the "Local" adapter which stores the emails
@@ -68,8 +75,20 @@ config :esbuild,
   version: "0.25.4",
   feather: [
     args:
-      ~w(js/app.js css/app.css --bundle --target=es2022 --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+  ]
+
+# Configure tailwind (the version is required)
+config :tailwind,
+  version: "4.3.3",
+  feather: [
+    args: ~w(
+      --input=assets/css/app.css
+      --output=priv/static/assets/css/app.css
+    ),
+    cd: Path.expand("..", __DIR__),
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 

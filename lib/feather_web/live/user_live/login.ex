@@ -6,29 +6,40 @@ defmodule FeatherWeb.UserLive.Login do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="mx-auto narrow">
-        <.header class="text-center">
-          Log in
-          <:subtitle>
+    <Layouts.app flash={@flash} current_scope={@current_scope} bare>
+      <div class="mx-auto max-w-md">
+        <div class="mb-8 flex flex-col items-center text-center">
+          <.plush name="feather" size={:xxl} />
+          <h1 class="mt-4 text-2xl font-semibold">
+            {if @sent_to, do: "Check your email", else: "Log in to Feather"}
+          </h1>
+          <p :if={!@sent_to} class="mt-1 text-sm text-base-content/70">
             <%= if @current_scope do %>
               You need to reauthenticate to perform sensitive actions on your account.
             <% else %>
               We will email you a link to log in. There is no password.
             <% end %>
-          </:subtitle>
-        </.header>
+          </p>
+          <p :if={@sent_to} id="login-sent" class="mt-1 text-sm text-base-content/70">
+            If <span class="font-medium text-base-content">{@sent_to}</span>
+            has an account, a link to log in is on its way.
+          </p>
+        </div>
 
-        <div :if={local_mail_adapter?()} class="alert alert-info d-flex gap-2">
-          <.icon name="info" />
-          <div>
-            You are running the local mail adapter.
-            To see sent emails, visit <.link href="/dev/mailbox">the mailbox page</.link>.
-          </div>
+        <.alert :if={local_mail_adapter?()} tone={:info} class="mb-4">
+          You are running the local mail adapter.
+          To see sent emails, visit <.link href="/dev/mailbox" class="link">the mailbox page</.link>.
+        </.alert>
+
+        <div :if={@sent_to} class="text-center">
+          <.button id="use-another-email" variant={:ghost} phx-click="use_another_email">
+            Use another email
+          </.button>
         </div>
 
         <.form
           :let={f}
+          :if={!@sent_to}
           for={@form}
           id="login_form_magic"
           action={~p"/users/log-in"}
@@ -44,7 +55,12 @@ defmodule FeatherWeb.UserLive.Login do
             required
             phx-mounted={JS.focus()}
           />
-          <.button variant="primary" class="w-100">
+          <.button
+            type="submit"
+            variant={:primary}
+            class="mt-4 w-full"
+            phx-disable-with="Sending…"
+          >
             Log in with email <span aria-hidden="true">→</span>
           </.button>
         </.form>
@@ -55,13 +71,10 @@ defmodule FeatherWeb.UserLive.Login do
 
   @impl true
   def mount(_params, _session, socket) do
-    email =
-      Phoenix.Flash.get(socket.assigns.flash, :email) ||
-        get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
-
+    email = Phoenix.Flash.get(socket.assigns.flash, :email) || current_email(socket)
     form = to_form(%{"email" => email}, as: "user")
 
-    {:ok, assign(socket, form: form)}
+    {:ok, assign(socket, form: form, sent_to: nil)}
   end
 
   @impl true
@@ -75,14 +88,17 @@ defmodule FeatherWeb.UserLive.Login do
       )
     end
 
-    info =
-      "If your email is in our system, you will receive instructions for logging in shortly."
-
-    {:noreply,
-     socket
-     |> put_flash(:info, info)
-     |> push_navigate(to: ~p"/users/log-in")}
+    {:noreply, assign(socket, :sent_to, email)}
   end
+
+  # Reauthenticating keeps the (read-only) email of the logged-in user.
+  def handle_event("use_another_email", _params, socket) do
+    form = to_form(%{"email" => current_email(socket)}, as: "user")
+    {:noreply, assign(socket, sent_to: nil, form: form)}
+  end
+
+  defp current_email(socket),
+    do: get_in(socket.assigns, [:current_scope, Access.key(:user), Access.key(:email)])
 
   defp local_mail_adapter? do
     Application.get_env(:feather, Feather.Mailer)[:adapter] == Swoosh.Adapters.Local

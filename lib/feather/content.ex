@@ -321,14 +321,16 @@ defmodule Feather.Content do
   ## Projects
 
   @doc """
-  Lists the projects of the scope's site, most recently started first.
+  Lists the projects of the scope's site, most recently started first, with
+  their published version preloaded.
   """
   @spec list_projects(Scope.t()) :: [Project.t()]
   def list_projects(%Scope{site: %Site{id: site_id}}) do
     Repo.all(
       from p in Project,
         where: p.site_id == ^site_id,
-        order_by: [desc: p.started_at, asc: p.title]
+        order_by: [desc: p.started_at, asc: p.title],
+        preload: :published_version
     )
   end
 
@@ -338,6 +340,14 @@ defmodule Feather.Content do
   @spec get_project!(Scope.t(), String.t()) :: Project.t()
   def get_project!(%Scope{site: %Site{id: site_id}}, public_id) do
     Repo.one!(from p in Project, where: p.site_id == ^site_id and p.public_id == ^public_id)
+  end
+
+  @doc """
+  Gets a project of the scope's site by public id, or nil.
+  """
+  @spec get_project(Scope.t(), String.t()) :: Project.t() | nil
+  def get_project(%Scope{site: %Site{id: site_id}}, public_id) do
+    Repo.one(from p in Project, where: p.site_id == ^site_id and p.public_id == ^public_id)
   end
 
   @doc "Creates a project in the scope's site."
@@ -853,7 +863,8 @@ defmodule Feather.Content do
 
   @doc """
   One page of the scope's pages that are not in the main navigation, the
-  homepage first, then by title, with the thumbnail image preloaded.
+  homepage first, then by title, with the thumbnail image and the published
+  version preloaded.
   """
   @spec paginate_pages_outside_navigation(Scope.t(), pos_integer() | String.t() | nil) ::
           Pagination.t()
@@ -863,7 +874,7 @@ defmodule Feather.Content do
       on: n.page_id == p.id,
       where: p.site_id == ^site_id and is_nil(n.id),
       order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
-      preload: [:thumbnail_image]
+      preload: [:thumbnail_image, :published_version]
     )
     |> Pagination.paginate(page)
   end

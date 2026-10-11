@@ -18,6 +18,11 @@ defmodule Feather.Publishing.Deploy do
 
   A failure before step 4 leaves the live directory untouched.
 
+  Each step is reported with `Feather.Publishing.put_deploy_progress/3`
+  (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
+  can show where a deploy is. The notice at the end says how long the
+  deploy took, or at which step it failed and with which message.
+
   ## Concurrent deploys
 
   When the lock is held by a running deploy, the request waits for it,
@@ -57,18 +62,35 @@ defmodule Feather.Publishing.Deploy do
           {:ok, :deployed | :coalesced} | {:error, String.t()}
   def run(%DeploymentTarget{} = target, opts \\ []) do
     target = Repo.preload(target, :site, force: true)
+    started_at = DateTime.utc_now()
 
     result =
-      with_lock(target, opts, fn ->
+      with_lock(target, started_at, opts, fn ->
         try do
-          build_and_sync(target, opts)
+          build_and_sync(target, started_at, opts)
         rescue
           exception -> {:error, Exception.message(exception)}
         end
       end)
 
-    notify(target, result)
+    {result, step} =
+      case result do
+        {:error, :lock_timeout} -> {{:error, "another deploy is still running"}, :waiting}
+        result -> {result, own_step(target)}
+      end
+
+    Publishing.clear_deploy_progress(target)
+    notify(target, result, started_at, step)
     result
+  end
+
+  # The step this process recorded; the record may belong to another deploy
+  # of the target.
+  defp own_step(target) do
+    case Registry.lookup(@registry, {:progress, target.id}) do
+      [{pid, %{step: step}}] when pid == self() -> step
+      _other -> nil
+    end
   end
 
   @doc "The directory holding a target's builds."
@@ -82,11 +104,11 @@ defmodule Feather.Publishing.Deploy do
 
   ## Lock
 
-  defp with_lock(target, opts, fun) do
+  defp with_lock(target, started_at, opts, fun) do
     if Publishing.acquire_deploy_lock(target) do
       locked(target, fun)
     else
-      wait_for_lock(target, opts, fun)
+      wait_for_lock(target, started_at, opts, fun)
     end
   end
 
@@ -96,11 +118,12 @@ defmodule Feather.Publishing.Deploy do
     Publishing.release_deploy_lock(target)
   end
 
-  defp wait_for_lock(target, opts, fun) do
+  defp wait_for_lock(target, started_at, opts, fun) do
     key = {:waiting, target.id}
 
     case Registry.register(@registry, key, nil) do
       {:ok, _owner} ->
+        Publishing.put_deploy_progress(target, :waiting, started_at)
         retries = Keyword.get(opts, :lock_retries, @lock_retries)
         interval = Keyword.get(opts, :lock_retry_interval, @lock_retry_interval)
 
@@ -121,7 +144,7 @@ defmodule Feather.Publishing.Deploy do
 
   defp retry_lock(target, 0, _interval, _fun) do
     Logger.warning("Deploy lock of target #{target.id} stuck, giving up")
-    {:error, "another deploy is still running"}
+    {:error, :lock_timeout}
   end
 
   defp retry_lock(target, retries, interval, fun) do
@@ -134,20 +157,25 @@ defmodule Feather.Publishing.Deploy do
 
   ## Pipeline
 
-  defp build_and_sync(target, opts) do
-    started_at = DateTime.utc_now()
+  defp build_and_sync(target, started_at, opts) do
+    export_started_at = DateTime.utc_now()
     sink = FileSink.new(build_path(target))
 
     try do
+      Publishing.put_deploy_progress(target, :build, started_at)
+
       Export.run(target.site, Routes.for(target, :deployed), sink,
         content: DeploymentTarget.exported_content(target)
       )
 
+      Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
       replace_live_dir(FileSink.dir(sink), live_dir(target))
     after
       FileSink.discard(sink)
     end
+
+    Publishing.put_deploy_progress(target, :upload, started_at)
 
     with {:ok, _output} <-
            Rclone.deploy(
@@ -155,7 +183,7 @@ defmodule Feather.Publishing.Deploy do
              live_dir(target) <> "/",
              Keyword.take(opts, [:runner, :staging_sites_path])
            ) do
-      Publishing.record_deploy(target, started_at)
+      Publishing.record_deploy(target, export_started_at)
       {:ok, :deployed}
     end
   end
@@ -186,18 +214,54 @@ defmodule Feather.Publishing.Deploy do
 
   ## Notices
 
-  defp notify(target, {:ok, :deployed}) do
-    Publishing.broadcast_notice(target.site, "Site built.", "https://#{target.public_hostname}")
+  defp notify(target, {:ok, :deployed}, started_at, _step) do
+    Publishing.broadcast_notice(target.site, %{
+      kind: :success,
+      title: "#{target.site.title} is live",
+      message: "#{target.public_hostname} · deployed #{duration(started_at)}",
+      url: "https://#{target.public_hostname}",
+      link_label: "Open site",
+      external: true
+    })
   end
 
-  defp notify(_target, {:ok, :coalesced}), do: :ok
+  defp notify(_target, {:ok, :coalesced}, _started_at, _step), do: :ok
 
-  defp notify(target, {:error, message}) do
+  defp notify(target, {:error, message}, _started_at, step) do
     Logger.error("Deploying target #{target.id} (#{target.public_hostname}) failed: #{message}")
 
-    Publishing.broadcast_notice(
-      target.site,
-      "Deploying to #{target.public_hostname} failed: #{Feather.Content.Blocks.truncate(message, 300)}"
-    )
+    Publishing.broadcast_notice(target.site, %{
+      kind: :error,
+      title: "Deploy to #{target.public_hostname} failed",
+      message: failure_message(step, Feather.Content.Blocks.truncate(message, 300)),
+      retry: target.public_id
+    })
+  end
+
+  # Until the live directory is swapped in (before :upload), the site
+  # online is untouched; a failed upload may have changed part of it.
+  defp failure_message(nil, message), do: "#{message}. The site online is unchanged."
+
+  defp failure_message(:upload, message), do: "#{step_label(:upload)}: #{message}."
+
+  defp failure_message(step, message),
+    do: "#{step_label(step)}: #{message}. The site online is unchanged."
+
+  defp step_label(step), do: Publishing.deploy_step_label(step, :running)
+
+  defp duration(started_at) do
+    case max(DateTime.diff(DateTime.utc_now(), started_at), 0) do
+      0 ->
+        "in under a second"
+
+      1 ->
+        "in 1 second"
+
+      seconds when seconds < 60 ->
+        "in #{seconds} seconds"
+
+      seconds ->
+        "in #{div(seconds, 60)}:#{seconds |> rem(60) |> to_string() |> String.pad_leading(2, "0")} min"
+    end
   end
 end

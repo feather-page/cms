@@ -29,7 +29,7 @@ defmodule FeatherWeb.EncryptionKeyTest do
 
     test "site pages and their preview link still work", %{conn: conn, site: site, target: target} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts")
-      assert has_element?(lv, ~s(#site-preview-link[href="/preview/#{target.public_id}"]))
+      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{target.public_id}"]))
     end
 
     test "the preview still works", %{conn: conn, target: target} do

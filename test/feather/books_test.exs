@@ -124,4 +124,12 @@ defmodule Feather.BooksTest do
     {:ok, _} = Content.delete_post(scope, post)
     refute Book.review?(Books.get_book!(scope, book.public_id))
   end
+
+  test "get_book/2 returns nil for a missing book or one of another site", %{scope: scope} do
+    book = book_fixture(scope)
+    assert Books.get_book(scope, book.public_id).id == book.id
+    assert Books.get_book(site_scope_fixture(), book.public_id) == nil
+    {:ok, _} = Books.delete_book(scope, book)
+    assert Books.get_book(scope, book.public_id) == nil
+  end
 end

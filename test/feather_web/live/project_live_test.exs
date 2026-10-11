@@ -15,14 +15,19 @@ defmodule FeatherWeb.ProjectLiveTest do
     assert has_element?(lv, "#no-projects")
   end
 
-  test "lists projects by start date, newest first", %{conn: conn, site: site, scope: scope} do
+  test "lists projects by start date, newest first, naming only an unusual status", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
     old = project_fixture(scope, title: "Old", started_at: ~D[2019-01-01], company: "ACME")
-    new = project_fixture(scope, title: "New", started_at: ~D[2024-01-01], status: "completed")
+    new = project_fixture(scope, title: "New", started_at: ~D[2024-01-01], status: "paused")
 
     {:ok, lv, html} = live(conn, projects_path(site))
 
     assert has_element?(lv, "#project-#{old.public_id}", "ACME")
-    assert has_element?(lv, "#project-#{new.public_id}", "Completed")
+    refute has_element?(lv, "#project-#{old.public_id}", "Ongoing")
+    assert has_element?(lv, "#project-#{new.public_id}", "Paused")
 
     ids = Regex.scan(~r/id="project-([0-9a-zA-Z]{12})"/, html) |> Enum.map(&List.last/1)
     assert ids == [new.public_id, old.public_id]
@@ -32,10 +37,26 @@ defmodule FeatherWeb.ProjectLiveTest do
     project = project_fixture(scope)
     {:ok, lv, _html} = live(conn, projects_path(site))
 
-    lv |> element("#delete-project-#{project.public_id}") |> render_click()
+    confirm_click(lv, "#delete-project-#{project.public_id}-menu-item")
 
     refute has_element?(lv, "#project-#{project.public_id}")
     assert Content.list_projects(scope) == []
+  end
+
+  test "deleting a project deleted in another tab refreshes the list", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    project = project_fixture(scope)
+    {:ok, lv, _html} = live(conn, projects_path(site))
+    {:ok, _} = Content.delete_project(scope, project)
+
+    assert confirm_click(lv, "#delete-project-#{project.public_id}-menu-item") =~
+             "This project no longer exists."
+
+    refute has_element?(lv, "#project-#{project.public_id}")
+    assert has_element?(lv, "#no-projects")
   end
 
   test "creates a project with links", %{conn: conn, site: site, scope: scope} do
@@ -115,7 +136,7 @@ defmodule FeatherWeb.ProjectLiveTest do
 
     html = lv |> form("#project-form", project: %{title: "Only a title"}) |> render_change()
 
-    assert html =~ "can&#39;t be blank"
+    assert html =~ "Can&#39;t be blank"
     assert has_element?(lv, ~s(#project-content-editor[data-form-status="invalid"]))
     assert Content.list_projects(scope) == []
   end
@@ -132,7 +153,7 @@ defmodule FeatherWeb.ProjectLiveTest do
     |> form("#project-form", project: %{title: "", company: "Feather Inc."})
     |> render_change()
 
-    assert has_element?(lv, "#project-form .invalid-feedback", "can't be blank")
+    assert has_element?(lv, "#project-form .text-error-ink", "Can't be blank")
     assert has_element?(lv, "#publish-project[disabled]")
 
     assert %{title: "Old", company: "Feather Inc."} =
@@ -142,7 +163,7 @@ defmodule FeatherWeb.ProjectLiveTest do
   test "unpublishes a project", %{conn: conn, site: site, scope: scope} do
     project = project_fixture(scope, title: "Old project")
     {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
-    refute has_element?(lv, "#publication-badge")
+    assert has_element?(lv, "#publication-badge", "Published")
 
     lv |> element("#unpublish-project") |> render_click()
 
@@ -175,10 +196,10 @@ defmodule FeatherWeb.ProjectLiveTest do
       })
 
     {:ok, lv, _html} = live(conn, edit_path)
-    assert has_element?(lv, "#publication-badge", "Unpublished changes")
+    assert has_element?(lv, "#publication-badge", "Changes not published")
 
     {:ok, _lv, _html} =
-      lv |> element("#discard-project") |> render_click() |> follow_redirect(conn, edit_path)
+      confirm_click(lv, "#discard-project") |> follow_redirect(conn, edit_path)
 
     assert Content.get_project!(scope, project.public_id).title == "New project"
   end
@@ -191,13 +212,13 @@ defmodule FeatherWeb.ProjectLiveTest do
     {:ok, lv, _html} = live(conn, edit_path)
 
     {:ok, lv, _html} =
-      lv |> element("#restore-version-1") |> render_click() |> follow_redirect(conn, edit_path)
+      confirm_click(lv, "#restore-version-1") |> follow_redirect(conn, edit_path)
 
-    assert has_element?(lv, "#project_title[value='Old project']")
+    assert has_element?(lv, "#project_title", "Old project")
     assert has_element?(lv, "#version-2", "Published")
   end
 
-  test "shows the status and deletes the project from its edit page", %{
+  test "shows the publication status in the bar and deletes the project", %{
     conn: conn,
     site: site,
     scope: scope
@@ -206,16 +227,35 @@ defmodule FeatherWeb.ProjectLiveTest do
     {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
 
     assert has_element?(lv, "h1", "Old project")
-    assert has_element?(lv, "#status-badge", "Completed")
+    assert has_element?(lv, "#publication-badge", "Published")
+    refute has_element?(lv, "#status-badge")
+    assert has_element?(lv, ~s(#project_status option[value="completed"][selected]))
+
+    assert asked(lv, "#delete-project").text ==
+             "Removes the project from Feather. It stays on the live site until the next deploy."
 
     {:ok, _lv, html} =
-      lv
-      |> element("#delete-project")
-      |> render_click()
+      confirm_click(lv, "#delete-project")
       |> follow_redirect(conn, projects_path(site))
 
     assert html =~ "The project was successfully deleted."
     assert_raise Ecto.NoResultsError, fn -> Content.get_project!(scope, project.public_id) end
+  end
+
+  test "deleting a project deleted in another tab goes back to the list", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    project = project_fixture(scope, title: "Old project")
+    {:ok, lv, _html} = live(conn, projects_path(site) <> "/#{project.public_id}/edit")
+    {:ok, _} = Content.delete_project(scope, project)
+
+    {:ok, _lv, html} =
+      confirm_click(lv, "#delete-project")
+      |> follow_redirect(conn, projects_path(site))
+
+    assert html =~ "This project no longer exists."
   end
 
   test "a project of another site is not found", %{conn: conn, site: site} do

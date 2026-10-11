@@ -63,15 +63,15 @@ defmodule FeatherWeb.SiteLive.NewTest do
         |> form("#site-form", site: %{title: "", domain: "not a domain!"})
         |> render_change()
 
-      assert html =~ "can&#39;t be blank"
-      assert html =~ "may only contain letters, digits, dots and dashes"
+      assert html =~ "Can&#39;t be blank"
+      assert html =~ "May only contain letters, digits, dots and dashes"
 
       html =
         lv
         |> form("#site-form", site: %{title: "", domain: "example.com"})
         |> render_submit()
 
-      assert html =~ "can&#39;t be blank"
+      assert html =~ "Can&#39;t be blank"
       assert Sites.list_sites(Scope.for_user(user)) == []
     end
 
@@ -84,7 +84,7 @@ defmodule FeatherWeb.SiteLive.NewTest do
         |> form("#site-form", site: %{title: "Mine", domain: "taken.example.com"})
         |> render_submit()
 
-      assert html =~ "has already been taken"
+      assert html =~ "Has already been taken"
     end
   end
 end

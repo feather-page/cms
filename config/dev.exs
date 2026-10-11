@@ -22,7 +22,8 @@ config :feather, FeatherWeb.Endpoint,
   debug_errors: true,
   secret_key_base: "DczF3Wykiw9FfZblOQIiRA/FeuEB3aLYQ2DbLFY1pTUopAF+PeFytHPMgF1aQ7Sk",
   watchers: [
-    esbuild: {Esbuild, :install_and_run, [:feather, ~w(--sourcemap=inline --watch)]}
+    esbuild: {Esbuild, :install_and_run, [:feather, ~w(--sourcemap=inline --watch)]},
+    tailwind: {Tailwind, :install_and_run, [:feather, ~w(--watch)]}
   ]
 
 # ## SSL Support

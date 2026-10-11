@@ -9,62 +9,88 @@ defmodule FeatherWeb.UserLive.Settings do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <div class="settings-page">
-        <.header>
-          Account settings
-          <:subtitle>Your email address and API tokens</:subtitle>
-        </.header>
+      <.header>
+        Account settings
+        <:subtitle>Your email address and API tokens</:subtitle>
+      </.header>
 
+      <div class="max-w-3xl">
+        <.section_heading id="email-heading">Email address</.section_heading>
         <.form
           for={@email_form}
           id="email_form"
           phx-submit="update_email"
           phx-change="validate_email"
+          class="max-w-md"
         >
           <.input
             field={@email_form[:email]}
             type="email"
             label="Email"
+            hide_label
             autocomplete="username"
             spellcheck="false"
             required
           />
-          <.button variant="primary" phx-disable-with="Changing...">Change email</.button>
+          <.action_bar id="email-actions" class="mt-4">
+            <.button type="submit" variant={:primary} phx-disable-with="Changing…">
+              Change email
+            </.button>
+          </.action_bar>
         </.form>
 
-        <section id="api-tokens" class="mt-5 pt-4 border-top">
-          <h2 class="section-title">API tokens</h2>
-          <p class="text-body-secondary">Tokens give programs access to the content API as you.</p>
+        <section id="api-tokens" aria-labelledby="api-tokens-heading" class="mt-8">
+          <.section_heading id="api-tokens-heading">API tokens</.section_heading>
+          <p class="text-sm text-base-content/70">
+            Tokens give programs access to the content API as you.
+          </p>
 
-          <div :if={@new_api_token} id="new-api-token" class="alert alert-success">
-            <p class="mb-1">Copy your new token now. It will not be shown again.</p>
-            <code class="d-block text-break">{@new_api_token}</code>
-          </div>
+          <.alert :if={@new_api_token} id="new-api-token" tone={:success} class="mt-4">
+            Copy your new token now. It will not be shown again.
+            <code class="mt-1 block break-all font-mono">{@new_api_token}</code>
+          </.alert>
 
-          <.list_card :if={@api_tokens != []} id="api-token-list" class="mb-4">
-            <.list_row :for={token <- @api_tokens} id={"api-token-#{token.id}"}>
-              <:leading><.icon name="key-round" /></:leading>
-              {token.name || "Unnamed token"}
+          <p :if={@api_tokens == []} id="no-api-tokens" class="mt-4 text-sm text-base-content/70">
+            No tokens yet.
+          </p>
+
+          <.list :if={@api_tokens != []} id="api-token-list" class="mt-4">
+            <.list_row
+              :for={token <- @api_tokens}
+              id={"api-token-#{token.id}"}
+              title={token.name || "Unnamed token"}
+              actions_label="Actions"
+              menu={:always}
+            >
+              <:leading><.tile icon="key-round" /></:leading>
               <:meta>
-                <code class="list-row__code">{token.token_prefix}…</code>
-                <span>Created {Calendar.strftime(token.inserted_at, "%d/%m/%Y")}</span>
+                <code class="font-mono">{token.token_prefix}…</code>
+                · Created {Calendar.strftime(token.inserted_at, "%d/%m/%Y")}
               </:meta>
               <:action
                 id={"delete-api-token-#{token.id}"}
-                icon="trash"
+                icon="trash-2"
                 label="Delete"
-                click={JS.push("delete_api_token", value: %{id: token.id})}
-                confirm="Are you sure? Programs using this token lose access."
+                on_click={JS.push("delete_api_token", value: %{id: token.id})}
+                confirm={"Delete the token “#{token.name || "Unnamed token"}”?"}
+                confirm_text="Programs using this token lose access. This cannot be undone."
                 danger
               />
             </.list_row>
-          </.list_card>
+          </.list>
 
-          <.form for={@api_token_form} id="api_token_form" phx-submit="create_api_token">
+          <.form
+            for={@api_token_form}
+            id="api_token_form"
+            phx-submit="create_api_token"
+            class="mt-4 max-w-md"
+          >
             <.input field={@api_token_form[:name]} type="text" label="Name" placeholder="Importer" />
-            <button type="submit" class="btn btn-light" phx-disable-with="Creating...">
-              Create token
-            </button>
+            <.action_bar id="api-token-actions" class="mt-4">
+              <.button type="submit" phx-disable-with="Creating…" icon="plus">
+                Create token
+              </.button>
+            </.action_bar>
           </.form>
         </section>
       </div>

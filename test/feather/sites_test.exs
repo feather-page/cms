@@ -171,6 +171,8 @@ defmodule Feather.SitesTest do
 
       assert Sites.get_member!(scope, su.id).user.id == other.id
       assert_raise Ecto.NoResultsError, fn -> Sites.get_member!(site_scope_fixture(), su.id) end
+      assert Sites.get_member(scope, su.id).user.id == other.id
+      assert Sites.get_member(site_scope_fixture(), su.id) == nil
 
       assert {:error, :cannot_remove_self} = Sites.remove_member(scope, own)
       assert {:ok, _} = Sites.remove_member(scope, su)
@@ -179,6 +181,15 @@ defmodule Feather.SitesTest do
   end
 
   describe "invitations" do
+    test "get_invitation/2 returns nil for a missing invitation or one of another site" do
+      scope = site_scope_fixture()
+      invitation = invitation_fixture(scope)
+      assert Sites.get_invitation(scope, invitation.id).id == invitation.id
+      assert Sites.get_invitation(site_scope_fixture(), invitation.id) == nil
+      {:ok, _} = Sites.delete_invitation(scope, invitation)
+      assert Sites.get_invitation(scope, invitation.id) == nil
+    end
+
     setup do
       %{scope: site_scope_fixture()}
     end
@@ -310,6 +321,15 @@ defmodule Feather.SitesTest do
   end
 
   describe "social media links" do
+    test "get_social_media_link/2 returns nil for a missing link or one of another site" do
+      scope = site_scope_fixture()
+      link = social_media_link_fixture(scope)
+      assert Sites.get_social_media_link(scope, link.id).id == link.id
+      assert Sites.get_social_media_link(site_scope_fixture(), link.id) == nil
+      {:ok, _} = Sites.delete_social_media_link(scope, link)
+      assert Sites.get_social_media_link(scope, link.id) == nil
+    end
+
     test "the icon must be a known service" do
       scope = site_scope_fixture()
 

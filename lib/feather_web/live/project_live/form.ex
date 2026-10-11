@@ -15,7 +15,7 @@ defmodule FeatherWeb.ProjectLive.Form do
 
   import FeatherWeb.ContentFormComponents
 
-  alias Feather.Content
+  alias Feather.{Content, Publishing}
   alias Feather.Content.Project
   alias FeatherWeb.{ContentForm, HeaderImagePicker}
 
@@ -40,18 +40,37 @@ defmodule FeatherWeb.ProjectLive.Form do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:projects}
     >
-      <.header back={~p"/sites/#{@site.public_id}/projects"} back_label="Projects" truncate>
-        {@page_title}
-        <:badge :if={@live_action == :edit and @publication_status != :published}>
-          <.publication_badge id="publication-badge" status={@publication_status} />
-        </:badge>
-        <:badge :if={@live_action == :edit and @project.status}>
-          <.status_badge id="status-badge">{status_label(@project.status)}</.status_badge>
-        </:badge>
-      </.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/sites/#{@site.public_id}/projects"}>Projects</:crumb>
+          <:crumb>{@page_title}</:crumb>
+        </.breadcrumbs>
+        <.publication_badge
+          :if={@live_action == :edit}
+          id="publication-badge"
+          status={@publication_status}
+          live={Publishing.live?(@site_deploy.targets, @published_version)}
+        />
+      </:bar>
+      <:bar_actions>
+        <div id="publish-actions" class="flex items-center gap-3">
+          <.editor_status editor="project-content-editor" />
+          <div class="max-md:hidden">
+            <.content_actions
+              id="project"
+              noun="project"
+              record={@project}
+              form={@form}
+              status={@publication_status}
+              changed_elsewhere?={@changed_elsewhere?}
+            />
+          </div>
+        </div>
+      </:bar_actions>
 
       <.editor_layout id="project" open={ContentForm.details_open?(@form)}>
         <:main>
@@ -65,14 +84,19 @@ defmodule FeatherWeb.ProjectLive.Form do
             <.lock_version_field record={@project} />
             <.header_image_fields form={@form} />
             <.title_field field={@form[:title]} />
-            <.input
-              field={@form[:short_description]}
-              type="textarea"
-              label="Short description"
-              help="Required. Two or three sentences, shown on the project cards."
-              rows="3"
-              phx-debounce="300"
-            />
+            <div id="project-lead" class="editor-lead-field mb-6">
+              <.input
+                field={@form[:short_description]}
+                type="textarea"
+                label="Short description"
+                hide_label
+                class="editor-lead textarea-ghost"
+                placeholder="Short description"
+                help="Two or three sentences, shown on the project cards. Required."
+                rows="2"
+                phx-debounce="300"
+              />
+            </div>
             <.editor
               id="project-content-editor"
               site={@current_scope.site}
@@ -81,128 +105,124 @@ defmodule FeatherWeb.ProjectLive.Form do
               status={ContentForm.autosave_status(@form, @changed_elsewhere?)}
             />
 
-            <fieldset class="mb-3" id="project-links">
-              <legend class="form-label">Links</legend>
+            <fieldset class="fieldset mt-8" id="project-links">
+              <legend class="mb-3 text-base font-semibold">Links</legend>
               <.inputs_for :let={link} field={@form[:links]}>
-                <div class="link-row row g-2 mb-2" id={"project-link-#{link.index}"}>
+                <div
+                  class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 max-sm:mb-4 sm:grid-cols-[12rem_minmax(0,1fr)_auto]"
+                  id={"project-link-#{link.index}"}
+                >
                   <input type="hidden" name="project[links_sort][]" value={link.index} />
-                  <div class="col-12 col-sm-4">
+                  <div class="max-sm:col-start-1 max-sm:row-start-1">
                     <.input
                       field={link[:label]}
                       placeholder="Label"
-                      aria-label="Label"
-                      wrapper_class={nil}
+                      label="Label"
+                      hide_label
                       phx-debounce="300"
                     />
                   </div>
-                  <div class="col col-sm">
+                  <div class="max-sm:col-start-1 max-sm:row-start-2">
                     <.input
                       field={link[:url]}
                       type="url"
                       placeholder="https://"
-                      aria-label="URL"
-                      wrapper_class={nil}
+                      label="URL"
+                      hide_label
                       phx-debounce="300"
                     />
                   </div>
-                  <div class="col-auto">
-                    <button
-                      type="button"
-                      name="project[links_drop][]"
-                      value={link.index}
-                      id={"remove-link-#{link.index}"}
-                      class="btn btn-link link-row__remove"
-                      title="Remove link"
-                      aria-label="Remove link"
-                      phx-click={JS.dispatch("change")}
-                    >
-                      <.icon name="trash-2" size={18} />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    name="project[links_drop][]"
+                    value={link.index}
+                    id={"remove-link-#{link.index}"}
+                    class="btn btn-ghost btn-square mt-1 max-sm:col-start-2 max-sm:row-start-1"
+                    title="Remove link"
+                    aria-label="Remove link"
+                    phx-click={JS.dispatch("change")}
+                  >
+                    <.icon name="trash-2" />
+                  </button>
                 </div>
               </.inputs_for>
               <input type="hidden" name="project[links_drop][]" />
-              <button
-                type="button"
-                name="project[links_sort][]"
-                value="new"
-                id="add-link"
-                class="btn btn-light btn-sm"
-                phx-click={JS.dispatch("change")}
-              >
-                <.icon name="plus" size={16} /> Add link
-              </button>
+              <div>
+                <button
+                  type="button"
+                  name="project[links_sort][]"
+                  value="new"
+                  id="add-link"
+                  class="btn btn-sm btn-ghost"
+                  phx-click={JS.dispatch("change")}
+                >
+                  <.icon name="plus" /> Add link
+                </button>
+              </div>
             </fieldset>
           </.form>
         </:main>
         <:details>
           <.slug_field field={@form[:slug]} form="project-form" />
-          <div class="row g-3 mb-3">
-            <div class="col-12 col-sm-6 col-lg-12">
+          <div class="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-1">
+            <div>
               <.input
                 field={@form[:company]}
                 label="Company"
                 form="project-form"
-                wrapper_class={nil}
                 phx-debounce="300"
               />
             </div>
-            <div class="col-12 col-sm-6 col-lg-12">
+            <div>
               <.input
                 field={@form[:role]}
                 label="Role"
                 form="project-form"
-                wrapper_class={nil}
                 phx-debounce="300"
               />
             </div>
-            <div class="col-12">
+            <div class="sm:col-span-2 lg:col-span-1">
               <.input
                 field={@form[:period]}
                 label="Period"
                 help="Optional. If empty, the dates are shown."
                 form="project-form"
-                wrapper_class={nil}
                 phx-debounce="300"
               />
             </div>
-            <div class="col-12 col-sm-6 col-lg-12">
+            <div>
               <.input
                 field={@form[:started_at]}
                 type="date"
                 label="Started at"
                 form="project-form"
-                wrapper_class={nil}
               />
             </div>
-            <div class="col-12 col-sm-6 col-lg-12">
+            <div>
               <.input
                 field={@form[:ended_at]}
                 type="date"
                 label="Ended at"
                 help="Leave empty if ongoing"
                 form="project-form"
-                wrapper_class={nil}
               />
             </div>
-            <div class="col-12 col-sm-6 col-lg-12">
+            <div>
               <.input
                 field={@form[:status]}
                 type="select"
                 label="Status"
                 options={@statuses}
                 form="project-form"
-                wrapper_class={nil}
               />
             </div>
-            <div class="col-12 col-sm-6 col-lg-12">
+            <div>
               <.input
                 field={@form[:project_type]}
                 type="select"
                 label="Project type"
                 options={@project_types}
                 form="project-form"
-                wrapper_class={nil}
               />
             </div>
           </div>
@@ -225,14 +245,25 @@ defmodule FeatherWeb.ProjectLive.Form do
         </:details>
       </.editor_layout>
 
-      <.content_actions
-        id="project"
-        noun="project"
-        record={@project}
-        form={@form}
-        status={@publication_status}
-        changed_elsewhere?={@changed_elsewhere?}
-      />
+      <.action_bar
+        sticky
+        id="action-bar"
+        class="mt-6 items-center md:hidden [&_.join]:flex-1 [&_.join>.btn]:flex-1"
+      >
+        <.editor_status
+          editor="project-content-editor"
+          place={:bottom}
+        />
+        <.content_actions
+          id="project"
+          noun="project"
+          record={@project}
+          form={@form}
+          status={@publication_status}
+          changed_elsewhere?={@changed_elsewhere?}
+          place={:bottom}
+        />
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -266,13 +297,18 @@ defmodule FeatherWeb.ProjectLive.Form do
 
   @impl true
   def handle_event("delete", _params, socket) do
-    {:ok, _project} =
-      Content.delete_project(socket.assigns.current_scope, socket.assigns.project)
+    %{current_scope: scope, project: project} = socket.assigns
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "The project was successfully deleted.")
-     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/projects")}
+    socket =
+      with %Project{} = project <- Content.get_project(scope, project.public_id),
+           {:ok, _project} <- Content.delete_project(scope, project) do
+        put_flash(socket, :info, "The project was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This project no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The project could not be deleted.")
+      end
+
+    {:noreply, push_navigate(socket, to: ~p"/sites/#{socket.assigns.site.public_id}/projects")}
   end
 
   def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)
@@ -300,10 +336,6 @@ defmodule FeatherWeb.ProjectLive.Form do
   @impl ContentForm
   def edit_path(socket, project),
     do: ~p"/sites/#{socket.assigns.site.public_id}/projects/#{project.public_id}/edit"
-
-  defp status_label(status) do
-    Enum.find_value(@statuses, status, fn {label, value} -> value == status && label end)
-  end
 
   @impl ContentForm
   def assign_form(socket, params, action \\ nil) do

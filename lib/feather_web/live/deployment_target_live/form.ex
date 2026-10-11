@@ -17,46 +17,43 @@ defmodule FeatherWeb.DeploymentTargetLive.Form do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:deployments}
     >
-      <.header back={index_path(@current_scope)} back_label="Deployments" truncate>
-        {@target.public_hostname}
-        <:badge>
-          <.status_badge id="status-badge">{Index.type_label(@target.type)}</.status_badge>
-        </:badge>
-      </.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={index_path(@current_scope)}>Deployments</:crumb>
+          <:crumb>{Index.type_label(@target.type)}</:crumb>
+        </.breadcrumbs>
+        <span class="truncate text-sm text-base-content/70 max-sm:hidden">
+          {@target.public_hostname} · {Index.provider_label(@target.provider)}
+        </span>
+      </:bar>
 
       <.form
         for={@form}
         id="deployment-target-form"
-        class="form-narrow"
+        class="max-w-3xl"
         phx-change="validate"
         phx-submit="save"
       >
-        <div class="row g-3">
-          <div class="col-12 col-sm-8">
+        <div class="grid gap-x-4 sm:grid-cols-3">
+          <div class="sm:col-span-2">
             <.input
               field={@form[:public_hostname]}
               type="text"
               label="Public hostname"
               help="Without https://, for example www.example.org"
-              wrapper_class={nil}
             />
           </div>
-          <div class="col-12 col-sm-4">
-            <.input
-              field={@form[:type]}
-              type="select"
-              label="Type"
-              options={@type_options}
-              wrapper_class={nil}
-            />
-          </div>
+          <.input field={@form[:type]} type="select" label="Type" options={@type_options} />
         </div>
-        <.action_bar>
-          <.button variant="primary" phx-disable-with="Saving..." id="save-target">Save</.button>
-          <.link navigate={index_path(@current_scope)} class="btn btn-light">Cancel</.link>
+        <.action_bar class="mt-6">
+          <.button navigate={index_path(@current_scope)}>Cancel</.button>
+          <.button type="submit" variant={:primary} phx-disable-with="Saving…" id="save-target">
+            Save
+          </.button>
         </.action_bar>
       </.form>
     </.site_shell>

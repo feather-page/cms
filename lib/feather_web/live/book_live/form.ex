@@ -18,162 +18,157 @@ defmodule FeatherWeb.BookLive.Form do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :review, review_link(assigns.site, assigns.book))
+
     ~H"""
     <.site_shell
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:books}
     >
-      <.header back={~p"/sites/#{@site.public_id}/books"} back_label="Books" truncate>
-        {@page_title}
-        <:badge :if={@live_action == :edit}>
-          <.status_badge id="status-badge">
-            {reading_status_label(@book.reading_status)}
-          </.status_badge>
-        </:badge>
-        <:actions :if={@live_action == :edit}>
-          <.link
-            :if={!Book.review?(@book)}
-            navigate={~p"/sites/#{@site.public_id}/books/#{@book.public_id}/review/new"}
-            id="write-review"
-            class="btn btn-light"
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/sites/#{@site.public_id}/books"}>Books</:crumb>
+          <:crumb>{@page_title}</:crumb>
+        </.breadcrumbs>
+        <.badge :if={@live_action == :edit} id="status-badge">
+          {reading_status_label(@book.reading_status)}
+        </.badge>
+      </:bar>
+      <:bar_actions :if={@live_action == :edit}>
+        <div class="flex items-center gap-1">
+          <.button
+            navigate={@review.path}
+            id={@review.id}
+            size={:sm}
+            icon="star"
+            class="max-sm:hidden"
           >
-            <.icon name="star" size={16} /> Write review
-          </.link>
-          <.link
-            :if={Book.review?(@book)}
-            navigate={~p"/sites/#{@site.public_id}/books/#{@book.public_id}/review/edit"}
-            id="edit-review"
-            class="btn btn-light"
+            {@review.label}
+          </.button>
+          <.dropdown
+            id="book-menu"
+            label="More actions"
+            align={:end}
+            variant={:ghost}
+            chevron={false}
+            trigger_class="btn-sm btn-square"
           >
-            <.icon name="star" size={16} class="text-warning" /> Edit review
-          </.link>
-        </:actions>
-      </.header>
-
-      <div class="form-narrow">
-        <form id="book-search-form" phx-change="search" phx-submit="search" class="mb-4">
-          <label for="book-search" class="form-label">Search OpenLibrary</label>
-          <input
-            type="search"
-            id="book-search"
-            name="query"
-            value={@query}
-            class="form-control"
-            placeholder="Title or author"
-            autocomplete="off"
-            phx-debounce="300"
-          />
-          <div class="form-text">Fills in title, author and cover.</div>
-          <p :if={@search_error} id="book-search-error" class="text-danger small mt-1">
-            {@search_error}
-          </p>
-          <div :if={@results != []} id="book-search-results" class="list-group mt-2">
-            <button
-              :for={{result, index} <- Enum.with_index(@results)}
-              type="button"
-              id={"book-search-result-#{index}"}
-              class="list-group-item list-group-item-action d-flex align-items-center gap-3"
-              phx-click="select_result"
-              phx-value-index={index}
+            <:trigger><.icon name="ellipsis-vertical" /></:trigger>
+            <:item navigate={@review.path} icon="star" class="sm:hidden">
+              {@review.label}
+            </:item>
+            <:item
+              id="delete-book"
+              icon="trash-2"
+              on_click="delete"
+              confirm={"Delete the book “#{@book.title}”?"}
+              confirm_text={
+                if Book.review?(@book),
+                  do:
+                    "Removes the book and its review from Feather. They stay on the live site until the next deploy.",
+                  else:
+                    "Removes the book from Feather. It stays on the live site until the next deploy."
+              }
+              danger
             >
-              <img :if={result.cover_url} src={result.cover_url} width="40" alt="" />
-              <span>
-                <strong>{result.title}</strong>
-                <br /><small class="text-body-secondary">by {result.author || "Unknown"}</small>
-              </span>
-            </button>
-          </div>
+              Delete
+            </:item>
+          </.dropdown>
+        </div>
+      </:bar_actions>
+
+      <div class="max-w-3xl">
+        <form
+          id="book-search-form"
+          phx-change="search"
+          phx-submit="search"
+          class={@live_action == :new && "mb-6"}
+        >
+          <.book_search
+            :if={@live_action == :new}
+            query={@query}
+            results={@results}
+            error={@search_error}
+          />
         </form>
 
         <.form for={@form} id="book-form" phx-change="validate" phx-submit="save">
-          <div class="row g-3">
-            <div class="col-12">
-              <.input field={@form[:title]} label="Title" wrapper_class={nil} phx-debounce="300">
-                <:prefix>
-                  <input
-                    type="text"
-                    id={@form[:emoji].id}
-                    name={@form[:emoji].name}
-                    value={@form[:emoji].value}
-                    class="form-control emoji-input"
-                    aria-label="Emoji"
-                    placeholder="📖"
-                    autocomplete="off"
-                  />
-                </:prefix>
-              </.input>
+          <div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4">
+            <.input
+              field={@form[:emoji]}
+              label="Emoji"
+              placeholder="📖"
+              autocomplete="off"
+              class="text-center text-xl"
+            />
+            <.input field={@form[:title]} label="Title" phx-debounce="300" />
+          </div>
+          <div class="grid gap-x-4 sm:grid-cols-3">
+            <div class="sm:col-span-2">
+              <.input field={@form[:author]} label="Author" phx-debounce="300" />
             </div>
-            <div class="col-12 col-sm-8">
-              <.input
-                field={@form[:author]}
-                label="Author"
-                wrapper_class={nil}
-                phx-debounce="300"
-              />
-            </div>
-            <div class="col-12 col-sm-4">
-              <.input field={@form[:read_at]} type="date" label="Read at" wrapper_class={nil} />
-            </div>
-            <div class="col-12 col-sm-8">
+            <.input field={@form[:read_at]} type="date" label="Read at" />
+            <div class="sm:col-span-2">
               <.input
                 field={@form[:reading_status]}
                 type="select"
                 label="Reading status"
                 options={@reading_statuses}
-                wrapper_class={nil}
               />
             </div>
-            <div class="col-12">
-              <span class="form-label">Cover</span>
-              <div class="d-flex align-items-center gap-3">
-                <div id="book-cover-preview" class="book-cover-preview">
-                  <img :if={@cover_url} src={@cover_url} alt="Cover" />
-                  <img
-                    :if={!@cover_url && @book.cover_image}
-                    src={image_path(@site, @book.cover_image, "mobile_x1.webp")}
-                    alt="Cover"
-                  />
-                  <span :if={!@cover_url && !@book.cover_image} aria-hidden="true">
-                    {@form[:emoji].value || "📖"}
-                  </span>
-                </div>
-                <p class="form-text m-0">
-                  {if @cover_url || @book.cover_image,
-                    do: "From OpenLibrary. Search again to pick another one.",
-                    else: "Search OpenLibrary above to add a cover."}
-                </p>
-              </div>
-            </div>
           </div>
+          <fieldset class="fieldset">
+            <legend class="fieldset-legend">Cover</legend>
+            <div class="flex items-center gap-4">
+              <div id="book-cover-preview" class="book-cover-preview">
+                <img :if={@cover_url} src={@cover_url} alt="Cover" />
+                <img
+                  :if={!@cover_url && @book.cover_image}
+                  src={image_path(@site, @book.cover_image, "mobile_x1.webp")}
+                  alt="Cover"
+                />
+                <span
+                  :if={!@cover_url && !@book.cover_image && @form[:emoji].value not in [nil, ""]}
+                  aria-hidden="true"
+                >
+                  {@form[:emoji].value}
+                </span>
+                <.icon
+                  :if={!@cover_url && !@book.cover_image && @form[:emoji].value in [nil, ""]}
+                  name="book-open"
+                  class="size-8 text-base-content/70"
+                />
+              </div>
+              <p :if={@live_action == :new} class="label whitespace-normal">
+                {if @cover_url,
+                  do: "From OpenLibrary. Search again to pick another one.",
+                  else: "Search OpenLibrary above to add a cover."}
+              </p>
+            </div>
+            <div :if={@live_action == :edit} class="mt-2">
+              <.book_search
+                form="book-search-form"
+                label={
+                  if @cover_url || @book.cover_image, do: "Find another cover", else: "Find a cover"
+                }
+                query={@query}
+                results={@results}
+                error={@search_error}
+              />
+            </div>
+          </fieldset>
           <.input field={@form[:isbn]} type="hidden" />
           <.input field={@form[:open_library_key]} type="hidden" />
 
-          <.action_bar>
-            <button
-              type="submit"
-              id="save-book"
-              class="btn btn-primary"
-              phx-disable-with="Saving..."
-            >
+          <.action_bar class="mt-6">
+            <.button navigate={~p"/sites/#{@site.public_id}/books"}>Cancel</.button>
+            <.button type="submit" id="save-book" variant={:primary} phx-disable-with="Saving…">
               {if @live_action == :new, do: "Add book", else: "Save"}
-            </button>
-            <.link navigate={~p"/sites/#{@site.public_id}/books"} class="btn btn-light">
-              Cancel
-            </.link>
-            <:danger :if={@live_action == :edit}>
-              <button
-                type="button"
-                id="delete-book"
-                class="btn btn-outline-danger"
-                phx-click="delete"
-                data-confirm="Delete this book?"
-              >
-                <.icon name="trash-2" size={16} /> Delete
-              </button>
-            </:danger>
+            </.button>
           </.action_bar>
         </.form>
       </div>
@@ -269,12 +264,82 @@ defmodule FeatherWeb.BookLive.Form do
   end
 
   def handle_event("delete", _params, socket) do
-    {:ok, _book} = Books.delete_book(socket.assigns.current_scope, socket.assigns.book)
+    %{current_scope: scope, book: book} = socket.assigns
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "The book was successfully deleted.")
-     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/books")}
+    socket =
+      with %Book{} = book <- Books.get_book(scope, book.public_id),
+           {:ok, _book} <- Books.delete_book(scope, book) do
+        put_flash(socket, :info, "The book was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This book no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The book could not be deleted.")
+      end
+
+    {:noreply, push_navigate(socket, to: ~p"/sites/#{socket.assigns.site.public_id}/books")}
+  end
+
+  attr :form, :string, default: nil, doc: "the search form's id, when rendered outside it"
+  attr :label, :string, default: "Search OpenLibrary"
+  attr :query, :string, required: true
+  attr :results, :list, required: true
+  attr :error, :string, default: nil
+
+  # The OpenLibrary search: at the top of a new book, in the cover block of
+  # an existing one (inside the book form, so its field names the search
+  # form).
+  defp book_search(assigns) do
+    ~H"""
+    <.input
+      type="search"
+      id="book-search"
+      name="query"
+      value={@query}
+      label={@label}
+      icon="search"
+      placeholder="Title or author"
+      autocomplete="off"
+      phx-debounce="300"
+      form={@form}
+      help="Fills in title, author and cover."
+    />
+    <p :if={@error} id="book-search-error" class="flex items-center gap-1.5 text-sm text-error-ink">
+      <.icon name="circle-alert" class="size-4 shrink-0" />{@error}
+    </p>
+    <ul
+      :if={@results != []}
+      id="book-search-results"
+      class="menu mt-2 w-full rounded-box border border-base-content/10 bg-base-100"
+    >
+      <li :for={{result, index} <- Enum.with_index(@results)}>
+        <button
+          type="button"
+          id={"book-search-result-#{index}"}
+          class="gap-3"
+          phx-click="select_result"
+          phx-value-index={index}
+        >
+          <img :if={result.cover_url} src={result.cover_url} width="40" alt="" />
+          <span>
+            <span class="block font-medium">{result.title}</span>
+            <span class="text-sm text-base-content/70">by {result.author || "Unknown"}</span>
+          </span>
+        </button>
+      </li>
+    </ul>
+    """
+  end
+
+  # The bar's link to the book's review; a new book has no bar actions.
+  defp review_link(_site, %Book{public_id: nil}), do: nil
+
+  defp review_link(site, book) do
+    if Book.review?(book) do
+      path = ~p"/sites/#{site.public_id}/books/#{book.public_id}/review/edit"
+      %{id: "edit-review", label: "Edit review", path: path}
+    else
+      path = ~p"/sites/#{site.public_id}/books/#{book.public_id}/review/new"
+      %{id: "write-review", label: "Write review", path: path}
+    end
   end
 
   defp reading_status_label(status) do

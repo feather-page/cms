@@ -176,6 +176,14 @@ defmodule Feather.Sites do
   end
 
   @doc """
+  Gets a member (site user) of the scope's site by id, user preloaded, or nil.
+  """
+  @spec get_member(Scope.t(), Ecto.UUID.t()) :: SiteUser.t() | nil
+  def get_member(%Scope{site: %Site{id: site_id}}, id) do
+    Repo.one(from su in SiteUser, where: su.id == ^id and su.site_id == ^site_id, preload: :user)
+  end
+
+  @doc """
   Returns true if the user is a member of the site.
   """
   @spec member?(Site.t(), User.t()) :: boolean()
@@ -235,6 +243,14 @@ defmodule Feather.Sites do
   @spec get_invitation!(Scope.t(), Ecto.UUID.t()) :: Invitation.t()
   def get_invitation!(%Scope{site: %Site{id: site_id}}, id) do
     Repo.one!(from i in Invitation, where: i.id == ^id and i.site_id == ^site_id)
+  end
+
+  @doc """
+  Gets an invitation of the scope's site by id, or nil.
+  """
+  @spec get_invitation(Scope.t(), Ecto.UUID.t()) :: Invitation.t() | nil
+  def get_invitation(%Scope{site: %Site{id: site_id}}, id) do
+    Repo.one(from i in Invitation, where: i.id == ^id and i.site_id == ^site_id)
   end
 
   @doc """
@@ -447,6 +463,14 @@ defmodule Feather.Sites do
     Repo.one!(from l in SocialMediaLink, where: l.id == ^id and l.site_id == ^site_id)
   end
 
+  @doc """
+  Gets a social media link of the scope's site, or nil.
+  """
+  @spec get_social_media_link(Scope.t(), Ecto.UUID.t()) :: SocialMediaLink.t() | nil
+  def get_social_media_link(%Scope{site: %Site{id: site_id}}, id) do
+    Repo.one(from l in SocialMediaLink, where: l.id == ^id and l.site_id == ^site_id)
+  end
+
   @doc "Creates a social media link for the scope's site."
   @spec create_social_media_link(Scope.t(), map()) ::
           {:ok, SocialMediaLink.t()} | {:error, Ecto.Changeset.t()}
@@ -483,7 +507,8 @@ defmodule Feather.Sites do
   ## Navigation
 
   @doc """
-  Lists the navigation items of the scope's site by position, pages preloaded.
+  Lists the navigation items of the scope's site by position, pages (with
+  their published version) preloaded.
   """
   @spec list_navigation_items(Scope.t()) :: [NavigationItem.t()]
   def list_navigation_items(%Scope{site: %Site{id: site_id}}) do
@@ -491,7 +516,7 @@ defmodule Feather.Sites do
       from n in NavigationItem,
         where: n.site_id == ^site_id,
         order_by: [asc: n.position],
-        preload: :page
+        preload: [page: :published_version]
     )
   end
 

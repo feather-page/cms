@@ -131,7 +131,7 @@ class ToolbarView {
     const id = `format-toolbar-${generateId()}`
 
     this.buttons = element("div", "format-toolbar__buttons", {}, BUTTONS.map((button) => this.button(button)))
-    this.input = element("input", "form-control", {
+    this.input = element("input", "input input-sm", {
       id: `${id}-href`,
       type: "url",
       inputmode: "url",
@@ -139,7 +139,7 @@ class ToolbarView {
       placeholder: "Paste or type a link",
       "aria-label": "Link address"
     })
-    this.remove = element("button", "btn btn-sm btn-outline-danger", {type: "button", "data-link-remove": ""}, [
+    this.remove = element("button", "btn btn-sm btn-error btn-outline", {type: "button", "data-link-remove": ""}, [
       "Remove"
     ])
     this.error = element("p", "format-toolbar__error", {role: "alert", hidden: ""}, [

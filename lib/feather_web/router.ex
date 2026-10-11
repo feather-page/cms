@@ -7,14 +7,14 @@ defmodule FeatherWeb.Router do
   # Content-Security-Policy of the admin (and the preview, which renders on
   # the same origin): scripts only from our own origin, so markup that slips
   # into a page (inline handlers, inline scripts) does not run. Styles and
-  # fonts also come from felt-css; the block editor sets inline styles. Images
+  # fonts are our own; the block editor sets inline styles. Images
   # (Unsplash, Open Library covers) and the embeds of the editor may come
   # from any https origin.
   @csp_directives [
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline' https://felt-css.rocu.de",
-    "font-src 'self' data: https://felt-css.rocu.de",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
     "img-src 'self' data: blob: https:",
     "connect-src 'self'",
     "frame-src 'self' https:",

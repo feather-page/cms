@@ -30,18 +30,37 @@ defmodule FeatherWeb.PageLive.Form do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:pages}
     >
-      <.header back={~p"/sites/#{@site.public_id}/pages"} back_label="Pages" truncate>
-        {@page_title}
-        <:badge :if={@live_action == :edit and @publication_status != :published}>
-          <.publication_badge id="publication-badge" status={@publication_status} />
-        </:badge>
-        <:badge :if={@live_action == :edit and @page.add_to_navigation}>
-          <.status_badge id="status-badge">In navigation</.status_badge>
-        </:badge>
-      </.header>
+      <:bar>
+        <.breadcrumbs label="Breadcrumb">
+          <:crumb navigate={~p"/sites/#{@site.public_id}/pages"}>Pages</:crumb>
+          <:crumb>{@page_title}</:crumb>
+        </.breadcrumbs>
+        <.publication_badge
+          :if={@live_action == :edit}
+          id="publication-badge"
+          status={@publication_status}
+          live={Publishing.live?(@site_deploy.targets, @published_version)}
+        />
+      </:bar>
+      <:bar_actions>
+        <div id="publish-actions" class="flex items-center gap-3">
+          <.editor_status editor="page-content-editor" />
+          <div class="max-md:hidden">
+            <.content_actions
+              id="page"
+              noun="page"
+              record={@page}
+              form={@form}
+              status={@publication_status}
+              changed_elsewhere?={@changed_elsewhere?}
+            />
+          </div>
+        </div>
+      </:bar_actions>
 
       <.editor_layout id="page" open={ContentForm.details_open?(@form)}>
         <:main>
@@ -82,9 +101,8 @@ defmodule FeatherWeb.PageLive.Form do
           />
           <.input
             field={@form[:add_to_navigation]}
-            type="checkbox"
+            type="toggle"
             label="Add to navigation"
-            switch
             form="page-form"
           />
           <.live_component
@@ -99,14 +117,25 @@ defmodule FeatherWeb.PageLive.Form do
         </:details>
       </.editor_layout>
 
-      <.content_actions
-        id="page"
-        noun="page"
-        record={@page}
-        form={@form}
-        status={@publication_status}
-        changed_elsewhere?={@changed_elsewhere?}
-      />
+      <.action_bar
+        sticky
+        id="action-bar"
+        class="mt-6 items-center md:hidden [&_.join]:flex-1 [&_.join>.btn]:flex-1"
+      >
+        <.editor_status
+          editor="page-content-editor"
+          place={:bottom}
+        />
+        <.content_actions
+          id="page"
+          noun="page"
+          record={@page}
+          form={@form}
+          status={@publication_status}
+          changed_elsewhere?={@changed_elsewhere?}
+          place={:bottom}
+        />
+      </.action_bar>
     </.site_shell>
     """
   end
@@ -141,13 +170,18 @@ defmodule FeatherWeb.PageLive.Form do
   @impl true
   def handle_event("delete", _params, socket) do
     %{current_scope: scope, page: page} = socket.assigns
-    {:ok, _page} = Content.delete_page(scope, page)
-    if page.add_to_navigation, do: Publishing.publish_site(scope)
 
-    {:noreply,
-     socket
-     |> put_flash(:info, "Page was successfully deleted.")
-     |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/pages")}
+    socket =
+      with %Page{} = page <- Content.get_page(scope, page.public_id),
+           {:ok, _page} <- Content.delete_page(scope, page) do
+        if page.add_to_navigation, do: Publishing.publish_site(scope)
+        put_flash(socket, :info, "Page was successfully deleted.")
+      else
+        nil -> put_flash(socket, :error, "This page no longer exists.")
+        {:error, _reason} -> put_flash(socket, :error, "The page could not be deleted.")
+      end
+
+    {:noreply, push_navigate(socket, to: ~p"/sites/#{socket.assigns.site.public_id}/pages")}
   end
 
   def handle_event(event, params, socket), do: ContentForm.handle_event(event, params, socket)

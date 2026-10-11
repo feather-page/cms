@@ -15,14 +15,20 @@ defmodule FeatherWeb.BookLive.Index do
       flash={@flash}
       current_scope={@current_scope}
       notices={@site_notices}
+      deploy={@site_deploy}
       preview_path={@site_preview_path}
       active={:books}
     >
       <.header>
         Books
-        <:actions>
-          <.button variant="primary" navigate={~p"/sites/#{@site.public_id}/books/new"} id="new-book">
-            <.icon name="plus" size={16} /> New book
+        <:actions :if={@books != []}>
+          <.button
+            variant={:primary}
+            icon="plus"
+            navigate={~p"/sites/#{@site.public_id}/books/new"}
+            id="new-book"
+          >
+            New book
           </.button>
         </:actions>
       </.header>
@@ -30,38 +36,53 @@ defmodule FeatherWeb.BookLive.Index do
       <.empty_state
         :if={@books == []}
         id="no-books"
-        emoji="📚"
-        message="Your bookshelf is empty"
-        subtitle="Add your first book."
-      />
+        layout={:page}
+        plush_size={:xxl}
+        plush="book-open"
+        title="Your bookshelf is empty"
+      >
+        Add the books you are reading or have read.
+        <:action>
+          <.button navigate={~p"/sites/#{@site.public_id}/books/new"} variant={:primary} icon="plus">
+            Add your first book
+          </.button>
+        </:action>
+      </.empty_state>
 
-      <section :if={@reading != []} id="books-reading" class="bookshelf__section">
-        <h2 class="bookshelf__heading">
-          Currently reading <span class="bookshelf__count">{count(@reading)}</span>
+      <section
+        :for={
+          {id, label, books} <- [
+            {"books-reading", "Currently reading", @reading},
+            {"books-want-to-read", "Want to read", @want_to_read}
+          ]
+        }
+        :if={books != []}
+        id={id}
+        class="bookshelf__section"
+      >
+        <h2 class="bookshelf__heading gap-2">
+          {label} <span class="bookshelf__count">{count(books)}</span>
         </h2>
         <div class="bookshelf__grid">
-          <.book_cover :for={book <- @reading} book={book} site={@site} />
-        </div>
-      </section>
-
-      <section :if={@want_to_read != []} id="books-want-to-read" class="bookshelf__section">
-        <h2 class="bookshelf__heading">
-          Want to read <span class="bookshelf__count">{count(@want_to_read)}</span>
-        </h2>
-        <div class="bookshelf__grid">
-          <.book_cover :for={book <- @want_to_read} book={book} site={@site} />
+          <.book_cover :for={book <- books} book={book} site={@site} />
         </div>
       </section>
 
       <details
         :for={{{year, books}, index} <- Enum.with_index(@finished_by_year)}
         id={"books-finished-#{year || "unknown"}"}
-        class="bookshelf__year"
+        class="bookshelf__section group"
         open={index == 0}
+        phx-mounted={JS.ignore_attributes(["open"])}
       >
-        <summary class="bookshelf__heading bookshelf__toggle">
-          <.icon name="chevron-down" size={18} class="bookshelf__chevron" />
-          {year || "Unknown"} <span class="bookshelf__count">{count(books)}</span>
+        <summary class="bookshelf__heading cursor-pointer list-none gap-1 sm:-ms-5 [&::-webkit-details-marker]:hidden">
+          <.icon
+            name="chevron-down"
+            class="size-4 shrink-0 -rotate-90 transition-transform group-open:rotate-0"
+          />
+          <span class="flex items-center gap-2">
+            {year || "Unknown"} <span class="bookshelf__count">{count(books)}</span>
+          </span>
         </summary>
         <div class="bookshelf__grid">
           <.book_cover :for={book <- books} book={book} site={@site} />
@@ -89,16 +110,22 @@ defmodule FeatherWeb.BookLive.Index do
           class="book-cover__img"
           alt=""
         />
-        <span :if={!@book.cover_image} class="book-cover__emoji">{@book.emoji || "📖"}</span>
+        <span :if={!@book.cover_image && @book.emoji not in [nil, ""]} class="book-cover__emoji">
+          {@book.emoji}
+        </span>
+        <.icon
+          :if={!@book.cover_image && @book.emoji in [nil, ""]}
+          name="book-open"
+          class="size-8 text-base-content/70"
+        />
       </div>
       <div class="book-cover__title">{@book.title}</div>
       <div class="book-cover__author">{@book.author}</div>
-      <div
-        :if={@book.reading_status == "finished" and @book.rating}
-        class="book-cover__rating text-warning"
-      >
-        {stars(@book.rating)}
-      </div>
+      <.rating
+        :if={@book.reading_status == "finished"}
+        value={@book.rating}
+        class="book-cover__rating block text-warning-content dark:text-warning"
+      />
     </.link>
     """
   end

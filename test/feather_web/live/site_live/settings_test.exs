@@ -75,6 +75,13 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert Sites.get_site!(scope, site.public_id).emoji == "🚀"
     end
 
+    test "the site form saves without a cancel button", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      assert has_element?(lv, "#site-form button[type=submit]", "Save")
+      refute has_element?(lv, "#site-form a", "Cancel")
+      refute has_element?(lv, "#site-form button", "Cancel")
+    end
+
     test "shows the copyright placeholder hint", %{conn: conn, site: site} do
       {:ok, _lv, html} = live(conn, ~p"/sites/#{site.public_id}/settings")
       assert html =~ "{{CurrentYear}}"
@@ -84,13 +91,13 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
       assert lv |> form("#site-form", site: %{emoji: "abc"}) |> render_change() =~
-               "must be an emoji"
+               "Must be an emoji"
 
       assert lv |> form("#site-form", site: %{domain: ""}) |> render_change() =~
-               "can&#39;t be blank"
+               "Can&#39;t be blank"
 
       assert lv |> form("#site-form", site: %{title: ""}) |> render_submit() =~
-               "can&#39;t be blank"
+               "Can&#39;t be blank"
 
       assert Sites.get_site!(scope, site.public_id).title == site.title
     end
@@ -118,6 +125,8 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
     test "picking a service prefills the name and the URL placeholder", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
       lv |> element("#add-link") |> render_click()
+      assert has_element?(lv, "#selected-service", "Pick a service")
+      assert has_element?(lv, ~s(#social_media_link_name[placeholder="Link name"]))
 
       lv
       |> form("#social-media-link-form", social_media_link: %{url: "https://x.example/me"})
@@ -125,7 +134,8 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
 
       lv |> element("#service-mastodon") |> render_click()
 
-      assert has_element?(lv, "#service-mastodon.active")
+      assert has_element?(lv, "#service-mastodon[aria-pressed=true]")
+      assert has_element?(lv, "#selected-service", "Mastodon")
       assert has_element?(lv, ~s(#social_media_link_icon[value="mastodon"]))
       assert has_element?(lv, ~s(#social_media_link_name[value="Mastodon"]))
 
@@ -160,7 +170,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       # The form closes and opens again empty.
       refute has_element?(lv, "#social-media-link-form")
       lv |> element("#add-link") |> render_click()
-      refute has_element?(lv, "#service-github.active")
+      refute has_element?(lv, "#service-github[aria-pressed=true]")
     end
 
     test "the link form is collapsed until asked for", %{conn: conn, site: site} do
@@ -176,7 +186,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       refute has_element?(lv, "#social-media-link-form")
 
       lv |> element("#add-link") |> render_click()
-      refute has_element?(lv, "#service-github.active")
+      refute has_element?(lv, "#service-github[aria-pressed=true]")
     end
 
     test "requires a service, a name and a URL", %{conn: conn, site: site, scope: scope} do
@@ -188,7 +198,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
         |> form("#social-media-link-form", social_media_link: %{name: "", url: ""})
         |> render_submit()
 
-      assert html =~ "can&#39;t be blank"
+      assert html =~ "Can&#39;t be blank"
       assert has_element?(lv, "#social-media-link-icon-error")
       assert Sites.list_social_media_links(scope) == []
     end
@@ -197,7 +207,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       link = social_media_link_fixture(scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
-      html = lv |> element("#delete-social_media_links-#{link.id}") |> render_click()
+      html = confirm_click(lv, "#delete-social_media_links-#{link.id}-menu-item")
 
       assert html =~ "Social media link was successfully deleted."
       refute has_element?(lv, "#social_media_links-#{link.id}")
@@ -205,18 +215,29 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert Sites.list_social_media_links(scope) == []
     end
 
-    @tag :capture_log
     test "cannot delete another site's link", %{conn: conn, site: site} do
       other_scope = site_scope_fixture()
       other = social_media_link_fixture(other_scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
-      Process.flag(:trap_exit, true)
-
-      assert {{%Ecto.NoResultsError{}, _}, _} =
-               catch_exit(render_hook(lv, "delete_link", %{"id" => other.id}))
-
+      assert render_hook(lv, "delete_link", %{"id" => other.id}) =~ "This link no longer exists."
       assert [_] = Sites.list_social_media_links(other_scope)
+    end
+
+    test "deleting a link deleted in another tab refreshes the list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      link = social_media_link_fixture(scope)
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      {:ok, _} = Sites.delete_social_media_link(scope, link)
+
+      assert confirm_click(lv, "#delete-social_media_links-#{link.id}-menu-item") =~
+               "This link no longer exists."
+
+      refute has_element?(lv, "#social_media_links-#{link.id}")
+      assert has_element?(lv, "#no-social-media-links")
     end
   end
 end

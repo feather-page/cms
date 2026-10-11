@@ -8,12 +8,15 @@
 //        data-image-upload-url="/sites/…/images"
 //        data-image-from-url-url="/sites/…/images/from-url" data-csrf-token="…"
 //        data-book-lookup-url="/sites/…/books/lookup">
-//     <div id="...-status" phx-update="ignore">
-//       <span data-status-text>Saved</span> <button data-reload hidden>Reload</button>
-//     </div>
 //     <div id="...-document" phx-update="ignore" data-doc="<ProseMirror JSON>">
 //       <div data-editor-mount></div>
 //     </div>
+//   </div>
+//
+// and its status, in the page bar and in the bottom bar on phones:
+//
+//   <div id="...-status" data-editor-status="..." phx-update="ignore">
+//     <span data-status-text>Saved</span> <button data-reload hidden>Reload</button>
 //   </div>
 //
 // The editor autosaves by pushing "sync" events (editor/block_sync.js). The
@@ -84,8 +87,10 @@ export default {
   },
 
   startAutosave() {
-    this.status = document.getElementById(`${this.el.id}-status`)
-    this.status.querySelector("[data-reload]").addEventListener("click", () => window.location.reload())
+    this.statuses = document.querySelectorAll(`[data-editor-status="${this.el.id}"]`)
+    this.statuses.forEach((status) =>
+      status.querySelector("[data-reload]").addEventListener("click", () => window.location.reload())
+    )
     this.editorStatus = "saved"
 
     this.sync = new BlockSync(this.view.state.doc, {
@@ -132,10 +137,12 @@ export default {
     if (editor === "conflict" || form === "conflict") status = "conflict"
     else if (editor !== "unsaved" && form === "invalid") status = "invalid"
 
-    this.status.classList.toggle("is-unsaved", status === "unsaved" || status === "invalid")
-    this.status.classList.toggle("is-conflict", status === "conflict")
-    this.status.querySelector("[data-status-text]").textContent = STATUS_TEXT[status]
-    this.status.querySelector("[data-reload]").hidden = status !== "conflict"
+    this.statuses.forEach((el) => {
+      el.classList.toggle("is-unsaved", status === "unsaved" || status === "invalid")
+      el.classList.toggle("is-conflict", status === "conflict")
+      el.querySelector("[data-status-text]").textContent = STATUS_TEXT[status]
+      el.querySelector("[data-reload]").hidden = status !== "conflict"
+    })
   },
 
   reconnected() {

@@ -121,6 +121,12 @@ defmodule Feather.Books do
     Repo.one!(from b in Book, where: b.site_id == ^site_id and b.public_id == ^public_id)
   end
 
+  @doc "Gets a book of the scope's site by public id, or nil."
+  @spec get_book(Scope.t(), String.t()) :: Book.t() | nil
+  def get_book(%Scope{site: %Site{id: site_id}}, public_id) do
+    Repo.one(from b in Book, where: b.site_id == ^site_id and b.public_id == ^public_id)
+  end
+
   @doc """
   The books of the scope's site among `public_ids`, as a map of public id
   to book. Unknown ids and books of other sites are left out.

@@ -36,12 +36,19 @@ dependencies, which CI checks with `mix deps.unlock --check-unused`.
   (`site_users`). Inaccessible records behave like missing ones (`Ecto.NoResultsError` / `nil`)
 - Schemas `use Feather.Schema` (binary ids, `:utc_datetime_usec` timestamps). Records that appear
   in URLs get a 12 character `public_id` (`Feather.PublicId`); look them up by it
-- The admin UI is LiveView. Use the components in `FeatherWeb.CoreComponents` (`<.input>`,
-  `<.button>`, `<.table>`, `<.icon name="pencil" />`, ...) and `<Layouts.app>`
-- Styling is [felt-css](https://felt-css.rocu.de), which uses Bootstrap class names (`btn
-  btn-primary`, `form-control`, `card`, `d-flex`, `gap-2`, ...). There is no Tailwind and no
-  daisyUI; keep `assets/css/app.css` small and app-specific
-- Icons are inline SVG: Lucide icons in `FeatherWeb.Icons`, social brand icons in `priv/icons/`
+- The admin UI is LiveView. Use the shared components of `setzkasten` (`<.button>`, `<.input>`,
+  `<.header>`, `<.list>`/`<.list_row>`, `<.badge>`, `<.empty_state>`, `<.action_bar>`,
+  `<.alert>`, `<.dropdown>`, `<.icon name="star" />`, ...; design rules in its
+  `guides/design-system.md`), the app's own in `FeatherWeb.CoreComponents` and
+  `FeatherWeb.SiteComponents`, and `<Layouts.app>` (DECISIONS.md, 0013)
+- Styling is Tailwind CSS 4 with daisyUI 5 and setzkasten's `zipfel-light`/`zipfel-dark` themes:
+  Tailwind utilities, daisyUI classes and theme tokens (`bg-base-200`, `text-base-content/70`,
+  `var(--color-primary)`), no Bootstrap class names. Pages are flat (lists, tables and forms
+  without cards); every irreversible delete passes `confirm="…"` to the shared confirmation
+  dialog, never `data-confirm`. Keep `assets/css/app.css` small and app-specific (editor, media
+  picker, bookshelf)
+- Icons: Lucide SVG files in `assets/vendor/lucide/` (compiled into `FeatherWeb.Icons`,
+  rendered with `<.icon>`), social brand icons in `priv/icons/` (`<.brand_icon>`)
 - Content is a list of blocks, see `Feather.Content.Blocks` for the format
 - Image files live under the storage root (`config :feather, :storage_root`), see `Feather.Media`
 - Tests touching the database are synchronous (SQLite has a single writer): `Feather.DataCase` and
@@ -81,7 +88,7 @@ The rest of this file is adapted from the guidelines `mix phx.new` generates.
   - **Always** fix the `current_scope` error by moving your routes to the proper `live_session` and ensure you pass `current_scope` as needed
 - The `<.flash_group>` component lives in the `Layouts` module. You are **forbidden** from calling `<.flash_group>` outside of `layouts.ex`
 - **Always** use the `<.icon>` component for icons
-- **Always** use the imported `<.input>` component for form inputs from `core_components.ex` when available
+- **Always** use the imported `<.input>` component from `setzkasten` for form inputs when available
 - If you override the default input classes (`<.input class="...">`), no default classes are inherited, so your custom classes must fully style the input
 
 <!-- phoenix-gen-auth-start -->
@@ -280,7 +287,7 @@ Controllers automatically have the `current_scope` available if they use the `:b
       <a class={[
         "btn btn-sm",
         @some_flag && "btn-primary",
-        if(@other_condition, do: "text-danger", else: "text-body-secondary"),
+        if(@other_condition, do: "text-error-ink", else: "text-base-content/70"),
         ...
       ]}>Text</a>
 

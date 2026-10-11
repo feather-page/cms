@@ -234,7 +234,8 @@ Phoenix 1.8 application on SQLite rather than translating Rails idioms one to on
 - **felt-css** replaces Bootstrap with Sass: one stylesheet linked from the root layout that
   understands Bootstrap class names, plus a small `assets/css/app.css`. JavaScript (LiveView
   hooks, the vendored Editor.js builds) is bundled by the standalone `esbuild` binary, so neither
-  Node nor npm is needed.
+  Node nor npm is needed. (Superseded for the admin's styling by
+  [0013](#0013-the-admin-uses-setzkasten-tailwind-and-daisyui).)
 - **Magic-link-only authentication** from `phx.gen.auth` with passwords and registration removed.
   Users come in through an invitation or `mix feather.create_user`. API tokens keep the Rails
   SHA-256 digest format.
@@ -354,6 +355,13 @@ Accepted, 2026-10-09
 - **Decision:** A post, page or project holds its unpublished changes; publishing copies all its columns into a version table and points `published_version_id` at the copy, and a record without a published version is a draft, replacing the `draft` column. Production and backup targets export published versions; preview and staging show the records as they are.
 - **Consequences:** Every record gets version 1 in a migration and the content API's `draft` changes meaning; there is no history between two publishes except the editor's undo, and publishing does not deploy (a site notice shows published changes not yet deployed).
 
+### Update (2026-10-11)
+
+No site notice shows the published changes not yet deployed any more: the deploy control at the
+bottom of the sidebar ([0013](#0013-the-admin-uses-setzkasten-tailwind-and-daisyui)) shows how
+many of them production does not show yet (`Feather.Publishing.undeployed_count/1`), next to a
+Deploy to production button.
+
 ## 0012. Autosave with a per-block delta sync
 
 Accepted, 2026-10-09
@@ -361,3 +369,12 @@ Accepted, 2026-10-09
 - **Context:** Editor.js wrote the whole document into a hidden form field that a Save button submitted; the prototype showed that a client-owned document with a debounced, idempotent sync keeps typing instant even with a second of latency.
 - **Decision:** The editor pushes the block order when it changes and the changed blocks as ProseMirror JSON; the whole record saves automatically, fields that fail validation are not stored, and a counter column rejects a sync based on a stale state.
 - **Consequences:** There is no Save button and a new record is created on the first input; when two tabs or members edit the same record, the later one has to reload and there is no merge.
+
+## 0013. The admin uses setzkasten, Tailwind and daisyUI
+
+Accepted (pilot), 2026-10-10
+
+- **Context:** Robert's Phoenix admins (FeatherPage, ziwoas, zipfelfolio, abakus) each grew their own component layer over felt-css, with two dropdowns, three empty states and Bootstrap class names in Elixir; FeatherPage is the pilot for one shared library.
+- **Decision:** The admin (`lib/feather_web`) is styled with Tailwind 4 set up as a fresh `phx_new` 1.8.15 does and daisyUI 5 as a Mix dependency (its `packages/bundle` from GitHub, like setzkasten's own CSS through the Mix build path, not vendored into `assets/vendor` as `phx_new` does), plus the shared component library `setzkasten` (components, `zipfel-light`/`zipfel-dark` themes, the design rules of its `guides/design-system.md`: flat pages, cards only for independent objects such as the sites grid, every irreversible delete confirmed in one shared `<dialog>`). felt-css and its CDN link are gone; `assets/css/app.css` keeps only the editor, media picker and bookshelf styles. The static sites and the preview keep their own stylesheet.
+- **Consequences:** `setzkasten` is a git dependency on GitHub (`shostakovich/setzkasten`, perhaps hex later), the Tailwind binary joins the asset build, and component changes that other apps should share go into the library; LiveView tests confirm deletes through `FeatherWeb.ConfirmHelpers`, since the dialog runs in the browser.
+

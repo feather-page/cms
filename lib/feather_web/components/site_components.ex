@@ -1,18 +1,19 @@
 defmodule FeatherWeb.SiteComponents do
   @moduledoc """
-  Components of the site admin: the site shell (site switcher, preview
-  button, section navigation, notices) that wraps every page under
-  `/sites/:site_id`, plus small building blocks shared by its pages (empty
-  states, pagination, image URLs).
+  Components of the site admin: the site shell (site switcher, section
+  navigation, deploy control and preview link, notices) that wraps every
+  page under `/sites/:site_id`, plus small building blocks shared by its
+  pages (pagination, image URLs, star ratings).
 
   Pages under `/sites/:site_id` live in the `:site` live_session, whose
-  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices` and
-  `site_preview_path`:
+  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices`, `site_deploy`
+  and `site_preview_path`:
 
       <.site_shell
         flash={@flash}
         current_scope={@current_scope}
         notices={@site_notices}
+        deploy={@site_deploy}
         preview_path={@site_preview_path}
         active={:posts}
       >
@@ -24,203 +25,411 @@ defmodule FeatherWeb.SiteComponents do
 
   use FeatherWeb, :verified_routes
 
-  import FeatherWeb.CoreComponents
+  use Setzkasten
 
+  alias Feather.Publishing
   alias FeatherWeb.Layouts
   alias Phoenix.LiveView.JS
 
   @doc """
-  Renders the app layout with the site switcher and the preview button
-  in the top bar and the section navigation above the page.
+  Renders the app layout as a sidebar: the site switcher below the brand,
+  the site's sections, and the deploy control at the bottom (on narrower
+  screens in its compact form next to the user menu).
 
-  `active` marks the current navigation item: `:posts`, `:pages`,
-  `:books`, `:projects`, `:settings`, `:users` or `:deployments`.
+  `active` marks the current section: `:posts`, `:pages`, `:books`,
+  `:projects`, `:settings`, `:users` or `:deployments`. `deploy` is the
+  `site_deploy` assign of `FeatherWeb.SiteAuth`. Detail pages pass `bar`
+  (breadcrumbs and status), which takes the place of brand and site
+  switcher in the top bar, and `bar_actions` (their own actions); there the
+  deploy button shows as an icon with the count below `lg`, and on phones
+  setzkasten leaves the global actions out of the bar.
   """
   attr :flash, :map, required: true
   attr :current_scope, :map, required: true
   attr :active, :atom, default: nil
   attr :notices, :list, default: [], doc: "site notices, see FeatherWeb.SiteAuth"
+  attr :deploy, :map, default: nil, doc: "the deploy status, see FeatherWeb.SiteAuth"
   attr :preview_path, :string, default: nil, doc: "the preview of the site, if any"
+  slot :bar, doc: "detail pages: breadcrumbs and status, see setzkasten's app_shell"
+  slot :bar_actions, doc: "detail pages: the page's own actions, see setzkasten's app_shell"
   slot :inner_block, required: true
 
   def site_shell(assigns) do
-    assigns = assign(assigns, :site, assigns.current_scope.site)
+    assigns =
+      assign(assigns, site: assigns.current_scope.site, nav: nav(assigns.current_scope.site))
 
     ~H"""
-    <Layouts.app flash={@flash} current_scope={@current_scope}>
-      <:leading>
-        <.live_component module={FeatherWeb.SiteSwitcher} id="site-switcher" scope={@current_scope} />
+    <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav} current={@active}>
+      <:bar :if={@bar != []}>{render_slot(@bar)}</:bar>
+      <:bar_actions :if={@bar_actions != []}>{render_slot(@bar_actions)}</:bar_actions>
+      <:leading :let={place}>
+        <.live_component
+          module={FeatherWeb.SiteSwitcher}
+          id={"site-switcher-#{place}"}
+          scope={@current_scope}
+        />
       </:leading>
+      <:nav_footer :let={place}>
+        <.deploy_panel deploy={@deploy} preview_path={@preview_path} place={place} />
+      </:nav_footer>
       <:trailing>
-        <a
-          :if={@preview_path}
-          href={@preview_path}
-          target="_blank"
-          id="site-preview-link"
-          class="btn btn-light btn-sm app-topbar__preview"
-          aria-label="Preview"
-        >
-          <.icon name="eye" size={16} /><span class="d-none d-sm-inline">Preview</span>
-        </a>
+        <div class="flex items-center gap-1 xl:hidden">
+          <.button
+            :if={@preview_path}
+            href={@preview_path}
+            target="_blank"
+            variant={:ghost}
+            icon="eye"
+            icon_only
+            label="Preview"
+          />
+          <.deploy_button deploy={@deploy} />
+        </div>
       </:trailing>
-      <:subnav>
-        <nav class="site-nav mb-4" id="site-navigation" aria-label="Site" phx-hook="SiteNav">
-          <ul class="nav nav-underline flex-nowrap overflow-x-auto">
-            <.nav_item active={@active == :posts} navigate={~p"/sites/#{@site.public_id}/posts"}>
-              Posts
-            </.nav_item>
-            <.nav_item active={@active == :pages} navigate={~p"/sites/#{@site.public_id}/pages"}>
-              Pages
-            </.nav_item>
-            <.nav_item active={@active == :books} navigate={~p"/sites/#{@site.public_id}/books"}>
-              Books
-            </.nav_item>
-            <.nav_item
-              active={@active == :projects}
-              navigate={~p"/sites/#{@site.public_id}/projects"}
-            >
-              Projects
-            </.nav_item>
-            <.nav_item
-              class="ms-auto"
-              active={@active == :settings}
-              navigate={~p"/sites/#{@site.public_id}/settings"}
-            >
-              Settings
-            </.nav_item>
-            <.nav_item active={@active == :users} navigate={~p"/sites/#{@site.public_id}/users"}>
-              Users
-            </.nav_item>
-            <.nav_item
-              active={@active == :deployments}
-              navigate={~p"/sites/#{@site.public_id}/deployments"}
-            >
-              Deployments
-            </.nav_item>
-          </ul>
-        </nav>
-      </:subnav>
 
-      {render_slot(@inner_block)}
-
-      <div id="site-notices" class="site-notices" aria-live="polite">
-        <div
+      <div id="site-notices" class={["grid gap-2", @notices != [] && "mb-6"]} aria-live="polite">
+        <.alert
           :for={notice <- @notices}
           id={"site-notice-#{notice.id}"}
-          class={[
-            "alert d-flex align-items-start gap-2",
-            if(notice.kind == :warning, do: "alert-warning", else: "alert-info")
-          ]}
-          role="status"
+          tone={notice.kind}
+          title={notice.title}
+          on_close={JS.push("dismiss_site_notice", value: %{id: notice.id})}
+          close_label={gettext("close")}
         >
-          <.icon name="info" />
-          <div class="flex-grow-1">
-            <span>{notice.message}</span>
-            <.link :if={notice.link_label} navigate={notice.url} class="d-block">
+          {notice.message}
+          <.link
+            :if={notice.link_label && !notice.external}
+            navigate={notice.url}
+            class="link block"
+          >
+            {notice.link_label}
+          </.link>
+          <a
+            :if={notice.url && !notice.link_label}
+            href={notice.url}
+            target="_blank"
+            class="link block break-all"
+          >
+            {notice.url}
+          </a>
+          <:actions :if={notice.external && notice.url}>
+            <.button href={notice.url} target="_blank" rel="noopener" size={:sm} icon="external-link">
               {notice.link_label}
-            </.link>
-            <a
-              :if={notice.url && !notice.link_label}
-              href={notice.url}
-              target="_blank"
-              class="d-block"
+            </.button>
+          </:actions>
+          <:actions :if={notice.retry}>
+            <.button
+              id={"retry-deploy-#{notice.id}"}
+              size={:sm}
+              icon="rotate-ccw"
+              phx-click={JS.push("retry_deploy", value: %{id: notice.id, target: notice.retry})}
             >
-              {notice.url}
-            </a>
-          </div>
-          <button
-            type="button"
-            class="btn-close"
-            aria-label={gettext("close")}
-            phx-click={JS.push("dismiss_site_notice", value: %{id: notice.id})}
-          ></button>
-        </div>
+              Retry
+            </.button>
+          </:actions>
+        </.alert>
       </div>
+
+      {render_slot(@inner_block)}
     </Layouts.app>
     """
   end
 
-  attr :active, :boolean, default: false
-  attr :navigate, :string, required: true
-  attr :class, :any, default: nil
-  slot :inner_block, required: true
+  defp nav(site) do
+    [
+      %{
+        key: :posts,
+        label: "Posts",
+        icon: "file-text",
+        navigate: ~p"/sites/#{site.public_id}/posts"
+      },
+      %{key: :pages, label: "Pages", icon: "file", navigate: ~p"/sites/#{site.public_id}/pages"},
+      %{
+        key: :books,
+        label: "Books",
+        icon: "book-open",
+        navigate: ~p"/sites/#{site.public_id}/books"
+      },
+      %{
+        key: :projects,
+        label: "Projects",
+        icon: "folder-kanban",
+        navigate: ~p"/sites/#{site.public_id}/projects"
+      },
+      %{
+        key: :settings,
+        label: "Settings",
+        icon: "settings",
+        section: "Site",
+        navigate: ~p"/sites/#{site.public_id}/settings"
+      },
+      %{
+        key: :users,
+        label: "Users",
+        icon: "users",
+        section: "Site",
+        navigate: ~p"/sites/#{site.public_id}/users"
+      },
+      %{
+        key: :deployments,
+        label: "Deployments",
+        icon: "globe",
+        section: "Site",
+        navigate: ~p"/sites/#{site.public_id}/deployments"
+      }
+    ]
+  end
 
-  defp nav_item(assigns) do
+  @doc """
+  The deploy control at the bottom of the sidebar: while a production
+  target deploys, its step; with published changes it does not show yet,
+  their number and a button that deploys every production target
+  (`"deploy_site"`, see `FeatherWeb.SiteAuth`); otherwise since when the
+  site is live. Below it the link to the site's preview.
+  """
+  attr :deploy, :map, required: true
+  attr :preview_path, :string, default: nil
+  attr :place, :atom, required: true, doc: "where the sidebar renders it, for unique ids"
+
+  def deploy_panel(assigns) do
+    assigns = assign(assigns, :state, deploy_state(assigns.deploy))
+
     ~H"""
-    <li class={["nav-item", @class]}>
-      <.link
-        navigate={@navigate}
-        class={["nav-link", @active && "active"]}
-        aria-current={@active && "page"}
+    <div
+      :if={@state != :none or @preview_path}
+      id={"deploy-panel-#{@place}"}
+      class="grid gap-2 px-5 py-4 text-sm"
+      aria-live="polite"
+    >
+      <%= case @state do %>
+        <% {:running, target, step} -> %>
+          <p class="flex items-center gap-2">
+            <span class="loading loading-spinner loading-xs"></span>
+            <span class="wrap-anywhere">Deploying to {target.public_hostname}</span>
+          </p>
+          <p class="text-sidebar-muted">{Publishing.deploy_step_label(step, :running)}</p>
+        <% {:pending, count} -> %>
+          <p class="flex items-center gap-2">
+            <span class="status status-warning" aria-hidden="true"></span>
+            {pending_text(count)}
+          </p>
+          <.button
+            id={"deploy-site-#{@place}"}
+            size={:sm}
+            icon="rocket"
+            phx-click="deploy_site"
+          >
+            Deploy to production
+          </.button>
+        <% {:live, target, deployed_at} -> %>
+          <p class="flex items-center gap-2">
+            <span class="status status-success" aria-hidden="true"></span>
+            Live · {time_ago(deployed_at)}
+          </p>
+          <a
+            href={"https://#{target.public_hostname}"}
+            target="_blank"
+            rel="noopener"
+            class="link link-hover wrap-anywhere text-sidebar-muted"
+          >
+            {target.public_hostname}
+          </a>
+        <% :none -> %>
+      <% end %>
+      <a
+        :if={@preview_path}
+        href={@preview_path}
+        target="_blank"
+        id={"site-preview-link-#{@place}"}
+        class="flex items-center gap-1.5 text-sidebar-muted hover:text-sidebar-content"
       >
-        {render_slot(@inner_block)}
-      </.link>
-    </li>
+        <.icon name="eye" class="size-4" /> Preview
+      </a>
+    </div>
+    """
+  end
+
+  @doc "The compact deploy control next to the user menu, below the full sidebar."
+  attr :deploy, :map, required: true
+
+  def deploy_button(assigns) do
+    assigns = assign(assigns, :state, deploy_state(assigns.deploy))
+
+    ~H"""
+    <%= case @state do %>
+      <% {:running, _target, step} -> %>
+        <span class="btn btn-sm btn-ghost pointer-events-none" role="status">
+          <span class="loading loading-spinner loading-xs"></span>
+          <span class="max-sm:sr-only">{Publishing.deploy_step_label(step, :running)}</span>
+        </span>
+      <% {:pending, count} -> %>
+        <.button
+          id="deploy-site-compact"
+          variant={:ghost}
+          size={:sm}
+          icon="rocket"
+          phx-click="deploy_site"
+          aria-label={"Deploy, #{pending_text(count)}"}
+        >
+          <span class="max-lg:hidden">Deploy</span>
+          <span :if={count > 0} class="flex items-center gap-1 tabular-nums">
+            <span class="status status-warning" aria-hidden="true"></span>{count}
+          </span>
+        </.button>
+      <% _ -> %>
+    <% end %>
     """
   end
 
   @doc """
-  Renders an empty state with an emoji, a message and an optional action.
+  The sentence of the delete confirmation of a post, page, project or
+  review (`noun`, e.g. "post"): deleting does not touch the deployed
+  site, so a published record stays live until the next deploy. Nil for
+  a draft (the dialog's default sentence).
   """
-  attr :id, :string, required: true
-  attr :emoji, :string, required: true
-  attr :message, :string, required: true
-  attr :subtitle, :string, default: nil
-  attr :action_label, :string, default: nil
-  attr :action_navigate, :string, default: nil
+  @spec delete_text(String.t(), map()) :: String.t() | nil
+  def delete_text(noun, record) do
+    if !Feather.Content.draft?(record),
+      do: "Removes the #{noun} from Feather. It stays on the live site until the next deploy."
+  end
 
-  def empty_state(assigns) do
-    ~H"""
-    <div id={@id} class="empty-state text-center p-5 mb-4">
-      <div class="empty-state__emoji mb-2">{@emoji}</div>
-      <p class="mb-1">{@message}</p>
-      <p :if={@subtitle} class="text-body-secondary small">{@subtitle}</p>
-      <.button :if={@action_label} navigate={@action_navigate} variant="primary" size="sm">
-        {@action_label}
-      </.button>
-    </div>
-    """
+  defp deploy_state(nil), do: :none
+  defp deploy_state(%{targets: []}), do: :none
+
+  defp deploy_state(%{targets: targets, pending: pending, progress: progress}) do
+    running = Enum.find(targets, &(&1.deploying or Map.has_key?(progress, &1.public_id)))
+
+    cond do
+      running ->
+        step = get_in(progress, [running.public_id, :step]) || :build
+        {:running, running, step}
+
+      pending > 0 or Enum.any?(targets, &is_nil(&1.last_deployed_at)) ->
+        {:pending, pending}
+
+      true ->
+        target = Enum.min_by(targets, & &1.last_deployed_at, DateTime)
+        {:live, target, target.last_deployed_at}
+    end
+  end
+
+  defp pending_text(0), do: "Not deployed yet"
+  defp pending_text(1), do: "1 change not live"
+  defp pending_text(count), do: "#{count} changes not live"
+
+  @doc """
+  How long ago `at` was: "just now", "5 min ago", "3 h ago", "2 days ago",
+  from a week on the date (`%d/%m/%Y`).
+  """
+  @spec time_ago(DateTime.t() | nil) :: String.t()
+  def time_ago(nil), do: "not deployed yet"
+
+  def time_ago(at) do
+    case DateTime.diff(DateTime.utc_now(), at, :minute) do
+      minutes when minutes < 1 -> "just now"
+      minutes when minutes < 60 -> "#{minutes} min ago"
+      minutes when minutes < 60 * 24 -> "#{div(minutes, 60)} h ago"
+      minutes when minutes < 60 * 24 * 2 -> "1 day ago"
+      minutes when minutes < 60 * 24 * 7 -> "#{div(minutes, 60 * 24)} days ago"
+      _ -> Calendar.strftime(at, "%d/%m/%Y")
+    end
   end
 
   @doc """
   Renders pagination links when there is more than one page. `path` gets
   the page number and returns the URL to patch to.
+
+  Lists every page up to seven pages; beyond that the first, the last and
+  the neighbours of the current page with gaps in between, so the bar
+  keeps its width with hundreds of pages. Phones get Previous, the position
+  ("Page 3 of 12") and Next.
   """
   attr :pagination, Feather.Pagination, required: true
   attr :path, :any, required: true, doc: "a function of the page number"
   attr :id, :string, default: "pagination"
 
   def pagination(assigns) do
+    assigns = assign(assigns, :items, page_items(assigns.pagination))
+
     ~H"""
-    <nav :if={@pagination.total_pages > 1} id={@id} aria-label="Pagination" class="mt-4">
-      <ul class="pagination justify-content-center">
-        <li class={["page-item", @pagination.page == 1 && "disabled"]}>
-          <.link patch={@path.(max(@pagination.page - 1, 1))} class="page-link">
-            Previous
-          </.link>
-        </li>
-        <li
-          :for={page <- 1..@pagination.total_pages}
-          class={["page-item", page == @pagination.page && "active"]}
+    <nav
+      :if={@pagination.total_pages > 1}
+      id={@id}
+      aria-label="Pagination"
+      class="mt-6 flex justify-center"
+    >
+      <div class="join">
+        <.link
+          patch={@path.(max(@pagination.page - 1, 1))}
+          class={["join-item btn btn-sm", @pagination.page == 1 && "btn-disabled"]}
+          aria-disabled={@pagination.page == 1 && "true"}
         >
-          <.link
-            patch={@path.(page)}
-            class="page-link"
-            aria-current={page == @pagination.page && "page"}
+          <.icon name="chevron-left" class="sm:hidden" /><span class="max-sm:sr-only">Previous</span>
+        </.link>
+        <%= for item <- @items do %>
+          <span
+            :if={item == :gap}
+            class="join-item btn btn-sm pointer-events-none max-sm:hidden"
+            aria-hidden="true"
+            data-gap
           >
-            {page}
-          </.link>
-        </li>
-        <li class={["page-item", @pagination.page == @pagination.total_pages && "disabled"]}>
+            …
+          </span>
           <.link
-            patch={@path.(min(@pagination.page + 1, @pagination.total_pages))}
-            class="page-link"
+            :if={item != :gap}
+            patch={@path.(item)}
+            class={["join-item btn btn-sm max-sm:hidden", item == @pagination.page && "btn-primary"]}
+            aria-current={item == @pagination.page && "page"}
+            data-page={item}
           >
-            Next
+            {item}
           </.link>
-        </li>
-      </ul>
+        <% end %>
+        <span class="join-item btn btn-sm pointer-events-none tabular-nums sm:hidden">
+          Page {@pagination.page} of {@pagination.total_pages}
+        </span>
+        <.link
+          patch={@path.(min(@pagination.page + 1, @pagination.total_pages))}
+          class={[
+            "join-item btn btn-sm",
+            @pagination.page == @pagination.total_pages && "btn-disabled"
+          ]}
+          aria-disabled={@pagination.page == @pagination.total_pages && "true"}
+        >
+          <span class="max-sm:sr-only">Next</span><.icon name="chevron-right" class="sm:hidden" />
+        </.link>
+      </div>
     </nav>
+    """
+  end
+
+  # The page numbers to link, with :gap where pages are left out.
+  defp page_items(%{total_pages: total}) when total <= 7, do: Enum.to_list(1..total//1)
+
+  defp page_items(%{page: page, total_pages: total}) do
+    [1, page - 1, page, page + 1, total]
+    |> Enum.filter(&(&1 in 1..total))
+    |> Enum.uniq()
+    |> Enum.chunk_every(2, 1)
+    |> Enum.flat_map(fn
+      [a, b] when b - a > 1 -> [a, :gap]
+      [a | _] -> [a]
+    end)
+  end
+
+  @doc """
+  Renders a book's rating as stars (★★★★☆) for the eye and as words
+  ("Rated 4 out of 5") for screen readers; nothing without a rating.
+  """
+  attr :value, :integer, default: nil
+  attr :class, :any, default: nil
+
+  def rating(assigns) do
+    ~H"""
+    <span :if={is_integer(@value) and @value > 0} class={@class}>
+      <span aria-hidden="true">{stars(@value)}</span>
+      <span class="sr-only">Rated {@value} out of 5</span>
+    </span>
     """
   end
 
