@@ -258,6 +258,7 @@
 
 .block-editor__document a {
   color: inherit;
+  text-decoration-line: underline;
   text-decoration-color: var(--fp-border-strong);
 }
 
