@@ -52,6 +52,16 @@ defmodule Feather.MixProject do
       {:yaml_elixir, "~> 2.12", only: :test},
       {:phoenix_live_dashboard, "~> 0.9.1"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      {:tailwind, "~> 0.5", runtime: Mix.env() == :dev},
+      {:daisyui,
+       github: "saadeghi/daisyui",
+       tag: "v5.5.20",
+       sparse: "packages/bundle",
+       app: false,
+       compile: false,
+       depth: 1},
+      # Shared admin components, daisyUI themes and patches (DECISIONS.md, 0013)
+      {:setzkasten, github: "shostakovich/setzkasten"},
       {:swoosh, "~> 1.16"},
       {:gen_smtp, "~> 1.2"},
       {:req, "~> 0.5"},
@@ -77,15 +87,16 @@ defmodule Feather.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.setup": ["esbuild.install --if-missing"],
+      "assets.setup": ["tailwind.install --if-missing", "esbuild.install --if-missing"],
       # npm packages (ProseMirror) from assets/package-lock.json
       "assets.npm": ["cmd --cd assets npm ci --no-audit --no-fund"],
-      "assets.build": ["compile", "assets.npm", "esbuild feather"],
+      "assets.build": ["compile", "assets.npm", "tailwind feather", "esbuild feather"],
       "assets.deploy": [
         # compile first: app.js imports phoenix-colocated/feather, which the
         # LiveView compiler writes while compiling (fresh checkouts, CI)
         "compile",
         "assets.npm",
+        "tailwind feather --minify",
         "esbuild feather --minify",
         "phx.digest"
       ],
