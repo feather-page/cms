@@ -26,7 +26,9 @@ site owner's own hosting.
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 *   `inotify-tools` (optional, Linux) for live reload in development
 *   Node.js with npm: the asset build installs the editor's packages from `assets/package-lock.json`
-    (`npm ci`); `mix setup` downloads the standalone `esbuild` binary
+    (`npm ci`); `mix setup` downloads the standalone `tailwind` and `esbuild` binaries
+*   Git: `mix deps.get` (part of `mix setup`) fetches the component library `setzkasten` and
+    daisyUI from GitHub
 
 ### Setup
 
@@ -81,8 +83,8 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
     `Media`, `Publishing`)
 *   `lib/feather/static_site/`: static export and preview (EEx templates in `templates/`, sinks,
     feed, sitemap)
-*   `lib/feather_web/`: the LiveView admin, styled with [felt-css](https://felt-css.rocu.de), and
-    the content API controllers
+*   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
+    (Tailwind CSS and daisyUI), and the content API controllers
 *   `priv/static_site/`: the stylesheet of the generated static sites
 *   `test/`: ExUnit tests, the executable specification (`DECISIONS.md`, 0008)
 *   `docs/api/`: the content API (`openapi.yml`)
