@@ -87,6 +87,25 @@ defmodule FeatherWeb.PreviewControllerTest do
              File.read!(Feather.StaticSite.Themes.FeatherPage.font_path("nunito-latin-800.woff2"))
   end
 
+  test "serves only the fonts of the site's theme", %{conn: conn, scope: scope, root: root} do
+    scope.site |> Ecto.Changeset.change(theme: "simple_sidebar") |> Feather.Repo.update!()
+
+    conn = get(conn, root <> "/fonts/schibsted-grotesk-latin-wght.woff2")
+
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") == ["font/woff2"]
+
+    assert conn.resp_body ==
+             File.read!(
+               Feather.StaticSite.Themes.SimpleSidebar.font_path(
+                 "schibsted-grotesk-latin-wght.woff2"
+               )
+             )
+
+    assert html_response(get(recycle(conn), root <> "/fonts/nunito-latin-800.woff2"), 404) =~
+             "Page not found"
+  end
+
   test "serves the feed with canonical URLs", %{conn: conn, scope: scope, root: root, target: t} do
     post_fixture(scope, %{title: "Hello", slug: "/hello"})
 

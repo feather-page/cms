@@ -1,0 +1,7 @@
+<%= if @tags != [] do %>
+<ul class="tags">
+  <%= for tag <- @tags do %>
+  <li><%= tag %></li>
+  <% end %>
+</ul>
+<% end %>

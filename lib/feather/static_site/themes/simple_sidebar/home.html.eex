@@ -1,0 +1,26 @@
+<div class="stream" id="posts">
+  <%= for {post, index} <- Enum.with_index(@posts) do %>
+  <%= entry(%{post: post, routes: @routes, ctx: @ctx, new: @current_page == 1 and index == 0}) %>
+  <% end %>
+</div>
+
+<%= if @total_pages > 1 do %>
+<nav class="pagination" aria-label="<%= gettext("Pagination") %>">
+  <%= if @current_page > 1 do %>
+  <a href="<%= Routes.home_url(@routes, @current_page - 1) %>" rel="prev" aria-label="<%= gettext("Previous page") %>">&larr;</a>
+  <% end %>
+  <%= for page <- pagination_page_numbers(@current_page, @total_pages) do %>
+  <%= cond do %>
+  <% page == :gap -> %>
+  <span class="pagination-gap" aria-hidden="true">&hellip;</span>
+  <% page == @current_page -> %>
+  <span aria-current="page"><%= page %></span>
+  <% true -> %>
+  <a href="<%= Routes.home_url(@routes, page) %>"><%= page %></a>
+  <% end %>
+  <% end %>
+  <%= if @current_page < @total_pages do %>
+  <a href="<%= Routes.home_url(@routes, @current_page + 1) %>" rel="next" aria-label="<%= gettext("Next page") %>">&rarr;</a>
+  <% end %>
+</nav>
+<% end %>

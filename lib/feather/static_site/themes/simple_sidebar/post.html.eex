@@ -1,0 +1,30 @@
+<article class="post">
+  <%= header_image(%{image: @header_image, routes: @routes}) %>
+  <%= meta(%{post: @post, routes: @routes, link: false, new: false}) %>
+  <%= if heading(@post) do %>
+  <h1><%= heading(@post) %></h1>
+  <% else %>
+  <h1 class="visually-hidden"><%= post_label(@post) %></h1>
+  <% end %>
+  <%= if book(@post) do %>
+  <%= byline(@post) %>
+  <% end %>
+  <div class="content"><%= Blocks.render(@post.content, @ctx) %></div>
+  <%= tags(%{tags: Content.tag_list(@post)}) %>
+</article>
+
+<nav class="post-nav" aria-label="<%= gettext("More posts") %>">
+  <%= if @newer_post do %>
+  <p class="post-nav-newer">
+    <span class="post-nav-label"><%= gettext("Newer post") %></span>
+    <a href="<%= Routes.post_url(@routes, @newer_post) %>"><%= emoji_label(@newer_post.emoji, post_label(@newer_post)) %></a>
+  </p>
+  <% end %>
+  <%= if @older_post do %>
+  <p class="post-nav-older">
+    <span class="post-nav-label"><%= gettext("Older post") %></span>
+    <a href="<%= Routes.post_url(@routes, @older_post) %>"><%= emoji_label(@older_post.emoji, post_label(@older_post)) %></a>
+  </p>
+  <% end %>
+  <p class="post-nav-all"><a href="<%= Routes.home_url(@routes) %>#posts"><%= gettext("All posts") %></a></p>
+</nav>

@@ -1,0 +1,34 @@
+<% {own, work} = split_projects(@projects) %>
+<%= if own != [] do %>
+<ul class="projects">
+  <%= for project <- own, url = Routes.project_url(@routes, project) do %>
+  <% image = list_picture(project) %>
+  <li class="<%= if image, do: "project", else: "project project--text" %>">
+    <%= if image do %>
+    <a class="project-shot" href="<%= url %>" tabindex="-1" aria-hidden="true"><img src="<%= Routes.image_url(@routes, image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, image) %>" sizes="(min-width: 52rem) 200px, 112px"<%= dimensions(image) %> alt="" loading="lazy"></a>
+    <% end %>
+    <div class="project-text">
+      <h2 class="project-title"><a href="<%= url %>"><%= title_with_emoji(project) %></a></h2>
+      <%= meta_line([project_status_label(project.status), project_stack(project), first_link(project)]) %>
+      <%= if present?(project.short_description) do %>
+      <p class="project-description"><%= project.short_description %></p>
+      <% end %>
+    </div>
+  </li>
+  <% end %>
+</ul>
+<% end %>
+<%= if work != [] do %>
+<h2 class="projects-heading"><%= pgettext("projects", "Work") %></h2>
+<ul class="projects work">
+  <%= for project <- work do %>
+  <li>
+    <h3 class="project-title"><a href="<%= Routes.project_url(@routes, project) %>"><%= title_with_emoji(project) %></a></h3>
+    <%= meta_line([project.role, project.company, project_period(project)]) %>
+    <%= if present?(project.short_description) do %>
+    <p class="project-description"><%= project.short_description %></p>
+    <% end %>
+  </li>
+  <% end %>
+</ul>
+<% end %>

@@ -214,6 +214,8 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
         assert File.regular?(source)
         assert source == FeatherPage.font_path(name)
       end
+
+      refute RecordingSink.exists?(sink, "fonts/schibsted-grotesk-latin-wght.woff2")
     end
 
     test "every page declares the font faces against the site root", %{sink: sink} do

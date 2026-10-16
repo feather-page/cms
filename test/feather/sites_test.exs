@@ -540,6 +540,15 @@ defmodule Feather.SitesTest do
       assert Repo.get!(Site, scope.site.id).theme == "feather"
     end
 
+    test "every member may choose a registered theme", %{scope: scope} do
+      member = user_fixture()
+      {:ok, _} = Sites.add_member(scope.site, member)
+      member_scope = Scope.put_site(user_scope_fixture(member), scope.site)
+
+      assert {:ok, %Site{theme: "simple_sidebar"}} =
+               Sites.update_site(member_scope, scope.site, %{"theme" => "simple_sidebar"})
+    end
+
     test "rejects themes that are not registered", %{scope: scope} do
       assert {:error, changeset} = Sites.update_site(scope, scope.site, %{"theme" => "nope"})
       assert {"is invalid", _} = changeset.errors[:theme]

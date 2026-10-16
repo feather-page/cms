@@ -1,0 +1,28 @@
+<article class="project-page">
+  <h1><%= if @page_emoji do %><span class="title-emoji" aria-hidden="true"><%= @page_emoji %></span><% end %><%= @page_title %></h1>
+  <%= meta_line([project_status_label(@project.status), project_stack(@project)]) %>
+  <%= if present?(@project.short_description) do %>
+  <div class="lead"><%= simple_format(@project.short_description) %></div>
+  <% end %>
+  <%= case page_picture(@project) do %>
+  <% nil -> %>
+  <% image -> %>
+  <figure class="project-image">
+    <img src="<%= Routes.image_url(@routes, image, :desktop_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, image) %>" sizes="(min-width: 52rem) 36rem, calc(100vw - 2rem)"<%= dimensions(image) %> fetchpriority="high" alt="">
+    <%= if unsplash_credit?(image) do %>
+    <figcaption class="photo-credit"><%= photo_credit(image) %></figcaption>
+    <% end %>
+  </figure>
+  <% end %>
+  <div class="content"><%= Blocks.render(@project.content, @ctx) %></div>
+  <dl class="facts">
+    <%= for {label, value} <- project_facts(@project) do %>
+    <div><dt><%= label %></dt><dd><%= value %></dd></div>
+    <% end %>
+  </dl>
+  <%= case @trail do %>
+  <% [projects_page | _] -> %>
+  <p class="project-back"><a href="<%= projects_page.url %>"><%= gettext("All projects") %></a></p>
+  <% _ -> %>
+  <% end %>
+</article>

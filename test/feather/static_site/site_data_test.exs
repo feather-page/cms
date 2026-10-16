@@ -47,6 +47,13 @@ defmodule Feather.StaticSite.SiteDataTest do
                  {:copy, Media.variant_path(image, filename)}
       end
     end
+
+    test "a simple_sidebar site, which shows no mascots, leaves them out", %{site: site} do
+      site = site |> Ecto.Changeset.change(theme: "simple_sidebar") |> Repo.update!()
+
+      assert SiteData.images_in_use(SiteData.load(site)) == []
+      refute site |> export() |> RecordingSink.paths() |> Enum.any?(&(&1 =~ ~r{^images/}))
+    end
   end
 
   describe "portrait" do
@@ -60,6 +67,26 @@ defmodule Feather.StaticSite.SiteDataTest do
 
     test "load/2 preloads the portrait", %{site: site} do
       assert %Image{filename: "me.jpg"} = SiteData.load(site).site.portrait_image
+    end
+
+    test "images_in_use/1 includes the portrait and the export copies its variants", %{
+      site: site
+    } do
+      site = site |> Ecto.Changeset.change(theme: "simple_sidebar") |> Repo.update!()
+
+      assert site.portrait_image_id in Enum.map(
+               SiteData.images_in_use(SiteData.load(site)),
+               & &1.id
+             )
+
+      sink = RecordingSink.new(start_supervised!(RecordingSink))
+      :ok = Export.run(site, Routes.new(site), sink)
+      portrait = SiteData.load(site).site.portrait_image
+
+      for filename <- Media.Variants.filenames() do
+        assert RecordingSink.get(sink, "images/#{portrait.public_id}/#{filename}") ==
+                 {:copy, Media.variant_path(portrait, filename)}
+      end
     end
 
     test "a feather site, which shows no portrait, leaves it out", %{site: site} do

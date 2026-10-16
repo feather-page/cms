@@ -41,6 +41,8 @@ msgstr "%{start} – %{finish}"
 
 #: lib/feather/static_site/themes/feather_page/not_found.html.eex:12
 #: lib/feather/static_site/themes/feather_page/post.html.eex:27
+#: lib/feather/static_site/themes/simple_sidebar/not_found.html.eex:5
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:29
 #, elixir-autogen, elixir-format
 msgid "All posts"
 msgstr "Alle Beiträge"
@@ -56,6 +58,7 @@ msgid "Embedded content"
 msgstr "Eingebetteter Inhalt"
 
 #: lib/feather/static_site/themes/feather_page/not_found.html.eex:11
+#: lib/feather/static_site/themes/simple_sidebar/not_found.html.eex:4
 #, elixir-autogen, elixir-format
 msgid "Go to the home page"
 msgstr "Zur Startseite"
@@ -66,21 +69,25 @@ msgid "Links"
 msgstr "Links"
 
 #: lib/feather/static_site/themes/feather_page/post.html.eex:7
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:16
 #, elixir-autogen, elixir-format
 msgid "More posts"
 msgstr "Weitere Beiträge"
 
 #: lib/feather/static_site/themes/feather_page/post.html.eex:17
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:19
 #, elixir-autogen, elixir-format
 msgid "Newer post"
 msgstr "Neuerer Beitrag"
 
 #: lib/feather/static_site/themes/feather_page/home.html.eex:60
+#: lib/feather/static_site/themes/simple_sidebar/home.html.eex:23
 #, elixir-autogen, elixir-format
 msgid "Next page"
 msgstr "Nächste Seite"
 
 #: lib/feather/static_site/themes/feather_page/post.html.eex:23
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:25
 #, elixir-autogen, elixir-format
 msgid "Older post"
 msgstr "Älterer Beitrag"
@@ -91,11 +98,13 @@ msgid "Page not found"
 msgstr "Seite nicht gefunden"
 
 #: lib/feather/static_site/themes/feather_page/layout.html.eex:69
+#: lib/feather/static_site/themes/simple_sidebar/site_nav.html.eex:1
 #, elixir-autogen, elixir-format
 msgid "Pages"
 msgstr "Seiten"
 
 #: lib/feather/static_site/themes/feather_page/home.html.eex:45
+#: lib/feather/static_site/themes/simple_sidebar/home.html.eex:8
 #, elixir-autogen, elixir-format
 msgid "Pagination"
 msgstr "Seitennummerierung"
@@ -111,16 +120,19 @@ msgid "Posts"
 msgstr "Beiträge"
 
 #: lib/feather/static_site/themes/feather_page/home.html.eex:47
+#: lib/feather/static_site/themes/simple_sidebar/home.html.eex:10
 #, elixir-autogen, elixir-format
 msgid "Previous page"
 msgstr "Vorherige Seite"
 
 #: lib/feather/static_site/themes/feather_page/layout.html.eex:14
+#: lib/feather/static_site/themes/simple_sidebar/layout.html.eex:15
 #, elixir-autogen, elixir-format
 msgid "Skip to content"
 msgstr "Zum Inhalt springen"
 
 #: lib/feather/static_site/themes/feather_page/not_found.html.eex:9
+#: lib/feather/static_site/themes/simple_sidebar/not_found.html.eex:2
 #, elixir-autogen, elixir-format
 msgid "This page does not exist, or it has moved."
 msgstr "Diese Seite gibt es nicht, oder sie ist umgezogen."
@@ -321,3 +333,90 @@ msgstr "Privat"
 msgctxt "project type"
 msgid "Professional"
 msgstr "Beruflich"
+
+#: lib/feather/static_site/themes/simple_sidebar/entry.html.eex:12
+#, elixir-autogen, elixir-format
+msgid "Continue reading"
+msgstr "Weiterlesen"
+
+#: lib/feather/static_site/themes/simple_sidebar/meta.html.eex:1
+#: lib/feather/static_site/themes/simple_sidebar/meta.html.eex:1
+#, elixir-autogen, elixir-format
+msgid "Newest post"
+msgstr "Neuester Beitrag"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:144
+#, elixir-autogen, elixir-format
+msgctxt "post kind"
+msgid "Article"
+msgstr "Artikel"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:146
+#, elixir-autogen, elixir-format
+msgctxt "post kind"
+msgid "Book"
+msgstr "Buch"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:145
+#, elixir-autogen, elixir-format
+msgctxt "post kind"
+msgid "Note"
+msgstr "Notiz"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:240
+#, elixir-autogen, elixir-format
+msgctxt "project"
+msgid "Company"
+msgstr "Firma"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:241
+#, elixir-autogen, elixir-format
+msgctxt "project"
+msgid "Period"
+msgstr "Zeitraum"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:239
+#, elixir-autogen, elixir-format
+msgctxt "project"
+msgid "Role"
+msgstr "Rolle"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:238
+#, elixir-autogen, elixir-format
+msgctxt "project"
+msgid "Status"
+msgstr "Status"
+
+#: lib/feather/static_site/themes/simple_sidebar/project.html.eex:25
+#, elixir-autogen, elixir-format
+msgid "All projects"
+msgstr "Alle Projekte"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:237
+#, elixir-autogen, elixir-format
+msgctxt "project"
+msgid "Stack"
+msgstr "Technik"
+
+#: lib/feather/static_site/themes/simple_sidebar.ex:201
+#, elixir-autogen, elixir-format
+msgctxt "project link"
+msgid "Source"
+msgstr "Quellcode"
+
+#: lib/feather/static_site/themes/simple_sidebar/projects_list.html.eex:22
+#, elixir-autogen, elixir-format
+msgctxt "projects"
+msgid "Work"
+msgstr "Arbeit"
+
+#: lib/feather/static_site/themes/simple_sidebar/meta.html.eex:1
+#, elixir-autogen, elixir-format
+msgctxt "newest post"
+msgid "New"
+msgstr "Neu"
+
+#: lib/feather/static_site/themes/simple_sidebar/layout.html.eex:46
+#, elixir-autogen, elixir-format
+msgid "Menu"
+msgstr "Menü"

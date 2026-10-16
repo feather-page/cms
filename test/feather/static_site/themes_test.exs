@@ -3,17 +3,18 @@ defmodule Feather.StaticSite.ThemesTest do
 
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Theme, Themes}
-  alias Feather.StaticSite.Themes.FeatherPage
+  alias Feather.StaticSite.Themes.{FeatherPage, SimpleSidebar}
 
   test "lists the themes a site can choose" do
-    assert Themes.keys() == ["feather"]
-    assert Themes.options() == [{"feather.page", "feather"}]
+    assert Themes.keys() == ["feather", "simple_sidebar"]
+    assert Themes.options() == [{"feather.page", "feather"}, {"Simple sidebar", "simple_sidebar"}]
   end
 
   test "returns the module of a theme by key or by site" do
     assert Themes.module("feather") == FeatherPage
     assert Themes.module(%Site{}) == FeatherPage
     assert Themes.module(%Site{theme: "feather"}) == FeatherPage
+    assert Themes.module("simple_sidebar") == SimpleSidebar
   end
 
   test "raises for unknown themes" do

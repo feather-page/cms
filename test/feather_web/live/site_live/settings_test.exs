@@ -351,7 +351,11 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
   describe "theme" do
     setup [:register_and_log_in_user, :create_site_for_user]
 
-    test "offers the registered themes", %{conn: conn, site: site} do
+    test "offers the registered themes and saves the choice", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
       assert has_element?(
@@ -360,7 +364,13 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
                "feather.page"
              )
 
+      assert has_element?(lv, ~s(#site_theme option[value="simple_sidebar"]), "Simple sidebar")
       assert has_element?(lv, ~s(#site_theme option[value="feather"][selected]))
+
+      html = lv |> form("#site-form", site: %{theme: "simple_sidebar"}) |> render_submit()
+
+      assert html =~ "Site was successfully updated."
+      assert Sites.get_site!(scope, site.public_id).theme == "simple_sidebar"
     end
   end
 

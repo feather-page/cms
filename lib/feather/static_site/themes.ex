@@ -9,7 +9,12 @@ defmodule Feather.StaticSite.Themes do
   alias Feather.Sites.Site
 
   @themes [
-    %{key: "feather", label: "feather.page", module: Feather.StaticSite.Themes.FeatherPage}
+    %{key: "feather", label: "feather.page", module: Feather.StaticSite.Themes.FeatherPage},
+    %{
+      key: "simple_sidebar",
+      label: "Simple sidebar",
+      module: Feather.StaticSite.Themes.SimpleSidebar
+    }
   ]
 
   @type key :: String.t()
