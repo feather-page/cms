@@ -432,7 +432,7 @@ end
 defmodule Feather.StaticSite.ExportPaginationTest do
   use Feather.DataCase
 
-  alias Feather.StaticSite.{Export, RecordingSink, Routes, Templates}
+  alias Feather.StaticSite.{Export, RecordingSink, Routes, ThemeHelpers}
 
   test "paginates the post list by 25 with links between the pages" do
     scope = site_scope_fixture()
@@ -464,14 +464,14 @@ defmodule Feather.StaticSite.ExportPaginationTest do
   end
 
   test "pagination page numbers with gaps" do
-    assert Templates.pagination_page_numbers(1, 5) == [1, 2, 3, 4, 5]
-    assert Templates.pagination_page_numbers(1, 10) == [1, 2, 3, 4, :gap, 10]
-    assert Templates.pagination_page_numbers(5, 10) == [1, :gap, 4, 5, 6, :gap, 10]
-    assert Templates.pagination_page_numbers(9, 10) == [1, :gap, 7, 8, 9, 10]
+    assert ThemeHelpers.pagination_page_numbers(1, 5) == [1, 2, 3, 4, 5]
+    assert ThemeHelpers.pagination_page_numbers(1, 10) == [1, 2, 3, 4, :gap, 10]
+    assert ThemeHelpers.pagination_page_numbers(5, 10) == [1, :gap, 4, 5, 6, :gap, 10]
+    assert ThemeHelpers.pagination_page_numbers(9, 10) == [1, :gap, 7, 8, 9, 10]
   end
 
   test "a rating is announced as a label instead of glyph by glyph" do
-    assert Templates.rating_label(4) == "4 of 5 stars"
-    assert Templates.rating_label(9) == "5 of 5 stars"
+    assert ThemeHelpers.rating_label(4) == "4 of 5 stars"
+    assert ThemeHelpers.rating_label(9) == "5 of 5 stars"
   end
 end

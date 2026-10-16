@@ -1,8 +1,9 @@
 defmodule Feather.StaticSite.Renderer do
   @moduledoc """
   Renders the pages and files of a static site from `SiteData` and
-  `Routes`. Used by the export and the preview alike, so both show the
-  same markup. Every function returns iodata and touches no database.
+  `Routes`, the pages through the site's theme (`Feather.StaticSite.Theme`).
+  Used by the export and the preview alike, so both show the same markup.
+  Every function returns iodata and touches no database.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -10,7 +11,7 @@ defmodule Feather.StaticSite.Renderer do
   alias Feather.Content.{Page, Post, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Media.Image
-  alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, Templates}
+  alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, Themes}
 
   @posts_per_page 25
   @description_length 155
@@ -49,7 +50,7 @@ defmodule Feather.StaticSite.Renderer do
         total_pages: total_pages(data)
       })
 
-    render(&Templates.home/1, assigns)
+    render(:home, assigns)
   end
 
   @doc "A post (its book, header and thumbnail image preloaded)."
@@ -78,7 +79,7 @@ defmodule Feather.StaticSite.Renderer do
         older_post: older
       })
 
-    render(&Templates.post/1, assigns)
+    render(:post, assigns)
   end
 
   @doc "A page (its header image preloaded)."
@@ -101,7 +102,7 @@ defmodule Feather.StaticSite.Renderer do
         title_mascot: if(page.page_type == "projects", do: data.site.projects_mascot_image)
       })
 
-    render(&Templates.page/1, assigns)
+    render(:page, assigns)
   end
 
   @doc "A project (its header and thumbnail image preloaded)."
@@ -128,7 +129,7 @@ defmodule Feather.StaticSite.Renderer do
         trail: projects_trail(data, routes)
       })
 
-    render(&Templates.project/1, assigns)
+    render(:project, assigns)
   end
 
   @doc "The page shown for paths that do not exist."
@@ -141,7 +142,7 @@ defmodule Feather.StaticSite.Renderer do
       |> base_assigns(routes, title, nil, false)
       |> Map.merge(%{noindex: true, projects_page: projects_page(data)})
 
-    render(&Templates.not_found/1, assigns)
+    render(:not_found, assigns)
   end
 
   @doc """
@@ -240,10 +241,12 @@ defmodule Feather.StaticSite.Renderer do
     do: content |> ContentBlocks.image_ids() |> Enum.find_value(&Map.get(data.images, &1))
 
   defp render(view, assigns) do
+    theme = Themes.module(assigns.site)
+
     in_site_language(assigns.data, fn ->
       assigns
-      |> Map.put(:inner_content, view.(assigns))
-      |> Templates.layout()
+      |> Map.put(:inner_content, apply(theme, view, [assigns]))
+      |> theme.layout()
       |> Phoenix.HTML.Safe.to_iodata()
     end)
   end

@@ -1,0 +1,20 @@
+<article class="entry entry--<%= kind(@post) %>">
+  <%= meta(%{post: @post, routes: @routes, link: kind(@post) == :note, new: @new}) %>
+  <%= case kind(@post) do %>
+  <% :article -> %>
+  <h2 class="entry-title"><a href="<%= Routes.post_url(@routes, @post) %>"><%= @post.title %></a></h2>
+  <%= if match?(%Image{}, @post.thumbnail_image) do %>
+  <a class="entry-thumbnail" href="<%= Routes.post_url(@routes, @post) %>" tabindex="-1" aria-hidden="true"><img src="<%= Routes.image_url(@routes, @post.thumbnail_image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, @post.thumbnail_image) %>" sizes="(min-width: 52rem) 36rem, calc(100vw - 2rem)"<%= dimensions(@post.thumbnail_image) %> alt="" loading="lazy"></a>
+  <% end %>
+  <%= if Content.content_excerpt(@post) != "" do %>
+  <p class="excerpt"><%= Content.content_excerpt(@post) %></p>
+  <% end %>
+  <a class="more" href="<%= Routes.post_url(@routes, @post) %>"><%= gettext("Continue reading") %><span class="visually-hidden">: <%= @post.title %></span></a>
+  <% :book -> %>
+  <h2 class="entry-title"><a href="<%= Routes.post_url(@routes, @post) %>"><%= heading(@post) %></a></h2>
+  <%= byline(@post) %>
+  <div class="entry-body content"><%= Blocks.render(@post.content, @ctx) %></div>
+  <% :note -> %>
+  <div class="entry-body content"><%= Blocks.render(@post.content, @ctx) %></div>
+  <% end %>
+</article>

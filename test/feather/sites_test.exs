@@ -530,4 +530,110 @@ defmodule Feather.SitesTest do
       refute File.exists?(Feather.Media.image_dir(image))
     end
   end
+
+  describe "theme" do
+    setup do
+      %{scope: site_scope_fixture()}
+    end
+
+    test "a new site uses the feather theme", %{scope: scope} do
+      assert Repo.get!(Site, scope.site.id).theme == "feather"
+    end
+
+    test "every member may choose a registered theme", %{scope: scope} do
+      member = user_fixture()
+      {:ok, _} = Sites.add_member(scope.site, member)
+      member_scope = Scope.put_site(user_scope_fixture(member), scope.site)
+
+      assert {:ok, %Site{theme: "simple_sidebar"}} =
+               Sites.update_site(member_scope, scope.site, %{"theme" => "simple_sidebar"})
+    end
+
+    test "rejects themes that are not registered", %{scope: scope} do
+      assert {:error, changeset} = Sites.update_site(scope, scope.site, %{"theme" => "nope"})
+      assert {"is invalid", _} = changeset.errors[:theme]
+    end
+  end
+
+  describe "portrait" do
+    setup do
+      %{scope: site_scope_fixture()}
+    end
+
+    defp portrait_upload(scope) do
+      path = test_image_path(60, 80, "jpg")
+      {:ok, site} = Sites.put_portrait(scope, path, "me.jpg")
+      File.rm(path)
+      site
+    end
+
+    test "put_portrait/3 stores the upload as the site's portrait", %{scope: scope} do
+      path = test_image_path(60, 80, "jpg")
+
+      assert {:ok, %Site{} = site} = Sites.put_portrait(scope, path, "me.jpg")
+
+      assert %Feather.Media.Image{filename: "me.jpg"} = image = site.portrait_image
+      assert image.site_id == scope.site.id
+      assert site.footer_mascot_image == nil
+      assert Repo.get!(Site, scope.site.id).portrait_image_id == image.id
+    end
+
+    test "put_portrait/3 replaces the portrait and deletes the old one", %{scope: scope} do
+      old = portrait_upload(scope).portrait_image
+      new = portrait_upload(scope).portrait_image
+
+      assert new.id != old.id
+      assert Repo.get!(Site, scope.site.id).portrait_image_id == new.id
+      refute Repo.get(Feather.Media.Image, old.id)
+      refute File.exists?(Feather.Media.image_dir(old))
+    end
+
+    test "put_portrait/3 keeps the portrait when the file is not an image", %{scope: scope} do
+      image = portrait_upload(scope).portrait_image
+      path = Path.join(System.tmp_dir!(), "not-an-image-#{System.unique_integer([:positive])}")
+      File.write!(path, "no image")
+
+      assert {:error, %Ecto.Changeset{} = changeset} = Sites.put_portrait(scope, path, "x.jpg")
+      assert {"must be an image", _} = changeset.errors[:file]
+      assert Repo.get!(Site, scope.site.id).portrait_image_id == image.id
+    end
+
+    test "remove_portrait/1 clears the portrait and deletes the image", %{scope: scope} do
+      image = portrait_upload(scope).portrait_image
+      path = test_image_path()
+      {:ok, _} = Sites.put_mascot(scope, :footer, path, "mascot.png")
+
+      assert {:ok, site} = Sites.remove_portrait(scope)
+
+      assert site.portrait_image == nil
+      assert site.footer_mascot_image
+      assert Repo.get!(Site, scope.site.id).portrait_image_id == nil
+      refute Repo.get(Feather.Media.Image, image.id)
+    end
+
+    test "non-members may not change the portrait", %{scope: scope} do
+      path = test_image_path()
+      stranger = Scope.put_site(user_scope_fixture(), scope.site)
+
+      assert_raise MatchError, fn -> Sites.put_portrait(stranger, path, "x.png") end
+      assert_raise MatchError, fn -> Sites.remove_portrait(stranger) end
+      assert Feather.Media.list_images(scope) == []
+    end
+
+    test "the site form cannot set the portrait", %{scope: scope} do
+      image = image_fixture(scope)
+
+      {:ok, site} = Sites.update_site(scope, scope.site, %{"portrait_image_id" => image.id})
+
+      assert site.portrait_image_id == nil
+    end
+
+    test "deleting the portrait image clears it", %{scope: scope} do
+      image = portrait_upload(scope).portrait_image
+
+      {:ok, _} = Feather.Media.delete_image(image)
+
+      assert Repo.get!(Site, scope.site.id).portrait_image_id == nil
+    end
+  end
 end

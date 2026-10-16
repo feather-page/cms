@@ -1,0 +1,24 @@
+    <title><%= @document_title %></title>
+    <%= if @noindex do %>
+    <meta name="robots" content="noindex" />
+    <% end %>
+    <%= if @description do %>
+    <meta name="description" content="<%= @description %>" />
+    <% end %>
+    <%= if @canonical_url do %>
+    <link rel="canonical" href="<%= @canonical_url %>" />
+    <meta property="og:type" content="<%= @og_type %>" />
+    <meta property="og:title" content="<%= @page_title %>" />
+    <%= if @description do %>
+    <meta property="og:description" content="<%= @description %>" />
+    <% end %>
+    <meta property="og:url" content="<%= @canonical_url %>" />
+    <meta property="og:site_name" content="<%= @site.title %>" />
+    <%= if og_locale(@site.language_code) do %>
+    <meta property="og:locale" content="<%= og_locale(@site.language_code) %>" />
+    <% end %>
+    <%= if @og_image_url do %>
+    <meta property="og:image" content="<%= @og_image_url %>" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <% end %>
+    <% end %>

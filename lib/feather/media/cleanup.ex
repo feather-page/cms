@@ -4,7 +4,7 @@ defmodule Feather.Media.Cleanup do
 
     * **unreferenced** - no post, page or project owns it, it is not the
       header or thumbnail image of any post, page or project, not the cover
-      of a book, not a mascot of a site and no image block of its site
+      of a book, not a mascot or the portrait of a site and no image block of its site
       embeds it
     * **unused** - a post, page or project owns it, but no image block in
       the owner's content embeds it any more (and it is not a header,
@@ -100,12 +100,12 @@ defmodule Feather.Media.Cleanup do
 
     covers = from b in Book, where: not is_nil(b.cover_image_id), select: b.cover_image_id
 
-    mascots =
-      for field <- Site.mascot_fields() do
+    site_images =
+      for field <- Site.image_fields() do
         from s in Site, where: not is_nil(field(s, ^field)), select: field(s, ^field)
       end
 
-    (queries ++ [covers | mascots])
+    (queries ++ [covers | site_images])
     |> Enum.flat_map(&Repo.all/1)
     |> MapSet.new()
   end

@@ -18,7 +18,7 @@ defmodule Feather.StaticSite.Blocks do
   alias Feather.Media.Image
   alias Feather.StaticSite.Routes
 
-  # The text column of static_site.css: 35rem, or the viewport less two clamp(1rem, 4vw, 1.5rem) gutters.
+  # The text column of the feather theme: 35rem, or the viewport less two clamp(1rem, 4vw, 1.5rem) gutters.
   @content_image_sizes "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
 
   @enforce_keys [:routes]

@@ -73,6 +73,17 @@ defmodule Feather.Media.CleanupTest do
       for image <- mascots, do: assert(exists?(image) and File.dir?(Media.image_dir(image)))
     end
 
+    test "keeps the site's portrait", %{scope: scope} do
+      {:ok, site} = Feather.Sites.put_portrait(scope, test_image_path(), "me.png")
+      orphan = image_fixture(scope)
+
+      assert {:ok, %{unreferenced: [deleted], unused: []}} =
+               Media.cleanup_orphaned_images(later())
+
+      assert deleted.id == orphan.id
+      assert exists?(site.portrait_image)
+    end
+
     test "keeps images their owner embeds, deletes those it does not", %{scope: scope} do
       kept = image_fixture(scope)
       post = post_fixture(scope, content: [image_block(kept)])

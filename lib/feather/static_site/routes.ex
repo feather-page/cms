@@ -30,7 +30,7 @@ defmodule Feather.StaticSite.Routes do
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Repo
   alias Feather.Sites.Site
-  alias Feather.StaticSite.Fonts
+  alias Feather.StaticSite.Themes
 
   @enforce_keys [:site, :site_root, :canonical_url]
   defstruct [:site, :site_root, :canonical_url]
@@ -126,9 +126,10 @@ defmodule Feather.StaticSite.Routes do
     end)
   end
 
-  @doc "The URL of a theme font file (see `Feather.StaticSite.Fonts`)."
+  @doc "The URL of a font file of the site's theme (see `Feather.StaticSite.Theme`)."
   @spec font_url(t(), String.t()) :: String.t()
-  def font_url(%__MODULE__{site_root: root}, name), do: root <> font_segment(name)
+  def font_url(%__MODULE__{site_root: root} = routes, name),
+    do: root <> font_segment(routes, name)
 
   @doc """
   The URL of a generated file at the site root (`feed.xml`, `robots.txt`,
@@ -166,7 +167,7 @@ defmodule Feather.StaticSite.Routes do
 
   @doc "The output path of a theme font file."
   @spec font_path(t(), String.t()) :: String.t()
-  def font_path(%__MODULE__{}, name), do: font_segment(name)
+  def font_path(%__MODULE__{} = routes, name), do: font_segment(routes, name)
 
   @doc "The output path of a generated file at the site root."
   @spec artifact_path(t(), String.t()) :: String.t()
@@ -184,8 +185,8 @@ defmodule Feather.StaticSite.Routes do
       else: raise(ArgumentError, "unknown artifact #{inspect(name)}")
   end
 
-  defp font_segment(name) do
-    if Fonts.file?(name),
+  defp font_segment(%__MODULE__{site: site}, name) do
+    if font?(site, name),
       do: "fonts/" <> name,
       else: raise(ArgumentError, "unknown font file #{inspect(name)}")
   end
@@ -226,7 +227,7 @@ defmodule Feather.StaticSite.Routes do
   def resolve(%__MODULE__{} = routes, segments) when is_list(segments),
     do: resolve(routes, Enum.join(segments, "/"))
 
-  def resolve(%__MODULE__{site: %Site{id: site_id}}, path) when is_binary(path) do
+  def resolve(%__MODULE__{site: %Site{id: site_id} = site}, path) when is_binary(path) do
     path = normalize_request_path(path)
 
     Enum.find_value(
@@ -234,7 +235,7 @@ defmodule Feather.StaticSite.Routes do
         &resolve_home/2,
         &resolve_artifact/2,
         &resolve_image/2,
-        &resolve_font/2,
+        fn path, _site_id -> resolve_font(path, site) end,
         &resolve_project/2,
         &resolve_post_by_public_id/2,
         &resolve_page/2,
@@ -277,8 +278,10 @@ defmodule Feather.StaticSite.Routes do
     end
   end
 
-  defp resolve_font("fonts/" <> name, _site_id), do: if(Fonts.file?(name), do: {:font, name})
-  defp resolve_font(_path, _site_id), do: nil
+  defp resolve_font("fonts/" <> name, site), do: if(font?(site, name), do: {:font, name})
+  defp resolve_font(_path, _site), do: nil
+
+  defp font?(site, name), do: Map.has_key?(Themes.module(site).fonts(), name)
 
   defp resolve_project("projects/" <> slug, site_id) do
     if project = find_by_slug(Project, site_id, slug), do: {:project, project}

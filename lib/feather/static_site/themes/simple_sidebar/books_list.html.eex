@@ -1,0 +1,24 @@
+<%= for {year, books} <- books_by_year(@data.books) do %>
+<section class="books-year">
+  <h2><span class="year"><%= year %></span> <span class="count">(<%= length(books) %>)</span></h2>
+  <ul class="books">
+    <%= for book <- books do %>
+    <li class="book">
+      <span class="book-mark" aria-hidden="true"><%= cond do %><% match?(%Image{}, book.cover_image) -> %><img src="<%= Routes.image_url(@routes, book.cover_image, :mobile_x1_webp) %>" alt="" loading="lazy"<%= dimensions(book.cover_image) %>><% present?(book.emoji) -> %><%= book.emoji %><% true -> %><% end %></span>
+      <span class="book-text">
+        <%= if review_linked?(@data, book) do %>
+        <a class="book-title" href="<%= Routes.post_url(@routes, book.post) %>"><%= book.title %></a>
+        <% else %>
+        <span class="book-title"><%= book.title %></span>
+        <% end %>
+        <span class="book-author"><%= book.author %></span>
+      </span>
+      <span class="book-side">
+        <%= if book.rating do %><%= stars(book.rating) %><% end %>
+        <%= if book.read_at do %><span class="book-date"><%= date_tag(book.read_at) %></span><% end %>
+      </span>
+    </li>
+    <% end %>
+  </ul>
+</section>
+<% end %>

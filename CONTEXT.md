@@ -29,10 +29,21 @@ there is no separate navigation record.
 _Avoid_: Menu
 
 **Mascot**:
-A small transparent illustration of the site's characters that the site's theme shows in a fixed place: above the
-footer, at the end of every post, next to the title of the projects page. A site has one optional mascot per place;
-where one is missing, the theme shows the site's emoji.
+A small transparent illustration of the site's characters that the feather.page theme shows in a fixed place: above
+the footer, at the end of every post, next to the title of the projects page. A site has one optional mascot per
+place; where one is missing, the theme shows the site's emoji. Other themes leave mascots out.
 _Avoid_: Logo, Avatar, Illustration
+
+**Theme**:
+The look of a site's static pages: its templates, stylesheet and fonts. A site picks one in its settings from a fixed
+list in code; `feather` (shown as "feather.page") is the default. Blocks, routes, meta tags, feed and sitemap are the
+same in every theme.
+_Avoid_: Template, Skin, Design
+
+**Portrait**:
+An optional photo of the site owner that the simple_sidebar theme shows in its panel on the home pages; other themes
+leave it out. Like a mascot, it is an image slot on the site.
+_Avoid_: Avatar, Profile Picture, Logo
 
 **Project**:
 A portfolio entry describing work by the site owner — not the software project in this repo.

@@ -14,6 +14,7 @@ defmodule Feather.StaticSite.SiteData do
   alias Feather.Repo
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
   alias Feather.{Books, Content, Media, Sites}
+  alias Feather.StaticSite.Themes
 
   defstruct [
     :site,
@@ -91,7 +92,7 @@ defmodule Feather.StaticSite.SiteData do
       |> Enum.map(&put_review(&1, posts))
 
     %__MODULE__{
-      site: Sites.preload_mascots(site),
+      site: Sites.preload_images(site),
       content: content,
       homepage: Enum.find(pages, &Page.homepage?/1),
       posts: posts,
@@ -162,7 +163,8 @@ defmodule Feather.StaticSite.SiteData do
   @doc """
   The images the exported site uses, without duplicates: the images
   embedded in the content of its posts, pages and projects, their header
-  and thumbnail images, the book covers and the site's mascots.
+  and thumbnail images, the book covers and the site images its theme
+  renders (`c:Feather.StaticSite.Theme.site_image_fields/0`).
 
   With `content: :current` (staging, preview) it also includes every image
   owned by a record and the header and thumbnail images of all posts,
@@ -177,7 +179,7 @@ defmodule Feather.StaticSite.SiteData do
       [
         Enum.map(records, &[&1.header_image_id, &1.thumbnail_image_id]),
         Enum.map(data.books, & &1.cover_image_id),
-        mascot_ids(data.site)
+        site_image_ids(data.site)
         | current_only_ids(data)
       ]
       |> List.flatten()
@@ -193,7 +195,8 @@ defmodule Feather.StaticSite.SiteData do
     )
   end
 
-  defp mascot_ids(%Site{} = site), do: Enum.map(Site.mascot_fields(), &Map.fetch!(site, &1))
+  defp site_image_ids(%Site{} = site),
+    do: Enum.map(Themes.module(site).site_image_fields(), &Map.fetch!(site, &1))
 
   defp current_only_ids(%__MODULE__{content: :published}), do: []
 

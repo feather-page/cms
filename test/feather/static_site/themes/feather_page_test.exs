@@ -1,8 +1,9 @@
-defmodule Feather.StaticSite.ThemeTest do
+defmodule Feather.StaticSite.Themes.FeatherPageTest do
   use Feather.DataCase
 
   alias Feather.{Content, Sites}
-  alias Feather.StaticSite.{Export, Fonts, RecordingSink, Routes}
+  alias Feather.StaticSite.{Export, RecordingSink, Routes}
+  alias Feather.StaticSite.Themes.FeatherPage
 
   @day ~U[2025-01-01 10:00:00.000000Z]
 
@@ -211,8 +212,10 @@ defmodule Feather.StaticSite.ThemeTest do
       for name <- ~w(nunito-latin-700.woff2 nunito-latin-800.woff2 OFL.txt) do
         assert {:copy, source} = RecordingSink.get(sink, "fonts/" <> name)
         assert File.regular?(source)
-        assert source == Fonts.path(name)
+        assert source == FeatherPage.font_path(name)
       end
+
+      refute RecordingSink.exists?(sink, "fonts/schibsted-grotesk-latin-wght.woff2")
     end
 
     test "every page declares the font faces against the site root", %{sink: sink} do

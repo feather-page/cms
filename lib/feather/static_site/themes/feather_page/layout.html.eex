@@ -3,30 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= @document_title %></title>
-    <%= if @noindex do %>
-    <meta name="robots" content="noindex" />
-    <% end %>
-    <%= if @description do %>
-    <meta name="description" content="<%= @description %>" />
-    <% end %>
-    <%= if @canonical_url do %>
-    <link rel="canonical" href="<%= @canonical_url %>" />
-    <meta property="og:type" content="<%= @og_type %>" />
-    <meta property="og:title" content="<%= @page_title %>" />
-    <%= if @description do %>
-    <meta property="og:description" content="<%= @description %>" />
-    <% end %>
-    <meta property="og:url" content="<%= @canonical_url %>" />
-    <meta property="og:site_name" content="<%= @site.title %>" />
-    <%= if og_locale(@site.language_code) do %>
-    <meta property="og:locale" content="<%= og_locale(@site.language_code) %>" />
-    <% end %>
-    <%= if @og_image_url do %>
-    <meta property="og:image" content="<%= @og_image_url %>" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <% end %>
-    <% end %>
+    <%= head_meta(assigns) %>
     <style><%= font_faces(@routes) %><%= raw(css()) %></style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22><%= @page_emoji || @site.emoji %></text></svg>">
     <%= if @rss_url do %>

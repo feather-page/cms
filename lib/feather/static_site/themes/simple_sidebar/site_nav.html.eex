@@ -1,0 +1,7 @@
+<nav class="site-nav" aria-label="<%= gettext("Pages") %>">
+  <ul>
+    <%= for item <- @data.navigation, url = Routes.page_url(@routes, item.page) do %>
+    <li><%= nav_link(@nav, item.page, url) %></li>
+    <% end %>
+  </ul>
+</nav>

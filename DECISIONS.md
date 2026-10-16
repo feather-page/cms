@@ -94,14 +94,16 @@ Multi-theme support is gone — the design is fixed. RSS feed, sitemap and robot
 
 ### Update (2026-10-06)
 
-The decision stands: the CMS renders its static sites itself, with no external generator and one
-fixed design. Since the port to Phoenix ([0007](#0007-port-to-phoenix-and-sqlite)) the
+The decision stands: the CMS renders its static sites itself, with no external generator.
+[0015](#0015-sites-choose-a-theme-from-a-fixed-list) replaces the one fixed design with themes a
+site chooses from. Since the port to Phoenix ([0007](#0007-port-to-phoenix-and-sqlite)) the
 mechanism is different; the paragraphs above describe the Rails app.
 
-- The templates are EEx files in `lib/feather/static_site/templates/`, compiled into
-  `Feather.StaticSite.Templates` with `Phoenix.HTML.Engine` (escaped output). Not HEEx: HEEx adds
-  LiveView's `phx-r` root tag attribute, which has no place in a static site. The stylesheet is
-  `priv/static_site/static_site.css`, inlined into every page.
+- Each theme's templates are EEx files compiled into its module `Feather.StaticSite.Themes.*`
+  with `Phoenix.HTML.Engine` (escaped output); shared helpers live in
+  `Feather.StaticSite.ThemeHelpers`. Not HEEx: HEEx adds LiveView's `phx-r` root tag attribute,
+  which has no place in a static site. Each theme's stylesheet is
+  `priv/static_site/themes/<theme>/theme.css`, inlined into every page.
 - `Feather.StaticSite.SiteData` loads everything a site needs up front;
   `Feather.StaticSite.Renderer` then renders pages, the RSS feed, the sitemap and robots.txt from
   that data and `Routes` without touching the database. Content blocks render through `Feather.StaticSite.Blocks`.
@@ -385,3 +387,11 @@ Accepted, 2026-10-16
 - **Context:** The static site theme shows small illustrations of a site's characters in three places (above the footer, at the end of every post, next to the projects title), so each site needs images that belong to the site rather than to a post, page or project.
 - **Decision:** A site has three optional foreign keys to images (`footer_mascot_image_id`, `post_end_mascot_image_id`, `projects_mascot_image_id`, `ON DELETE SET NULL`), set only through `Feather.Sites.put_mascot/4` and `remove_mascot/2` from the site settings; the theme falls back to the site's emoji for an empty slot. Three columns are simple and explicit: the templates read `site.footer_mascot_image`, and the nightly image cleanup sees from the references that the images are in use. Rejected: a generic library of site assets (more UI and a lookup by name in the templates for three images) and a naming convention on uploaded images (implicit, and nothing would reference the images).
 - **Consequences:** The image cleanup counts mascots as in use and the export copies their variants like other referenced images; a fourth place needs a migration and a slot; webp variants keep the alpha channel, the JPEG variant is flattened.
+
+## 0015. Sites choose a theme from a fixed list
+
+Accepted, 2026-10-16
+
+- **Context:** One shared theme renders every site, but rocu.de needs a theme of its own while zipfelmaus and the other sites keep the current one.
+- **Decision:** A site has a `theme` column holding one of a fixed list of themes in code: `feather` (the default, the current theme) and `simple_sidebar` (first used by rocu.de); every site member picks it in the site settings. A theme brings its own templates, CSS and fonts, while block rendering, routes, Gettext, meta tags, feed and sitemap stay shared. The sidebar theme takes its portrait from a new optional image slot on the site (`portrait_image_id`), built like the mascot slots of 0014. Rejected: a domain-to-theme map in the config (invisible in the admin, a deploy for every change) and CSS or templates stored per site in the database (untested and unversioned).
+- **Consequences:** A new theme is a code change with its own tests and templates for every page type; the export and the preview render through the site's theme, and the image cleanup counts the portrait as in use.
