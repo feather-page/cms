@@ -19,8 +19,6 @@ defmodule Feather.Publishing.Rclone do
   `Feather.Publishing.Rclone.SystemRunner`.
   """
 
-  require Logger
-
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Publishing.Rclone.{Fastmail, HetznerFtps, Internal, SystemRunner}
 

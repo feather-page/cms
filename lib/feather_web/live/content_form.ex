@@ -74,10 +74,10 @@ defmodule FeatherWeb.ContentForm do
   @changed_elsewhere "was changed elsewhere, reload the page to see the changes"
 
   @typedoc "A post, page or project."
-  @type record :: map()
+  @type content_record :: map()
 
   @doc "The record the form edits."
-  @callback record(Socket.t()) :: record()
+  @callback record(Socket.t()) :: content_record()
 
   @doc """
   Saves the valid fields of `attrs` into the record (see
@@ -85,16 +85,16 @@ defmodule FeatherWeb.ContentForm do
   record and the socket with what else the save changed assigned.
   """
   @callback save_fields(Socket.t(), attrs :: map(), opts :: keyword()) ::
-              {:ok, record(), Socket.t()} | {:error, :stale | term()}
+              {:ok, content_record(), Socket.t()} | {:error, :stale | term()}
 
   @doc "Assigns the record (and what the form derives from it)."
-  @callback assign_record(Socket.t(), record()) :: Socket.t()
+  @callback assign_record(Socket.t(), content_record()) :: Socket.t()
 
   @doc "Builds the form from the params on the assigned record."
   @callback assign_form(Socket.t(), params :: map(), action :: atom() | nil) :: Socket.t()
 
   @doc "The path of the record's edit view."
-  @callback edit_path(Socket.t(), record()) :: String.t()
+  @callback edit_path(Socket.t(), content_record()) :: String.t()
 
   @doc ~s(What the form edits, for flash messages, e.g. "Post".)
   @callback noun() :: String.t()
@@ -109,7 +109,7 @@ defmodule FeatherWeb.ContentForm do
   `header_image`, `thumbnail_image`, the editor's document
   (`editor_json`), what autosaving needs and the form.
   """
-  @spec mount_record(Socket.t(), record()) :: Socket.t()
+  @spec mount_record(Socket.t(), content_record()) :: Socket.t()
   def mount_record(socket, record) do
     scope = socket.assigns.current_scope
 
@@ -414,7 +414,7 @@ defmodule FeatherWeb.ContentForm do
   Whether the record can be published: it exists, no field is invalid and
   it was not changed elsewhere.
   """
-  @spec publishable?(record(), Phoenix.HTML.Form.t(), boolean()) :: boolean()
+  @spec publishable?(content_record(), Phoenix.HTML.Form.t(), boolean()) :: boolean()
   def publishable?(record, form, changed_elsewhere?) do
     not is_nil(record.id) and not invalid?(form) and not changed_elsewhere?
   end
