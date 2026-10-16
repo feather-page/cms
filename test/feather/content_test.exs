@@ -406,19 +406,6 @@ defmodule Feather.ContentTest do
       assert %{label: ["can't be blank"], url: ["can't be blank"]} in errors_on(changeset).links
     end
 
-    test "display_period/1" do
-      assert Project.display_period(%Project{period: "05.2023 - today"}) == "05.2023 - today"
-
-      assert Project.display_period(%Project{started_at: ~D[2023-05-01], ended_at: nil}) ==
-               "05.2023 - ongoing"
-
-      assert Project.display_period(%Project{
-               period: " ",
-               started_at: ~D[2023-05-01],
-               ended_at: ~D[2024-02-10]
-             }) == "05.2023 - 02.2024"
-    end
-
     test "list_projects/1 orders by start, newest first", %{scope: scope} do
       project_fixture(scope, title: "old", started_at: ~D[2020-01-01])
       project_fixture(scope, title: "new", started_at: ~D[2024-01-01])

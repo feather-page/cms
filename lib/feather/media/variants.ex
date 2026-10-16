@@ -45,10 +45,29 @@ defmodule Feather.Media.Variants do
   def content_type(%{format: :webp}), do: "image/webp"
 
   @doc """
-  The webp variants with their widths, for `srcset` attributes.
+  The width of a variant of an image of `width` × `height` pixels: it fits
+  within size×size and is never upscaled. With an unknown image size it is
+  the variant's size.
   """
-  @spec srcset_widths() :: [{String.t(), pos_integer()}]
-  def srcset_widths do
-    for %{format: :webp, filename: filename, size: size} <- @variants, do: {filename, size}
+  @spec width(variant(), pos_integer() | nil, pos_integer() | nil) :: pos_integer()
+  def width(%{size: size}, width, height)
+      when is_integer(width) and is_integer(height) and width > 0 and height > 0 do
+    longest = max(width, height)
+    if longest <= size, do: width, else: div(2 * width * size + longest, 2 * longest)
+  end
+
+  def width(%{size: size}, _width, _height), do: size
+
+  @doc """
+  The webp variants of an image of `width` × `height` pixels with their
+  real widths, for `srcset` attributes: narrowest first, and of variants
+  with the same width only the first.
+  """
+  @spec srcset_widths(pos_integer() | nil, pos_integer() | nil) :: [{String.t(), pos_integer()}]
+  def srcset_widths(width, height) do
+    @variants
+    |> Enum.filter(&(&1.format == :webp))
+    |> Enum.map(&{&1.filename, width(&1, width, height)})
+    |> Enum.uniq_by(&elem(&1, 1))
   end
 end

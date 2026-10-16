@@ -1,16 +1,8 @@
-<ul class="page-list">
-  <%= for item <- @data.navigation do %>
-  <li>
-    <%= item.page.emoji %> <a class="page-link" href="<%= Routes.page_url(@routes, item.page) %>"><%= item.page.title %></a>
-  </li>
-  <% end %>
-</ul>
-
 <%= Blocks.render(@data.homepage && @data.homepage.content, @ctx) %>
 
 <hr />
 
-<h2>Blogposts</h2>
+<h2 id="posts"><%= gettext("Posts") %></h2>
 
 <div class="page-list">
   <%= for post <- @posts do %>
@@ -23,16 +15,9 @@
       <% end %>
       <div class="post-content"><%= Blocks.render(post.content, @ctx) %></div>
     </div>
-    <div class="post-date"><%= format_date(post.publish_at) %></div>
+    <div class="post-date"><a href="<%= Routes.post_url(@routes, post) %>"><%= time_tag(post.publish_at) %></a></div>
     <% else %>
-    <div>
-      <a class="post-title" href="<%= Routes.post_url(@routes, post) %>"><%= post.title %></a>
-      <%= if book(post) && book(post).rating do %>
-      <span class="rating" aria-label="<%= book(post).rating %> out of 5 stars">
-        <%= rating_stars(book(post).rating) %>
-      </span>
-      <% end %>
-    </div>
+    <h3 class="post-title"><a href="<%= Routes.post_url(@routes, post) %>"><%= post.title %></a><%= if book(post) && book(post).rating do %><%= rating(book(post).rating, "rating") %><% end %></h3>
     <div class="post-long-body">
       <%= if present?(post.emoji) do %>
       <div class="post-emoji"><%= post.emoji %></div>
@@ -40,7 +25,7 @@
       <div class="post-long-content">
         <%= if match?(%Image{}, post.thumbnail_image) do %>
         <div class="post-thumbnail">
-          <img src="<%= Routes.image_url(@routes, post.thumbnail_image, :mobile_x1_webp) %>" alt="" loading="lazy">
+          <img src="<%= Routes.image_url(@routes, post.thumbnail_image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, post.thumbnail_image) %>" sizes="(max-width: 600px) calc(100vw - 2rem), 240px"<%= dimensions(post.thumbnail_image) %> alt="" loading="lazy">
         </div>
         <% end %>
         <%= if post.content not in [nil, []] do %>
@@ -48,8 +33,8 @@
         <% end %>
       </div>
     </div>
-    <div class="post-date"><%= format_date(post.publish_at) %></div>
-    <%= tags(%{tags: Content.tag_list(post), class: "post-tags"}) %>
+    <div class="post-date"><%= time_tag(post.publish_at) %></div>
+    <%= tags(%{tags: Content.tag_list(post)}) %>
     <% end %>
   </article>
   <hr />
@@ -57,22 +42,22 @@
 </div>
 
 <%= if @total_pages > 1 do %>
-<nav class="pagination" aria-label="Pagination">
+<nav class="pagination" aria-label="<%= gettext("Pagination") %>">
   <%= if @current_page > 1 do %>
-  <a href="<%= Routes.home_url(@routes, @current_page - 1) %>" class="pagination-link">&larr;</a>
+  <a href="<%= Routes.home_url(@routes, @current_page - 1) %>" class="pagination-link" aria-label="<%= gettext("Previous page") %>">&larr;</a>
   <% end %>
   <%= for page <- pagination_page_numbers(@current_page, @total_pages) do %>
   <%= cond do %>
   <% page == :gap -> %>
   <span class="pagination-gap">&hellip;</span>
   <% page == @current_page -> %>
-  <span class="pagination-current"><%= page %></span>
+  <span class="pagination-current" aria-current="page"><%= page %></span>
   <% true -> %>
   <a href="<%= Routes.home_url(@routes, page) %>" class="pagination-link"><%= page %></a>
   <% end %>
   <% end %>
   <%= if @current_page < @total_pages do %>
-  <a href="<%= Routes.home_url(@routes, @current_page + 1) %>" class="pagination-link">&rarr;</a>
+  <a href="<%= Routes.home_url(@routes, @current_page + 1) %>" class="pagination-link" aria-label="<%= gettext("Next page") %>">&rarr;</a>
   <% end %>
 </nav>
 <% end %>

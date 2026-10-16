@@ -50,6 +50,9 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.image_srcset(r, image) =~
                "/images/img123456789/mobile_x1.webp 430w, /images/img123456789/mobile_x2.webp 860w"
 
+      assert Routes.image_srcset(r, %{image | width: 606, height: 341}) ==
+               "/images/img123456789/mobile_x1.webp 430w, /images/img123456789/mobile_x2.webp 606w"
+
       assert_raise ArgumentError, fn -> Routes.image_url(r, image, :desktop_x1_png) end
     end
 

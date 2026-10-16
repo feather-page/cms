@@ -1,7 +1,7 @@
 <%= if @tags != [] do %>
-<div class="<%= @class %>">
+<ul class="tags">
   <%= for tag <- @tags do %>
-  <span class="badge badge-outline"><%= tag %></span>
+  <li class="tag"><%= tag %></li>
   <% end %>
-</div>
+</ul>
 <% end %>

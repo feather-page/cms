@@ -3,13 +3,14 @@
 <div class="books-grid">
   <%= for book <- books do %>
   <div class="book-card">
-    <%= if match?(%Image{}, book.cover_image) do %>
-    <img src="<%= Routes.image_url(@routes, book.cover_image, :mobile_x1_webp) %>" alt="<%= book.title %>" class="book-cover">
+    <%= cond do %>
+    <% match?(%Image{}, book.cover_image) -> %>
+    <img src="<%= Routes.image_url(@routes, book.cover_image, :mobile_x1_webp) %>" alt="" class="book-cover" loading="lazy"<%= dimensions(book.cover_image) %>>
+    <% present?(book.emoji) -> %>
+    <span class="book-emoji"><%= book.emoji %></span>
+    <% true -> %>
     <% end %>
     <div class="book-info">
-      <%= if present?(book.emoji) do %>
-      <span class="book-emoji"><%= book.emoji %></span>
-      <% end %>
       <%= if review_linked?(@data, book) do %>
       <a href="<%= Routes.post_url(@routes, book.post) %>" class="book-title"><%= book.title %></a>
       <% else %>
@@ -17,10 +18,10 @@
       <% end %>
       <span class="book-author"><%= book.author %></span>
       <%= if book.rating do %>
-      <span class="book-rating"><%= rating_stars(book.rating) %></span>
+      <%= rating(book.rating, "book-rating") %>
       <% end %>
       <%= if book.read_at do %>
-      <span class="book-date"><%= format_short_date(book.read_at) %></span>
+      <span class="book-date"><%= time_tag(book.read_at, :short) %></span>
       <% end %>
     </div>
   </div>

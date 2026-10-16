@@ -91,7 +91,7 @@ defmodule Feather.StaticSite.SiteData do
       |> Enum.map(&put_review(&1, posts))
 
     %__MODULE__{
-      site: site,
+      site: Sites.preload_mascots(site),
       content: content,
       homepage: Enum.find(pages, &Page.homepage?/1),
       posts: posts,
@@ -147,9 +147,22 @@ defmodule Feather.StaticSite.SiteData do
   def published?(%__MODULE__{posts: posts}, %Post{id: id}), do: Enum.any?(posts, &(&1.id == id))
 
   @doc """
+  The posts next to a post in the post list (newest first): `{newer, older}`,
+  `nil` at either end and for posts not in the list.
+  """
+  @spec neighbours(t(), Post.t()) :: {Post.t() | nil, Post.t() | nil}
+  def neighbours(%__MODULE__{posts: posts}, %Post{id: id}) do
+    case Enum.find_index(posts, &(&1.id == id)) do
+      nil -> {nil, nil}
+      0 -> {nil, Enum.at(posts, 1)}
+      index -> {Enum.at(posts, index - 1), Enum.at(posts, index + 1)}
+    end
+  end
+
+  @doc """
   The images the exported site uses, without duplicates: the images
   embedded in the content of its posts, pages and projects, their header
-  and thumbnail images, and the book covers.
+  and thumbnail images, the book covers and the site's mascots.
 
   With `content: :current` (staging, preview) it also includes every image
   owned by a record and the header and thumbnail images of all posts,
@@ -163,7 +176,8 @@ defmodule Feather.StaticSite.SiteData do
     referenced_ids =
       [
         Enum.map(records, &[&1.header_image_id, &1.thumbnail_image_id]),
-        Enum.map(data.books, & &1.cover_image_id)
+        Enum.map(data.books, & &1.cover_image_id),
+        mascot_ids(data.site)
         | current_only_ids(data)
       ]
       |> List.flatten()
@@ -178,6 +192,8 @@ defmodule Feather.StaticSite.SiteData do
                   (not is_nil(i.post_id) or not is_nil(i.page_id) or not is_nil(i.project_id))))
     )
   end
+
+  defp mascot_ids(%Site{} = site), do: Enum.map(Site.mascot_fields(), &Map.fetch!(site, &1))
 
   defp current_only_ids(%__MODULE__{content: :published}), do: []
 

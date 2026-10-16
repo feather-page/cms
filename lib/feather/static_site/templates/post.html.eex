@@ -2,6 +2,27 @@
 
 <%= Blocks.render(@post.content, @ctx) %>
 
-<div class="post-date"><%= format_date(@post.publish_at) %></div>
+<%= tags(%{tags: Content.tag_list(@post)}) %>
 
-<%= tags(%{tags: Content.tag_list(@post), class: "post-tags"}) %>
+<nav class="post-nav" aria-label="<%= gettext("More posts") %>">
+  <%= cond do %>
+  <% match?(%Image{}, @site.post_end_mascot_image) -> %>
+  <%= mascot(@routes, @site.post_end_mascot_image, "post-nav-mascot", "9rem") %>
+  <% present?(@site.emoji) -> %>
+  <span class="post-nav-seal" aria-hidden="true"><%= @site.emoji %></span>
+  <% true -> %>
+  <% end %>
+  <%= if @newer_post do %>
+  <p class="post-nav-newer">
+    <span class="post-nav-label"><%= gettext("Newer post") %></span>
+    <a href="<%= Routes.post_url(@routes, @newer_post) %>"><%= emoji_label(@newer_post.emoji, post_label(@newer_post)) %></a>
+  </p>
+  <% end %>
+  <%= if @older_post do %>
+  <p class="post-nav-older">
+    <span class="post-nav-label"><%= gettext("Older post") %></span>
+    <a href="<%= Routes.post_url(@routes, @older_post) %>"><%= emoji_label(@older_post.emoji, post_label(@older_post)) %></a>
+  </p>
+  <% end %>
+  <p class="post-nav-all"><a href="<%= Routes.home_url(@routes) %>#posts"><%= gettext("All posts") %></a></p>
+</nav>

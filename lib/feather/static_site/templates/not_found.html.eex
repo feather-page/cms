@@ -1,0 +1,17 @@
+<div class="not-found">
+  <%= cond do %>
+  <% match?(%Image{}, not_found_mascot(@site)) -> %>
+  <%= mascot(@routes, not_found_mascot(@site), "not-found-mascot", "9rem", lazy: false) %>
+  <% present?(@site.emoji) -> %>
+  <span class="not-found-seal" aria-hidden="true"><%= @site.emoji %></span>
+  <% true -> %>
+  <% end %>
+  <p class="not-found-message"><%= gettext("This page does not exist, or it has moved.") %></p>
+  <ul class="not-found-links">
+    <li><a class="not-found-home" href="<%= Routes.home_url(@routes) %>"><%= gettext("Go to the home page") %></a></li>
+    <li><a class="not-found-posts" href="<%= Routes.home_url(@routes) %>#posts"><%= gettext("All posts") %></a></li>
+    <%= if @projects_page do %>
+    <li><a class="not-found-projects" href="<%= Routes.page_url(@routes, @projects_page) %>"><%= @projects_page.title %></a></li>
+    <% end %>
+  </ul>
+</div>

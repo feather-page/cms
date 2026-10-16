@@ -12,19 +12,14 @@ defmodule FeatherWeb.PreviewController do
   alias Feather.StaticSite.Preview
 
   def show(conn, %{"target_id" => target_id} = params) do
-    with %{} = target <- Publishing.get_preview_target(conn.assigns.current_scope, target_id),
-         result when result != :not_found <- Preview.render(target, Map.get(params, "path", [])) do
-      respond(conn, result)
-    else
-      _ -> send_resp(conn, :not_found, "Not Found")
+    case Publishing.get_preview_target(conn.assigns.current_scope, target_id) do
+      nil -> send_resp(conn, :not_found, "Not Found")
+      target -> respond(conn, Preview.render(target, Map.get(params, "path", [])))
     end
   end
 
-  defp respond(conn, {:html, html}) do
-    conn
-    |> put_resp_content_type("text/html")
-    |> send_resp(:ok, html)
-  end
+  defp respond(conn, {:html, html}), do: send_html(conn, :ok, html)
+  defp respond(conn, {:not_found, html}), do: send_html(conn, :not_found, html)
 
   defp respond(conn, {:content, content_type, body}) do
     conn
@@ -36,5 +31,11 @@ defmodule FeatherWeb.PreviewController do
     conn
     |> put_resp_content_type(content_type, nil)
     |> send_file(:ok, path)
+  end
+
+  defp send_html(conn, status, html) do
+    conn
+    |> put_resp_content_type("text/html")
+    |> send_resp(status, html)
   end
 end

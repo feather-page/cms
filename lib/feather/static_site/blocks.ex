@@ -1,8 +1,7 @@
 defmodule Feather.StaticSite.Blocks do
   @moduledoc """
   Renders content blocks (see `Feather.Content.Blocks`) to the HTML of the
-  static site. The markup follows the Rails renderers so exported sites
-  look the same.
+  static site.
 
   Inline HTML (paragraphs, headers, list items, quotes, captions, table
   cells) goes through `Feather.Content.HTML.sanitize/1`; everything else is
@@ -11,11 +10,16 @@ defmodule Feather.StaticSite.Blocks do
   missing.
   """
 
+  use Gettext, backend: Feather.StaticSite.Gettext
+
   alias Feather.Books.Book
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.HTML
   alias Feather.Media.Image
   alias Feather.StaticSite.Routes
+
+  # The text column of static_site.css: 35rem, or the viewport less two clamp(1rem, 4vw, 1.5rem) gutters.
+  @content_image_sizes "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
 
   @enforce_keys [:routes]
   defstruct [:routes, images: %{}, books: %{}]
@@ -68,8 +72,23 @@ defmodule Feather.StaticSite.Blocks do
     ["<blockquote><p>", sanitize(text), "</p>", cite, "</blockquote>"]
   end
 
-  def render_block(%{"type" => "code", "code" => code}, _context),
-    do: ["<pre><code>", escape(code), "</code></pre>"]
+  def render_block(%{"type" => "code", "code" => code} = block, _context) do
+    case code_language(block["language"]) do
+      nil ->
+        ["<pre><code>", escape(code), "</code></pre>"]
+
+      language ->
+        [
+          "<pre data-language=\"",
+          language,
+          "\"><code class=\"language-",
+          language,
+          "\">",
+          escape(code),
+          "</code></pre>"
+        ]
+    end
+  end
 
   def render_block(%{"type" => "image", "image_id" => image_id} = block, context) do
     case Map.get(context.images, image_id) do
@@ -83,29 +102,36 @@ defmodule Feather.StaticSite.Blocks do
 
     {head, body} =
       case {block["with_headings"], rows} do
-        {true, [first | rest]} -> {["<thead>", row(first), "</thead>"], rest}
+        {true, [first | rest]} -> {["<thead>", row(first, "th"), "</thead>"], rest}
         _ -> {[], rows}
       end
 
-    ["<table>", head, "<tbody>", Enum.map(body, &row/1), "</tbody></table>"]
+    ["<table>", head, "<tbody>", Enum.map(body, &row(&1, "td")), "</tbody></table>"]
   end
 
   def render_block(%{"type" => "embed"} = block, _context) do
     if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]) do
       src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")
 
-      caption =
+      {caption, title} =
         if present?(block["caption"]),
-          do: ["<figcaption>", sanitize(block["caption"]), "</figcaption>"],
-          else: []
+          do:
+            {["<figcaption>", sanitize(block["caption"]), "</figcaption>"],
+             ContentBlocks.strip_tags(block["caption"])},
+          else: {[], ""}
+
+      title = if String.trim(title) == "", do: gettext("Embedded content"), else: title
 
       [
-        "<figure><iframe src=\"",
+        "<figure class=\"embed\"><iframe src=\"",
         escape(src),
+        "\" title=\"",
+        escape(title),
         "\"",
         size_attribute("width", block["width"]),
         size_attribute("height", block["height"]),
-        " frameborder=\"0\" allowfullscreen></iframe>",
+        aspect_ratio(block["width"], block["height"]),
+        " allowfullscreen></iframe>",
         caption,
         "</figure>"
       ]
@@ -137,8 +163,8 @@ defmodule Feather.StaticSite.Blocks do
     ["<", tag, ">", items, "</", tag, ">"]
   end
 
-  defp row(cells) do
-    ["<tr>", Enum.map(cells, &["<td>", sanitize(&1), "</td>"]), "</tr>"]
+  defp row(cells, tag) do
+    ["<tr>", Enum.map(cells, &["<", tag, ">", sanitize(&1), "</", tag, ">"]), "</tr>"]
   end
 
   defp image(%Image{} = image, caption, routes) do
@@ -148,8 +174,10 @@ defmodule Feather.StaticSite.Blocks do
       if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
 
     [
-      "<picture><source srcset=\"",
+      "<figure><picture><source srcset=\"",
       escape(Routes.image_srcset(routes, image)),
+      "\" sizes=\"",
+      @content_image_sizes,
       "\" type=\"image/webp\"><img loading=\"lazy\"",
       optional_attribute("height", image.height),
       optional_attribute("width", image.width),
@@ -157,9 +185,9 @@ defmodule Feather.StaticSite.Blocks do
       escape(Routes.image_url(routes, image, :desktop_x1_jpg)),
       "\" alt=\"",
       escape(ContentBlocks.strip_tags(caption)),
-      "\" />",
+      "\" /></picture>",
       figcaption,
-      "</picture>"
+      "</figure>"
     ]
   end
 
@@ -170,9 +198,7 @@ defmodule Feather.StaticSite.Blocks do
           [
             "<img src=\"",
             escape(Routes.image_url(routes, book.cover_image, :mobile_x1_webp)),
-            "\" alt=\"",
-            escape(book.title),
-            "\" class=\"book-cover\">"
+            "\" alt=\"\" class=\"book-cover\">"
           ]
 
         present?(book.emoji) ->
@@ -200,6 +226,17 @@ defmodule Feather.StaticSite.Blocks do
     end
   end
 
+  defp aspect_ratio(width, height) do
+    with w when is_binary(w) <- size(width),
+         h when is_binary(h) <- size(height),
+         {w, ""} when w > 0 <- Integer.parse(w),
+         {h, ""} when h > 0 <- Integer.parse(h) do
+      [" style=\"aspect-ratio: ", Integer.to_string(w), " / ", Integer.to_string(h), "\""]
+    else
+      _ -> []
+    end
+  end
+
   # Embed sizes are numbers (or numeric strings); anything else is dropped.
   defp size(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
 
@@ -208,6 +245,16 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp size(_value), do: nil
+
+  # Imported content carries code fragments as languages; only names make a label.
+  defp code_language(language) when is_binary(language) do
+    language = String.trim(language)
+
+    if language not in ["plaintext", "text"] and language =~ ~r/\A[A-Za-z0-9+#._-]{1,20}\z/,
+      do: language
+  end
+
+  defp code_language(_language), do: nil
 
   defp optional_attribute(_name, nil), do: []
   defp optional_attribute(name, value), do: [" ", name, "=\"", escape(value), "\""]

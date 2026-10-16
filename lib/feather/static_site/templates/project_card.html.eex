@@ -2,29 +2,27 @@
   <div class="project-header">
     <%= cond do %>
     <% match?(%Image{}, @project.thumbnail_image) -> %>
-    <img src="<%= Routes.image_url(@routes, @project.thumbnail_image, :mobile_x1_webp) %>" alt="" class="project-thumbnail">
+    <img src="<%= Routes.image_url(@routes, @project.thumbnail_image, :mobile_x1_webp) %>" alt="" class="project-thumbnail" width="28" height="28" loading="lazy">
     <% present?(@project.emoji) -> %>
     <span class="project-emoji"><%= @project.emoji %></span>
     <% true -> %>
     <% end %>
-    <a href="<%= Routes.project_url(@routes, @project) %>" class="project-title"><%= @project.title %></a>
+    <h2 class="project-title"><a href="<%= Routes.project_url(@routes, @project) %>"><%= @project.title %></a></h2>
   </div>
   <div class="project-meta">
     <%= if present?(@project.company) do %>
     <span class="project-company"><%= @project.company %></span>
     <% end %>
-    <span class="project-period"><%= Project.display_period(@project) %></span>
+    <span class="project-period"><%= project_period(@project) %></span>
     <%= if present?(@project.role) do %>
     <span class="project-role"><%= @project.role %></span>
     <% end %>
   </div>
   <div class="project-badges">
-    <span class="badge badge-<%= status_badge_class(@project.status) %>"><%= titleize(@project.status) %></span>
+    <span class="badge status-<%= @project.status %>"><%= project_status_label(@project.status) %></span>
     <span class="badge badge-outline"><%= project_type_label(@project.project_type) %></span>
-    <%= for tag <- Content.tag_list(@project) do %>
-    <span class="badge badge-outline"><%= tag %></span>
-    <% end %>
   </div>
+  <%= tags(%{tags: Content.tag_list(@project)}) %>
   <%= if present?(@project.short_description) do %>
   <p class="project-description"><%= @project.short_description %></p>
   <% end %>

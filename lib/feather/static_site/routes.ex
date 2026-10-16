@@ -13,7 +13,9 @@ defmodule Feather.StaticSite.Routes do
   | page              | `/<slug>/` (homepage: `/`)   | `<slug>/index.html`                 |
   | project           | `/projects/<slug>/`          | `projects/<slug>/index.html`        |
   | image variant     | `/images/<public id>/<file>` | `images/<public id>/<file>`         |
+  | theme font        | `/fonts/<file>`              | `fonts/<file>`                      |
   | artifact          | `/feed.xml`, ...             | `feed.xml`, ...                     |
+  | not found page    | (any missing path)           | `404.html`                          |
 
   URLs are relative to `site_root`: `/` for a deployed site,
   `/preview/<target public id>/` for the preview. `canonical/1` returns the
@@ -28,6 +30,7 @@ defmodule Feather.StaticSite.Routes do
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Repo
   alias Feather.Sites.Site
+  alias Feather.StaticSite.Fonts
 
   @enforce_keys [:site, :site_root, :canonical_url]
   defstruct [:site, :site_root, :canonical_url]
@@ -38,6 +41,7 @@ defmodule Feather.StaticSite.Routes do
           {:home, pos_integer()}
           | {:artifact, String.t()}
           | {:image, Image.t(), Variants.variant()}
+          | {:font, String.t()}
           | {:project, Project.t()}
           | {:post, Post.t()}
           | {:page, Page.t()}
@@ -112,15 +116,19 @@ defmodule Feather.StaticSite.Routes do
     do: root <> image_segment(image, variant)
 
   @doc """
-  The `srcset` of an image: every webp variant with its width.
+  The `srcset` of an image: its webp variants with their real widths.
   """
   @spec image_srcset(t(), Image.t()) :: String.t()
   def image_srcset(%__MODULE__{} = routes, %Image{} = image) do
-    Variants.srcset_widths()
+    Variants.srcset_widths(image.width, image.height)
     |> Enum.map_join(", ", fn {filename, width} ->
       "#{image_url(routes, image, filename)} #{width}w"
     end)
   end
+
+  @doc "The URL of a theme font file (see `Feather.StaticSite.Fonts`)."
+  @spec font_url(t(), String.t()) :: String.t()
+  def font_url(%__MODULE__{site_root: root}, name), do: root <> font_segment(name)
 
   @doc """
   The URL of a generated file at the site root (`feed.xml`, `robots.txt`,
@@ -156,9 +164,17 @@ defmodule Feather.StaticSite.Routes do
   @spec image_path(t(), Image.t(), atom() | String.t()) :: String.t()
   def image_path(%__MODULE__{}, %Image{} = image, variant), do: image_segment(image, variant)
 
+  @doc "The output path of a theme font file."
+  @spec font_path(t(), String.t()) :: String.t()
+  def font_path(%__MODULE__{}, name), do: font_segment(name)
+
   @doc "The output path of a generated file at the site root."
   @spec artifact_path(t(), String.t()) :: String.t()
   def artifact_path(%__MODULE__{}, name), do: artifact(name)
+
+  @doc "The output path of the page web servers show for missing paths."
+  @spec not_found_path(t()) :: String.t()
+  def not_found_path(%__MODULE__{}), do: "404.html"
 
   defp artifact(name) do
     name = to_string(name)
@@ -166,6 +182,12 @@ defmodule Feather.StaticSite.Routes do
     if name in Slug.artifacts(),
       do: name,
       else: raise(ArgumentError, "unknown artifact #{inspect(name)}")
+  end
+
+  defp font_segment(name) do
+    if Fonts.file?(name),
+      do: "fonts/" <> name,
+      else: raise(ArgumentError, "unknown font file #{inspect(name)}")
   end
 
   defp post_segment(%Post{slug: slug, public_id: public_id}) do
@@ -196,8 +218,8 @@ defmodule Feather.StaticSite.Routes do
   there, or nil. Content of other sites is never found; drafts are (the
   preview shows them).
 
-  Precedence for ambiguous paths: home, artifact, image, project, post by
-  public id, page, post by slug. A trailing `index.html`, `.html` or `/`
+  Precedence for ambiguous paths: home, artifact, image, font, project,
+  post by public id, page, post by slug. A trailing `index.html`, `.html` or `/`
   is ignored.
   """
   @spec resolve(t(), String.t() | [String.t()]) :: route() | nil
@@ -212,6 +234,7 @@ defmodule Feather.StaticSite.Routes do
         &resolve_home/2,
         &resolve_artifact/2,
         &resolve_image/2,
+        &resolve_font/2,
         &resolve_project/2,
         &resolve_post_by_public_id/2,
         &resolve_page/2,
@@ -253,6 +276,9 @@ defmodule Feather.StaticSite.Routes do
       _ -> nil
     end
   end
+
+  defp resolve_font("fonts/" <> name, _site_id), do: if(Fonts.file?(name), do: {:font, name})
+  defp resolve_font(_path, _site_id), do: nil
 
   defp resolve_project("projects/" <> slug, site_id) do
     if project = find_by_slug(Project, site_id, slug), do: {:project, project}

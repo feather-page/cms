@@ -11,8 +11,11 @@ defmodule Feather.StaticSite.Templates do
   assigns map and returning safe iodata.
 
   Rendering goes through `Feather.StaticSite.Renderer`, which builds the
-  assigns (`data`, `routes`, `ctx`, ...).
+  assigns (`data`, `routes`, `ctx`, ...) and renders in the site's
+  language (`Feather.StaticSite.Gettext`).
   """
+
+  use Gettext, backend: Feather.StaticSite.Gettext
 
   require EEx
 
@@ -21,16 +24,17 @@ defmodule Feather.StaticSite.Templates do
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.{HTML, Project}
+  alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
-  alias Feather.StaticSite.{Blocks, Routes, SiteData}
+  alias Feather.StaticSite.{Blocks, Hue, Routes, SiteData}
 
   @css_path Path.expand("../../../priv/static_site/static_site.css", __DIR__)
   @external_resource @css_path
   @css File.read!(@css_path)
 
-  @templates ~w(layout home post post_book_card page books_list projects_list project_card
-                project tags)a
+  @templates ~w(layout masthead home post post_book_card page books_list projects_list project_card
+                project tags not_found)a
 
   for name <- @templates do
     EEx.function_from_file(
@@ -46,6 +50,35 @@ defmodule Feather.StaticSite.Templates do
   @doc "The stylesheet inlined into every page."
   @spec css() :: String.t()
   def css, do: @css
+
+  @doc """
+  The `@font-face` rules of the heading fonts, addressed from the site
+  root (the stylesheet is inlined, so relative URLs would depend on the
+  page's depth).
+  """
+  @spec font_faces(Routes.t()) :: Phoenix.HTML.safe()
+  def font_faces(%Routes{} = routes) do
+    faces =
+      for {weight, local_names} <- [
+            {700, ["Nunito Bold", "Nunito-Bold"]},
+            {800, ["Nunito ExtraBold", "Nunito-ExtraBold"]}
+          ] do
+        locals = Enum.map(local_names, &~s[local("#{&1}"), ])
+        url = routes |> Routes.font_url("nunito-latin-#{weight}.woff2") |> css_string()
+
+        [
+          ~s[@font-face { font-family: "Nunito"; font-style: normal; font-weight: #{weight}; ],
+          ~s[font-display: swap; src: ],
+          locals,
+          ~s[url("#{url}") format("woff2"); }\n]
+        ]
+      end
+
+    {:safe, faces}
+  end
+
+  # HTML escaping does not apply inside <style>; a CSS escape keeps the URL inside its string.
+  defp css_string(text), do: String.replace(text, ~r/["\\<>\n]/, &"\\#{Base.encode16(&1)} ")
 
   ## Helpers
 
@@ -79,19 +112,76 @@ defmodule Feather.StaticSite.Templates do
     |> Enum.reverse()
   end
 
-  @doc """
-  A date in the long English format of the Rails export
-  (`"October 06, 2026"`); datetimes are taken in UTC.
-  """
+  @doc "A date in the long format of the current language: `\"May 6, 2025\"`, `\"6. Mai 2025\"`."
   @spec format_date(DateTime.t() | Date.t() | nil) :: String.t()
-  def format_date(nil), do: ""
-  def format_date(%DateTime{} = datetime), do: datetime |> DateTime.to_date() |> format_date()
-  def format_date(%Date{} = date), do: Calendar.strftime(date, "%B %d, %Y")
+  def format_date(date) do
+    gettext_comment("Calendar.strftime format of a long date")
+    strftime(date, gettext("%B %-d, %Y"))
+  end
 
-  @doc "A book's read date, `\"14/03/2026\"`."
-  @spec format_short_date(Date.t() | nil) :: String.t()
-  def format_short_date(nil), do: ""
-  def format_short_date(%Date{} = date), do: Calendar.strftime(date, "%d/%m/%Y")
+  @doc "A date in the short format of the current language: `\"Aug 12, 2026\"`, `\"12.08.2026\"`."
+  @spec format_short_date(DateTime.t() | Date.t() | nil) :: String.t()
+  def format_short_date(date) do
+    gettext_comment("Calendar.strftime format of a short date, unambiguous in the language")
+    strftime(date, gettext("%b %-d, %Y"))
+  end
+
+  defp format_month(date) do
+    gettext_comment("Calendar.strftime format of a month and year")
+    strftime(date, gettext("%b %Y"))
+  end
+
+  defp strftime(nil, _format), do: ""
+
+  defp strftime(%DateTime{} = datetime, format),
+    do: datetime |> DateTime.to_date() |> strftime(format)
+
+  defp strftime(%Date{} = date, format) do
+    Calendar.strftime(date, format,
+      month_names: &month_name/1,
+      abbreviated_month_names: &abbreviated_month_name/1
+    )
+  end
+
+  @doc "A date as a `<time>` element, formatted by `format` (`:long` or `:short`)."
+  @spec time_tag(DateTime.t() | Date.t() | nil, :long | :short) :: Phoenix.HTML.safe()
+  def time_tag(date, format \\ :long)
+  def time_tag(nil, _format), do: {:safe, ""}
+
+  def time_tag(%DateTime{} = datetime, format),
+    do: datetime |> DateTime.to_date() |> time_tag(format)
+
+  def time_tag(%Date{} = date, format) do
+    text = if format == :short, do: format_short_date(date), else: format_date(date)
+
+    {:safe, [~s(<time datetime="), Date.to_iso8601(date), ~s(">), escape(text), "</time>"]}
+  end
+
+  defp month_name(1), do: pgettext("month", "January")
+  defp month_name(2), do: pgettext("month", "February")
+  defp month_name(3), do: pgettext("month", "March")
+  defp month_name(4), do: pgettext("month", "April")
+  defp month_name(5), do: pgettext("month", "May")
+  defp month_name(6), do: pgettext("month", "June")
+  defp month_name(7), do: pgettext("month", "July")
+  defp month_name(8), do: pgettext("month", "August")
+  defp month_name(9), do: pgettext("month", "September")
+  defp month_name(10), do: pgettext("month", "October")
+  defp month_name(11), do: pgettext("month", "November")
+  defp month_name(12), do: pgettext("month", "December")
+
+  defp abbreviated_month_name(1), do: pgettext("abbreviated month", "Jan")
+  defp abbreviated_month_name(2), do: pgettext("abbreviated month", "Feb")
+  defp abbreviated_month_name(3), do: pgettext("abbreviated month", "Mar")
+  defp abbreviated_month_name(4), do: pgettext("abbreviated month", "Apr")
+  defp abbreviated_month_name(5), do: pgettext("abbreviated month", "May")
+  defp abbreviated_month_name(6), do: pgettext("abbreviated month", "Jun")
+  defp abbreviated_month_name(7), do: pgettext("abbreviated month", "Jul")
+  defp abbreviated_month_name(8), do: pgettext("abbreviated month", "Aug")
+  defp abbreviated_month_name(9), do: pgettext("abbreviated month", "Sep")
+  defp abbreviated_month_name(10), do: pgettext("abbreviated month", "Oct")
+  defp abbreviated_month_name(11), do: pgettext("abbreviated month", "Nov")
+  defp abbreviated_month_name(12), do: pgettext("abbreviated month", "Dec")
 
   @doc "A rating of 1 to 5 as stars: `\"★★★☆☆\"`."
   @spec rating_stars(integer() | nil) :: String.t() | nil
@@ -100,6 +190,38 @@ defmodule Feather.StaticSite.Templates do
   def rating_stars(rating) when is_integer(rating) do
     rating = rating |> max(0) |> min(5)
     String.duplicate("★", rating) <> String.duplicate("☆", 5 - rating)
+  end
+
+  @doc "A rating for screen readers: `\"4 of 5 stars\"`."
+  @spec rating_label(integer()) :: String.t()
+  def rating_label(rating) when is_integer(rating),
+    do: gettext("%{rating} of 5 stars", rating: rating |> max(0) |> min(5))
+
+  defp rating(rating, class) do
+    {:safe,
+     [
+       ~s(<span class="),
+       class,
+       ~s(" role="img" aria-label="),
+       rating_label(rating),
+       ~s("><span aria-hidden="true">),
+       rating_stars(rating),
+       "</span></span>"
+     ]}
+  end
+
+  defp social_icon(icon) do
+    case SocialMediaService.svg(icon) do
+      nil ->
+        ""
+
+      svg ->
+        raw(
+          String.replace(svg, "<svg ", ~s(<svg aria-hidden="true" focusable="false" ),
+            global: false
+          )
+        )
+    end
   end
 
   @doc """
@@ -142,17 +264,28 @@ defmodule Feather.StaticSite.Templates do
 
   defp unsplash_credit?(_image), do: false
 
+  defp dimensions(%Image{width: width, height: height})
+       when is_integer(width) and is_integer(height),
+       do: raw(~s( width="#{width}" height="#{height}"))
+
+  defp dimensions(_image), do: {:safe, ""}
+
+  # Open Graph wants language_TERRITORY; languages not listed here go without.
+  @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP
+                 ko_KR nl_NL pl_PL pt_PT ru_RU sv_SE tr_TR uk_UA zh_CN)
+              |> Map.new(&{binary_part(&1, 0, 2), &1})
+
+  defp og_locale(language_code), do: Map.get(@og_locales, language_code)
+
   defp book(%{book: %Book{} = book}), do: book
   defp book(_post), do: nil
 
-  # Rails linked every review with a title; only published ones exist in
-  # the exported site.
+  # Only published reviews exist in the exported site.
   defp review_linked?(data, %Book{post: %Content.Post{} = post}),
     do: present?(post.title) and SiteData.published?(data, post)
 
   defp review_linked?(_data, _book), do: false
 
-  # Books with a read date, grouped by year, most recent first.
   defp books_by_year(books) do
     books
     |> Enum.filter(& &1.read_at)
@@ -161,8 +294,6 @@ defmodule Feather.StaticSite.Templates do
     |> Enum.map(fn [first | _] = group -> {first.read_at.year, group} end)
   end
 
-  # Ongoing projects first (latest start first), then the others by end
-  # (or start) date, latest first.
   defp sort_projects(projects) do
     {ongoing, other} = Enum.split_with(projects, &(&1.status == "ongoing"))
 
@@ -175,19 +306,122 @@ defmodule Feather.StaticSite.Templates do
 
   defp project_links(_project), do: []
 
-  defp status_badge_class("completed"), do: "success"
-  defp status_badge_class("ongoing"), do: "primary"
-  defp status_badge_class("paused"), do: "warning"
-  defp status_badge_class(_status), do: "secondary"
+  defp project_status_label("ongoing"), do: pgettext("project status", "Ongoing")
+  defp project_status_label("completed"), do: pgettext("project status", "Completed")
+  defp project_status_label("paused"), do: pgettext("project status", "Paused")
+  defp project_status_label("abandoned"), do: pgettext("project status", "Abandoned")
+  defp project_status_label(status), do: titleize(status)
 
-  @project_type_labels %{
-    "professional" => "Professional",
-    "personal" => "Personal",
-    "open_source" => "Open Source",
-    "freelance" => "Freelance"
-  }
+  defp project_type_label("professional"), do: pgettext("project type", "Professional")
+  defp project_type_label("personal"), do: pgettext("project type", "Personal")
+  defp project_type_label("open_source"), do: pgettext("project type", "Open Source")
+  defp project_type_label("freelance"), do: pgettext("project type", "Freelance")
+  defp project_type_label(type), do: titleize(type)
 
-  defp project_type_label(type), do: Map.get(@project_type_labels, type) || titleize(type)
+  defp project_period(%Project{period: period} = project) do
+    if present?(period) do
+      period
+    else
+      finish = if project.ended_at, do: format_month(project.ended_at), else: gettext("today")
+      gettext("%{start} – %{finish}", start: format_month(project.started_at), finish: finish)
+    end
+  end
+
+  defp photo_credit(%Image{} = image) do
+    link = fn url, text ->
+      [~s(<a href="), escape(url), ~s(" target="_blank" rel="noopener">), escape(text), "</a>"]
+      |> IO.iodata_to_binary()
+    end
+
+    raw(
+      gettext("Photo by %{photographer} on %{unsplash}",
+        photographer:
+          link.(Image.unsplash_photographer_url(image), Image.unsplash_photographer_name(image)),
+        unsplash: link.("https://unsplash.com", "Unsplash")
+      )
+    )
+  end
+
+  defp chip(href, emoji, title, current? \\ false) do
+    {class, seal} =
+      if present?(emoji),
+        do: {"chip", [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]},
+        else: {"chip chip--plain", []}
+
+    {:safe,
+     [
+       ~s(<a class="),
+       class,
+       ~s(" href="),
+       escape(href),
+       ~s("),
+       if(current?, do: ~s( aria-current="page"), else: ""),
+       ">",
+       seal,
+       escape(title),
+       "</a>"
+     ]}
+  end
+
+  # Mascots are characters, not content: decorative, so alt is empty.
+  defp mascot(routes, %Image{} = image, class, sizes, opts \\ []) do
+    {:safe,
+     [
+       ~s(<img class="),
+       class,
+       ~s(" src="),
+       escape(Routes.image_url(routes, image, :mobile_x1_webp)),
+       ~s(" srcset="),
+       escape(Routes.image_srcset(routes, image)),
+       ~s(" sizes="),
+       escape(sizes),
+       ~s("),
+       image |> dimensions() |> elem(1),
+       if(Keyword.get(opts, :lazy, true), do: ~s( loading="lazy"), else: ""),
+       ~s( alt="">)
+     ]}
+  end
+
+  defp not_found_mascot(site), do: site.post_end_mascot_image || site.projects_mascot_image
+
+  defp hue(site), do: Hue.for_emoji(site.emoji)
+
+  defp emoji_label(emoji, text) do
+    mark =
+      if present?(emoji),
+        do: [~s(<span class="link-emoji" aria-hidden="true">), escape(emoji), "</span>"],
+        else: []
+
+    {:safe, [mark, escape(text)]}
+  end
+
+  @label_words 7
+
+  defp post_label(post) do
+    if present?(post.title), do: post.title, else: untitled_label(post)
+  end
+
+  defp untitled_label(post) do
+    case post.content |> ContentBlocks.excerpt() |> String.split() do
+      [] ->
+        format_date(post.publish_at)
+
+      words when length(words) <= @label_words ->
+        Enum.join(words, " ")
+
+      words ->
+        words
+        |> Enum.take(@label_words)
+        |> Enum.join(" ")
+        |> String.replace(~r/[[:punct:]]+\z/u, "")
+        |> Kernel.<>("…")
+    end
+  end
+
+  defp current_page?(%{page: %Content.Page{id: id}}, %Content.Page{id: id}), do: true
+  defp current_page?(_assigns, _page), do: false
+
+  defp escape(value), do: value |> to_string() |> Phoenix.HTML.html_escape() |> elem(1)
 
   defp titleize(nil), do: ""
 
