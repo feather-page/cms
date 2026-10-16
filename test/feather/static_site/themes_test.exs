@@ -13,6 +13,7 @@ defmodule Feather.StaticSite.ThemesTest do
   test "returns the module of a theme by key or by site" do
     assert Themes.module("feather") == FeatherPage
     assert Themes.module(%Site{}) == FeatherPage
+    assert Themes.module(%Site{theme: "feather"}) == FeatherPage
   end
 
   test "raises for unknown themes" do

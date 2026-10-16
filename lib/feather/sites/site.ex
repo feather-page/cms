@@ -5,6 +5,7 @@ defmodule Feather.Sites.Site do
   use Feather.Schema
 
   alias Feather.Sites.Languages
+  alias Feather.StaticSite.Themes
 
   @type t :: %__MODULE__{}
   @type mascot_slot :: :footer | :post_end | :projects
@@ -18,6 +19,7 @@ defmodule Feather.Sites.Site do
     field :language_code, :string, default: "en"
     field :emoji, :string, default: "🌐"
     field :copyright, :string, default: "© All rights reserved."
+    field :theme, :string, default: "feather"
 
     has_many :site_users, Feather.Sites.SiteUser
     has_many :users, through: [:site_users, :user]
@@ -34,6 +36,7 @@ defmodule Feather.Sites.Site do
     belongs_to :footer_mascot_image, Feather.Media.Image
     belongs_to :post_end_mascot_image, Feather.Media.Image
     belongs_to :projects_mascot_image, Feather.Media.Image
+    belongs_to :portrait_image, Feather.Media.Image
 
     timestamps()
   end
@@ -41,14 +44,15 @@ defmodule Feather.Sites.Site do
   @doc false
   def changeset(site, attrs) do
     site
-    |> cast(attrs, [:title, :domain, :language_code, :emoji, :copyright])
+    |> cast(attrs, [:title, :domain, :language_code, :emoji, :copyright, :theme])
     |> update_change(:domain, &normalize_domain/1)
     |> Feather.Validations.trim_to_nil(:emoji)
-    |> validate_required([:title, :domain, :language_code, :copyright])
+    |> validate_required([:title, :domain, :language_code, :copyright, :theme])
     |> validate_format(:domain, ~r/\A[a-zA-Z0-9\-.]+\z/,
       message: "may only contain letters, digits, dots and dashes"
     )
     |> validate_inclusion(:language_code, Languages.codes())
+    |> validate_inclusion(:theme, Themes.keys())
     |> Feather.Validations.validate_emoji(:emoji)
     |> unique_constraint(:domain)
     |> unique_constraint(:public_id)
@@ -75,6 +79,14 @@ defmodule Feather.Sites.Site do
   @doc "The foreign keys of all mascot slots."
   @spec mascot_fields() :: [atom()]
   def mascot_fields, do: Enum.map(@mascot_slots, &mascot_field/1)
+
+  @doc "The associations of all images of the site, its mascots and its portrait."
+  @spec image_assocs() :: [atom()]
+  def image_assocs, do: mascot_assocs() ++ [:portrait_image]
+
+  @doc "The foreign keys of all images of the site, its mascots and its portrait."
+  @spec image_fields() :: [atom()]
+  def image_fields, do: mascot_fields() ++ [:portrait_image_id]
 
   @doc """
   Normalizes what users type as a domain: trims and downcases it and drops

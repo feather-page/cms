@@ -48,4 +48,38 @@ defmodule Feather.StaticSite.SiteDataTest do
       end
     end
   end
+
+  describe "portrait" do
+    setup %{scope: scope} do
+      path = test_image_path(60, 80, "jpg")
+      {:ok, site} = Sites.put_portrait(scope, path, "me.jpg")
+      File.rm(path)
+
+      %{site: Repo.get!(Sites.Site, site.id)}
+    end
+
+    test "load/2 preloads the portrait", %{site: site} do
+      assert %Image{filename: "me.jpg"} = SiteData.load(site).site.portrait_image
+    end
+
+    test "a feather site, which shows no portrait, leaves it out", %{site: site} do
+      refute site.portrait_image_id in Enum.map(
+               SiteData.images_in_use(SiteData.load(site)),
+               & &1.id
+             )
+
+      portrait = SiteData.load(site).site.portrait_image
+
+      refute site
+             |> export()
+             |> RecordingSink.paths()
+             |> Enum.any?(&String.starts_with?(&1, "images/#{portrait.public_id}/"))
+    end
+  end
+
+  defp export(site) do
+    sink = RecordingSink.new(start_supervised!(RecordingSink))
+    :ok = Export.run(site, Routes.new(site), sink)
+    sink
+  end
 end

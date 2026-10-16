@@ -255,10 +255,12 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
     end
 
     defp mascot(scope, slot),
-      do: Map.fetch!(Sites.preload_mascots(Sites.get_site!(scope, scope.site.public_id)), slot)
+      do: Map.fetch!(Sites.preload_images(Sites.get_site!(scope, scope.site.public_id)), slot)
 
     test "shows three empty slots with the site emoji", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      assert has_element?(lv, "#mascots-hint", "shown by the feather.page theme")
 
       for slot <- ~w(footer post_end projects) do
         assert has_element?(lv, "#mascot-#{slot}-preview", site.emoji)
@@ -343,6 +345,110 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
                lv,
                ~s(#mascot-footer-form input[type=file][accept=".png,.webp"])
              )
+    end
+  end
+
+  describe "theme" do
+    setup [:register_and_log_in_user, :create_site_for_user]
+
+    test "offers the registered themes", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      assert has_element?(
+               lv,
+               ~s(#site-form select#site_theme option[value="feather"]),
+               "feather.page"
+             )
+
+      assert has_element?(lv, ~s(#site_theme option[value="feather"][selected]))
+    end
+  end
+
+  describe "portrait" do
+    setup [:register_and_log_in_user, :create_site_for_user]
+
+    defp upload_portrait(lv, name \\ "me.jpg", content \\ nil) do
+      content = content || File.read!(test_image_path(60, 80, "jpg"))
+
+      lv
+      |> file_input("#portrait-form", :portrait_image, [
+        %{name: name, content: content, type: "image/jpeg"}
+      ])
+      |> render_upload(name)
+    end
+
+    defp portrait(scope),
+      do: Sites.preload_images(Sites.get_site!(scope, scope.site.public_id)).portrait_image
+
+    test "shows an empty portrait slot with a hint on the themes", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      assert has_element?(lv, "#portrait-slots #portrait")
+      assert has_element?(lv, "#portrait-hint", "Simple sidebar theme shows it on the home page")
+      refute has_element?(lv, "#portrait-preview img")
+      assert has_element?(lv, "#portrait-form label", "Upload")
+      assert has_element?(lv, ~s(#portrait-form input[type=file][accept=".jpg,.jpeg,.png,.webp"]))
+      refute has_element?(lv, "#remove-portrait")
+    end
+
+    test "uploads and replaces the portrait", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload_portrait(lv, "old.jpg")
+      old = portrait(scope)
+      assert %Feather.Media.Image{filename: "old.jpg"} = old
+      assert has_element?(lv, ~s(#portrait-preview img[src*="#{old.public_id}"]))
+      assert has_element?(lv, "#portrait-form label", "Replace")
+      assert render(lv) =~ "Portrait was successfully updated."
+
+      upload_portrait(lv, "new.jpg")
+
+      assert %{filename: "new.jpg"} = new = portrait(scope)
+      assert has_element?(lv, ~s(#portrait-preview img[src*="#{new.public_id}"]))
+      refute Feather.Repo.get(Feather.Media.Image, old.id)
+      refute has_element?(lv, "#mascot-footer-preview img")
+    end
+
+    test "removes the portrait after confirming", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      upload_portrait(lv)
+      image = portrait(scope)
+
+      html = confirm_click(lv, "#remove-portrait", "Remove the portrait?")
+
+      assert html =~ "Portrait was successfully removed."
+      assert portrait(scope) == nil
+      refute Feather.Repo.get(Feather.Media.Image, image.id)
+      refute has_element?(lv, "#portrait-preview img")
+      refute has_element?(lv, "#remove-portrait")
+    end
+
+    test "shows an error for a file that is not an image", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload_portrait(lv, "fake.jpg", "not an image")
+
+      assert has_element?(lv, "#portrait-error", "must be an image")
+      assert portrait(scope) == nil
+    end
+
+    test "names the accepted formats for another file type", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      lv
+      |> file_input("#portrait-form", :portrait_image, [
+        %{name: "me.gif", content: "GIF89a", type: "image/gif"}
+      ])
+      |> render_upload("me.gif")
+
+      lv |> element("#portrait-form") |> render_change(%{})
+
+      assert has_element?(lv, "#portrait-error", "Only JPEG, PNG and WebP files can be uploaded.")
+      assert portrait(scope) == nil
     end
   end
 end

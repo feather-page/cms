@@ -1,8 +1,9 @@
 defmodule Feather.StaticSite.Themes do
   @moduledoc """
-  The themes of the static site (ADR 0015): a fixed list in code, each a
-  key, a label and a module implementing `Feather.StaticSite.Theme`.
-  Every site uses `feather` for now.
+  The themes a site can choose from (`site.theme`, ADR 0015): a fixed list
+  in code, each a key stored on the site, a label for the site settings
+  and a module implementing `Feather.StaticSite.Theme`. Sites start with
+  `feather` (the column default).
   """
 
   alias Feather.Sites.Site
@@ -23,7 +24,7 @@ defmodule Feather.StaticSite.Themes do
 
   @doc "The module of a theme, by key or by the site that uses it. Raises for unknown keys."
   @spec module(key() | Site.t()) :: module()
-  def module(%Site{}), do: module("feather")
+  def module(%Site{theme: key}), do: module(key)
 
   def module(key) when is_binary(key) do
     case Enum.find(@themes, &(&1.key == key)) do

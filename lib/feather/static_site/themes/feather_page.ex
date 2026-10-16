@@ -11,6 +11,7 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   alias Feather.Content
   alias Feather.Content.HTML
   alias Feather.Media.Image
+  alias Feather.Sites.Site
   alias Feather.StaticSite.{Blocks, Routes}
 
   @priv_dir Path.expand("../../../../priv/static_site/themes/feather_page", __DIR__)
@@ -65,6 +66,9 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   @impl true
   def font_path(name),
     do: Application.app_dir(:feather, "priv/static_site/themes/feather_page/fonts/#{name}")
+
+  @impl true
+  def site_image_fields, do: Site.mascot_fields()
 
   defp chip(href, emoji, title, current? \\ false) do
     {class, seal} =

@@ -150,34 +150,64 @@ defmodule Feather.Sites do
     Site.changeset(site, attrs)
   end
 
-  ## Mascots
+  ## Mascots and portrait
 
   @doc "The mascot slots of a site: `:footer`, `:post_end` and `:projects`."
   @spec mascot_slots() :: [Site.mascot_slot()]
   def mascot_slots, do: Site.mascot_slots()
 
   @doc """
-  Preloads the mascot images of a site (`footer_mascot_image`,
-  `post_end_mascot_image`, `projects_mascot_image`).
+  Preloads the images of a site: its mascots (`footer_mascot_image`,
+  `post_end_mascot_image`, `projects_mascot_image`) and its
+  `portrait_image`.
   """
-  @spec preload_mascots(Site.t()) :: Site.t()
-  def preload_mascots(%Site{} = site), do: Repo.preload(site, Site.mascot_assocs())
+  @spec preload_images(Site.t()) :: Site.t()
+  def preload_images(%Site{} = site), do: Repo.preload(site, Site.image_assocs())
 
   @doc """
   Makes an uploaded file the mascot of a slot of the scope's site. The
   image it replaces is deleted unless something else still uses it (see
   `Feather.Media.Cleanup.delete_released/1`). Returns the site with its
-  mascots preloaded, or `{:error, changeset}` if the file is not a valid
+  images preloaded, or `{:error, changeset}` if the file is not a valid
   image.
   """
   @spec put_mascot(Scope.t(), Site.mascot_slot(), Path.t(), String.t()) ::
           {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
-  def put_mascot(%Scope{site: %Site{} = site} = scope, slot, path, filename) do
-    true = can_access_site?(scope, site)
+  def put_mascot(%Scope{} = scope, slot, path, filename) do
     true = slot in Site.mascot_slots()
+    put_image(scope, Site.mascot_field(slot), path, filename)
+  end
+
+  @doc """
+  Empties a mascot slot of the scope's site and deletes its image unless
+  something else still uses it. Returns the site with its images
+  preloaded.
+  """
+  @spec remove_mascot(Scope.t(), Site.mascot_slot()) ::
+          {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
+  def remove_mascot(%Scope{} = scope, slot) do
+    true = slot in Site.mascot_slots()
+    remove_image(scope, Site.mascot_field(slot))
+  end
+
+  @doc """
+  Makes an uploaded file the portrait of the scope's site, like
+  `put_mascot/4`.
+  """
+  @spec put_portrait(Scope.t(), Path.t(), String.t()) ::
+          {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
+  def put_portrait(%Scope{} = scope, path, filename),
+    do: put_image(scope, :portrait_image_id, path, filename)
+
+  @doc "Removes the portrait of the scope's site, like `remove_mascot/2`."
+  @spec remove_portrait(Scope.t()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
+  def remove_portrait(%Scope{} = scope), do: remove_image(scope, :portrait_image_id)
+
+  defp put_image(%Scope{site: %Site{} = site} = scope, field, path, filename) do
+    true = can_access_site?(scope, site)
 
     with {:ok, image} <- Feather.Media.create_image_from_upload(scope, path, filename) do
-      case set_mascot(site, slot, image) do
+      case set_image(site, field, image) do
         {:ok, site} ->
           {:ok, site}
 
@@ -188,23 +218,12 @@ defmodule Feather.Sites do
     end
   end
 
-  @doc """
-  Empties a mascot slot of the scope's site and deletes its image unless
-  something else still uses it. Returns the site with its mascots
-  preloaded.
-  """
-  @spec remove_mascot(Scope.t(), Site.mascot_slot()) ::
-          {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
-  def remove_mascot(%Scope{site: %Site{} = site} = scope, slot) do
+  defp remove_image(%Scope{site: %Site{} = site} = scope, field) do
     true = can_access_site?(scope, site)
-    true = slot in Site.mascot_slots()
-
-    set_mascot(site, slot, nil)
+    set_image(site, field, nil)
   end
 
-  defp set_mascot(%Site{id: site_id}, slot, image) do
-    field = Site.mascot_field(slot)
-
+  defp set_image(%Site{id: site_id}, field, image) do
     result =
       Repo.transact(fn ->
         site = Repo.get!(Site, site_id)
@@ -219,7 +238,7 @@ defmodule Feather.Sites do
 
     with {:ok, {site, deleted}} <- result do
       Enum.each(deleted, &Feather.Media.delete_image_files/1)
-      {:ok, preload_mascots(site)}
+      {:ok, preload_images(site)}
     end
   end
 

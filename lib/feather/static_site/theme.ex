@@ -17,8 +17,8 @@ defmodule Feather.StaticSite.Theme do
   then `c:layout/1` with the same assigns plus `inner_content`, the view's
   output. Every page gets:
 
-    * `data` (`Feather.StaticSite.SiteData`), `site` (its mascots
-      preloaded), `routes`, `ctx` (for `Feather.StaticSite.Blocks`),
+    * `data` (`Feather.StaticSite.SiteData`), `site` (its mascots and
+      portrait preloaded), `routes`, `ctx` (for `Feather.StaticSite.Blocks`),
       `social_links`
     * `page_title`, `document_title`, `page_emoji`, `is_home`, `noindex`,
       the meta tags (`description`, `canonical_url`, `og_type`,
@@ -61,6 +61,12 @@ defmodule Feather.StaticSite.Theme do
 
   @doc "The path of one of `c:fonts/0` in the app."
   @callback font_path(String.t()) :: Path.t()
+
+  @doc """
+  The site's image fields (of `Feather.Sites.Site.image_fields/0`) the
+  theme renders; the export copies only their images.
+  """
+  @callback site_image_fields() :: [atom()]
 
   defmacro __using__(_opts) do
     quote do
