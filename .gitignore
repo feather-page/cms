@@ -53,3 +53,9 @@ npm-debug.log
 /.superpowers/
 .DS_Store
 .idea
+
+# Impeccable design scratch files (mockups, decision pages, build state, review captures).
+**/.impeccable/mocks/
+**/.impeccable/questions/
+**/.impeccable/build/
+**/.impeccable/review/
