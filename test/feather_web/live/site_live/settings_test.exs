@@ -240,4 +240,109 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert has_element?(lv, "#no-social-media-links")
     end
   end
+
+  describe "mascots" do
+    setup [:register_and_log_in_user, :create_site_for_user]
+
+    defp upload_mascot(lv, slot, name \\ "mascot.png", content \\ nil) do
+      content = content || File.read!(transparent_image_path(120, 40))
+
+      lv
+      |> file_input("#mascot-#{slot}-form", :"#{slot}_mascot_image", [
+        %{name: name, content: content, type: "image/png"}
+      ])
+      |> render_upload(name)
+    end
+
+    defp mascot(scope, slot),
+      do: Map.fetch!(Sites.preload_mascots(Sites.get_site!(scope, scope.site.public_id)), slot)
+
+    test "shows three empty slots with the site emoji", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      for slot <- ~w(footer post_end projects) do
+        assert has_element?(lv, "#mascot-#{slot}-preview", site.emoji)
+        refute has_element?(lv, "#mascot-#{slot}-preview img")
+        assert has_element?(lv, "#mascot-#{slot}-form label", "Upload")
+        refute has_element?(lv, "#remove-mascot-#{slot}")
+      end
+    end
+
+    test "uploads a mascot", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload_mascot(lv, "footer", "mice.png")
+
+      assert %Feather.Media.Image{filename: "mice.png"} =
+               image = mascot(scope, :footer_mascot_image)
+
+      assert has_element?(lv, ~s(#mascot-footer-preview img[src*="#{image.public_id}"]))
+      assert has_element?(lv, "#mascot-footer-form label", "Replace")
+      assert has_element?(lv, "#remove-mascot-footer")
+      refute has_element?(lv, "#mascot-projects-preview img")
+      assert render(lv) =~ "Footer mascot was successfully updated."
+    end
+
+    test "replaces a mascot", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload_mascot(lv, "post_end", "old.png")
+      old = mascot(scope, :post_end_mascot_image)
+      upload_mascot(lv, "post_end", "new.png")
+
+      assert %{filename: "new.png"} = new = mascot(scope, :post_end_mascot_image)
+      assert has_element?(lv, ~s(#mascot-post_end-preview img[src*="#{new.public_id}"]))
+      refute Feather.Repo.get(Feather.Media.Image, old.id)
+    end
+
+    test "removes a mascot after confirming", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      upload_mascot(lv, "projects")
+      image = mascot(scope, :projects_mascot_image)
+
+      html = confirm_click(lv, "#remove-mascot-projects", "Remove the projects mascot?")
+
+      assert html =~ "Projects mascot was successfully removed."
+      assert mascot(scope, :projects_mascot_image) == nil
+      refute Feather.Repo.get(Feather.Media.Image, image.id)
+      assert has_element?(lv, "#mascot-projects-preview", site.emoji)
+      refute has_element?(lv, "#remove-mascot-projects")
+    end
+
+    test "shows an error for a file that is not an image", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload_mascot(lv, "footer", "fake.png", "not an image")
+
+      assert has_element?(lv, "#mascot-footer-error", "must be an image")
+      assert mascot(scope, :footer_mascot_image) == nil
+    end
+
+    test "names the size limit for a file that is too big", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      lv
+      |> file_input("#mascot-footer-form", :footer_mascot_image, [
+        %{
+          name: "big.png",
+          content: :binary.copy("x", Feather.Media.max_byte_size() + 1),
+          type: "image/png"
+        }
+      ])
+      |> render_upload("big.png")
+
+      lv |> element("#mascot-footer-form") |> render_change(%{})
+
+      assert has_element?(lv, "#mascot-footer-error", "at most 25 MB")
+    end
+
+    test "accepts only PNG and WebP files", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      assert has_element?(
+               lv,
+               ~s(#mascot-footer-form input[type=file][accept=".png,.webp"])
+             )
+    end
+  end
 end

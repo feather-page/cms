@@ -97,6 +97,21 @@ defmodule FeatherWeb.SiteAuthTest do
       assert Feather.Media.list_images(scope) == []
     end
 
+    test "cannot upload a mascot", %{conn: conn, site: site, scope: scope, user: user} do
+      {:ok, view, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      upload =
+        file_input(view, "#mascot-footer-form", :footer_mascot_image, [
+          %{name: "mice.png", content: File.read!(test_image_path()), type: "image/png"}
+        ])
+
+      remove_user(site, user)
+      render_upload(upload, "mice.png")
+
+      assert %{"error" => _message} = assert_redirect(view, "/")
+      assert Feather.Media.list_images(scope) == []
+    end
+
     test "a super admin keeps access", %{conn: conn, site: site, scope: scope, user: user} do
       {:ok, post} = Content.create_post(scope, %{"title" => "Delete me"})
       user |> Ecto.Changeset.change(super_admin: true) |> Repo.update!()

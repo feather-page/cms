@@ -23,6 +23,26 @@ defmodule Feather.MediaFixtures do
   end
 
   @doc """
+  Writes a generated PNG with an alpha channel that runs from fully
+  transparent on the left to opaque on the right, and returns its path.
+  """
+  def transparent_image_path(width \\ 64, height \\ 48) do
+    dir = Path.join(System.tmp_dir!(), "feather-test-images")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "test-#{System.unique_integer([:positive])}.png")
+
+    {:ok, colour} = Operation.black(width, height, bands: 3)
+    {:ok, colour} = Operation.linear(colour, [1.0], [128.0])
+    {:ok, xy} = Operation.xyz(width, height)
+    {:ok, x} = Operation.extract_band(xy, 0)
+    {:ok, alpha} = Operation.linear(x, [255.0 / (width - 1)], [0.0])
+    {:ok, image} = Operation.bandjoin([colour, alpha])
+    {:ok, image} = Operation.cast(image, :VIPS_FORMAT_UCHAR)
+    :ok = Image.write_to_file(image, path)
+    path
+  end
+
+  @doc """
   Writes a generated Ultra HDR JPEG (a JPEG with a gain map, as iPhones take
   them; libvips reads it with `uhdrload`) and returns its path.
   """

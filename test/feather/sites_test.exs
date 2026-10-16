@@ -405,4 +405,129 @@ defmodule Feather.SitesTest do
       refute Sites.in_navigation?(c)
     end
   end
+
+  describe "mascots" do
+    setup do
+      %{scope: site_scope_fixture()}
+    end
+
+    defp mascot_upload(scope, slot) do
+      path = test_image_path(90, 30)
+      {:ok, site} = Sites.put_mascot(scope, slot, path, "mascot.png")
+      File.rm(path)
+      site
+    end
+
+    test "there are three slots" do
+      assert Sites.mascot_slots() == [:footer, :post_end, :projects]
+    end
+
+    test "put_mascot/4 stores the upload as the slot's image", %{scope: scope} do
+      path = test_image_path(90, 30)
+
+      assert {:ok, %Site{} = site} = Sites.put_mascot(scope, :footer, path, "mice.png")
+
+      assert %Feather.Media.Image{filename: "mice.png"} = image = site.footer_mascot_image
+      assert image.site_id == scope.site.id
+      assert site.footer_mascot_image_id == image.id
+      assert site.post_end_mascot_image == nil
+      assert site.projects_mascot_image == nil
+      assert Repo.get!(Site, scope.site.id).footer_mascot_image_id == image.id
+    end
+
+    test "put_mascot/4 replaces the slot's image and deletes the old one", %{scope: scope} do
+      old = mascot_upload(scope, :post_end).post_end_mascot_image
+      new = mascot_upload(scope, :post_end).post_end_mascot_image
+
+      assert new.id != old.id
+      assert Repo.get!(Site, scope.site.id).post_end_mascot_image_id == new.id
+      refute Repo.get(Feather.Media.Image, old.id)
+      refute File.exists?(Feather.Media.image_dir(old))
+    end
+
+    test "put_mascot/4 leaves the slot alone when the file is not an image", %{scope: scope} do
+      image = mascot_upload(scope, :projects).projects_mascot_image
+      path = Path.join(System.tmp_dir!(), "not-an-image-#{System.unique_integer([:positive])}")
+      File.write!(path, "no image")
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               Sites.put_mascot(scope, :projects, path, "fake.png")
+
+      assert {"must be an image", _} = changeset.errors[:file]
+      assert Repo.get!(Site, scope.site.id).projects_mascot_image_id == image.id
+    end
+
+    test "remove_mascot/2 clears the slot and deletes the image", %{scope: scope} do
+      image = mascot_upload(scope, :footer).footer_mascot_image
+      _other = mascot_upload(scope, :projects)
+
+      assert {:ok, site} = Sites.remove_mascot(scope, :footer)
+
+      assert site.footer_mascot_image == nil
+      assert site.projects_mascot_image
+      assert Repo.get!(Site, scope.site.id).footer_mascot_image_id == nil
+      refute Repo.get(Feather.Media.Image, image.id)
+      refute File.exists?(Feather.Media.image_dir(image))
+    end
+
+    test "a mascot image that is also a post header survives replace and remove", %{
+      scope: scope
+    } do
+      replaced = mascot_upload(scope, :footer).footer_mascot_image
+      post_fixture(scope, %{header_image_id: replaced.id})
+      removed = mascot_upload(scope, :footer).footer_mascot_image
+      post_fixture(scope, %{header_image_id: removed.id})
+
+      assert {:ok, %Site{footer_mascot_image: nil}} = Sites.remove_mascot(scope, :footer)
+
+      for image <- [replaced, removed] do
+        assert Repo.get(Feather.Media.Image, image.id)
+        assert File.exists?(Feather.Media.image_dir(image))
+      end
+    end
+
+    test "remove_mascot/2 on an empty slot does nothing", %{scope: scope} do
+      assert {:ok, %Site{footer_mascot_image: nil}} = Sites.remove_mascot(scope, :footer)
+    end
+
+    test "non-members may not change mascots", %{scope: scope} do
+      path = test_image_path()
+      stranger = Scope.put_site(user_scope_fixture(), scope.site)
+
+      assert_raise MatchError, fn -> Sites.put_mascot(stranger, :footer, path, "x.png") end
+      assert_raise MatchError, fn -> Sites.remove_mascot(stranger, :footer) end
+      assert Feather.Media.list_images(scope) == []
+    end
+
+    test "the site form cannot set mascots", %{scope: scope} do
+      image = image_fixture(scope)
+
+      {:ok, site} =
+        Sites.update_site(scope, scope.site, %{
+          "footer_mascot_image_id" => image.id,
+          "post_end_mascot_image_id" => image.id,
+          "projects_mascot_image_id" => image.id
+        })
+
+      assert site.footer_mascot_image_id == nil
+      assert site.post_end_mascot_image_id == nil
+      assert site.projects_mascot_image_id == nil
+    end
+
+    test "deleting a mascot image clears the slot", %{scope: scope} do
+      image = mascot_upload(scope, :footer).footer_mascot_image
+
+      {:ok, _} = Feather.Media.delete_image(image)
+
+      assert Repo.get!(Site, scope.site.id).footer_mascot_image_id == nil
+    end
+
+    test "a site with mascots can be deleted", %{scope: scope} do
+      image = mascot_upload(scope, :footer).footer_mascot_image
+
+      assert {:ok, _} = Sites.delete_site(scope, scope.site)
+      refute Repo.get(Site, scope.site.id)
+      refute File.exists?(Feather.Media.image_dir(image))
+    end
+  end
 end

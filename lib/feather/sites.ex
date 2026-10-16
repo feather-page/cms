@@ -150,6 +150,79 @@ defmodule Feather.Sites do
     Site.changeset(site, attrs)
   end
 
+  ## Mascots
+
+  @doc "The mascot slots of a site: `:footer`, `:post_end` and `:projects`."
+  @spec mascot_slots() :: [Site.mascot_slot()]
+  def mascot_slots, do: Site.mascot_slots()
+
+  @doc """
+  Preloads the mascot images of a site (`footer_mascot_image`,
+  `post_end_mascot_image`, `projects_mascot_image`).
+  """
+  @spec preload_mascots(Site.t()) :: Site.t()
+  def preload_mascots(%Site{} = site), do: Repo.preload(site, Site.mascot_assocs())
+
+  @doc """
+  Makes an uploaded file the mascot of a slot of the scope's site. The
+  image it replaces is deleted unless something else still uses it (see
+  `Feather.Media.Cleanup.delete_released/1`). Returns the site with its
+  mascots preloaded, or `{:error, changeset}` if the file is not a valid
+  image.
+  """
+  @spec put_mascot(Scope.t(), Site.mascot_slot(), Path.t(), String.t()) ::
+          {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
+  def put_mascot(%Scope{site: %Site{} = site} = scope, slot, path, filename) do
+    true = can_access_site?(scope, site)
+    true = slot in Site.mascot_slots()
+
+    with {:ok, image} <- Feather.Media.create_image_from_upload(scope, path, filename) do
+      case set_mascot(site, slot, image) do
+        {:ok, site} ->
+          {:ok, site}
+
+        {:error, reason} ->
+          Feather.Media.delete_image(image)
+          {:error, reason}
+      end
+    end
+  end
+
+  @doc """
+  Empties a mascot slot of the scope's site and deletes its image unless
+  something else still uses it. Returns the site with its mascots
+  preloaded.
+  """
+  @spec remove_mascot(Scope.t(), Site.mascot_slot()) ::
+          {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
+  def remove_mascot(%Scope{site: %Site{} = site} = scope, slot) do
+    true = can_access_site?(scope, site)
+    true = slot in Site.mascot_slots()
+
+    set_mascot(site, slot, nil)
+  end
+
+  defp set_mascot(%Site{id: site_id}, slot, image) do
+    field = Site.mascot_field(slot)
+
+    result =
+      Repo.transact(fn ->
+        site = Repo.get!(Site, site_id)
+        previous_id = Map.fetch!(site, field)
+
+        with {:ok, site} <-
+               site |> Ecto.Changeset.change(%{field => image && image.id}) |> Repo.update() do
+          previous = previous_id && Repo.get(Feather.Media.Image, previous_id)
+          {:ok, {site, Feather.Media.Cleanup.delete_released(List.wrap(previous))}}
+        end
+      end)
+
+    with {:ok, {site, deleted}} <- result do
+      Enum.each(deleted, &Feather.Media.delete_image_files/1)
+      {:ok, preload_mascots(site)}
+    end
+  end
+
   ## Members
 
   @doc """

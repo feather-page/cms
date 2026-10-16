@@ -4,7 +4,8 @@ defmodule Feather.Media.Cleanup do
 
     * **unreferenced** - no post, page or project owns it, it is not the
       header or thumbnail image of any post, page or project, not the cover
-      of a book and no image block of its site embeds it
+      of a book, not a mascot of a site and no image block of its site
+      embeds it
     * **unused** - a post, page or project owns it, but no image block in
       the owner's content embeds it any more (and it is not a header,
       thumbnail or cover image either)
@@ -33,6 +34,7 @@ defmodule Feather.Media.Cleanup do
   alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Media.Image
+  alias Feather.Sites.Site
 
   @grace_period_days 2
 
@@ -88,7 +90,6 @@ defmodule Feather.Media.Cleanup do
     end
   end
 
-  # Header, thumbnail and cover images, of versions too.
   defp featured_image_ids do
     queries =
       for {record_schema, version_schema, _owner_field} <- Content.versioned_schemas(),
@@ -99,7 +100,12 @@ defmodule Feather.Media.Cleanup do
 
     covers = from b in Book, where: not is_nil(b.cover_image_id), select: b.cover_image_id
 
-    (queries ++ [covers])
+    mascots =
+      for field <- Site.mascot_fields() do
+        from s in Site, where: not is_nil(field(s, ^field)), select: field(s, ^field)
+      end
+
+    (queries ++ [covers | mascots])
     |> Enum.flat_map(&Repo.all/1)
     |> MapSet.new()
   end

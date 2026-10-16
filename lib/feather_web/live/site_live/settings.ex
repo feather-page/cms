@@ -1,16 +1,32 @@
 defmodule FeatherWeb.SiteLive.Settings do
   @moduledoc """
   The settings of a site: emoji, title, domain, language and copyright
-  notice, and the site's social media links.
+  notice, the site's social media links and its mascots.
 
-  Saving the site or changing its links publishes the staging targets
-  (`Feather.Publishing.publish_site/1`), like Rails did.
+  Saving the site or changing its links or mascots publishes the staging
+  targets (`Feather.Publishing.publish_site/1`), like Rails did.
   """
   use FeatherWeb, :live_view
 
   alias Feather.Accounts.Scope
   alias Feather.{Publishing, Sites}
-  alias Feather.Sites.{Languages, SocialMediaLink, SocialMediaService}
+  alias Feather.Sites.{Languages, Site, SocialMediaLink, SocialMediaService}
+
+  @mascots [
+    footer: %{
+      label: "Footer mascot",
+      hint: "Peeks over the top edge of the footer on every page. Wide, about 3:1."
+    },
+    post_end: %{
+      label: "Post end mascot",
+      hint:
+        "Stands next to the links to the newer and older post at the end of every post. About 4:5."
+    },
+    projects: %{
+      label: "Projects mascot",
+      hint: "Stands next to the title of the projects page. About 4:5."
+    }
+  ]
 
   @impl true
   def render(assigns) do
@@ -164,18 +180,124 @@ defmodule FeatherWeb.SiteLive.Settings do
             </.action_bar>
           </.form>
         </section>
+
+        <section id="mascots" aria-labelledby="mascots-heading" class="mt-10">
+          <.section_heading id="mascots-heading">Mascots</.section_heading>
+          <p class="mb-4 text-sm text-base-content/70">
+            Small illustrations of your site's characters. Use a PNG or WebP with a transparent
+            background. Where a mascot is missing, your site shows its emoji.
+          </p>
+          <.list id="mascot-slots">
+            <.mascot_slot
+              :for={{slot, info} <- @mascots}
+              slot={slot}
+              label={info.label}
+              hint={info.hint}
+              image={Map.fetch!(@current_scope.site, Site.mascot_assoc(slot))}
+              site={@current_scope.site}
+              upload={@uploads[Site.mascot_assoc(slot)]}
+              error={@mascot_errors[slot]}
+            />
+          </.list>
+        </section>
       </div>
     </.site_shell>
+    """
+  end
+
+  attr :slot, :atom, required: true
+  attr :label, :string, required: true
+  attr :hint, :string, required: true
+  attr :image, :any, required: true
+  attr :site, :any, required: true
+  attr :upload, :any, required: true
+  attr :error, :string, default: nil
+
+  defp mascot_slot(assigns) do
+    ~H"""
+    <li id={"mascot-#{@slot}"} class="list-row items-center">
+      <div
+        id={"mascot-#{@slot}-preview"}
+        class="checkerboard flex h-20 w-28 items-center justify-center overflow-hidden rounded-box border border-base-content/10"
+      >
+        <img
+          :if={@image}
+          src={image_path(@site, @image, "mobile_x1.webp")}
+          alt=""
+          class="max-h-full max-w-full object-contain"
+        />
+        <span :if={!@image} class="text-3xl opacity-60" aria-hidden="true">{@site.emoji}</span>
+      </div>
+      <div class="list-col-grow min-w-0">
+        <p class="font-medium">{@label}</p>
+        <p class="text-sm text-base-content/70">{@hint}</p>
+        <p
+          :for={entry <- @upload.entries}
+          :if={!entry.done?}
+          class="mt-1 text-sm text-base-content/70"
+        >
+          Uploading {entry.client_name} – {entry.progress}%
+        </p>
+        <p
+          :if={@error}
+          id={"mascot-#{@slot}-error"}
+          class="mt-1 flex items-center gap-1.5 text-sm text-error-ink"
+        >
+          <.icon name="circle-alert" class="size-4 shrink-0" />{@error}
+        </p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <form
+            id={"mascot-#{@slot}-form"}
+            phx-change="validate_mascot"
+            phx-submit="validate_mascot"
+          >
+            <label class="btn btn-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary">
+              <.icon name="upload" />{if @image, do: "Replace", else: "Upload"}
+              <.live_file_input upload={@upload} class="sr-only" />
+            </label>
+          </form>
+          <.button
+            :if={@image}
+            id={"remove-mascot-#{@slot}"}
+            variant={:ghost}
+            size={:sm}
+            icon="trash-2"
+            phx-click="remove_mascot"
+            phx-value-slot={@slot}
+            confirm={"Remove the #{String.downcase(@label)}?"}
+            confirm_text="The image is deleted. Your site shows its emoji instead."
+            confirm_label="Remove"
+          >
+            Remove
+          </.button>
+        </div>
+      </div>
+    </li>
     """
   end
 
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns.current_scope
+    scope = Scope.put_site(scope, Sites.preload_mascots(scope.site))
     links = Sites.list_social_media_links(scope)
+
+    socket =
+      Enum.reduce(Sites.mascot_slots(), socket, fn slot, socket ->
+        allow_upload(socket, Site.mascot_assoc(slot),
+          accept: ~w(.png .webp),
+          max_entries: 1,
+          max_file_size: Feather.Media.max_byte_size(),
+          auto_upload: true,
+          progress: &handle_mascot_progress/3
+        )
+      end)
 
     {:ok,
      socket
+     |> assign(:current_scope, scope)
+     |> assign(:mascots, @mascots)
+     |> assign(:mascot_errors, %{})
      |> assign(:page_title, "Site settings")
      |> assign(:services, SocialMediaService.all())
      |> assign(:form, to_form(Sites.change_site(scope.site)))
@@ -282,6 +404,102 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> stream(:social_media_links, links, reset: true)
      |> assign(:links_empty?, links == [])}
   end
+
+  ## Mascots
+
+  def handle_event("validate_mascot", _params, socket) do
+    socket =
+      Enum.reduce(Sites.mascot_slots(), socket, fn slot, socket ->
+        upload = socket.assigns.uploads[Site.mascot_assoc(slot)]
+        invalid = Enum.reject(upload.entries, & &1.valid?)
+
+        case upload_errors(upload) ++ Enum.flat_map(invalid, &upload_errors(upload, &1)) do
+          [] ->
+            socket
+
+          [error | _] ->
+            invalid
+            |> Enum.reduce(socket, &cancel_upload(&2, upload.name, &1.ref))
+            |> put_mascot_error(slot, upload_error_message(error))
+        end
+      end)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("remove_mascot", %{"slot" => slot}, socket) do
+    case Enum.find(Sites.mascot_slots(), &(to_string(&1) == slot)) do
+      nil ->
+        {:noreply, socket}
+
+      slot ->
+        case Sites.remove_mascot(socket.assigns.current_scope, slot) do
+          {:ok, site} ->
+            {:noreply,
+             socket
+             |> mascot_changed(site)
+             |> put_flash(:info, "#{mascot_label(slot)} was successfully removed.")}
+
+          {:error, _changeset} ->
+            {:noreply, put_mascot_error(socket, slot, "The mascot could not be removed.")}
+        end
+    end
+  end
+
+  defp handle_mascot_progress(name, entry, socket) do
+    slot = Enum.find(Sites.mascot_slots(), &(Site.mascot_assoc(&1) == name))
+
+    with true <- entry.done?,
+         {:cont, socket} <- FeatherWeb.SiteAuth.check_access(socket) do
+      scope = socket.assigns.current_scope
+
+      result =
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          {:ok, Sites.put_mascot(scope, slot, path, entry.client_name)}
+        end)
+
+      case result do
+        {:ok, site} ->
+          {:noreply,
+           socket
+           |> mascot_changed(site)
+           |> put_flash(:info, "#{mascot_label(slot)} was successfully updated.")}
+
+        {:error, %Ecto.Changeset{errors: errors}} ->
+          message =
+            case Keyword.get(errors, :file) do
+              {message, _opts} -> "The file #{message}."
+              nil -> "The image could not be saved."
+            end
+
+          {:noreply, put_mascot_error(socket, slot, message)}
+      end
+    else
+      {:halt, socket} -> {:noreply, socket}
+      false -> {:noreply, socket}
+    end
+  end
+
+  defp mascot_changed(socket, site) do
+    scope = Scope.put_site(socket.assigns.current_scope, site)
+    Publishing.publish_site(scope)
+
+    socket
+    |> assign(:current_scope, scope)
+    |> assign(:mascot_errors, %{})
+  end
+
+  defp put_mascot_error(socket, slot, message),
+    do: assign(socket, :mascot_errors, Map.put(socket.assigns.mascot_errors, slot, message))
+
+  defp mascot_label(slot), do: @mascots[slot].label
+
+  defp upload_error_message(:too_large),
+    do: "The file is too big (at most #{div(Feather.Media.max_byte_size(), 1024 * 1024)} MB)."
+
+  defp upload_error_message(:not_accepted), do: "Only PNG and WebP files can be uploaded."
+  defp upload_error_message(:too_many_files), do: "Please choose one file."
+  defp upload_error_message(error), do: "Upload failed: #{inspect(error)}"
 
   defp reset_link_form(socket) do
     socket
