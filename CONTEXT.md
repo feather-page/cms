@@ -28,6 +28,12 @@ The ordered list of pages in a site's main menu (`navigation_items`, positions k
 there is no separate navigation record.
 _Avoid_: Menu
 
+**Mascot**:
+A small transparent illustration of the site's characters that the site's theme shows in a fixed place: above the
+footer, at the end of every post, next to the title of the projects page. A site has one optional mascot per place;
+where one is missing, the theme shows the site's emoji.
+_Avoid_: Logo, Avatar, Illustration
+
 **Project**:
 A portfolio entry describing work by the site owner — not the software project in this repo.
 _Avoid_: Work, Portfolio Item

@@ -1,0 +1,20 @@
+<header class="masthead">
+  <%= cond do %>
+  <% match?(%Image{}, @image) -> %>
+  <img class="masthead-art" src="<%= Routes.image_url(@routes, @image, :desktop_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, @image) %>" sizes="(min-width: 39rem) 36rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"<%= dimensions(@image) %> fetchpriority="high" alt="">
+  <%= if unsplash_credit?(@image) do %>
+  <p class="photo-credit"><%= photo_credit(@image) %></p>
+  <% end %>
+  <% present?(@site.emoji) -> %>
+  <span class="masthead-emoji" aria-hidden="true"><%= @site.emoji %></span>
+  <% true -> %>
+  <% end %>
+  <h1 class="site-title"><%= @site.title %></h1>
+  <%= if @navigation != [] do %>
+  <ul class="masthead-links">
+    <%= for item <- @navigation do %>
+    <li><%= chip(Routes.page_url(@routes, item.page), item.page.emoji, item.page.title) %></li>
+    <% end %>
+  </ul>
+  <% end %>
+</header>

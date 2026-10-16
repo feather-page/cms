@@ -132,8 +132,6 @@ defmodule FeatherWeb.ProjectLive.Index do
   defp edit_path(site, project),
     do: ~p"/sites/#{site.public_id}/projects/#{project.public_id}/edit"
 
-  # The admin writes months as dates elsewhere (%d/%m/%Y); Project.display_period/1 keeps the
-  # public site's format.
   defp period(project) do
     if is_binary(project.period) and String.trim(project.period) != "" do
       String.replace(project.period, " - ", " – ")

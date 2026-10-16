@@ -56,6 +56,7 @@ defmodule Feather.StaticSite.ExportTest do
         tags: "elixir, web",
         publish_at: DateTime.add(@published_at, 1, :day),
         header_image_id: header.id,
+        thumbnail_image_id: image.id,
         content: [
           paragraph("Some <b>bold</b> <script>alert(1)</script>text."),
           %{"type" => "header", "level" => 3, "text" => "A section"},
@@ -119,6 +120,7 @@ defmodule Feather.StaticSite.ExportTest do
         company: "ACME",
         role: "Lead",
         tags: "rust",
+        thumbnail_image_id: image.id,
         started_at: ~D[2024-01-01],
         ended_at: ~D[2024-06-30],
         short_description: "Line one\nline two\n\nSecond <b>para</b>",
@@ -154,6 +156,13 @@ defmodule Feather.StaticSite.ExportTest do
     }
   end
 
+  defp attr(node, name) do
+    case Floki.attribute(node, name) do
+      [value] -> value
+      [] -> nil
+    end
+  end
+
   defp file(sink, path) do
     case RecordingSink.get(sink, path) do
       content when is_binary(content) -> content
@@ -176,7 +185,8 @@ defmodule Feather.StaticSite.ExportTest do
           "projects/ongoing/index.html",
           "feed.xml",
           "robots.txt",
-          "sitemap.xml"
+          "sitemap.xml",
+          "404.html"
         ] do
       assert path in paths, "#{path} missing from #{inspect(paths)}"
     end
@@ -194,8 +204,8 @@ defmodule Feather.StaticSite.ExportTest do
   test "the post page renders every block type in the layout", c do
     html = file(c.sink, "everything/index.html")
 
-    assert html =~ ~s(<html lang="en">)
-    assert html =~ "<title>Everything</title>"
+    assert html =~ ~s(<html lang="en")
+    assert html =~ "<title>Everything · My &lt;Site&gt;</title>"
     assert html =~ "<style>"
     # Literal like the Rails export, only the emoji is interpolated (escaped).
     assert html =~
@@ -203,27 +213,39 @@ defmodule Feather.StaticSite.ExportTest do
 
     assert html =~ "🧪"
     assert html =~ "<h1>Everything</h1>"
-    assert html =~ ~s(<span class="divider">/</span>)
+    assert html =~ ~s(<a class="skip-link" href="#main">)
+    assert html =~ ~s(<main id="main">)
+    assert html =~ ~s(<nav class="breadcrumb" aria-label="Breadcrumb">)
+    assert html =~ ~s(<span class="divider" aria-hidden="true">›</span>)
+    assert html =~ ~s(<span aria-current="page">Everything</span>)
+
     assert html =~ "<p>Some <b>bold</b> text.</p>"
     refute html =~ "alert(1)"
     assert html =~ "<h3>A section</h3>"
     assert html =~ "<ol><li>One<ol><li>Nested</li></ol></li></ol>"
     assert html =~ "<blockquote><p>Simplicity.</p><cite>Dijkstra</cite></blockquote>"
-    assert html =~ "<pre><code>&lt;b&gt;x&lt;/b&gt;</code></pre>"
+    assert html =~ ~s(<pre data-language="html"><code class="language-html">&lt;b&gt;x&lt;/b&gt;)
     assert html =~ ~s(src="/images/#{c.image.public_id}/desktop_x1.jpg" alt="An image")
-    assert html =~ "<thead><tr><td>H1</td><td>H2</td></tr></thead>"
+    assert html =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
     assert html =~ "youtube-nocookie.com/embed/abc"
     assert html =~ ~s(<div class="book-title">Dune</div>)
-    assert html =~ ~s(class="header-image")
-    assert html =~ ~s(srcset="/images/#{c.header.public_id}/mobile_x1.webp 430w)
+    assert html |> Floki.parse_document!() |> Floki.attribute("img.header-image", "alt") == [""]
 
     assert html =~
              ~s(<a href="https://unsplash.com/@ann" target="_blank" rel="noopener">Ann Lens</a>)
 
-    assert html =~ ~s(<div class="post-date">March 06, 2024</div>)
-    assert html =~ ~s(<span class="badge badge-outline">elixir</span>)
-    assert html =~ ~s(<a href="https://github.com/johndoe" title="GitHub" class="socialLink">)
-    assert html =~ "<svg"
+    doc = Floki.parse_document!(html)
+
+    assert Floki.attribute(doc, "h1 + p.post-meta time", "datetime") == ["2024-03-06"]
+    assert doc |> Floki.find("p.post-meta") |> Floki.text() == "March 6, 2024"
+    assert Floki.find(doc, ".post-date") == []
+
+    assert doc |> Floki.find("ul.tags > li.tag") |> Enum.map(&Floki.text/1) == ["elixir", "web"]
+
+    assert html =~
+             ~s(<a href="https://github.com/johndoe" title="GitHub" aria-label="GitHub" class="socialLink">)
+
+    assert html =~ ~s(<svg aria-hidden="true" focusable="false")
     refute html =~ ~s(title="Bad")
     assert html =~ "© #{Date.utc_today().year} Me"
   end
@@ -233,16 +255,23 @@ defmodule Feather.StaticSite.ExportTest do
 
     assert html =~ "<title>My &lt;Site&gt;</title>"
     refute html =~ ~s(class="divider")
-    assert html =~ ~s(<a class="page-link" href="/about/">About</a>)
+    assert html =~ ~s(<h1 class="site-title">My &lt;Site&gt;</h1>)
+
+    assert html =~
+             ~s(<a class="chip" href="/about/"><span class="seal" aria-hidden="true">👋</span>About</a>)
+
     assert html =~ "<p>Welcome home.</p>"
     assert html =~ ~s(<link rel="alternate" type="application/rss+xml" href="/feed.xml")
-    assert html =~ ~s(<a class="post-title" href="/everything/">Everything</a>)
+    assert html =~ ~s(<h3 class="post-title"><a href="/everything/">Everything</a></h3>)
     assert html =~ ~s(<div class="post-excerpt">)
     # The untitled review shows the book card with cover and rating.
-    assert html =~ ~s(<img src="/images/#{c.cover.public_id}/mobile_x1.webp" alt="Dune")
-    assert html =~ "★★★★☆"
+    assert html =~ ~s(<img src="/images/#{c.cover.public_id}/mobile_x1.webp" alt="")
+
+    assert html =~
+             ~s(<span class="book-rating" role="img" aria-label="4 of 5 stars"><span aria-hidden="true">★★★★☆</span></span>)
+
     assert html =~ ~s(<div class="post-content"><p>Loved it.</p></div>)
-    assert html =~ "March 05, 2024"
+    assert html =~ ~s(<time datetime="2024-03-05">March 5, 2024</time>)
     refute html =~ "Draft"
     refute html =~ "Future"
     refute html =~ ~s(class="pagination")
@@ -255,17 +284,21 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ "<h2>2023 (1)</h2>"
     refute html =~ "Someday"
     assert :binary.match(html, "2025 (1)") < :binary.match(html, "2023 (1)")
-    assert html =~ ~s(<span class="book-date">01/02/2025</span>)
+
+    assert html =~
+             ~s(<span class="book-date"><time datetime="2025-02-01">Feb 1, 2025</time></span>)
+
     # The review has no title, so the book is not linked.
     assert html =~ ~s(<span class="book-title">Dune</span>)
+    assert html =~ ~s(<span class="book-rating" role="img" aria-label="4 of 5 stars">)
   end
 
   test "the projects page lists ongoing projects first", c do
     html = file(c.sink, "work/index.html")
 
     assert :binary.match(html, "Ongoing") < :binary.match(html, ">Done<")
-    assert html =~ ~s(<a href="/projects/done/" class="project-title">Done</a>)
-    assert html =~ ~s(<span class="badge badge-success">)
+    assert html =~ ~s(<h2 class="project-title"><a href="/projects/done/">Done</a></h2>)
+    assert html =~ ~s(<span class="badge status-completed">Completed</span>)
     assert html =~ "Open Source" or html =~ "Professional"
   end
 
@@ -273,11 +306,66 @@ defmodule Feather.StaticSite.ExportTest do
     html = file(c.sink, "projects/done/index.html")
 
     assert html =~ ~s(<span class="project-company">ACME</span>)
-    assert html =~ ~s(<span class="project-period">01.2024 - 06.2024</span>)
+    assert html =~ ~s(<span class="project-period">Jan 2024 – Jun 2024</span>)
     assert html =~ ~s(<div class="project-role">Lead</div>)
     assert html =~ "<p>Line one\n<br />line two</p>\n\n<p>Second <b>para</b></p>"
     assert html =~ ~s(href="https://github.com/x")
     refute html =~ "javascript:"
+  end
+
+  test "the header image is sized for its slot, loads first and carries its credit", c do
+    doc = c.sink |> file("everything/index.html") |> Floki.parse_document!()
+    [header] = Floki.find(doc, "img.header-image")
+    header_id = c.header.public_id
+
+    assert attr(header, "srcset") == "/images/#{header_id}/mobile_x1.webp 64w"
+    assert attr(header, "sizes") == "(min-width: 38rem) 38rem, 100vw"
+    assert {attr(header, "width"), attr(header, "height")} == {"64", "48"}
+    assert attr(header, "fetchpriority") == "high"
+    assert attr(header, "loading") == nil
+
+    assert Floki.attribute(doc, ".header-image-container .photo-credit a", "href") ==
+             ["https://unsplash.com/@ann", "https://unsplash.com"]
+  end
+
+  test "home thumbnails are sized for their slot", c do
+    [thumbnail] =
+      c.sink |> file("index.html") |> Floki.parse_document!() |> Floki.find(".post-thumbnail img")
+
+    assert attr(thumbnail, "srcset") == "/images/#{c.image.public_id}/mobile_x1.webp 80w"
+    assert attr(thumbnail, "sizes") == "(max-width: 600px) calc(100vw - 2rem), 240px"
+    assert {attr(thumbnail, "width"), attr(thumbnail, "height")} == {"80", "60"}
+    assert attr(thumbnail, "loading") == "lazy"
+  end
+
+  test "project thumbnails reserve their space and load lazily", c do
+    [thumbnail] =
+      c.sink
+      |> file("work/index.html")
+      |> Floki.parse_document!()
+      |> Floki.find("img.project-thumbnail")
+
+    assert {attr(thumbnail, "width"), attr(thumbnail, "height")} == {"28", "28"}
+    assert attr(thumbnail, "loading") == "lazy"
+  end
+
+  test "book covers load lazily and reserve their space", c do
+    [cover] =
+      c.sink
+      |> file("books/index.html")
+      |> Floki.parse_document!()
+      |> Floki.find("img.book-cover")
+
+    assert attr(cover, "loading") == "lazy"
+    assert attr(cover, "alt") == ""
+    assert {attr(cover, "width"), attr(cover, "height")} == {"64", "48"}
+  end
+
+  test "a book card shows the cover or else the emoji", c do
+    doc = c.sink |> file("books/index.html") |> Floki.parse_document!()
+
+    assert Floki.find(doc, ".book-card .book-emoji") == []
+    assert Floki.find(doc, ".book-card img.book-cover") != []
   end
 
   test "the RSS feed", c do
@@ -319,6 +407,22 @@ defmodule Feather.StaticSite.ExportTest do
     assert length(Regex.scan(~r/<loc>https:\/\/example.com\/<\/loc>/, xml)) == 1
   end
 
+  test "the 404 page renders in the layout and links home", c do
+    html = file(c.sink, "404.html")
+
+    assert html =~ "<title>Page not found · My &lt;Site&gt;</title>"
+    assert html =~ "<h1>Page not found</h1>"
+    assert html =~ ~s(<span class="divider" aria-hidden="true">›</span>)
+
+    assert html =~
+             ~s(<a class="breadcrumb-home" href="/"><span class="seal" aria-hidden="true">🦉</span><span class="breadcrumb-site">My &lt;Site&gt;</span></a>)
+
+    assert html =~ ~s(<a class="not-found-home" href="/">)
+    assert html =~ ~s(<a class="not-found-posts" href="/#posts">All posts</a>)
+    assert html =~ ~s(<a class="not-found-projects" href="/work/">Work</a>)
+    refute file(c.sink, "sitemap.xml") =~ "404"
+  end
+
   test "robots.txt points at the canonical sitemap", c do
     assert file(c.sink, "robots.txt") ==
              "User-agent: *\nAllow: /\n\nSitemap: https://example.com/sitemap.xml\n"
@@ -349,10 +453,13 @@ defmodule Feather.StaticSite.ExportPaginationTest do
     assert first =~ ">Post 27<"
     refute first =~ ">Post 2<"
     assert first =~ ~s(<a href="/page/2/" class="pagination-link">2</a>)
-    assert first =~ ~s(<span class="pagination-current">1</span>)
+    assert first =~ ~s(<span class="pagination-current" aria-current="page">1</span>)
     assert second =~ ">Post 2<"
     assert second =~ ">Post 1<"
-    assert second =~ ~s(<a href="/" class="pagination-link">&larr;</a>)
+
+    assert second =~
+             ~s(<a href="/" class="pagination-link" aria-label="Previous page">&larr;</a>)
+
     refute RecordingSink.exists?(sink, "page/3/index.html")
   end
 
@@ -361,5 +468,10 @@ defmodule Feather.StaticSite.ExportPaginationTest do
     assert Templates.pagination_page_numbers(1, 10) == [1, 2, 3, 4, :gap, 10]
     assert Templates.pagination_page_numbers(5, 10) == [1, :gap, 4, 5, 6, :gap, 10]
     assert Templates.pagination_page_numbers(9, 10) == [1, :gap, 7, 8, 9, 10]
+  end
+
+  test "a rating is announced as a label instead of glyph by glyph" do
+    assert Templates.rating_label(4) == "4 of 5 stars"
+    assert Templates.rating_label(9) == "5 of 5 stars"
   end
 end

@@ -14,13 +14,13 @@ defmodule Feather.StaticSite.Preview do
   alias Feather.Media.Variants
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Renderer, Routes, SiteData}
+  alias Feather.StaticSite.{Fonts, Renderer, Routes, SiteData}
 
   @type result ::
           {:html, iodata()}
           | {:content, String.t(), iodata()}
           | {:file, Path.t(), String.t()}
-          | :not_found
+          | {:not_found, iodata()}
 
   @doc """
   Renders what lives at `path` (relative to the preview root, a string or
@@ -28,8 +28,8 @@ defmodule Feather.StaticSite.Preview do
 
     * `{:html, iodata}` - a page
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`
-    * `{:file, path, content_type}` - an image variant
-    * `:not_found`
+    * `{:file, path, content_type}` - an image variant or a theme font
+    * `{:not_found, iodata}` - the site's 404 page
   """
   @spec render(DeploymentTarget.t(), String.t() | [String.t()]) :: result()
   def render(%DeploymentTarget{site: %Site{} = site} = target, path) do
@@ -37,19 +37,26 @@ defmodule Feather.StaticSite.Preview do
 
     case Routes.resolve(routes, path) do
       nil ->
-        :not_found
+        not_found(site, routes)
 
       {:image, image, variant} ->
         file = Media.variant_path(image, variant.name)
 
         if File.regular?(file),
           do: {:file, file, Variants.content_type(variant)},
-          else: :not_found
+          else: not_found(site, routes)
+
+      {:font, name} ->
+        {:file, Fonts.path(name), Fonts.content_type(name)}
 
       route ->
-        render_route(route, SiteData.load(site, content: :current), routes)
+        render_route(route, load(site), routes)
     end
   end
+
+  defp load(site), do: SiteData.load(site, content: :current)
+
+  defp not_found(site, routes), do: {:not_found, Renderer.render_not_found(load(site), routes)}
 
   defp render_route({:home, page}, data, routes),
     do: {:html, Renderer.render_home(data, routes, page)}

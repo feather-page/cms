@@ -1,20 +1,16 @@
 <div class="project-detail">
   <div class="project-metadata">
     <div class="project-meta-row">
-      <span class="badge badge-<%= status_badge_class(@project.status) %>">
-        <%= titleize(@project.status) %>
-      </span>
+      <span class="badge status-<%= @project.status %>"><%= project_status_label(@project.status) %></span>
       <%= if present?(@project.company) do %>
       <span class="project-company"><%= @project.company %></span>
       <% end %>
-      <span class="project-period"><%= Project.display_period(@project) %></span>
-      <%= for tag <- Content.tag_list(@project) do %>
-      <span class="badge badge-outline"><%= tag %></span>
-      <% end %>
+      <span class="project-period"><%= project_period(@project) %></span>
     </div>
     <%= if present?(@project.role) do %>
     <div class="project-role"><%= @project.role %></div>
     <% end %>
+    <%= tags(%{tags: Content.tag_list(@project)}) %>
   </div>
 
   <%= if present?(@project.short_description) do %>
@@ -28,7 +24,7 @@
 
 <%= if project_links(@project) != [] do %>
 <div class="project-links">
-  <h3>Links</h3>
+  <h2><%= gettext("Links") %></h2>
   <div class="links-list">
     <%= for link <- project_links(@project) do %>
     <a href="<%= link.url %>" target="_blank" rel="noopener noreferrer" class="project-link">

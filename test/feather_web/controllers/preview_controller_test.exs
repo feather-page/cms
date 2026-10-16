@@ -23,12 +23,15 @@ defmodule FeatherWeb.PreviewControllerTest do
     html = html_response(conn, 200)
 
     assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
-    assert html =~ ~s(<a class="post-title" href="#{root}/hello/">#{post.title}</a>)
+    assert html =~ ~s(<h3 class="post-title"><a href="#{root}/hello/">#{post.title}</a></h3>)
     assert html =~ ~s(href="#{root}/about/")
-    assert html =~ ~s(<a href="#{root}/">My Site</a>)
+
+    assert html =~ ~s(<h1 class="site-title">My Site</h1>)
+    assert html =~ ~s[url("#{root}/fonts/nunito-latin-800.woff2")]
+
     refute html =~ "phx-r"
 
-    assert html_response(get(fresh(user), root), 200) =~ "Blogposts"
+    assert html_response(get(fresh(user), root), 200) =~ ~s(<h2 id="posts">Posts</h2>)
   end
 
   test "renders posts (also drafts), pages and projects", %{conn: conn, scope: scope, root: root} do
@@ -74,6 +77,14 @@ defmodule FeatherWeb.PreviewControllerTest do
              404
   end
 
+  test "serves the theme fonts", %{conn: conn, root: root} do
+    conn = get(conn, root <> "/fonts/nunito-latin-800.woff2")
+
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") == ["font/woff2"]
+    assert conn.resp_body == File.read!(Feather.StaticSite.Fonts.path("nunito-latin-800.woff2"))
+  end
+
   test "serves the feed with canonical URLs", %{conn: conn, scope: scope, root: root, target: t} do
     post_fixture(scope, %{title: "Hello", slug: "/hello"})
 
@@ -82,9 +93,15 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert response_content_type(conn, :xml) =~ "application/rss+xml"
   end
 
-  test "unknown paths are not found", %{conn: conn, root: root, user: user} do
-    assert response(get(conn, root <> "/nothing-here"), 404)
-    assert response(get(fresh(user), "/preview/unknown00000/"), 404)
+  test "unknown paths inside a site render its 404 page", %{conn: conn, root: root, user: user} do
+    html = html_response(get(conn, root <> "/nothing-here"), 404)
+    assert html =~ "<h1>Page not found</h1>"
+    assert html =~ ~s(<a class="not-found-home" href="#{root}/">)
+
+    assert html_response(get(fresh(user), root <> "/images/unknown/mobile_x1.webp"), 404) =~
+             "<h1>Page not found</h1>"
+
+    assert response(get(fresh(user), "/preview/unknown00000/"), 404) == "Not Found"
   end
 
   test "targets of other sites are not found", %{conn: conn} do
@@ -97,7 +114,9 @@ defmodule FeatherWeb.PreviewControllerTest do
     admin = super_admin_fixture()
 
     conn = conn |> recycle() |> log_in_user(admin)
-    assert html_response(get(conn, "/preview/#{other.public_id}/"), 200) =~ "Blogposts"
+
+    assert html_response(get(conn, "/preview/#{other.public_id}/"), 200) =~
+             ~s(<h2 id="posts">Posts</h2>)
   end
 
   test "requires login", %{root: root} do

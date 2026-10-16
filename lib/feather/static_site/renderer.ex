@@ -5,10 +5,15 @@ defmodule Feather.StaticSite.Renderer do
   same markup. Every function returns iodata and touches no database.
   """
 
+  use Gettext, backend: Feather.StaticSite.Gettext
+
   alias Feather.Content.{Page, Post, Project}
+  alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, Templates}
 
   @posts_per_page 25
+  @description_length 155
 
   @doc "The number of posts on a page of the post list."
   @spec posts_per_page() :: pos_integer()
@@ -24,10 +29,20 @@ defmodule Feather.StaticSite.Renderer do
   @spec render_home(SiteData.t(), Routes.t(), pos_integer()) :: iodata()
   def render_home(%SiteData{} = data, %Routes{} = routes, page_number \\ 1) do
     posts = Enum.slice(data.posts, (page_number - 1) * @posts_per_page, @posts_per_page)
+    homepage = data.homepage || %Page{content: [], header_image: nil}
 
     assigns =
       base_assigns(data, routes, data.site.title, data.site.emoji, true)
+      |> Map.merge(
+        sharing(
+          routes,
+          &Routes.home_url(&1, page_number),
+          ContentBlocks.excerpt(homepage.content),
+          homepage.header_image || first_image(data, homepage.content)
+        )
+      )
       |> Map.merge(%{
+        masthead_image: homepage.header_image,
         rss_url: Routes.artifact_url(routes, "feed.xml"),
         posts: posts,
         current_page: page_number,
@@ -41,11 +56,27 @@ defmodule Feather.StaticSite.Renderer do
   @spec render_post(SiteData.t(), Routes.t(), Post.t()) :: iodata()
   def render_post(%SiteData{} = data, %Routes{} = routes, %Post{} = post) do
     title = if blank?(post.title), do: data.site.title, else: post.title
+    {newer, older} = SiteData.neighbours(data, post)
 
     assigns =
       data
       |> base_assigns(routes, title, post.emoji, false)
-      |> Map.merge(%{post: post, header_image: post.header_image})
+      |> Map.merge(
+        sharing(
+          routes,
+          &Routes.post_url(&1, post),
+          ContentBlocks.excerpt(post.content),
+          post.header_image || post.thumbnail_image || first_image(data, post.content),
+          "article"
+        )
+      )
+      |> Map.merge(%{
+        post: post,
+        published_at: post.publish_at,
+        header_image: post.header_image,
+        newer_post: newer,
+        older_post: older
+      })
 
     render(&Templates.post/1, assigns)
   end
@@ -56,7 +87,19 @@ defmodule Feather.StaticSite.Renderer do
     assigns =
       data
       |> base_assigns(routes, page.title, page.emoji, false)
-      |> Map.merge(%{page: page, header_image: page.header_image})
+      |> Map.merge(
+        sharing(
+          routes,
+          &Routes.page_url(&1, page),
+          ContentBlocks.excerpt(page.content),
+          page.header_image || first_image(data, page.content)
+        )
+      )
+      |> Map.merge(%{
+        page: page,
+        header_image: page.header_image,
+        title_mascot: if(page.page_type == "projects", do: data.site.projects_mascot_image)
+      })
 
     render(&Templates.page/1, assigns)
   end
@@ -67,9 +110,38 @@ defmodule Feather.StaticSite.Renderer do
     assigns =
       data
       |> base_assigns(routes, project.title, project.emoji, false)
-      |> Map.merge(%{project: project, header_image: project.header_image})
+      |> Map.merge(
+        sharing(
+          routes,
+          &Routes.project_url(&1, project),
+          if(blank?(project.short_description),
+            do: ContentBlocks.excerpt(project.content),
+            else: ContentBlocks.strip_tags(project.short_description)
+          ),
+          project.header_image || project.thumbnail_image ||
+            first_image(data, project.content)
+        )
+      )
+      |> Map.merge(%{
+        project: project,
+        header_image: project.header_image,
+        trail: projects_trail(data, routes)
+      })
 
     render(&Templates.project/1, assigns)
+  end
+
+  @doc "The page shown for paths that do not exist."
+  @spec render_not_found(SiteData.t(), Routes.t()) :: iodata()
+  def render_not_found(%SiteData{} = data, %Routes{} = routes) do
+    title = in_site_language(data, fn -> gettext("Page not found") end)
+
+    assigns =
+      data
+      |> base_assigns(routes, title, nil, false)
+      |> Map.merge(%{noindex: true, projects_page: projects_page(data)})
+
+    render(&Templates.not_found/1, assigns)
   end
 
   @doc """
@@ -78,7 +150,10 @@ defmodule Feather.StaticSite.Renderer do
   """
   @spec render_artifact(SiteData.t(), Routes.t(), String.t()) :: iodata()
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "feed.xml"),
-    do: Feed.render(data, routes, block_context(data, Routes.canonical(routes)))
+    do:
+      in_site_language(data, fn ->
+        Feed.render(data, routes, block_context(data, Routes.canonical(routes)))
+      end)
 
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "sitemap.xml"),
     do: Sitemap.render(data, routes)
@@ -107,19 +182,83 @@ defmodule Feather.StaticSite.Renderer do
       ctx: block_context(data, routes),
       social_links: data.social_links,
       page_title: page_title,
+      document_title: document_title(data.site.title, page_title, is_home),
+      description: nil,
+      canonical_url: nil,
+      og_type: "website",
+      og_image_url: nil,
       page_emoji: if(blank?(page_emoji), do: nil, else: page_emoji),
       is_home: is_home,
+      trail: [],
       header_image: nil,
+      title_mascot: nil,
+      published_at: nil,
+      noindex: false,
+      masthead_image: nil,
       rss_url: nil,
       __changed__: nil
     }
   end
 
+  defp document_title(site_title, page_title, is_home) do
+    if is_home or page_title == site_title,
+      do: site_title,
+      else: "#{page_title} · #{site_title}"
+  end
+
+  defp sharing(routes, url, text, image, type \\ "website") do
+    canonical = Routes.canonical(routes)
+
+    %{
+      canonical_url: url.(canonical),
+      description: description(text),
+      og_type: type,
+      og_image_url:
+        if(match?(%Image{}, image), do: Routes.image_url(canonical, image, :desktop_x1_jpg))
+    }
+  end
+
+  defp description(text) do
+    text = text |> String.replace(~r/\s+/u, " ") |> String.trim()
+
+    cond do
+      text == "" ->
+        nil
+
+      String.length(text) <= @description_length ->
+        text
+
+      true ->
+        text
+        |> String.slice(0, @description_length - 1)
+        |> String.replace(~r/\s+\S*\z/u, "")
+        |> Kernel.<>("…")
+    end
+  end
+
+  defp first_image(data, content),
+    do: content |> ContentBlocks.image_ids() |> Enum.find_value(&Map.get(data.images, &1))
+
   defp render(view, assigns) do
-    assigns
-    |> Map.put(:inner_content, view.(assigns))
-    |> Templates.layout()
-    |> Phoenix.HTML.Safe.to_iodata()
+    in_site_language(assigns.data, fn ->
+      assigns
+      |> Map.put(:inner_content, view.(assigns))
+      |> Templates.layout()
+      |> Phoenix.HTML.Safe.to_iodata()
+    end)
+  end
+
+  defp in_site_language(%SiteData{site: site}, fun),
+    do: Gettext.with_locale(Feather.StaticSite.Gettext, site.language_code || "en", fun)
+
+  defp projects_page(data),
+    do: Enum.find(data.pages, &(&1.page_type == "projects" and not Page.homepage?(&1)))
+
+  defp projects_trail(data, routes) do
+    case projects_page(data) do
+      nil -> []
+      page -> [%{title: page.title, emoji: page.emoji, url: Routes.page_url(routes, page)}]
+    end
   end
 
   defp blank?(value), do: not (is_binary(value) and String.trim(value) != "")

@@ -2,8 +2,8 @@ defmodule Feather.StaticSite.Export do
   @moduledoc """
   Renders a whole site into a sink: the pages of the post list, the posts
   that are due, projects, pages (the homepage is the first page of the post
-  list), the image variants in use, `feed.xml`, `robots.txt` and
-  `sitemap.xml`.
+  list), the image variants in use, the theme fonts, `feed.xml`, `robots.txt`,
+  `sitemap.xml` and `404.html`.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -14,7 +14,7 @@ defmodule Feather.StaticSite.Export do
   alias Feather.Media
   alias Feather.Media.Variants
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Renderer, Routes, Sink, SiteData}
+  alias Feather.StaticSite.{Fonts, Renderer, Routes, Sink, SiteData}
 
   require Logger
 
@@ -39,6 +39,8 @@ defmodule Feather.StaticSite.Export do
         Enum.map(data.projects, &{:project, &1}) ++
         (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1})) ++
         Enum.map(~w(feed.xml robots.txt sitemap.xml), &{:artifact, &1}) ++
+        [:not_found] ++
+        Enum.map(Fonts.files(), &{:font, &1}) ++
         for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
 
     # A crashing task would take the caller down with it (tasks are
@@ -67,6 +69,7 @@ defmodule Feather.StaticSite.Export do
     exception -> {:error, "#{describe(job)}: #{Exception.message(exception)}"}
   end
 
+  defp describe(:not_found), do: "404 page"
   defp describe({:image, image, variant}), do: "image #{image.public_id} #{variant.filename}"
   defp describe({kind, %{public_id: public_id}}), do: "#{kind} #{public_id}"
   defp describe({kind, name}), do: "#{kind} #{name}"
@@ -88,6 +91,9 @@ defmodule Feather.StaticSite.Export do
   defp run_job({:page, page}, data, routes, sink),
     do: Sink.write(sink, Routes.page_path(routes, page), Renderer.render_page(data, routes, page))
 
+  defp run_job(:not_found, data, routes, sink),
+    do: Sink.write(sink, Routes.not_found_path(routes), Renderer.render_not_found(data, routes))
+
   defp run_job({:artifact, name}, data, routes, sink) do
     Sink.write(
       sink,
@@ -95,6 +101,9 @@ defmodule Feather.StaticSite.Export do
       Renderer.render_artifact(data, routes, name)
     )
   end
+
+  defp run_job({:font, name}, _data, routes, sink),
+    do: Sink.copy(sink, Routes.font_path(routes, name), from: Fonts.path(name))
 
   defp run_job({:image, image, variant}, _data, routes, sink) do
     source = Media.variant_path(image, variant.name)

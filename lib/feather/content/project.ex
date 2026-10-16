@@ -98,22 +98,4 @@ defmodule Feather.Content.Project do
     |> cast(attrs, [:label, :url])
     |> validate_required([:label, :url])
   end
-
-  @doc """
-  The period shown for a project: the free text `period` if set, otherwise
-  `"MM.YYYY - MM.YYYY"` with `"ongoing"` as the end of unfinished projects.
-  """
-  @spec display_period(t()) :: String.t()
-  def display_period(%__MODULE__{period: period} = project) do
-    if is_binary(period) and String.trim(period) != "" do
-      period
-    else
-      start = Calendar.strftime(project.started_at, "%m.%Y")
-
-      finish =
-        if project.ended_at, do: Calendar.strftime(project.ended_at, "%m.%Y"), else: "ongoing"
-
-      "#{start} - #{finish}"
-    end
-  end
 end

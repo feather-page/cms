@@ -1,52 +1,112 @@
 <!DOCTYPE html>
-<html lang="<%= @site.language_code %>">
+<html lang="<%= @site.language_code %>" style="--h: <%= hue(@site) %>">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title><%= @page_title %></title>
-    <style><%= raw(css()) %></style>
+    <title><%= @document_title %></title>
+    <%= if @noindex do %>
+    <meta name="robots" content="noindex" />
+    <% end %>
+    <%= if @description do %>
+    <meta name="description" content="<%= @description %>" />
+    <% end %>
+    <%= if @canonical_url do %>
+    <link rel="canonical" href="<%= @canonical_url %>" />
+    <meta property="og:type" content="<%= @og_type %>" />
+    <meta property="og:title" content="<%= @page_title %>" />
+    <%= if @description do %>
+    <meta property="og:description" content="<%= @description %>" />
+    <% end %>
+    <meta property="og:url" content="<%= @canonical_url %>" />
+    <meta property="og:site_name" content="<%= @site.title %>" />
+    <%= if og_locale(@site.language_code) do %>
+    <meta property="og:locale" content="<%= og_locale(@site.language_code) %>" />
+    <% end %>
+    <%= if @og_image_url do %>
+    <meta property="og:image" content="<%= @og_image_url %>" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <% end %>
+    <% end %>
+    <style><%= font_faces(@routes) %><%= raw(css()) %></style>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22><%= @page_emoji || @site.emoji %></text></svg>">
     <%= if @rss_url do %>
     <link rel="alternate" type="application/rss+xml" href="<%= @rss_url %>" title="<%= @site.title %>" />
     <% end %>
   </head>
   <body>
-    <nav>
-      <%= @site.emoji %> <a href="<%= Routes.home_url(@routes) %>"><%= @site.title %></a><%= unless @is_home do %><span class="divider">/</span> <%= @page_emoji %> <%= @page_title %><% end %>
+    <a class="skip-link" href="#main"><%= gettext("Skip to content") %></a>
+    <%= if @is_home do %>
+    <%= masthead(%{site: @site, routes: @routes, image: @masthead_image, navigation: @data.navigation}) %>
+    <% else %>
+    <nav class="breadcrumb" aria-label="<%= gettext("Breadcrumb") %>">
+      <a class="breadcrumb-home" href="<%= Routes.home_url(@routes) %>"><%= if present?(@site.emoji) do %><span class="seal" aria-hidden="true"><%= @site.emoji %></span><% end %><span class="breadcrumb-site"><%= @site.title %></span></a><%= for crumb <- @trail do %><span class="divider" aria-hidden="true">›</span><a href="<%= crumb.url %>"><%= emoji_label(crumb.emoji, crumb.title) %></a><% end %><span class="divider" aria-hidden="true">›</span><span aria-current="page"><%= @page_title %></span>
     </nav>
-    <main>
+    <% end %>
+    <main id="main">
       <%= cond do %>
       <% match?(%Image{}, @header_image) -> %>
       <div class="header-image-container">
         <img src="<%= Routes.image_url(@routes, @header_image, :desktop_x1_webp) %>"
              srcset="<%= Routes.image_srcset(@routes, @header_image) %>"
-             sizes="100vw"
-             alt="<%= @page_title %>"
+             sizes="(min-width: 38rem) 38rem, 100vw"<%= dimensions(@header_image) %>
+             fetchpriority="high"
+             alt=""
              class="header-image">
+        <%= if unsplash_credit?(@header_image) do %>
+        <p class="photo-credit"><%= photo_credit(@header_image) %></p>
+        <% end %>
         <%= if @page_emoji do %><div class="emoji"><%= @page_emoji %></div><% end %>
       </div>
-      <% @page_emoji && !@is_home -> %>
+      <% @title_mascot || @is_home -> %>
+      <% @page_emoji -> %>
       <div class="emoji"><%= @page_emoji %></div>
       <% true -> %>
       <% end %>
-      <h1><%= @page_title %></h1>
-      <%= @inner_content %>
-      <%= if unsplash_credit?(@header_image) do %>
-      <div class="photo-credit">
-        Photo by <a href="<%= Image.unsplash_photographer_url(@header_image) %>" target="_blank" rel="noopener"><%= Image.unsplash_photographer_name(@header_image) %></a> on <a href="https://unsplash.com" target="_blank" rel="noopener">Unsplash</a>
+      <%= cond do %>
+      <% @is_home -> %>
+      <% match?(%Image{}, @title_mascot) -> %>
+      <div class="title-row">
+        <h1><%= @page_title %></h1>
+        <span class="title-mascot">
+          <%= mascot(@routes, @title_mascot, "title-mascot-image", "10rem", lazy: false) %>
+          <%= if @page_emoji && !match?(%Image{}, @header_image) do %><span class="title-mascot-badge" aria-hidden="true"><%= @page_emoji %></span><% end %>
+        </span>
       </div>
+      <% true -> %>
+      <h1><%= @page_title %></h1>
+      <%= if @published_at do %>
+      <p class="post-meta"><%= time_tag(@published_at) %></p>
       <% end %>
+      <% end %>
+      <%= @inner_content %>
     </main>
-    <footer>
-      <hr />
-      <p>
+    <footer class="site-footer">
+      <%= cond do %>
+      <% match?(%Image{}, @site.footer_mascot_image) -> %>
+      <%= mascot(@routes, @site.footer_mascot_image, "footer-mascot", "(min-width: 75rem) 16.5rem, (min-width: 30rem) calc(9rem + 10vw), 12rem") %>
+      <% present?(@site.emoji) -> %>
+      <span class="footer-emoji" aria-hidden="true"><%= @site.emoji %></span>
+      <% true -> %>
+      <% end %>
+      <%= if @data.navigation != [] do %>
+      <nav class="site-nav" aria-label="<%= gettext("Pages") %>">
+        <ul>
+          <%= for item <- @data.navigation do %>
+          <li><%= chip(Routes.page_url(@routes, item.page), item.page.emoji, item.page.title, current_page?(assigns, item.page)) %></li>
+          <% end %>
+        </ul>
+      </nav>
+      <% end %>
+      <%= if Enum.any?(@social_links, &HTML.safe_url?(&1.url)) do %>
+      <p class="social-links">
         <%= for link <- @social_links, HTML.safe_url?(link.url) do %>
-        <a href="<%= link.url %>" title="<%= link.name %>" class="socialLink">
-          <%= raw(SocialMediaService.svg(link.icon) || "") %>
+        <a href="<%= link.url %>" title="<%= link.name %>" aria-label="<%= link.name %>" class="socialLink">
+          <%= social_icon(link.icon) %>
         </a>
         <% end %>
       </p>
-      <p><%= copyright(@site.copyright) %></p>
+      <% end %>
+      <p class="copyright"><%= copyright(@site.copyright) %></p>
     </footer>
   </body>
 </html>

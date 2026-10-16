@@ -73,28 +73,36 @@ defmodule Feather.StaticSite.BlocksTest do
              "<blockquote><p>Simple.</p></blockquote>"
   end
 
-  test "code is escaped", %{context: c} do
+  test "code is escaped and labelled with its language", %{context: c} do
     assert html(%{"type" => "code", "code" => "<b>\"x\" & y</b>\n", "language" => "html"}, c) ==
-             "<pre><code>&lt;b&gt;&quot;x&quot; &amp; y&lt;/b&gt;\n</code></pre>"
+             ~s(<pre data-language="html"><code class="language-html">) <>
+               "&lt;b&gt;&quot;x&quot; &amp; y&lt;/b&gt;\n</code></pre>"
   end
 
-  test "image with srcset, size, alt and caption", %{context: c} do
+  test "code without a meaningful language has no label", %{context: c} do
+    for language <- ["plaintext", "text", "", nil, "wdt_reset(); ```", ~S|x" onclick="y|] do
+      assert html(%{"type" => "code", "code" => "x", "language" => language}, c) ==
+               "<pre><code>x</code></pre>"
+    end
+  end
+
+  test "image in a figure with srcset, sizes, size, alt and caption", %{context: c} do
     block = %{"type" => "image", "image_id" => "img000000001", "caption" => "A <b>nice</b> view"}
 
     assert html(block, c) ==
-             ~s(<picture><source srcset="/images/img000000001/mobile_x1.webp 430w, ) <>
-               ~s(/images/img000000001/mobile_x2.webp 860w, ) <>
-               ~s(/images/img000000001/desktop_x1.webp 1000w, ) <>
-               ~s(/images/img000000001/mobile_x3.webp 1290w, ) <>
-               ~s(/images/img000000001/desktop_x2.webp 2000w" type="image/webp">) <>
+             ~s(<figure><picture><source srcset="/images/img000000001/mobile_x1.webp 430w, ) <>
+               ~s(/images/img000000001/mobile_x2.webp 800w" ) <>
+               ~s|sizes="(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)" | <>
+               ~s(type="image/webp">) <>
                ~s(<img loading="lazy" height="600" width="800" ) <>
-               ~s(src="/images/img000000001/desktop_x1.jpg" alt="A nice view" />) <>
-               ~s(<figcaption>A <b>nice</b> view</figcaption></picture>)
+               ~s(src="/images/img000000001/desktop_x1.jpg" alt="A nice view" /></picture>) <>
+               ~s(<figcaption>A <b>nice</b> view</figcaption></figure>)
   end
 
   test "image without caption has an empty alt and no figcaption", %{context: c} do
     output = html(%{"type" => "image", "image_id" => "img000000001", "caption" => ""}, c)
     assert output =~ ~s(alt="")
+    assert output =~ ~r{\A<figure><picture>.*</picture></figure>\z}
     refute output =~ "figcaption"
   end
 
@@ -106,7 +114,7 @@ defmodule Feather.StaticSite.BlocksTest do
     content = [["Name", "<b>Value</b>"], ["a", "1"]]
 
     assert html(%{"type" => "table", "content" => content, "with_headings" => true}, c) ==
-             "<table><thead><tr><td>Name</td><td><b>Value</b></td></tr></thead>" <>
+             "<table><thead><tr><th>Name</th><th><b>Value</b></th></tr></thead>" <>
                "<tbody><tr><td>a</td><td>1</td></tr></tbody></table>"
 
     assert html(%{"type" => "table", "content" => content, "with_headings" => false}, c) ==
@@ -114,7 +122,7 @@ defmodule Feather.StaticSite.BlocksTest do
                "<tr><td>a</td><td>1</td></tr></tbody></table>"
   end
 
-  test "embed uses youtube-nocookie and size attributes", %{context: c} do
+  test "embed uses youtube-nocookie, a title and its size as aspect ratio", %{context: c} do
     block = %{
       "type" => "embed",
       "service" => "youtube",
@@ -126,9 +134,22 @@ defmodule Feather.StaticSite.BlocksTest do
     }
 
     assert html(block, c) ==
-             ~s(<figure><iframe src="https://www.youtube-nocookie.com/embed/abc" width="580" ) <>
-               ~s(height="320" frameborder="0" allowfullscreen></iframe>) <>
-               ~s(<figcaption>A video</figcaption></figure>)
+             ~s(<figure class="embed"><iframe src="https://www.youtube-nocookie.com/embed/abc" ) <>
+               ~s(title="A video" width="580" height="320" style="aspect-ratio: 580 / 320" ) <>
+               ~s(allowfullscreen></iframe><figcaption>A video</figcaption></figure>)
+  end
+
+  test "embed without a numeric size or caption keeps the default ratio", %{context: c} do
+    block = %{
+      "type" => "embed",
+      "embed" => "https://player.vimeo.com/video/1",
+      "width" => "100%",
+      "caption" => " "
+    }
+
+    assert html(block, c) ==
+             ~s(<figure class="embed"><iframe src="https://player.vimeo.com/video/1" ) <>
+               ~s(title="Embedded content" width="100%" allowfullscreen></iframe></figure>)
   end
 
   test "embed with an unsafe URL or size is not injected", %{context: c} do
@@ -141,7 +162,8 @@ defmodule Feather.StaticSite.BlocksTest do
       )
 
     assert output ==
-             ~s(<figure><iframe src="https://e.com/x" frameborder="0" allowfullscreen></iframe></figure>)
+             ~s(<figure class="embed"><iframe src="https://e.com/x" title="Embedded content" ) <>
+               ~s(allowfullscreen></iframe></figure>)
   end
 
   test "book card with emoji, escaped", %{context: c} do
@@ -156,7 +178,7 @@ defmodule Feather.StaticSite.BlocksTest do
     output = html(%{"type" => "book", "book_public_id" => "book00000002"}, c)
 
     assert output =~
-             ~s(<img src="/images/cov000000001/mobile_x1.webp" alt="Covered" class="book-cover">)
+             ~s(<img src="/images/cov000000001/mobile_x1.webp" alt="" class="book-cover">)
 
     refute output =~ "book-emoji"
   end

@@ -1018,6 +1018,15 @@
   color: var(--fp-muted);
 }
 
+/* Mascot previews (site settings): a checkerboard shows transparency */
+.checkerboard {
+  background: repeating-conic-gradient(
+      var(--color-base-300) 0 25%,
+      var(--color-base-100) 0 50%
+    )
+    0 0 / 1rem 1rem;
+}
+
 /* Star rating: hovering a star highlights it and every star before it. */
 .star-rating {
   display: inline-flex;

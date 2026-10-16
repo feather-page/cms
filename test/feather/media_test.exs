@@ -47,6 +47,26 @@ defmodule Feather.MediaTest do
       end
     end
 
+    test "webp variants keep the alpha channel, the JPEG is flattened", %{scope: scope} do
+      path = transparent_image_path(1200, 400)
+
+      assert {:ok, image} = Media.create_image_from_upload(scope, path, "mascot.png", %{})
+
+      for %{name: name, format: format} <- Variants.all() do
+        {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, name))
+
+        if format == :webp do
+          assert Vix.Vips.Image.has_alpha?(variant), "#{name} has no alpha channel"
+          {:ok, alpha} = Vix.Vips.Operation.extract_band(variant, 3)
+          assert {:ok, {+0.0, _}} = Vix.Vips.Operation.min(alpha)
+          assert {:ok, {opaque, _}} = Vix.Vips.Operation.max(alpha)
+          assert opaque >= 250
+        else
+          refute Vix.Vips.Image.has_alpha?(variant)
+        end
+      end
+    end
+
     test "accepts Ultra HDR JPEGs (iPhone photos with a gain map) as JPEGs", %{scope: scope} do
       path = ultra_hdr_image_path(64, 48)
 
@@ -64,6 +84,45 @@ defmodule Feather.MediaTest do
 
       {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, :desktop_x2_webp))
       assert {Vix.Vips.Image.width(variant), Vix.Vips.Image.height(variant)} == {300, 200}
+    end
+
+    test "variant widths follow from the stored size", %{scope: scope} do
+      portrait = image_fixture(scope, width: 900, height: 1500)
+      small = image_fixture(scope, width: 300, height: 200)
+
+      for image <- [portrait, small], variant <- Variants.all() do
+        {:ok, file} = Vix.Vips.Image.new_from_file(Media.variant_path(image, variant.name))
+
+        assert Variants.width(variant, image.width, image.height) == Vix.Vips.Image.width(file),
+               "#{image.width}×#{image.height} #{variant.filename}"
+      end
+
+      assert Variants.width(Variants.fetch(:mobile_x2_webp), nil, nil) == 860
+    end
+
+    test "srcset widths are the real widths, one candidate per width" do
+      assert Variants.srcset_widths(3024, 4032) == [
+               {"mobile_x1.webp", 323},
+               {"mobile_x2.webp", 645},
+               {"desktop_x1.webp", 750},
+               {"mobile_x3.webp", 968},
+               {"desktop_x2.webp", 1500}
+             ]
+
+      assert Variants.srcset_widths(606, 341) == [
+               {"mobile_x1.webp", 430},
+               {"mobile_x2.webp", 606}
+             ]
+
+      assert Variants.srcset_widths(180, 277) == [{"mobile_x1.webp", 180}]
+
+      assert Variants.srcset_widths(nil, nil) == [
+               {"mobile_x1.webp", 430},
+               {"mobile_x2.webp", 860},
+               {"desktop_x1.webp", 1000},
+               {"mobile_x3.webp", 1290},
+               {"desktop_x2.webp", 2000}
+             ]
     end
 
     test "variant names match the static export file names" do

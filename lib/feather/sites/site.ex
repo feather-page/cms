@@ -7,6 +7,9 @@ defmodule Feather.Sites.Site do
   alias Feather.Sites.Languages
 
   @type t :: %__MODULE__{}
+  @type mascot_slot :: :footer | :post_end | :projects
+
+  @mascot_slots [:footer, :post_end, :projects]
 
   schema "sites" do
     field :public_id, :string
@@ -28,6 +31,10 @@ defmodule Feather.Sites.Site do
     has_many :images, Feather.Media.Image
     has_many :deployment_targets, Feather.Publishing.DeploymentTarget
 
+    belongs_to :footer_mascot_image, Feather.Media.Image
+    belongs_to :post_end_mascot_image, Feather.Media.Image
+    belongs_to :projects_mascot_image, Feather.Media.Image
+
     timestamps()
   end
 
@@ -46,6 +53,28 @@ defmodule Feather.Sites.Site do
     |> unique_constraint(:domain)
     |> unique_constraint(:public_id)
   end
+
+  @doc "The mascot slots, see `Feather.Sites.put_mascot/4`."
+  @spec mascot_slots() :: [mascot_slot()]
+  def mascot_slots, do: @mascot_slots
+
+  @doc "The association of a mascot slot, e.g. `:footer_mascot_image`."
+  @spec mascot_assoc(mascot_slot()) :: atom()
+  def mascot_assoc(:footer), do: :footer_mascot_image
+  def mascot_assoc(:post_end), do: :post_end_mascot_image
+  def mascot_assoc(:projects), do: :projects_mascot_image
+
+  @doc "The associations of all mascot slots, for preloading."
+  @spec mascot_assocs() :: [atom()]
+  def mascot_assocs, do: Enum.map(@mascot_slots, &mascot_assoc/1)
+
+  @doc "The foreign key of a mascot slot, e.g. `:footer_mascot_image_id`."
+  @spec mascot_field(mascot_slot()) :: atom()
+  def mascot_field(slot), do: :"#{mascot_assoc(slot)}_id"
+
+  @doc "The foreign keys of all mascot slots."
+  @spec mascot_fields() :: [atom()]
+  def mascot_fields, do: Enum.map(@mascot_slots, &mascot_field/1)
 
   @doc """
   Normalizes what users type as a domain: trims and downcases it and drops
