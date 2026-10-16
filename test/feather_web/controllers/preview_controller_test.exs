@@ -82,7 +82,9 @@ defmodule FeatherWeb.PreviewControllerTest do
 
     assert conn.status == 200
     assert get_resp_header(conn, "content-type") == ["font/woff2"]
-    assert conn.resp_body == File.read!(Feather.StaticSite.Fonts.path("nunito-latin-800.woff2"))
+
+    assert conn.resp_body ==
+             File.read!(Feather.StaticSite.Themes.FeatherPage.font_path("nunito-latin-800.woff2"))
   end
 
   test "serves the feed with canonical URLs", %{conn: conn, scope: scope, root: root, target: t} do

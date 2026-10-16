@@ -1,6 +1,6 @@
 defmodule Feather.StaticSite.Preview do
   @moduledoc """
-  Live rendering of a site inside the CMS with the export's templates,
+  Live rendering of a site inside the CMS with the export's renderer and theme,
   addressed under `/preview/<target public id>/` (see
   `Feather.StaticSite.Routes`). Shows the records as they are, unpublished
   changes and drafts included, like a staging export. Scheduled posts can
@@ -14,7 +14,7 @@ defmodule Feather.StaticSite.Preview do
   alias Feather.Media.Variants
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Fonts, Renderer, Routes, SiteData}
+  alias Feather.StaticSite.{Renderer, Routes, SiteData, Themes}
 
   @type result ::
           {:html, iodata()}
@@ -28,7 +28,7 @@ defmodule Feather.StaticSite.Preview do
 
     * `{:html, iodata}` - a page
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`
-    * `{:file, path, content_type}` - an image variant or a theme font
+    * `{:file, path, content_type}` - an image variant or a font of the site's theme
     * `{:not_found, iodata}` - the site's 404 page
   """
   @spec render(DeploymentTarget.t(), String.t() | [String.t()]) :: result()
@@ -47,7 +47,8 @@ defmodule Feather.StaticSite.Preview do
           else: not_found(site, routes)
 
       {:font, name} ->
-        {:file, Fonts.path(name), Fonts.content_type(name)}
+        theme = Themes.module(site)
+        {:file, theme.font_path(name), Map.fetch!(theme.fonts(), name)}
 
       route ->
         render_route(route, load(site), routes)

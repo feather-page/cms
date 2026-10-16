@@ -12,40 +12,40 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #. Calendar.strftime format of a long date
-#: lib/feather/static_site/templates.ex:119
+#: lib/feather/static_site/theme_helpers.ex:94
 #, elixir-autogen, elixir-format
 msgid "%B %-d, %Y"
 msgstr "%-d. %B %Y"
 
 #. Calendar.strftime format of a short date, unambiguous in the language
-#: lib/feather/static_site/templates.ex:126
+#: lib/feather/static_site/theme_helpers.ex:101
 #, elixir-autogen, elixir-format
 msgid "%b %-d, %Y"
 msgstr "%d.%m.%Y"
 
 #. Calendar.strftime format of a month and year
-#: lib/feather/static_site/templates.ex:131
+#: lib/feather/static_site/theme_helpers.ex:108
 #, elixir-autogen, elixir-format
 msgid "%b %Y"
 msgstr "%b %Y"
 
-#: lib/feather/static_site/templates.ex:198
+#: lib/feather/static_site/theme_helpers.ex:175
 #, elixir-autogen, elixir-format
 msgid "%{rating} of 5 stars"
 msgstr "%{rating} von 5 Sternen"
 
-#: lib/feather/static_site/templates.ex:326
+#: lib/feather/static_site/theme_helpers.ex:349
 #, elixir-autogen, elixir-format
 msgid "%{start} – %{finish}"
 msgstr "%{start} – %{finish}"
 
-#: lib/feather/static_site/templates/not_found.html.eex:12
-#: lib/feather/static_site/templates/post.html.eex:27
+#: lib/feather/static_site/themes/feather_page/not_found.html.eex:12
+#: lib/feather/static_site/themes/feather_page/post.html.eex:27
 #, elixir-autogen, elixir-format
 msgid "All posts"
 msgstr "Alle Beiträge"
 
-#: lib/feather/static_site/templates/layout.html.eex:41
+#: lib/feather/static_site/themes/feather_page/layout.html.eex:18
 #, elixir-autogen, elixir-format
 msgid "Breadcrumb"
 msgstr "Brotkrümelnavigation"
@@ -55,268 +55,268 @@ msgstr "Brotkrümelnavigation"
 msgid "Embedded content"
 msgstr "Eingebetteter Inhalt"
 
-#: lib/feather/static_site/templates/not_found.html.eex:11
+#: lib/feather/static_site/themes/feather_page/not_found.html.eex:11
 #, elixir-autogen, elixir-format
 msgid "Go to the home page"
 msgstr "Zur Startseite"
 
-#: lib/feather/static_site/templates/project.html.eex:27
+#: lib/feather/static_site/themes/feather_page/project.html.eex:27
 #, elixir-autogen, elixir-format
 msgid "Links"
 msgstr "Links"
 
-#: lib/feather/static_site/templates/post.html.eex:7
+#: lib/feather/static_site/themes/feather_page/post.html.eex:7
 #, elixir-autogen, elixir-format
 msgid "More posts"
 msgstr "Weitere Beiträge"
 
-#: lib/feather/static_site/templates/post.html.eex:17
+#: lib/feather/static_site/themes/feather_page/post.html.eex:17
 #, elixir-autogen, elixir-format
 msgid "Newer post"
 msgstr "Neuerer Beitrag"
 
-#: lib/feather/static_site/templates/home.html.eex:60
+#: lib/feather/static_site/themes/feather_page/home.html.eex:60
 #, elixir-autogen, elixir-format
 msgid "Next page"
 msgstr "Nächste Seite"
 
-#: lib/feather/static_site/templates/post.html.eex:23
+#: lib/feather/static_site/themes/feather_page/post.html.eex:23
 #, elixir-autogen, elixir-format
 msgid "Older post"
 msgstr "Älterer Beitrag"
 
-#: lib/feather/static_site/renderer.ex:137
+#: lib/feather/static_site/renderer.ex:138
 #, elixir-autogen, elixir-format
 msgid "Page not found"
 msgstr "Seite nicht gefunden"
 
-#: lib/feather/static_site/templates/layout.html.eex:92
+#: lib/feather/static_site/themes/feather_page/layout.html.eex:69
 #, elixir-autogen, elixir-format
 msgid "Pages"
 msgstr "Seiten"
 
-#: lib/feather/static_site/templates/home.html.eex:45
+#: lib/feather/static_site/themes/feather_page/home.html.eex:45
 #, elixir-autogen, elixir-format
 msgid "Pagination"
 msgstr "Seitennummerierung"
 
-#: lib/feather/static_site/templates.ex:337
+#: lib/feather/static_site/theme_helpers.ex:259
 #, elixir-autogen, elixir-format
 msgid "Photo by %{photographer} on %{unsplash}"
 msgstr "Foto von %{photographer} auf %{unsplash}"
 
-#: lib/feather/static_site/templates/home.html.eex:5
+#: lib/feather/static_site/themes/feather_page/home.html.eex:5
 #, elixir-autogen, elixir-format
 msgid "Posts"
 msgstr "Beiträge"
 
-#: lib/feather/static_site/templates/home.html.eex:47
+#: lib/feather/static_site/themes/feather_page/home.html.eex:47
 #, elixir-autogen, elixir-format
 msgid "Previous page"
 msgstr "Vorherige Seite"
 
-#: lib/feather/static_site/templates/layout.html.eex:37
+#: lib/feather/static_site/themes/feather_page/layout.html.eex:14
 #, elixir-autogen, elixir-format
 msgid "Skip to content"
 msgstr "Zum Inhalt springen"
 
-#: lib/feather/static_site/templates/not_found.html.eex:9
+#: lib/feather/static_site/themes/feather_page/not_found.html.eex:9
 #, elixir-autogen, elixir-format
 msgid "This page does not exist, or it has moved."
 msgstr "Diese Seite gibt es nicht, oder sie ist umgezogen."
 
-#: lib/feather/static_site/templates.ex:325
+#: lib/feather/static_site/theme_helpers.ex:348
 #, elixir-autogen, elixir-format
 msgid "today"
 msgstr "heute"
 
-#: lib/feather/static_site/templates.ex:176
+#: lib/feather/static_site/theme_helpers.ex:153
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Apr"
 msgstr "Apr."
 
-#: lib/feather/static_site/templates.ex:180
+#: lib/feather/static_site/theme_helpers.ex:157
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Aug"
 msgstr "Aug."
 
-#: lib/feather/static_site/templates.ex:184
+#: lib/feather/static_site/theme_helpers.ex:161
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Dec"
 msgstr "Dez."
 
-#: lib/feather/static_site/templates.ex:174
+#: lib/feather/static_site/theme_helpers.ex:151
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Feb"
 msgstr "Feb."
 
-#: lib/feather/static_site/templates.ex:173
+#: lib/feather/static_site/theme_helpers.ex:150
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Jan"
 msgstr "Jan."
 
-#: lib/feather/static_site/templates.ex:179
+#: lib/feather/static_site/theme_helpers.ex:156
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Jul"
 msgstr "Juli"
 
-#: lib/feather/static_site/templates.ex:178
+#: lib/feather/static_site/theme_helpers.ex:155
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Jun"
 msgstr "Juni"
 
-#: lib/feather/static_site/templates.ex:175
+#: lib/feather/static_site/theme_helpers.ex:152
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Mar"
 msgstr "März"
 
-#: lib/feather/static_site/templates.ex:177
+#: lib/feather/static_site/theme_helpers.ex:154
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "May"
 msgstr "Mai"
 
-#: lib/feather/static_site/templates.ex:183
+#: lib/feather/static_site/theme_helpers.ex:160
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Nov"
 msgstr "Nov."
 
-#: lib/feather/static_site/templates.ex:182
+#: lib/feather/static_site/theme_helpers.ex:159
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Oct"
 msgstr "Okt."
 
-#: lib/feather/static_site/templates.ex:181
+#: lib/feather/static_site/theme_helpers.ex:158
 #, elixir-autogen, elixir-format
 msgctxt "abbreviated month"
 msgid "Sep"
 msgstr "Sept."
 
-#: lib/feather/static_site/templates.ex:163
+#: lib/feather/static_site/theme_helpers.ex:140
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "April"
 msgstr "April"
 
-#: lib/feather/static_site/templates.ex:167
+#: lib/feather/static_site/theme_helpers.ex:144
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "August"
 msgstr "August"
 
-#: lib/feather/static_site/templates.ex:171
+#: lib/feather/static_site/theme_helpers.ex:148
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "December"
 msgstr "Dezember"
 
-#: lib/feather/static_site/templates.ex:161
+#: lib/feather/static_site/theme_helpers.ex:138
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "February"
 msgstr "Februar"
 
-#: lib/feather/static_site/templates.ex:160
+#: lib/feather/static_site/theme_helpers.ex:137
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "January"
 msgstr "Januar"
 
-#: lib/feather/static_site/templates.ex:166
+#: lib/feather/static_site/theme_helpers.ex:143
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "July"
 msgstr "Juli"
 
-#: lib/feather/static_site/templates.ex:165
+#: lib/feather/static_site/theme_helpers.ex:142
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "June"
 msgstr "Juni"
 
-#: lib/feather/static_site/templates.ex:162
+#: lib/feather/static_site/theme_helpers.ex:139
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "March"
 msgstr "März"
 
-#: lib/feather/static_site/templates.ex:164
+#: lib/feather/static_site/theme_helpers.ex:141
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "May"
 msgstr "Mai"
 
-#: lib/feather/static_site/templates.ex:170
+#: lib/feather/static_site/theme_helpers.ex:147
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "November"
 msgstr "November"
 
-#: lib/feather/static_site/templates.ex:169
+#: lib/feather/static_site/theme_helpers.ex:146
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "October"
 msgstr "Oktober"
 
-#: lib/feather/static_site/templates.ex:168
+#: lib/feather/static_site/theme_helpers.ex:145
 #, elixir-autogen, elixir-format
 msgctxt "month"
 msgid "September"
 msgstr "September"
 
-#: lib/feather/static_site/templates.ex:312
+#: lib/feather/static_site/theme_helpers.ex:331
 #, elixir-autogen, elixir-format
 msgctxt "project status"
 msgid "Abandoned"
 msgstr "Aufgegeben"
 
-#: lib/feather/static_site/templates.ex:310
+#: lib/feather/static_site/theme_helpers.ex:329
 #, elixir-autogen, elixir-format
 msgctxt "project status"
 msgid "Completed"
 msgstr "Abgeschlossen"
 
-#: lib/feather/static_site/templates.ex:309
+#: lib/feather/static_site/theme_helpers.ex:328
 #, elixir-autogen, elixir-format
 msgctxt "project status"
 msgid "Ongoing"
 msgstr "Laufend"
 
-#: lib/feather/static_site/templates.ex:311
+#: lib/feather/static_site/theme_helpers.ex:330
 #, elixir-autogen, elixir-format
 msgctxt "project status"
 msgid "Paused"
 msgstr "Pausiert"
 
-#: lib/feather/static_site/templates.ex:318
+#: lib/feather/static_site/theme_helpers.ex:339
 #, elixir-autogen, elixir-format
 msgctxt "project type"
 msgid "Freelance"
 msgstr "Freiberuflich"
 
-#: lib/feather/static_site/templates.ex:317
+#: lib/feather/static_site/theme_helpers.ex:338
 #, elixir-autogen, elixir-format
 msgctxt "project type"
 msgid "Open Source"
 msgstr "Open Source"
 
-#: lib/feather/static_site/templates.ex:316
+#: lib/feather/static_site/theme_helpers.ex:337
 #, elixir-autogen, elixir-format
 msgctxt "project type"
 msgid "Personal"
 msgstr "Privat"
 
-#: lib/feather/static_site/templates.ex:315
+#: lib/feather/static_site/theme_helpers.ex:336
 #, elixir-autogen, elixir-format
 msgctxt "project type"
 msgid "Professional"

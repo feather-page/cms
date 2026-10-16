@@ -81,11 +81,12 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
     `Media`, `Publishing`)
-*   `lib/feather/static_site/`: static export and preview (EEx templates in `templates/`, sinks,
-    feed, sitemap)
+*   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, the theme
+    registry `Themes`); each theme's EEx templates live in `themes/<theme>/`
 *   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
     (Tailwind CSS and daisyUI), and the content API controllers
-*   `priv/static_site/`: the stylesheet of the generated static sites
+*   `priv/static_site/`: the stylesheets and fonts of the themes (`themes/<theme>/`) and the
+    translations of the generated static sites
 *   `test/`: ExUnit tests, the executable specification (`DECISIONS.md`, 0008)
 *   `docs/api/`: the content API (`openapi.yml`)
 *   `ops/`: production setup (`compose.yml`, `stack.env.example`, the staging `Caddyfile`); CI

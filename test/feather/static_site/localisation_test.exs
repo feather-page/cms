@@ -2,7 +2,7 @@ defmodule Feather.StaticSite.LocalisationTest do
   use Feather.DataCase
 
   alias Feather.Books
-  alias Feather.StaticSite.{Export, RecordingSink, Routes, Templates}
+  alias Feather.StaticSite.{Export, RecordingSink, Routes, ThemeHelpers}
 
   defp export_site(language_code) do
     scope = site_scope_fixture(%{title: "Site", language_code: language_code})
@@ -102,17 +102,17 @@ defmodule Feather.StaticSite.LocalisationTest do
     date = ~D[2025-05-06]
 
     Gettext.with_locale(Feather.StaticSite.Gettext, "en", fn ->
-      assert Templates.format_date(date) == "May 6, 2025"
-      assert Templates.format_short_date(date) == "May 6, 2025"
-      assert Templates.format_short_date(~D[2026-08-12]) == "Aug 12, 2026"
-      assert Templates.rating_label(9) == "5 of 5 stars"
+      assert ThemeHelpers.format_date(date) == "May 6, 2025"
+      assert ThemeHelpers.format_short_date(date) == "May 6, 2025"
+      assert ThemeHelpers.format_short_date(~D[2026-08-12]) == "Aug 12, 2026"
+      assert ThemeHelpers.rating_label(9) == "5 of 5 stars"
     end)
 
     Gettext.with_locale(Feather.StaticSite.Gettext, "de", fn ->
-      assert Templates.format_date(date) == "6. Mai 2025"
-      assert Templates.format_date(~U[2024-03-06 23:00:00Z]) == "6. März 2024"
-      assert Templates.format_short_date(date) == "06.05.2025"
-      assert Templates.rating_label(4) == "4 von 5 Sternen"
+      assert ThemeHelpers.format_date(date) == "6. Mai 2025"
+      assert ThemeHelpers.format_date(~U[2024-03-06 23:00:00Z]) == "6. März 2024"
+      assert ThemeHelpers.format_short_date(date) == "06.05.2025"
+      assert ThemeHelpers.rating_label(4) == "4 von 5 Sternen"
     end)
   end
 end

@@ -1,17 +1,9 @@
-defmodule Feather.StaticSite.Templates do
+defmodule Feather.StaticSite.ThemeHelpers do
   @moduledoc """
-  The templates of the static site, ported from the Rails ERB views
-  (`app/views/static_site/`, `app/components/static_site/`): the layout
-  and the home, post, page and project views in `templates/*.html.eex`.
-
-  They are EEx with `Phoenix.HTML.Engine` (output is escaped unless it is
-  `{:safe, iodata}`) rather than HEEx: HEEx adds the app's
-  `root_tag_attribute` (`phx-r`) to every root tag, which has no place in
-  a hand-made looking static site. Every template is a function taking an
-  assigns map and returning safe iodata.
-
-  Rendering goes through `Feather.StaticSite.Renderer`, which builds the
-  assigns (`data`, `routes`, `ctx`, ...) and renders in the site's
+  What every theme's templates share: formatting of dates, ratings,
+  projects and copyright notices, the `<head>` meta tags and the rules
+  for `@font-face`. Imported into each theme by
+  `use Feather.StaticSite.Theme`; every function runs in the site's
   language (`Feather.StaticSite.Gettext`).
   """
 
@@ -27,60 +19,43 @@ defmodule Feather.StaticSite.Templates do
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
-  alias Feather.StaticSite.{Blocks, Hue, Routes, SiteData}
-
-  @css_path Path.expand("../../../priv/static_site/static_site.css", __DIR__)
-  @external_resource @css_path
-  @css File.read!(@css_path)
-
-  @templates ~w(layout masthead home post post_book_card page books_list projects_list project_card
-                project tags not_found)a
-
-  for name <- @templates do
-    EEx.function_from_file(
-      :def,
-      name,
-      Path.join([__DIR__, "templates", "#{name}.html.eex"]),
-      [:assigns],
-      engine: Phoenix.HTML.Engine,
-      trim: true
-    )
-  end
-
-  @doc "The stylesheet inlined into every page."
-  @spec css() :: String.t()
-  def css, do: @css
+  alias Feather.StaticSite.{Hue, Routes, SiteData}
 
   @doc """
-  The `@font-face` rules of the heading fonts, addressed from the site
-  root (the stylesheet is inlined, so relative URLs would depend on the
-  page's depth).
+  The meta tags of a page (title, robots, description, canonical URL,
+  Open Graph), from the assigns `Feather.StaticSite.Renderer` builds.
   """
-  @spec font_faces(Routes.t()) :: Phoenix.HTML.safe()
-  def font_faces(%Routes{} = routes) do
-    faces =
-      for {weight, local_names} <- [
-            {700, ["Nunito Bold", "Nunito-Bold"]},
-            {800, ["Nunito ExtraBold", "Nunito-ExtraBold"]}
-          ] do
-        locals = Enum.map(local_names, &~s[local("#{&1}"), ])
-        url = routes |> Routes.font_url("nunito-latin-#{weight}.woff2") |> css_string()
+  EEx.function_from_file(
+    :def,
+    :head_meta,
+    Path.join([__DIR__, "templates", "head_meta.html.eex"]),
+    [:assigns],
+    engine: Phoenix.HTML.Engine,
+    trim: true
+  )
 
-        [
-          ~s[@font-face { font-family: "Nunito"; font-style: normal; font-weight: #{weight}; ],
-          ~s[font-display: swap; src: ],
-          locals,
-          ~s[url("#{url}") format("woff2"); }\n]
-        ]
-      end
+  @doc """
+  An `@font-face` rule for a font file of the theme, addressed from the
+  site root (stylesheets are inlined, so relative URLs would depend on the
+  page's depth). `weight` is a number, or a range like `"400 600"` for a
+  variable font.
+  """
+  @spec font_face(Routes.t(), String.t(), pos_integer() | String.t(), [String.t()], String.t()) ::
+          iodata()
+  def font_face(%Routes{} = routes, family, weight, local_names, file) do
+    locals = Enum.map(local_names, &~s[local("#{&1}"), ])
+    url = routes |> Routes.font_url(file) |> css_string()
 
-    {:safe, faces}
+    [
+      ~s[@font-face { font-family: "#{family}"; font-style: normal; font-weight: #{weight}; ],
+      ~s[font-display: swap; src: ],
+      locals,
+      ~s[url("#{url}") format("woff2"); }\n]
+    ]
   end
 
   # HTML escaping does not apply inside <style>; a CSS escape keeps the URL inside its string.
   defp css_string(text), do: String.replace(text, ~r/["\\<>\n]/, &"\\#{Base.encode16(&1)} ")
-
-  ## Helpers
 
   @doc """
   The page numbers of the pagination: all pages up to 7, otherwise the
@@ -126,7 +101,9 @@ defmodule Feather.StaticSite.Templates do
     strftime(date, gettext("%b %-d, %Y"))
   end
 
-  defp format_month(date) do
+  @doc "A month and year in the current language: `\"Mar 2024\"`."
+  @spec format_month(DateTime.t() | Date.t() | nil) :: String.t()
+  def format_month(date) do
     gettext_comment("Calendar.strftime format of a month and year")
     strftime(date, gettext("%b %Y"))
   end
@@ -197,7 +174,9 @@ defmodule Feather.StaticSite.Templates do
   def rating_label(rating) when is_integer(rating),
     do: gettext("%{rating} of 5 stars", rating: rating |> max(0) |> min(5))
 
-  defp rating(rating, class) do
+  @doc "A rating as stars with a label for screen readers, in a span of `class`."
+  @spec rating(integer(), String.t()) :: Phoenix.HTML.safe()
+  def rating(rating, class) do
     {:safe,
      [
        ~s(<span class="),
@@ -210,7 +189,9 @@ defmodule Feather.StaticSite.Templates do
      ]}
   end
 
-  defp social_icon(icon) do
+  @doc "The inline SVG of a social media icon, hidden from screen readers."
+  @spec social_icon(String.t()) :: Phoenix.HTML.safe() | String.t()
+  def social_icon(icon) do
     case SocialMediaService.svg(icon) do
       nil ->
         ""
@@ -259,75 +240,16 @@ defmodule Feather.StaticSite.Templates do
     {:safe, Enum.intersperse(paragraphs, "\n\n")}
   end
 
-  defp unsplash_credit?(%Image{} = image),
+  @doc "Returns true if the image is an Unsplash photo whose photographer can be credited."
+  @spec unsplash_credit?(Image.t() | nil) :: boolean()
+  def unsplash_credit?(%Image{} = image),
     do: Image.unsplash?(image) and HTML.safe_url?(Image.unsplash_photographer_url(image))
 
-  defp unsplash_credit?(_image), do: false
+  def unsplash_credit?(_image), do: false
 
-  defp dimensions(%Image{width: width, height: height})
-       when is_integer(width) and is_integer(height),
-       do: raw(~s( width="#{width}" height="#{height}"))
-
-  defp dimensions(_image), do: {:safe, ""}
-
-  # Open Graph wants language_TERRITORY; languages not listed here go without.
-  @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP
-                 ko_KR nl_NL pl_PL pt_PT ru_RU sv_SE tr_TR uk_UA zh_CN)
-              |> Map.new(&{binary_part(&1, 0, 2), &1})
-
-  defp og_locale(language_code), do: Map.get(@og_locales, language_code)
-
-  defp book(%{book: %Book{} = book}), do: book
-  defp book(_post), do: nil
-
-  # Only published reviews exist in the exported site.
-  defp review_linked?(data, %Book{post: %Content.Post{} = post}),
-    do: present?(post.title) and SiteData.published?(data, post)
-
-  defp review_linked?(_data, _book), do: false
-
-  defp books_by_year(books) do
-    books
-    |> Enum.filter(& &1.read_at)
-    |> Enum.sort_by(& &1.read_at, {:desc, Date})
-    |> Enum.chunk_by(& &1.read_at.year)
-    |> Enum.map(fn [first | _] = group -> {first.read_at.year, group} end)
-  end
-
-  defp sort_projects(projects) do
-    {ongoing, other} = Enum.split_with(projects, &(&1.status == "ongoing"))
-
-    Enum.sort_by(ongoing, & &1.started_at, {:desc, Date}) ++
-      Enum.sort_by(other, &(&1.ended_at || &1.started_at), {:desc, Date})
-  end
-
-  defp project_links(%Project{links: links}) when is_list(links),
-    do: Enum.filter(links, &(present?(&1.url) and HTML.safe_url?(&1.url)))
-
-  defp project_links(_project), do: []
-
-  defp project_status_label("ongoing"), do: pgettext("project status", "Ongoing")
-  defp project_status_label("completed"), do: pgettext("project status", "Completed")
-  defp project_status_label("paused"), do: pgettext("project status", "Paused")
-  defp project_status_label("abandoned"), do: pgettext("project status", "Abandoned")
-  defp project_status_label(status), do: titleize(status)
-
-  defp project_type_label("professional"), do: pgettext("project type", "Professional")
-  defp project_type_label("personal"), do: pgettext("project type", "Personal")
-  defp project_type_label("open_source"), do: pgettext("project type", "Open Source")
-  defp project_type_label("freelance"), do: pgettext("project type", "Freelance")
-  defp project_type_label(type), do: titleize(type)
-
-  defp project_period(%Project{period: period} = project) do
-    if present?(period) do
-      period
-    else
-      finish = if project.ended_at, do: format_month(project.ended_at), else: gettext("today")
-      gettext("%{start} – %{finish}", start: format_month(project.started_at), finish: finish)
-    end
-  end
-
-  defp photo_credit(%Image{} = image) do
+  @doc "The Unsplash credit of a photo, linking the photographer and Unsplash."
+  @spec photo_credit(Image.t()) :: Phoenix.HTML.safe()
+  def photo_credit(%Image{} = image) do
     link = fn url, text ->
       [~s(<a href="), escape(url), ~s(" target="_blank" rel="noopener">), escape(text), "</a>"]
       |> IO.iodata_to_binary()
@@ -342,51 +264,95 @@ defmodule Feather.StaticSite.Templates do
     )
   end
 
-  defp chip(href, emoji, title, current? \\ false) do
-    {class, seal} =
-      if present?(emoji),
-        do: {"chip", [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]},
-        else: {"chip chip--plain", []}
+  @doc "` width=\"…\" height=\"…\"` for an `<img>` of the image, if its size is known."
+  @spec dimensions(Image.t() | nil) :: Phoenix.HTML.safe()
+  def dimensions(%Image{width: width, height: height})
+      when is_integer(width) and is_integer(height),
+      do: raw(~s( width="#{width}" height="#{height}"))
 
-    {:safe,
-     [
-       ~s(<a class="),
-       class,
-       ~s(" href="),
-       escape(href),
-       ~s("),
-       if(current?, do: ~s( aria-current="page"), else: ""),
-       ">",
-       seal,
-       escape(title),
-       "</a>"
-     ]}
+  def dimensions(_image), do: {:safe, ""}
+
+  # Open Graph wants language_TERRITORY; languages not listed here go without.
+  @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP
+                 ko_KR nl_NL pl_PL pt_PT ru_RU sv_SE tr_TR uk_UA zh_CN)
+              |> Map.new(&{binary_part(&1, 0, 2), &1})
+
+  @doc "The Open Graph locale of a language, or nil."
+  @spec og_locale(String.t() | nil) :: String.t() | nil
+  def og_locale(language_code), do: Map.get(@og_locales, language_code)
+
+  @doc "The hue of the site's colours, derived from its emoji (`Feather.StaticSite.Hue`)."
+  @spec hue(Feather.Sites.Site.t()) :: integer()
+  def hue(site), do: Hue.for_emoji(site.emoji)
+
+  @doc "The book a post reviews, or nil."
+  @spec book(Content.Post.t() | map()) :: Book.t() | nil
+  def book(%{book: %Book{} = book}), do: book
+  def book(_post), do: nil
+
+  @doc "Returns true if the book's review is a titled post the exported site shows."
+  @spec review_linked?(SiteData.t(), Book.t()) :: boolean()
+  def review_linked?(data, %Book{post: %Content.Post{} = post}),
+    do: present?(post.title) and SiteData.published?(data, post)
+
+  def review_linked?(_data, _book), do: false
+
+  @doc "The read books grouped by the year they were read, newest first: `[{year, books}]`."
+  @spec books_by_year([Book.t()]) :: [{integer(), [Book.t()]}]
+  def books_by_year(books) do
+    books
+    |> Enum.filter(& &1.read_at)
+    |> Enum.sort_by(& &1.read_at, {:desc, Date})
+    |> Enum.chunk_by(& &1.read_at.year)
+    |> Enum.map(fn [first | _] = group -> {first.read_at.year, group} end)
   end
 
-  # Mascots are characters, not content: decorative, so alt is empty.
-  defp mascot(routes, %Image{} = image, class, sizes, opts \\ []) do
-    {:safe,
-     [
-       ~s(<img class="),
-       class,
-       ~s(" src="),
-       escape(Routes.image_url(routes, image, :mobile_x1_webp)),
-       ~s(" srcset="),
-       escape(Routes.image_srcset(routes, image)),
-       ~s(" sizes="),
-       escape(sizes),
-       ~s("),
-       image |> dimensions() |> elem(1),
-       if(Keyword.get(opts, :lazy, true), do: ~s( loading="lazy"), else: ""),
-       ~s( alt="">)
-     ]}
+  @doc "Ongoing projects first (latest started first), then the others by their end."
+  @spec sort_projects([Project.t()]) :: [Project.t()]
+  def sort_projects(projects) do
+    {ongoing, other} = Enum.split_with(projects, &(&1.status == "ongoing"))
+
+    Enum.sort_by(ongoing, & &1.started_at, {:desc, Date}) ++
+      Enum.sort_by(other, &(&1.ended_at || &1.started_at), {:desc, Date})
   end
 
-  defp not_found_mascot(site), do: site.post_end_mascot_image || site.projects_mascot_image
+  @doc "The links of a project that have a safe URL."
+  @spec project_links(Project.t() | nil) :: [Project.Link.t()]
+  def project_links(%Project{links: links}) when is_list(links),
+    do: Enum.filter(links, &(present?(&1.url) and HTML.safe_url?(&1.url)))
 
-  defp hue(site), do: Hue.for_emoji(site.emoji)
+  def project_links(_project), do: []
 
-  defp emoji_label(emoji, text) do
+  @doc "The label of a project status in the current language."
+  @spec project_status_label(String.t() | nil) :: String.t()
+  def project_status_label("ongoing"), do: pgettext("project status", "Ongoing")
+  def project_status_label("completed"), do: pgettext("project status", "Completed")
+  def project_status_label("paused"), do: pgettext("project status", "Paused")
+  def project_status_label("abandoned"), do: pgettext("project status", "Abandoned")
+  def project_status_label(status), do: titleize(status)
+
+  @doc "The label of a project type in the current language."
+  @spec project_type_label(String.t() | nil) :: String.t()
+  def project_type_label("professional"), do: pgettext("project type", "Professional")
+  def project_type_label("personal"), do: pgettext("project type", "Personal")
+  def project_type_label("open_source"), do: pgettext("project type", "Open Source")
+  def project_type_label("freelance"), do: pgettext("project type", "Freelance")
+  def project_type_label(type), do: titleize(type)
+
+  @doc "The period of a project: its own text, or start month to end month (or today)."
+  @spec project_period(Project.t()) :: String.t()
+  def project_period(%Project{period: period} = project) do
+    if present?(period) do
+      period
+    else
+      finish = if project.ended_at, do: format_month(project.ended_at), else: gettext("today")
+      gettext("%{start} – %{finish}", start: format_month(project.started_at), finish: finish)
+    end
+  end
+
+  @doc "Link text with an optional emoji in front, hidden from screen readers."
+  @spec emoji_label(String.t() | nil, String.t()) :: Phoenix.HTML.safe()
+  def emoji_label(emoji, text) do
     mark =
       if present?(emoji),
         do: [~s(<span class="link-emoji" aria-hidden="true">), escape(emoji), "</span>"],
@@ -397,7 +363,12 @@ defmodule Feather.StaticSite.Templates do
 
   @label_words 7
 
-  defp post_label(post) do
+  @doc """
+  What links name a post by: its title, or the first words of an untitled
+  post (its date if it has no text).
+  """
+  @spec post_label(Content.Post.t()) :: String.t()
+  def post_label(post) do
     if present?(post.title), do: post.title, else: untitled_label(post)
   end
 
@@ -418,22 +389,32 @@ defmodule Feather.StaticSite.Templates do
     end
   end
 
-  defp current_page?(%{page: %Content.Page{id: id}}, %Content.Page{id: id}), do: true
-  defp current_page?(_assigns, _page), do: false
+  @doc "Returns true if the assigns render that page."
+  @spec current_page?(map(), Content.Page.t()) :: boolean()
+  def current_page?(%{page: %Content.Page{id: id}}, %Content.Page{id: id}), do: true
+  def current_page?(_assigns, _page), do: false
 
-  defp escape(value), do: value |> to_string() |> Phoenix.HTML.html_escape() |> elem(1)
+  @doc "A value as escaped HTML iodata."
+  @spec escape(term()) :: iodata()
+  def escape(value), do: value |> to_string() |> Phoenix.HTML.html_escape() |> elem(1)
 
-  defp titleize(nil), do: ""
+  @doc "`\"open_source\"` as `\"Open Source\"`."
+  @spec titleize(String.t() | nil) :: String.t()
+  def titleize(nil), do: ""
 
-  defp titleize(text) do
+  def titleize(text) do
     text
     |> String.replace("_", " ")
     |> String.split(" ", trim: true)
     |> Enum.map_join(" ", &String.capitalize/1)
   end
 
-  defp present?(value) when is_binary(value), do: String.trim(value) != ""
-  defp present?(_value), do: false
+  @doc "Returns true for a string that is not blank."
+  @spec present?(term()) :: boolean()
+  def present?(value) when is_binary(value), do: String.trim(value) != ""
+  def present?(_value), do: false
 
-  defp blank?(value), do: not present?(value)
+  @doc "Returns true for nil and blank strings."
+  @spec blank?(term()) :: boolean()
+  def blank?(value), do: not present?(value)
 end
