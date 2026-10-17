@@ -20,13 +20,9 @@ defmodule Feather.Publishing.Rclone do
   """
 
   alias Feather.Publishing.DeploymentTarget
-  alias Feather.Publishing.Rclone.{Fastmail, HetznerFtps, Internal, SystemRunner}
+  alias Feather.Publishing.Rclone.{HetznerFtps, SystemRunner}
 
-  @providers %{
-    "internal" => Internal,
-    "fastmail" => Fastmail,
-    "hetzner_ftps" => HetznerFtps
-  }
+  @providers %{"hetzner_ftps" => HetznerFtps}
 
   @default_sync_timeout :timer.minutes(30)
   @obscure_timeout :timer.seconds(30)
@@ -34,9 +30,9 @@ defmodule Feather.Publishing.Rclone do
   @type runner ::
           module() | ([String.t()], keyword() -> {:ok, String.t()} | {:error, String.t()})
 
-  @doc "The provider module of a provider name, or nil."
-  @spec provider(String.t()) :: module() | nil
-  def provider(name), do: Map.get(@providers, name)
+  @doc "The names of the providers a deployment target may use."
+  @spec provider_names() :: [String.t()]
+  def provider_names, do: Map.keys(@providers)
 
   @doc """
   Syncs `source_dir` to the target.
@@ -44,8 +40,6 @@ defmodule Feather.Publishing.Rclone do
   ## Options
 
     * `:runner` - the command runner (default: see the module doc)
-    * `:staging_sites_path` - where the `internal` provider writes
-      (default: `config :feather, :staging_sites_path`)
     * `:sync_timeout` - milliseconds (default: `config :feather,
       :rclone_sync_timeout`, or 30 minutes)
   """
@@ -55,7 +49,7 @@ defmodule Feather.Publishing.Rclone do
     runner = Keyword.get_lazy(opts, :runner, &default_runner/0)
 
     with {:ok, provider} <- fetch_provider(target),
-         {:ok, remote} <- provider.remote(target, opts),
+         {:ok, remote} <- provider.remote(target),
          {:ok, config} <- provider.config(target, &obscure(runner, &1)) do
       with_config_file(config, fn path ->
         run(runner, ["sync", "--config", path, source_dir, remote], timeout: sync_timeout(opts))
@@ -95,9 +89,9 @@ defmodule Feather.Publishing.Rclone do
   defp default_runner, do: Application.get_env(:feather, :rclone_runner, SystemRunner)
 
   defp fetch_provider(%DeploymentTarget{provider: name}) do
-    case provider(name) do
-      nil -> {:error, "unknown provider #{inspect(name)}"}
-      provider -> {:ok, provider}
+    case Map.fetch(@providers, name) do
+      {:ok, provider} -> {:ok, provider}
+      :error -> {:error, "unknown provider #{inspect(name)}"}
     end
   end
 

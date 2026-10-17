@@ -116,7 +116,7 @@ defmodule Feather.Media do
   into storage and the variants are generated.
 
   `attrs` may contain `:source_url`, `:unsplash_data`, `:post_id`,
-  `:page_id`, `:project_id` and (for imports) `:public_id`.
+  `:page_id` and `:project_id`.
 
   Returns `{:error, changeset}` if the file is not an image or too big.
   """
@@ -291,18 +291,6 @@ defmodule Feather.Media do
     case Variants.fetch(variant) do
       %{filename: filename} -> Path.join(image_dir(image), filename)
       nil -> raise ArgumentError, "unknown image variant #{inspect(variant)}"
-    end
-  end
-
-  @doc """
-  (Re)generates the variants of an image from its original, e.g. after an
-  import copied the original into place.
-  """
-  @spec generate_variants(Image.t()) :: :ok | {:error, term()}
-  def generate_variants(%Image{} = image) do
-    case original_path(image) do
-      nil -> {:error, :original_missing}
-      original -> Processor.write_variants(original, image_dir(image))
     end
   end
 

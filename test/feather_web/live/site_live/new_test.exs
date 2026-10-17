@@ -3,7 +3,7 @@ defmodule FeatherWeb.SiteLive.NewTest do
 
   import Phoenix.LiveViewTest
 
-  alias Feather.{Publishing, Sites}
+  alias Feather.Sites
   alias Feather.Accounts.Scope
 
   test "redirects to the login page when logged out", %{conn: conn} do
@@ -52,7 +52,6 @@ defmodule FeatherWeb.SiteLive.NewTest do
       assert site.language_code == "de"
 
       assert_redirect(lv, "/sites/#{site.public_id}/posts")
-      assert [%{type: "staging"}] = Publishing.list_targets(Scope.put_site(scope, site))
     end
 
     test "shows validation errors", %{conn: conn, user: user} do

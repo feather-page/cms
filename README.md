@@ -3,8 +3,8 @@
 [![CI](https://github.com/feather-page/cms/actions/workflows/ci.yml/badge.svg)](https://github.com/feather-page/cms/actions/workflows/ci.yml)
 
 Feather-Page CMS is a web interface for managing small static websites. It is a Phoenix
-application (LiveView admin, SQLite) that renders sites to static HTML and deploys them to the
-site owner's own hosting.
+application (LiveView admin, SQLite) that renders sites to static HTML and deploys them by FTPS
+to the site owner's own hosting.
 
 ## Design Goals
 
@@ -21,7 +21,7 @@ site owner's own hosting.
 ### Requirements
 
 *   Erlang/OTP 28 and Elixir 1.19
-*   `rclone` for deployments
+*   `rclone` for deployments (FTPS)
 *   `d2` (at least v0.9.0; the `Dockerfile` pins the exact version) to render diagram blocks;
     without it diagrams show their D2 source
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
@@ -51,13 +51,12 @@ Uploaded images are stored in `storage/` (git-ignored).
 |------|---------|
 | `mix feather.create_user EMAIL [--super-admin]` | Create (or update) a user who can log in by magic link |
 | `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
-| `mix feather.import DIR [--force]` | One-time import of a Rails dump, see `docs/cutover.md` |
 | `mix test` | Run the test suite |
 | `mix precommit` | Compile with warnings as errors, unlock unused deps, format, run the tests |
 | `mix ecto.reset` | Drop, migrate and seed the development database |
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`
-(`migrate/0`, `create_user/2`, `create_api_token/2`, `import_dump/2`). `bin/server` migrates and starts the app.
+(`migrate/0`, `create_user/2`, `create_api_token/2`). `bin/server` migrates and starts the app.
 
 ### Environment variables
 
@@ -70,8 +69,6 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `POOL_SIZE` | Database connections (prod) | `5` |
 | `STORAGE_PATH` | Images, rendered diagrams and build output (prod, required) | dev: `storage/` |
 | `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
-| `BASE_HOSTNAME_AND_PORT` | Base domain for staging hosts (`<site>.stage.<this>`) | `localhost:4000` |
-| `STAGING_SITES_PATH` | Where staging sites are written | `<storage>/staging_sites` |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
@@ -91,9 +88,8 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
     translations of the generated static sites
 *   `test/`: ExUnit tests, the executable specification (`DECISIONS.md`, 0008)
 *   `docs/api/`: the content API (`openapi.yml`)
-*   `ops/`: production setup (`compose.yml`, `stack.env.example`, the staging `Caddyfile`); CI
+*   `ops/`: production setup (`compose.yml`, `stack.env.example`); CI
     pushes the image to `ghcr.io/feather-page/cms` on every push to `main`
-*   `docs/cutover.md`: the one-time move from the Rails app
 *   `CONTEXT.md`, `DECISIONS.md`: domain language and architecture decisions
 
 ## License

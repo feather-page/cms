@@ -1,9 +1,9 @@
 defmodule Feather.StaticSite.SiteData do
   @moduledoc """
-  Everything a static export renders, loaded once up front with the
-  associations the templates use, and its diagrams rendered up front
-  (`render_diagrams/2`). Rendering then works on this data alone, without
-  touching the database or running d2, so it can run in parallel.
+  Everything a static export or the preview renders, loaded once up front
+  with the associations the templates use, and its diagrams rendered up
+  front (`render_diagrams/2`). Rendering then works on this data alone,
+  without touching the database or running d2, so it can run in parallel.
   """
 
   import Ecto.Query, warn: false
@@ -21,7 +21,6 @@ defmodule Feather.StaticSite.SiteData do
     :site,
     :homepage,
     :now,
-    content: :published,
     posts: [],
     pages: [],
     projects: [],
@@ -37,7 +36,6 @@ defmodule Feather.StaticSite.SiteData do
           site: Site.t(),
           homepage: Page.t() | nil,
           now: DateTime.t(),
-          content: :published | :current,
           posts: [Post.t()],
           pages: [Page.t()],
           projects: [Project.t()],
@@ -63,9 +61,9 @@ defmodule Feather.StaticSite.SiteData do
   ## Options
 
     * `:content` - `:published` (the default) shows each post, page and
-      project as its published version and leaves drafts out (production
-      and backup targets); `:current` shows the records as they are,
-      unpublished changes and drafts included (staging and the preview)
+      project as its published version and leaves drafts out (the
+      export); `:current` shows the records as they are, unpublished
+      changes and drafts included (the preview)
     * `:now` - the time that decides which posts are due and how old they
       are (default: now)
   """
@@ -100,7 +98,6 @@ defmodule Feather.StaticSite.SiteData do
 
     %__MODULE__{
       site: Sites.preload_images(site),
-      content: content,
       now: now,
       homepage: Enum.find(pages, &Page.homepage?/1),
       posts: posts,
@@ -189,10 +186,6 @@ defmodule Feather.StaticSite.SiteData do
   embedded in the content of its posts, pages and projects, their header
   and thumbnail images, the book covers and the site images its theme
   renders (`c:Feather.StaticSite.Theme.site_image_fields/0`).
-
-  With `content: :current` (staging, preview) it also includes every image
-  owned by a record and the header and thumbnail images of all posts,
-  drafts included, like Rails.
   """
   @spec images_in_use(t()) :: [Image.t()]
   def images_in_use(%__MODULE__{site: %Site{id: site_id}} = data) do
@@ -204,7 +197,6 @@ defmodule Feather.StaticSite.SiteData do
         Enum.map(records, &[&1.header_image_id, &1.thumbnail_image_id]),
         Enum.map(data.books, & &1.cover_image_id),
         site_image_ids(data.site)
-        | current_only_ids(data)
       ]
       |> List.flatten()
       |> Enum.reject(&is_nil/1)
@@ -213,22 +205,10 @@ defmodule Feather.StaticSite.SiteData do
       from i in Image,
         where:
           i.site_id == ^site_id and
-            (i.public_id in ^embedded_ids or i.id in ^referenced_ids or
-               (^(data.content == :current) and
-                  (not is_nil(i.post_id) or not is_nil(i.page_id) or not is_nil(i.project_id))))
+            (i.public_id in ^embedded_ids or i.id in ^referenced_ids)
     )
   end
 
   defp site_image_ids(%Site{} = site),
     do: Enum.map(Themes.module(site).site_image_fields(), &Map.fetch!(site, &1))
-
-  defp current_only_ids(%__MODULE__{content: :published}), do: []
-
-  defp current_only_ids(%__MODULE__{content: :current, site: %Site{id: site_id}}) do
-    Repo.all(
-      from p in Post,
-        where: p.site_id == ^site_id,
-        select: [p.header_image_id, p.thumbnail_image_id]
-    )
-  end
 end

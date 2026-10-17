@@ -4,8 +4,6 @@ defmodule FeatherWeb.SiteShellTest do
 
   import Phoenix.LiveViewTest
 
-  alias Feather.Publishing
-
   setup [:register_and_log_in_user, :create_site_for_user]
 
   for {path, active} <- [
@@ -17,17 +15,12 @@ defmodule FeatherWeb.SiteShellTest do
         {"/users", "Users"},
         {"/deployments", "Deployments"}
       ] do
-    test "#{path} shows the site navigation and the preview link", %{
-      conn: conn,
-      site: site,
-      scope: scope
-    } do
-      target = Publishing.get_staging_target(scope)
+    test "#{path} shows the site navigation and the preview link", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, "/sites/#{site.public_id}#{unquote(path)}")
 
       assert has_element?(lv, "#site-switcher-sidebar-title", site.title)
       assert has_element?(lv, "nav[aria-label=Main] a[aria-current=page]", unquote(active))
-      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{target.public_id}"]))
+      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{site.public_id}"]))
     end
   end
 
@@ -136,7 +129,7 @@ defmodule FeatherWeb.SiteShellTest do
   end
 
   test "the deployment form renders in the shell", %{conn: conn, site: site, scope: scope} do
-    target = Publishing.get_staging_target(scope)
+    target = deployment_target_fixture(scope)
 
     {:ok, lv, _html} =
       live(conn, ~p"/sites/#{site.public_id}/deployments/#{target.public_id}/edit")
@@ -144,19 +137,11 @@ defmodule FeatherWeb.SiteShellTest do
     assert has_element?(lv, "nav[aria-label=Main] a[aria-current=page]", "Deployments")
   end
 
-  test "a LiveView that publishes survives the manual deploy message", %{
-    conn: conn,
-    site: site,
-    scope: scope
-  } do
-    page = page_fixture(scope, title: "About")
+  test "a LiveView survives the manual deploy message", %{conn: conn, site: site, scope: scope} do
+    page_fixture(scope, title: "About")
     {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/pages")
 
-    # publish_site/1 sends {:deploy_requested, target} to the LiveView in tests
-    lv |> element("#add-to-navigation-#{page.public_id}") |> render_click()
-
-    assert has_element?(lv, "#navigation-item-#{page.public_id}")
-    send(lv.pid, {:deploy_requested, Publishing.get_staging_target(scope)})
+    send(lv.pid, {:deploy_requested, deployment_target_fixture(scope)})
     assert render(lv) =~ "About"
   end
 end

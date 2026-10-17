@@ -26,14 +26,6 @@ config :feather, FeatherWeb.Endpoint,
 # Settings read from the environment in dev and prod. Defaults live in
 # config/config.exs and config/dev.exs; tests never read the environment.
 if config_env() != :test do
-  if staging_host = System.get_env("BASE_HOSTNAME_AND_PORT") do
-    config :feather, :staging_host, staging_host
-  end
-
-  if staging_sites_path = System.get_env("STAGING_SITES_PATH") do
-    config :feather, :staging_sites_path, staging_sites_path
-  end
-
   if unsplash_access_key = System.get_env("UNSPLASH_ACCESS_KEY") do
     config :feather, :unsplash_access_key, unsplash_access_key
   end
@@ -113,8 +105,6 @@ if config_env() == :prod do
   config :feather,
     base_url: "https://#{host}",
     storage_root: storage_root,
-    staging_sites_path:
-      System.get_env("STAGING_SITES_PATH") || Path.join(storage_root, "staging_sites"),
     config_encryption_key: config_encryption_key
 
   config :feather, FeatherWeb.Endpoint,

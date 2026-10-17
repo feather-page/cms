@@ -56,7 +56,7 @@ defmodule Feather.Books.Book do
   def create_changeset(book, attrs) do
     book
     |> changeset(attrs)
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 
   defp put_default_read_at(changeset) do

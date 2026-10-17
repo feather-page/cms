@@ -33,7 +33,6 @@ defmodule Feather.Media.Image do
   def create_changeset(image, attrs) do
     image
     |> cast(attrs, [
-      :public_id,
       :filename,
       :content_type,
       :byte_size,
@@ -45,7 +44,7 @@ defmodule Feather.Media.Image do
       :page_id,
       :project_id
     ])
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
     |> validate_required([:public_id, :filename, :content_type, :byte_size])
     |> validate_number(:byte_size,
       less_than_or_equal_to: Feather.Media.max_byte_size(),

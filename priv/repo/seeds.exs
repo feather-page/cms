@@ -39,7 +39,7 @@ site =
               "style" => "ul",
               "items" => [
                 %{"content" => "Write a post", "items" => []},
-                %{"content" => "Publish to staging", "items" => []}
+                %{"content" => "Deploy the site", "items" => []}
               ]
             }
           ]

@@ -82,20 +82,20 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.canonical(plain) == plain
     end
 
-    test "for/2 deployed and preview", %{scope: scope} do
+    test "for/1 a deployment target, preview/1 the preview of a site", %{scope: scope} do
       target = %DeploymentTarget{
         site: scope.site,
         public_id: "dt0123456789",
         public_hostname: "example.com"
       }
 
-      deployed = Routes.for(target, :deployed)
+      deployed = Routes.for(target)
       assert {deployed.site_root, deployed.canonical_url} == {"/", "https://example.com/"}
 
-      preview = Routes.for(target, :preview)
-      assert preview.site_root == "/preview/dt0123456789/"
-      assert preview.canonical_url == "https://example.com/"
-      assert Routes.home_url(preview, 2) == "/preview/dt0123456789/page/2/"
+      preview = Routes.preview(scope.site)
+      assert preview.site_root == "/preview/#{scope.site.public_id}/"
+      assert preview.canonical_url == "https://#{scope.site.domain}/"
+      assert Routes.home_url(preview, 2) == "/preview/#{scope.site.public_id}/page/2/"
     end
   end
 

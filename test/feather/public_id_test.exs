@@ -7,7 +7,6 @@ defmodule Feather.PublicIdTest do
     for _ <- 1..200 do
       id = PublicId.generate()
       assert id =~ ~r/\A[0-9a-zA-Z]{12}\z/
-      assert PublicId.valid?(id)
     end
   end
 
@@ -16,17 +15,8 @@ defmodule Feather.PublicIdTest do
     assert length(Enum.uniq(ids)) == 1000
   end
 
-  test "valid?/1 rejects other strings" do
-    refute PublicId.valid?("too-short")
-    refute PublicId.valid?("abc_def-ghij")
-    refute PublicId.valid?(nil)
-  end
-
-  test "put_new/1 keeps an existing public id" do
-    changeset = Ecto.Changeset.change(%Feather.Sites.Site{public_id: "AAAAAAAAAAAA"})
-    assert Ecto.Changeset.get_field(PublicId.put_new(changeset), :public_id) == "AAAAAAAAAAAA"
-
-    changeset = Ecto.Changeset.change(%Feather.Sites.Site{})
-    assert PublicId.valid?(Ecto.Changeset.get_field(PublicId.put_new(changeset), :public_id))
+  test "put/1 puts a generated public id into the changeset" do
+    changeset = PublicId.put(Ecto.Changeset.change(%Feather.Sites.Site{}))
+    assert Ecto.Changeset.get_change(changeset, :public_id) =~ ~r/\A[0-9a-zA-Z]{12}\z/
   end
 end

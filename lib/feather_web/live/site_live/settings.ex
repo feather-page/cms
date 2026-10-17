@@ -4,13 +4,14 @@ defmodule FeatherWeb.SiteLive.Settings do
   copyright notice, the site's social media links, its mascots and its
   portrait.
 
-  Saving the site or changing its links or images publishes the staging
-  targets (`Feather.Publishing.publish_site/1`), like Rails did.
+  Each change counts as not deployed yet in the site shell's deploy
+  control (`FeatherWeb.SiteAuth.refresh_deploy_status/1`).
   """
   use FeatherWeb, :live_view
 
   alias Feather.Accounts.Scope
-  alias Feather.{Publishing, Sites}
+  alias Feather.Sites
+  alias FeatherWeb.SiteAuth
   alias Feather.Sites.{Languages, Site, SocialMediaLink, SocialMediaService}
   alias Feather.StaticSite.Themes
 
@@ -53,7 +54,6 @@ defmodule FeatherWeb.SiteLive.Settings do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:settings}
     >
       <.header>
@@ -366,11 +366,11 @@ defmodule FeatherWeb.SiteLive.Settings do
     case Sites.update_site(scope, scope.site, params) do
       {:ok, site} ->
         scope = Scope.put_site(scope, site)
-        Publishing.publish_site(scope)
 
         {:noreply,
          socket
          |> assign(:current_scope, scope)
+         |> SiteAuth.refresh_deploy_status()
          |> assign(:form, to_form(Sites.change_site(site)))
          |> put_flash(:info, "Site was successfully updated.")}
 
@@ -416,10 +416,9 @@ defmodule FeatherWeb.SiteLive.Settings do
 
     case Sites.create_social_media_link(scope, params) do
       {:ok, link} ->
-        Publishing.publish_site(scope)
-
         {:noreply,
          socket
+         |> SiteAuth.refresh_deploy_status()
          |> stream_insert(:social_media_links, link)
          |> assign(:links_empty?, false)
          |> reset_link_form()
@@ -436,8 +435,9 @@ defmodule FeatherWeb.SiteLive.Settings do
     socket =
       with %SocialMediaLink{} = link <- Sites.get_social_media_link(scope, id),
            {:ok, _} <- Sites.delete_social_media_link(scope, link) do
-        Publishing.publish_site(scope)
-        put_flash(socket, :info, "Social media link was successfully deleted.")
+        socket
+        |> SiteAuth.refresh_deploy_status()
+        |> put_flash(:info, "Social media link was successfully deleted.")
       else
         nil -> put_flash(socket, :error, "This link no longer exists.")
         {:error, _reason} -> put_flash(socket, :error, "The link could not be deleted.")
@@ -540,11 +540,11 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   defp image_changed(socket, site) do
     scope = Scope.put_site(socket.assigns.current_scope, site)
-    Publishing.publish_site(scope)
 
     socket
     |> assign(:current_scope, scope)
     |> assign(:image_errors, %{})
+    |> SiteAuth.refresh_deploy_status()
   end
 
   defp put_image_error(socket, slot, message),

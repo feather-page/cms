@@ -3,8 +3,7 @@
 # Release image of the CMS. CI builds it on main and pushes it to
 # ghcr.io/feather-page/cms; it runs with docker compose (ops/compose.yml).
 #
-# Volumes: /data (SQLite database and image storage) and /static (staging
-# sites, served by Caddy as /static/{host}, see ops/Caddyfile).
+# Volume: /data (SQLite database, image storage and build output).
 # The container migrates the database on start (bin/server).
 
 ARG ELIXIR_VERSION=1.19.6
@@ -78,20 +77,19 @@ ENV LANG=en_US.UTF-8 \
     PORT=4000 \
     DATABASE_PATH=/data/feather.db \
     STORAGE_PATH=/data/storage \
-    STAGING_SITES_PATH=/static \
     HOME=/app
 
 RUN groupadd --system --gid 1000 feather \
   && useradd --system --uid 1000 --gid feather --home-dir /app --shell /bin/sh feather \
-  && mkdir -p /app /data /static \
-  && chown feather:feather /app /data /static
+  && mkdir -p /app /data \
+  && chown feather:feather /app /data
 
 WORKDIR /app
 COPY --from=builder --chown=feather:feather /app/_build/prod/rel/feather ./
 
 USER feather
 
-VOLUME ["/data", "/static"]
+VOLUME ["/data"]
 EXPOSE 4000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s \

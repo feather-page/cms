@@ -3,15 +3,12 @@ defmodule Feather.Publishing.DeployDiagramsTest do
 
   import ExUnit.CaptureLog
 
-  alias Feather.Publishing
   alias Feather.Publishing.Deploy
 
-  @moduletag :tmp_dir
-
-  setup %{tmp_dir: tmp} do
+  setup do
     Feather.FakeD2.install()
     scope = site_scope_fixture()
-    target = Publishing.get_staging_target(scope)
+    target = deployment_target_fixture(scope)
     on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
 
     rclone = fn
@@ -22,7 +19,7 @@ defmodule Feather.Publishing.DeployDiagramsTest do
     %{
       scope: scope,
       target: target,
-      opts: [runner: rclone, brotli: false, staging_sites_path: tmp]
+      opts: [runner: rclone, brotli: false]
     }
   end
 

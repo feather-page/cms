@@ -18,12 +18,12 @@ defmodule FeatherWeb.DeployControlTest do
 
   @panel "#deploy-panel-sidebar"
 
-  test "publishing after the last production deploy counts as a change not live",
+  test "publishing after the last deploy counts as a change not live",
        %{conn: conn, site: site, scope: scope} do
-    # The new site's homepage was published before that deploy.
-    Repo.update_all(Feather.Content.PageVersion,
-      set: [published_at: DateTime.add(DateTime.utc_now(), -2, :day)]
-    )
+    # The new site and its homepage are older than that deploy.
+    two_days_ago = DateTime.add(DateTime.utc_now(), -2, :day)
+    Repo.update_all(Feather.Content.PageVersion, set: [published_at: two_days_ago])
+    Repo.update_all(Feather.Sites.Site, set: [updated_at: two_days_ago])
 
     scope |> deployment_target_fixture() |> deployed(yesterday())
     post = post_fixture(scope, title: "Draft", draft: true)
@@ -37,7 +37,7 @@ defmodule FeatherWeb.DeployControlTest do
     assert has_element?(lv, "#deploy-site-sidebar", "Deploy to production")
   end
 
-  test "live when production was deployed after the newest publish", %{
+  test "live when deployed after the newest publish", %{
     conn: conn,
     site: site,
     scope: scope
@@ -51,7 +51,7 @@ defmodule FeatherWeb.DeployControlTest do
     refute has_element?(lv, "#deploy-site-sidebar")
   end
 
-  test "a production target never deployed counts as not deployed", %{
+  test "a target never deployed counts the homepage and the site", %{
     conn: conn,
     site: site,
     scope: scope
@@ -60,7 +60,119 @@ defmodule FeatherWeb.DeployControlTest do
 
     {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts")
 
+    assert has_element?(lv, @panel, "2 changes not live")
+  end
+
+  test "changing the site settings counts as a change not live", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+    {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+    assert has_element?(lv, @panel, "Live")
+
+    lv |> form("#site-form", site: %{title: "Renamed"}) |> render_submit()
+
     assert has_element?(lv, @panel, "1 change not live")
+  end
+
+  describe "the pending count refreshes" do
+    defp redeployed(lv, site, target) do
+      deployed(target, DateTime.utc_now())
+      Publishing.broadcast_notice(site, %{message: "Deployed."})
+      assert has_element?(lv, "#site-notices", "Deployed.")
+      assert has_element?(lv, @panel, "Live")
+    end
+
+    test "after navigation changes and a page delete on the pages list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page_fixture(scope, title: "First", add_to_navigation: true)
+      second = page_fixture(scope, title: "Second")
+      target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+      fresh = page_fixture(scope, title: "Fresh")
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/pages")
+      assert has_element?(lv, @panel, "1 change not live")
+
+      confirm_click(lv, "#delete-page-#{fresh.public_id}-menu-item")
+      assert has_element?(lv, @panel, "Live")
+
+      changes = [
+        fn -> lv |> element("#add-to-navigation-#{second.public_id}") |> render_click() end,
+        fn -> lv |> element("#move-up-#{second.public_id}") |> render_click() end,
+        fn ->
+          lv
+          |> element("#remove-from-navigation-#{second.public_id}-menu-item")
+          |> render_click()
+        end
+      ]
+
+      for change <- changes do
+        redeployed(lv, site, target)
+        change.()
+        assert has_element?(lv, @panel, "1 change not live")
+      end
+    end
+
+    test "after toggling add to navigation in the page form", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      page = page_fixture(scope, title: "Services")
+      target = deployment_target_fixture(scope)
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/pages/#{page.public_id}/edit")
+
+      for value <- ["true", "false"] do
+        redeployed(lv, site, target)
+        lv |> form("#page-form", page: %{add_to_navigation: value}) |> render_change()
+        assert has_element?(lv, @panel, "1 change not live")
+      end
+    end
+
+    test "after social media link and image changes in the settings", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      link = social_media_link_fixture(scope)
+      target = deployment_target_fixture(scope)
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      changes = [
+        fn ->
+          lv |> element("#add-link") |> render_click()
+          lv |> element("#service-github") |> render_click()
+
+          lv
+          |> form("#social-media-link-form",
+            social_media_link: %{name: "My GitHub", url: "https://github.com/me"}
+          )
+          |> render_submit()
+        end,
+        fn -> confirm_click(lv, "#delete-social_media_links-#{link.id}-menu-item") end,
+        fn ->
+          lv
+          |> file_input("#mascot-footer-form", :footer_mascot_image, [
+            %{
+              name: "mascot.png",
+              content: File.read!(transparent_image_path(120, 40)),
+              type: "image/png"
+            }
+          ])
+          |> render_upload("mascot.png")
+        end
+      ]
+
+      for change <- changes do
+        redeployed(lv, site, target)
+        change.()
+        assert has_element?(lv, @panel, "1 change not live")
+      end
+    end
   end
 
   test "a deploy notice reloads the status", %{
@@ -80,7 +192,7 @@ defmodule FeatherWeb.DeployControlTest do
     assert has_element?(lv, @panel, "Live")
   end
 
-  test "deploys every production target and shows the step", %{
+  test "deploys every target and shows the step", %{
     conn: conn,
     site: site,
     scope: scope

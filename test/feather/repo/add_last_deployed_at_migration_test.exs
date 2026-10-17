@@ -17,7 +17,7 @@ defmodule Feather.Repo.AddLastDeployedAtMigrationTest do
     Repo.query!("""
     INSERT INTO deployment_targets (id, public_id, site_id, type, provider, public_hostname,
                                     inserted_at, updated_at)
-    VALUES ('target', 'target', 'site', 'production', 'internal', 'www.example.com',
+    VALUES ('target', 'target', 'site', 'production', 'hetzner_ftps', 'www.example.com',
             '2026-01-01T10:00:00.000000Z', '#{@updated_at}')
     """)
 

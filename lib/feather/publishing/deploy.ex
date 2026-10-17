@@ -5,9 +5,8 @@ defmodule Feather.Publishing.Deploy do
   `Feather.TaskSupervisor`):
 
     1. take the target's deploy lock (see "Concurrent deploys")
-    2. export the site into a fresh directory next to the live one
-       (`Feather.StaticSite.Export` into a `FileSink`), with the content
-       the target shows (`DeploymentTarget.exported_content/1`)
+    2. export the site's published versions into a fresh directory next
+       to the live one (`Feather.StaticSite.Export` into a `FileSink`)
     3. precompress it (`Feather.StaticSite.Precompress`)
     4. swap it in as the live directory `<storage_root>/static_site/<target id>/public`
     5. sync the live directory with rclone (`Feather.Publishing.Rclone`)
@@ -26,8 +25,8 @@ defmodule Feather.Publishing.Deploy do
   ## Concurrent deploys
 
   When the lock is held by a running deploy, the request waits for it,
-  retrying every 5 seconds up to 60 times like Rails did. Waiting requests
-  are coalesced: at most one request per target waits, others return
+  retrying every 5 seconds up to 60 times. Waiting requests are
+  coalesced: at most one request per target waits, others return
   `{:ok, :coalesced}` at once. The waiting request exports after the
   running deploy has finished, so it includes every change made up to
   then. (Coalescing uses `Feather.Publishing.Registry`, so it works within
@@ -56,7 +55,6 @@ defmodule Feather.Publishing.Deploy do
     * `:lock_retries`, `:lock_retry_interval` - waiting for the lock
       (default 60 times every 5000 ms)
     * `:brotli` - passed to `Feather.StaticSite.Precompress.run/2`
-    * `:staging_sites_path` - passed to `Feather.Publishing.Rclone.deploy/3`
   """
   @spec run(DeploymentTarget.t(), keyword()) ::
           {:ok, :deployed | :coalesced} | {:error, String.t()}
@@ -164,9 +162,7 @@ defmodule Feather.Publishing.Deploy do
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
 
-      Export.run(target.site, Routes.for(target, :deployed), sink,
-        content: DeploymentTarget.exported_content(target)
-      )
+      Export.run(target.site, Routes.for(target), sink)
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
@@ -181,7 +177,7 @@ defmodule Feather.Publishing.Deploy do
            Rclone.deploy(
              target,
              live_dir(target) <> "/",
-             Keyword.take(opts, [:runner, :staging_sites_path])
+             Keyword.take(opts, [:runner])
            ) do
       Publishing.record_deploy(target, export_started_at)
       {:ok, :deployed}

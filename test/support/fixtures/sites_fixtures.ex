@@ -17,9 +17,9 @@ defmodule Feather.SitesFixtures do
   end
 
   @doc """
-  Creates a site through `Feather.Sites.create_site/2` (so it has a member,
-  a homepage and a staging target). Pass a scope or a user to own it;
-  without one a new user is created.
+  Creates a site through `Feather.Sites.create_site/2` (so it has a member
+  and a homepage). Pass a scope or a user to own it; without one a new
+  user is created.
   """
   def site_fixture(scope_or_user \\ nil, attrs \\ %{})
 

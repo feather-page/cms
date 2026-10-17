@@ -8,10 +8,14 @@ defmodule Feather.PublishingFixtures do
       Feather.Publishing.create_target(
         scope,
         Enum.into(attrs, %{
-          type: "production",
           provider: "hetzner_ftps",
           public_hostname: "www#{System.unique_integer([:positive])}.example.com",
-          config: %{"host" => "ftp.example.com", "user" => "u1", "password" => "secret"}
+          config: %{
+            "host" => "ftp.example.com",
+            "user" => "u1",
+            "password" => "secret",
+            "path" => "/site"
+          }
         })
       )
 

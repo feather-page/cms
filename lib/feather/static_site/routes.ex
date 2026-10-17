@@ -19,7 +19,7 @@ defmodule Feather.StaticSite.Routes do
   | not found page    | (any missing path)           | `404.html`                          |
 
   URLs are relative to `site_root`: `/` for a deployed site,
-  `/preview/<target public id>/` for the preview. `canonical/1` returns the
+  `/preview/<site public id>/` for the preview. `canonical/1` returns the
   same routes against the site's public address (`https://<hostname>/`),
   used by the feed, the sitemap and robots.txt.
   """
@@ -65,20 +65,24 @@ defmodule Feather.StaticSite.Routes do
   end
 
   @doc """
-  Routes for a deployment target (its `site` must be loaded): `:deployed`
-  addresses the site from `/`, `:preview` from
-  `/preview/<target public id>/`. Both are canonically at
-  `https://<public hostname>/`.
+  Routes for a deployment target (its `site` must be loaded): the site from
+  `/`, canonically at `https://<public hostname>/`.
   """
-  @spec for(DeploymentTarget.t(), :deployed | :preview) :: t()
-  def for(%DeploymentTarget{site: %Site{} = site} = target, as \\ :deployed) do
-    site_root =
-      case as do
-        :deployed -> "/"
-        :preview -> "/preview/#{target.public_id}/"
-      end
+  @spec for(DeploymentTarget.t()) :: t()
+  def for(%DeploymentTarget{site: %Site{} = site} = target) do
+    new(site, site_root: "/", canonical_url: "https://#{target.public_hostname}/")
+  end
 
-    new(site, site_root: site_root, canonical_url: "https://#{target.public_hostname}/")
+  @doc """
+  Routes for the preview of a site: from `/preview/<site public id>/`,
+  canonically at `https://<site domain>/`.
+  """
+  @spec preview(Site.t()) :: t()
+  def preview(%Site{} = site) do
+    new(site,
+      site_root: "/preview/#{site.public_id}/",
+      canonical_url: "https://#{site.domain}/"
+    )
   end
 
   @doc "The same routes against the canonical URL."

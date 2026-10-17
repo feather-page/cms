@@ -13,9 +13,8 @@ defmodule Feather.Publishing.Rclone.Provider do
   @doc "The content of the rclone config file."
   @callback config(DeploymentTarget.t(), obscure()) :: {:ok, iodata()} | {:error, String.t()}
 
-  @doc "The rclone remote path, e.g. `\"fastmail:/me.example.com/files/site\"`."
-  @callback remote(DeploymentTarget.t(), opts :: keyword()) ::
-              {:ok, String.t()} | {:error, String.t()}
+  @doc "The rclone remote path, e.g. `\"hetzner-ftps:/site\"`."
+  @callback remote(DeploymentTarget.t()) :: {:ok, String.t()} | {:error, String.t()}
 
   @doc """
   Fetches required string values from the target's config, or returns an

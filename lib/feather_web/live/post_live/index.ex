@@ -18,7 +18,6 @@ defmodule FeatherWeb.PostLive.Index do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:posts}
     >
       <.header>

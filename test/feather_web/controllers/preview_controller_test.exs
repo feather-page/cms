@@ -1,13 +1,10 @@
 defmodule FeatherWeb.PreviewControllerTest do
   use FeatherWeb.ConnCase
 
-  alias Feather.Publishing
-
   setup [:register_and_log_in_user, :create_site_for_user]
 
-  setup %{scope: scope} do
-    target = Publishing.get_staging_target(scope)
-    %{target: target, root: "/preview/#{target.public_id}"}
+  setup %{site: site} do
+    %{root: "/preview/#{site.public_id}"}
   end
 
   test "renders the home page with preview links", %{
@@ -154,11 +151,11 @@ defmodule FeatherWeb.PreviewControllerTest do
              "Page not found"
   end
 
-  test "serves the feed with canonical URLs", %{conn: conn, scope: scope, root: root, target: t} do
+  test "serves the feed with URLs on the site's domain", %{conn: conn, scope: scope, root: root} do
     post_fixture(scope, %{title: "Hello", slug: "/hello"})
 
     conn = get(conn, root <> "/feed.xml")
-    assert response(conn, 200) =~ "<link>https://#{t.public_hostname}/hello/</link>"
+    assert response(conn, 200) =~ "<link>https://#{scope.site.domain}/hello/</link>"
     assert response_content_type(conn, :xml) =~ "application/rss+xml"
   end
 
@@ -173,13 +170,19 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert response(get(fresh(user), "/preview/unknown00000/"), 404) == "Not Found"
   end
 
-  test "targets of other sites are not found", %{conn: conn} do
-    other = Publishing.get_staging_target(site_scope_fixture())
-    assert response(get(conn, "/preview/#{other.public_id}/"), 404)
+  test "sites the user may not access are not found", %{conn: conn, user: user} do
+    other = site_fixture()
+    assert response(get(conn, "/preview/#{other.public_id}/"), 404) == "Not Found"
+    assert response(get(fresh(user), "/preview/#{other.public_id}/about"), 404) == "Not Found"
+  end
+
+  test "a site without deployment targets has a preview", %{conn: conn, scope: scope, root: root} do
+    assert Feather.Publishing.list_targets(scope) == []
+    assert html_response(get(conn, root <> "/"), 200) =~ ~s(<h2 id="posts">Posts</h2>)
   end
 
   test "super admins may preview every site", %{conn: conn} do
-    other = Publishing.get_staging_target(site_scope_fixture())
+    other = site_fixture()
     admin = super_admin_fixture()
 
     conn = conn |> recycle() |> log_in_user(admin)

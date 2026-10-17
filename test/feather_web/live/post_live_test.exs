@@ -1230,14 +1230,9 @@ defmodule FeatherWeb.PostLiveTest do
       refute has_element?(lv, "#site-notices", "Deployed to production")
     end
 
-    test "shows the preview button for the internal staging target", %{
-      conn: conn,
-      site: site,
-      scope: scope
-    } do
-      target = Feather.Publishing.get_staging_target(scope)
+    test "shows the preview button of the site", %{conn: conn, site: site} do
       {:ok, lv, _html} = live(conn, posts_path(site))
-      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{target.public_id}"]))
+      assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{site.public_id}"]))
     end
   end
 

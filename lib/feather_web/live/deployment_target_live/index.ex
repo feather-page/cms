@@ -13,9 +13,6 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
 
   alias Feather.Publishing
 
-  # Production first: it is what visitors see.
-  @type_order ~w(production staging backup)
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -24,7 +21,6 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:deployments}
     >
       <.header>
@@ -92,12 +88,11 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
           :for={target <- @targets}
           id={"target-#{target.public_id}"}
           navigate={~p"/sites/#{@current_scope.site.public_id}/deployments/#{target.public_id}/edit"}
-          title={type_label(target.type)}
+          title={target.public_hostname}
         >
           <:leading><.tile icon="globe" /></:leading>
           <:meta>
-            <span class="target-host">{target.public_hostname}</span>
-            · <span class="target-provider">{provider_label(target.provider)}</span>
+            <span class="target-provider">{provider_label(target.provider)}</span>
             · <span class="target-deployed">{deployed_label(target.last_deployed_at)}</span>
           </:meta>
           <:trailing>
@@ -154,10 +149,7 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
   # from the registry, then from the broadcasts. A deploy requested here
   # shows up with its first step.
   defp assign_targets(socket) do
-    targets =
-      socket.assigns.current_scope
-      |> Publishing.list_targets()
-      |> Enum.sort_by(&Enum.find_index(@type_order, fn type -> type == &1.type end))
+    targets = Publishing.list_targets(socket.assigns.current_scope)
 
     assign(socket, targets: targets, progress: Publishing.deploy_progress_by_target(targets))
   end
@@ -187,19 +179,11 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
     if step == :upload, do: "#{label} to #{provider_label(target.provider)}", else: label
   end
 
-  @doc false
-  def type_label("staging"), do: "Staging"
-  def type_label("production"), do: "Production"
-  def type_label("backup"), do: "Backup"
-  def type_label(type), do: type
-
   @doc ~s(When the target was last deployed, e.g. "Deployed 3 days ago".)
   def deployed_label(nil), do: "Never deployed"
   def deployed_label(at), do: "Deployed #{FeatherWeb.SiteComponents.time_ago(at)}"
 
   @doc "The name of a provider for people, e.g. `Hetzner (FTPS)`."
-  def provider_label("internal"), do: "Built-in"
-  def provider_label("fastmail"), do: "Fastmail"
   def provider_label("hetzner_ftps"), do: "Hetzner (FTPS)"
   def provider_label(provider), do: provider
 end

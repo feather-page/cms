@@ -2,15 +2,15 @@ defmodule FeatherWeb.PageLive.Form do
   @moduledoc """
   Creates and edits pages: header image picker, title and slug (slug
   suggested from the title), tags, block content, page type and the
-  "add to navigation" flag. A save that changes the navigation publishes
-  the site. Every change is saved into the unpublished changes at once;
-  the first input that gives the page a valid slug creates it as a draft
-  (see "Autosave" in `FeatherWeb.ContentForm`). Publish publishes them;
-  Discard puts the published version back; Restore puts an earlier
-  version into the unpublished changes.
+  "add to navigation" flag. A save that changes the navigation counts as
+  not deployed at once. Every change is saved into the unpublished
+  changes at once; the first input that gives the page a valid slug
+  creates it as a draft (see "Autosave" in `FeatherWeb.ContentForm`).
+  Publish publishes them; Discard puts the published version back;
+  Restore puts an earlier version into the unpublished changes.
 
-  Unlike Rails, the form has no "created at" field: the creation date of a
-  page is not shown anywhere on the generated site.
+  The form has no "created at" field: the creation date of a page is not
+  shown anywhere on the generated site.
   """
   use FeatherWeb, :live_view
   @behaviour FeatherWeb.ContentForm
@@ -31,7 +31,6 @@ defmodule FeatherWeb.PageLive.Form do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:pages}
     >
       <:bar>
@@ -174,7 +173,6 @@ defmodule FeatherWeb.PageLive.Form do
     socket =
       with %Page{} = page <- Content.get_page(scope, page.public_id),
            {:ok, _page} <- Content.delete_page(scope, page) do
-        if page.add_to_navigation, do: Publishing.publish_site(scope)
         put_flash(socket, :info, "Page was successfully deleted.")
       else
         nil -> put_flash(socket, :error, "This page no longer exists.")
@@ -192,14 +190,17 @@ defmodule FeatherWeb.PageLive.Form do
   @impl ContentForm
   def record(socket), do: socket.assigns.page
 
-  # A change of the navigation publishes the site, the navigation is not
-  # versioned.
+  # The navigation is not versioned: a change counts as not deployed at once.
   @impl ContentForm
   def save_fields(socket, attrs, opts) do
     %{current_scope: scope, page: page} = socket.assigns
 
     with {:ok, saved} <- Content.autosave(scope, page, attrs, opts) do
-      if saved.add_to_navigation != page.add_to_navigation, do: Publishing.publish_site(scope)
+      socket =
+        if saved.add_to_navigation != page.add_to_navigation,
+          do: FeatherWeb.SiteAuth.refresh_deploy_status(socket),
+          else: socket
+
       {:ok, saved, socket}
     end
   end

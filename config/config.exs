@@ -25,8 +25,6 @@ config :feather,
   generators: [timestamp_type: :utc_datetime_usec, binary_id: true],
   # Sender of all application emails.
   mail_from: {"Feather", "no-reply@feather.page"},
-  # Staging deployment targets get "<site public_id>.stage.<staging_host>".
-  staging_host: "localhost:4000",
   # Unsplash is optional; without a key the image search is disabled.
   unsplash_access_key: nil
 

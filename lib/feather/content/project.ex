@@ -90,7 +90,7 @@ defmodule Feather.Content.Project do
   def create_changeset(project, attrs) do
     project
     |> changeset(attrs)
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 
   defp link_changeset(link, attrs) do

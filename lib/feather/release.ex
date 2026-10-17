@@ -5,7 +5,6 @@ defmodule Feather.Release do
       bin/feather eval "Feather.Release.migrate()"
       bin/feather eval 'Feather.Release.create_user("me@example.com", true)'
       bin/feather eval 'Feather.Release.create_api_token("me@example.com", "laptop")'
-      bin/feather eval 'Feather.Release.import_dump("/data/dump")'
 
   `bin/migrate` and `bin/server` (in `rel/overlays/bin`) wrap the first.
   """
@@ -74,39 +73,11 @@ defmodule Feather.Release do
   end
 
   @doc """
-  Imports a dump of the Rails app (one-time migration, see
-  `Feather.Import.RailsDump`) and prints the report. `force: true` replaces
-  existing data.
-
-      bin/feather eval 'Feather.Release.import_dump("/data/dump")'
-  """
-  def import_dump(dir, opts \\ []) do
-    with_app(fn ->
-      case Feather.Import.RailsDump.run(dir, opts) do
-        {:ok, report} ->
-          IO.puts(Feather.Import.Report.format(report))
-          IO.puts("Import finished.")
-          {:ok, report}
-
-        {:error, :not_empty} ->
-          IO.puts(:stderr, "The database already holds users or sites; pass force: true.")
-          {:error, :not_empty}
-
-        {:error, message} ->
-          IO.puts(:stderr, "Import failed: #{message}")
-          {:error, message}
-      end
-    end)
-  end
-
-  @doc """
   Replaces the provider config (credentials) of the deployment target with
-  the given public id, e.g. one the import could not read. The admin does
-  not edit credentials. Keys per provider: `fastmail` takes `email`,
-  `password` and `path`; `hetzner_ftps` takes `host`, `user`, `password`
-  and `path`.
+  the given public id. The admin does not edit credentials. The
+  `hetzner_ftps` provider takes `host`, `user`, `password` and `path`.
 
-      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"email" => "...", "password" => "...", "path" => "..."})'
+      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"host" => "...", "user" => "...", "password" => "...", "path" => "..."})'
   """
   def set_target_config(target_public_id, %{} = config) do
     with_app(fn ->

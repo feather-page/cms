@@ -1,10 +1,11 @@
 defmodule Feather.StaticSite.Precompress do
   @moduledoc """
-  Writes precompressed copies of the text files of an exported site, so
-  the web server can serve them as they are (Caddy's
-  `precompressed br gzip`): `<file>.gz` with `:zlib` and `<file>.br` with
-  the `brotli` command line tool. Without `brotli` on the `PATH` the `.br`
-  files are skipped (logged once per run).
+  Writes precompressed copies of the text files of an exported site, which
+  the deploy uploads with the rest, so a web server on the external host
+  can serve them as they are (e.g. Caddy's `precompressed br gzip`):
+  `<file>.gz` with `:zlib` and `<file>.br` with the `brotli` command line
+  tool. Without `brotli` on the `PATH` the `.br` files are skipped (logged
+  once per run).
   """
 
   require Logger

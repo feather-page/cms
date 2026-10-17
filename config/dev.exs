@@ -52,7 +52,6 @@ config :feather, FeatherWeb.Endpoint,
 config :feather,
   base_url: "http://localhost:4000",
   storage_root: Path.expand("../storage", __DIR__),
-  staging_sites_path: Path.expand("../storage/staging_sites", __DIR__),
   # 32 random bytes, base64. Only for development.
   config_encryption_key: "GMyul8DMXbh7g6xHUP3BPz5bGeFw3eUrb9xnfmyav+I="
 

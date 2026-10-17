@@ -26,7 +26,6 @@ defmodule FeatherWeb.BookLive.Form do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:books}
     >
       <:bar>
