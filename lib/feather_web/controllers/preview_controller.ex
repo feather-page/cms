@@ -11,6 +11,8 @@ defmodule FeatherWeb.PreviewController do
   alias Feather.Sites
   alias Feather.StaticSite.Preview
 
+  @svg_policy "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; sandbox"
+
   def show(conn, %{"site_id" => site_id} = params) do
     case Sites.get_site(conn.assigns.current_scope, site_id) do
       nil -> send_resp(conn, :not_found, "Not Found")
@@ -29,9 +31,16 @@ defmodule FeatherWeb.PreviewController do
 
   defp respond(conn, {:file, path, content_type}) do
     conn
+    |> put_svg_policy(content_type)
     |> put_resp_content_type(content_type, nil)
     |> send_file(:ok, path)
   end
+
+  # A diagram opened on its own must not run scripts or javascript: links in the CMS origin.
+  defp put_svg_policy(conn, "image/svg+xml"),
+    do: put_resp_header(conn, "content-security-policy", @svg_policy)
+
+  defp put_svg_policy(conn, _content_type), do: conn
 
   defp send_html(conn, status, html) do
     conn

@@ -57,8 +57,9 @@ A post attached to a book. There is no separate review model — `Book.review?/1
 _Avoid_: treating a review as its own object
 
 **Block**:
-A unit of content inside `content` (paragraph, header, list, quote, code, image, table, embed, book). Posts, pages and
-projects are lists of blocks; see `Feather.Content.Blocks`.
+A unit of content inside `content` (paragraph, header, list, quote, code, image, table, embed, book, diagram). Posts,
+pages and projects are lists of blocks; see `Feather.Content.Blocks`. A diagram block holds D2 source that the export
+and the preview render into an SVG image.
 _Avoid_: Section, Element, Widget
 
 **Version** · _de:_ Version:

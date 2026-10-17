@@ -54,6 +54,7 @@ defmodule Feather.StaticSite.SinksAndPrecompressTest do
             {"robots.txt", "User-agent: *"},
             {"style.css", "b{}"},
             {"app.js", "x()"},
+            {"diagrams/x.svg", "<svg/>"},
             {"images/x/mobile_x1.webp", "binary"}
           ] do
         full = Path.join(tmp, path)
@@ -67,9 +68,9 @@ defmodule Feather.StaticSite.SinksAndPrecompressTest do
     test "writes .gz for text files and skips brotli when it is missing", %{tmp_dir: tmp} do
       files = Precompress.run(tmp, brotli: false)
 
-      assert length(files) == 6
+      assert length(files) == 7
 
-      for path <- ~w(index.html a/index.html feed.xml robots.txt style.css app.js) do
+      for path <- ~w(index.html a/index.html feed.xml robots.txt style.css app.js diagrams/x.svg) do
         full = Path.join(tmp, path)
         assert :zlib.gunzip(File.read!(full <> ".gz")) == File.read!(full)
         refute File.exists?(full <> ".br")

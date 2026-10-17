@@ -1,10 +1,7 @@
-// The code block's view: the code stays editable text, a select above it
-// sets the block's language. No highlighting.
 import {closeHistory} from "prosemirror-history"
-import {keepOutOfForm} from "./dom"
+import {ignoreMutation, keepOutOfForm} from "./dom"
 
-// The languages Editor.js offered, in its order. A stored language not in
-// the list (from the API, a paste or a ``` shortcut) is kept and shown.
+// Editor.js's languages; a stored language outside them (API, paste, ``` shortcut) is kept.
 export const CODE_LANGUAGES = {
   plaintext: "Plain text",
   bash: "Bash",
@@ -33,7 +30,6 @@ export const languageOptions = (current) => {
   return current in CODE_LANGUAGES ? known : [[current, current], ...known]
 }
 
-// Sets the language of the code block at `pos`, as its own undo step.
 export const setLanguage = (pos, language) => (state, dispatch) => {
   const node = state.doc.nodeAt(pos)
   if (node?.type.name !== "code_block") return false
@@ -66,13 +62,11 @@ export class CodeBlockView {
     this.header.setAttribute("contenteditable", "false")
     this.header.append(this.select)
 
-    this.contentDOM = document.createElement("code")
-    const pre = document.createElement("pre")
-    pre.append(this.contentDOM)
+    this.contentDOM = document.createElement("pre")
 
     this.dom = document.createElement("div")
     this.dom.className = "pm-code"
-    this.dom.append(this.header, pre)
+    this.dom.append(this.header, this.contentDOM)
 
     this.render()
   }
@@ -98,14 +92,12 @@ export class CodeBlockView {
     return true
   }
 
-  // The select handles its own events; ProseMirror must not treat a click
-  // or key there as editing.
   stopEvent(event) {
     return this.header.contains(event.target)
   }
 
   ignoreMutation(mutation) {
-    return !this.contentDOM.contains(mutation.target)
+    return ignoreMutation(mutation, this.header)
   }
 }
 

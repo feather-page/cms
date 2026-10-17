@@ -52,7 +52,7 @@ msgstr ""
 msgid "Breadcrumb"
 msgstr ""
 
-#: lib/feather/static_site/blocks.ex:123
+#: lib/feather/static_site/blocks.ex:112
 #, elixir-autogen, elixir-format
 msgid "Embedded content"
 msgstr ""
@@ -427,3 +427,8 @@ msgid "%{count} book"
 msgid_plural "%{count} books"
 msgstr[0] ""
 msgstr[1] ""
+
+#: lib/feather/static_site/blocks.ex:165
+#, elixir-autogen, elixir-format
+msgid "Diagram"
+msgstr ""

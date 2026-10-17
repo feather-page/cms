@@ -21,6 +21,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y rclone
 
+      - name: Install d2 (the version of the Dockerfile)
+        run: |
+          version=$(sed -n 's|^FROM .*d2lang/d2:\(v[0-9.]*\)@.*|\1|p' Dockerfile)
+          test -n "$version"
+          curl -fsSL "https://github.com/terrastruct/d2/releases/download/$version/d2-$version-linux-amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP"
+          sudo install -m 755 "$RUNNER_TEMP/d2-$version/bin/d2" /usr/local/bin/d2
+          d2 --version
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "28"

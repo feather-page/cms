@@ -47,6 +47,7 @@ Content is stored as an array of typed blocks. Each block is validated against i
 - **table** - Rows with optional header
 - **embed** - Embedded media (service, source, size, caption)
 - **book** - Book reference from catalog
+- **diagram** - Diagram in D2 with caption, published as an SVG image
 
 Inline HTML (paragraph, header and quote text, captions, list items, table cells) is
 sanitized when content is stored, so responses return the sanitized HTML, not the input

@@ -10,7 +10,7 @@ defmodule Feather.StaticSite.Preview do
   `Feather.Sites.get_site/2`.
   """
 
-  alias Feather.Media
+  alias Feather.{Diagrams, Media}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Renderer, Routes, SiteData, Themes}
@@ -27,7 +27,8 @@ defmodule Feather.StaticSite.Preview do
 
     * `{:html, iodata}` - a page
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`
-    * `{:file, path, content_type}` - an image variant or a font of the site's theme
+    * `{:file, path, content_type}` - an image variant, a font of the site's
+      theme or a rendered diagram
     * `{:not_found, iodata}` - the site's 404 page
   """
   @spec render(Site.t(), String.t() | [String.t()]) :: result()
@@ -49,14 +50,29 @@ defmodule Feather.StaticSite.Preview do
         theme = Themes.module(site)
         {:file, theme.font_path(name), Map.fetch!(theme.fonts(), name)}
 
+      {:diagram, name} ->
+        file = Diagrams.path(name)
+        if File.regular?(file), do: {:file, file, "image/svg+xml"}, else: not_found(site, routes)
+
       route ->
-        render_route(route, load(site), routes)
+        render_route(route, load(site, route), routes)
     end
   end
 
-  defp load(site), do: SiteData.load(site, content: :current)
+  defp load(site, route) do
+    data = SiteData.load(site, content: :current)
+    if diagrams?(route), do: SiteData.render_diagrams(data, routed_records(route)), else: data
+  end
 
-  defp not_found(site, routes), do: {:not_found, Renderer.render_not_found(load(site), routes)}
+  defp diagrams?({:artifact, name}), do: name == "feed.xml"
+  defp diagrams?(_route), do: true
+
+  # A scheduled post is not among the data's posts, but its diagrams render too.
+  defp routed_records({kind, record}) when kind in [:post, :page, :project], do: [record]
+  defp routed_records(_route), do: []
+
+  defp not_found(site, routes),
+    do: {:not_found, Renderer.render_not_found(SiteData.load(site, content: :current), routes)}
 
   defp render_route({:home, page}, data, routes),
     do: {:html, Renderer.render_home(data, routes, page)}

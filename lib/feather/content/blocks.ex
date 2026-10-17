@@ -16,9 +16,10 @@ defmodule Feather.Content.Blocks do
     * `table` - `content` (rows of cells), `with_headings`
     * `embed` - `service`, `source`, `embed`, `width`, `height`, `caption`
     * `book` - `book_public_id`, `title`, `author`, `cover_url`, `emoji`
+    * `diagram` - `code` (D2 source, see `Feather.Diagrams`), `caption`
 
-  Inline HTML (paragraph, header and quote text, quote, image and embed
-  captions, list items, table cells) is sanitized with
+  Inline HTML (paragraph, header and quote text, quote, image, embed and
+  diagram captions, list items, table cells) is sanitized with
   `Feather.Content.HTML.sanitize(html, :editor)` and embed URLs that are
   not safe link targets are dropped whenever content is normalized: before
   it is stored (admin editor, content API, import) and before it is handed
@@ -33,7 +34,7 @@ defmodule Feather.Content.Blocks do
 
   @type block :: %{required(String.t()) => term()}
 
-  @types ~w(paragraph header list quote code image table embed book)
+  @types ~w(paragraph header list quote code image table embed book diagram)
   @header_levels [2, 3, 4]
   @text_types ~w(paragraph header quote)
 
@@ -111,6 +112,9 @@ defmodule Feather.Content.Blocks do
     }
   end
 
+  defp normalize_block("diagram", b),
+    do: %{"type" => "diagram", "code" => code(b["code"]), "caption" => inline(b["caption"]) || ""}
+
   defp normalize_block(_type, _block), do: nil
 
   @doc """
@@ -167,6 +171,18 @@ defmodule Feather.Content.Blocks do
   end
 
   @doc """
+  The D2 sources of all diagram blocks, without duplicates.
+  """
+  @spec diagram_codes([block()] | nil) :: [String.t()]
+  def diagram_codes(blocks) do
+    blocks
+    |> normalize()
+    |> Enum.filter(&(&1["type"] == "diagram"))
+    |> Enum.map(& &1["code"])
+    |> Enum.uniq()
+  end
+
+  @doc """
   The plain text of all text blocks (paragraphs, headers, quotes), with
   HTML tags removed, truncated to `length` characters including a trailing
   "..." (like Rails' `String#truncate`).
@@ -187,7 +203,8 @@ defmodule Feather.Content.Blocks do
   (no title needed) from long ones, ported from Rails'
   `EditorJsContentLengthCalculator`: the raw text (HTML included) of
   paragraphs, headers, quotes (text and caption), code, table cells, list
-  items (nested) and image captions. Book and embed blocks count 0.
+  items (nested) and image and diagram captions. Book and embed blocks
+  count 0.
   """
   @spec content_length([block()] | nil) :: non_neg_integer()
   def content_length(blocks) do
@@ -204,7 +221,10 @@ defmodule Feather.Content.Blocks do
     do: text_length(b["text"]) + text_length(b["caption"])
 
   defp block_length(%{"type" => "code"} = b), do: text_length(b["code"])
-  defp block_length(%{"type" => "image"} = b), do: text_length(b["caption"])
+
+  defp block_length(%{"type" => type} = b) when type in ~w(image diagram),
+    do: text_length(b["caption"])
+
   defp block_length(%{"type" => "list"} = b), do: list_length(b["items"])
 
   defp block_length(%{"type" => "table", "content" => rows}) when is_list(rows) do
