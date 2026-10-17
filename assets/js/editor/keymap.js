@@ -83,10 +83,12 @@ const backspaceInQuote = (state, dispatch) => {
 // Images and embeds: a block with a caption as its text.
 const captioned = (node) => node.type === nodes.image || node.type === nodes.embed
 
+const isCaption = (node) => captioned(node) || node.type === nodes.quote_caption
+
 // Enter in an image or embed caption deletes the selection and starts a
 // paragraph after the block (splitting would copy the image or embed).
 const enterInCaption = (state, dispatch) => {
-  if (!captioned(state.selection.$from.parent)) return false
+  if (!isCaption(state.selection.$from.parent)) return false
 
   if (dispatch) {
     const tr = state.tr.deleteSelection()
@@ -97,14 +99,14 @@ const enterInCaption = (state, dispatch) => {
   return true
 }
 
-// Images, embeds and books are selected by Backspace before Backspace
-// deletes them.
-const selectedBeforeDeleting = (node) => captioned(node) || node.type === nodes.book
+// Images, embeds, books and quotes are selected by Backspace before
+// Backspace deletes them.
+const selectedBeforeDeleting = (node) => captioned(node) || [nodes.book, nodes.quote].includes(node.type)
 
 // Backspace at the start of an image or embed caption, or of a block right
-// after an image, embed or book, selects that block instead of joining text
-// into or out of the caption (or deleting the book at once); an empty block
-// after it goes away. Backspace again deletes it.
+// after an image, embed, book or quote, selects that block instead of
+// joining text into or out of the caption (or deleting the book at once); an
+// empty block after it goes away. Backspace again deletes it.
 const backspaceAtCaptioned = (state, dispatch) => {
   const {$from, empty} = state.selection
   if (!empty || $from.parentOffset !== 0 || $from.depth !== 1) return false
@@ -136,7 +138,7 @@ const atBlockEnd = ($pos) => {
   return true
 }
 
-// Delete at the end of a block right before an image, embed or book
+// Delete at the end of a block right before an image, embed, book or quote
 // selects that block (an empty paragraph or heading before it goes away),
 // like Backspace after it; Delete again deletes it. At the end of a
 // caption it never joins the next block into the caption.
@@ -146,7 +148,7 @@ const deleteBeforeCaptioned = (state, dispatch) => {
 
   const index = $from.index(0)
   const next = index + 1 < state.doc.childCount && state.doc.child(index + 1)
-  const inCaption = captioned($from.parent)
+  const inCaption = isCaption($from.parent)
   if (!next || !selectedBeforeDeleting(next)) return inCaption
 
   if (dispatch) {
@@ -155,6 +157,16 @@ const deleteBeforeCaptioned = (state, dispatch) => {
     const blockPos = removeEmpty ? $from.before(1) : $from.after(1)
     dispatch(tr.setSelection(NodeSelection.create(tr.doc, blockPos)).scrollIntoView())
   }
+  return true
+}
+
+// Delete at the end of a quote's text goes on to its caption, the way
+// Backspace comes back, instead of selecting the caption.
+const deleteToCaption = (state, dispatch) => {
+  const $from = cursorIn(state, nodes.quote_text)
+  if (!$from || $from.parentOffset !== $from.parent.content.size) return false
+
+  dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, $from.after() + 1)))
   return true
 }
 
@@ -230,8 +242,8 @@ export const editorKeymap = () =>
     ),
     "Shift-Enter": chainCommands(newlineInCode, insertHardBreak),
     Backspace: chainCommands(undoInputRule, backspaceInListItem, backspaceInQuote, backspaceAtCaptioned),
-    Delete: deleteBeforeCaptioned,
-    "Mod-Delete": deleteBeforeCaptioned,
+    Delete: chainCommands(deleteToCaption, deleteBeforeCaptioned),
+    "Mod-Delete": chainCommands(deleteToCaption, deleteBeforeCaptioned),
     Tab: chainCommands(indentCode, nextCell, sinkListItem(nodes.list_item)),
     "Shift-Tab": chainCommands(previousCell, liftListItem(nodes.list_item)),
 
