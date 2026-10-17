@@ -15,3 +15,7 @@ export const keepOutOfForm = (el) => {
   for (const type of ["input", "change"]) el.addEventListener(type, (event) => event.stopPropagation())
   return el
 }
+
+// ProseMirror must see the browser rewriting the source (e.g. into a <font>) to repair it.
+export const ignoreMutation = (mutation, controls) =>
+  mutation.type !== "selection" && (mutation.type === "attributes" || controls.contains(mutation.target))

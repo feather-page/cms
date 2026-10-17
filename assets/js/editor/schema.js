@@ -161,7 +161,7 @@ export const schema = new Schema({
       defining: true,
       attrs: {...id, language: {default: "plaintext"}},
       parseDOM: [{tag: "pre", preserveWhitespace: "full", getAttrs: (dom) => ({language: codeLanguage(dom)})}],
-      toDOM: (node) => ["pre", {"data-language": node.attrs.language}, ["code", 0]]
+      toDOM: (node) => ["pre", {"data-language": node.attrs.language}, 0]
     },
 
     image: {
