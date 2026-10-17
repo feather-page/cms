@@ -1,19 +1,17 @@
 defmodule Feather.Publishing.DeploymentTarget do
   @moduledoc """
-  A destination a site is published to, typed `staging`, `production` or
-  `backup`, backed by an rclone provider (`internal`, `fastmail`,
-  `hetzner_ftps`). The provider `config` (credentials) is stored encrypted.
+  An external host a site is deployed to, backed by an rclone provider
+  (`hetzner_ftps`). A deploy exports the published versions. The provider
+  `config` (credentials) is stored encrypted.
   """
   use Feather.Schema
 
   @type t :: %__MODULE__{}
 
-  @types ~w(staging production backup)
-  @providers ~w(internal fastmail hetzner_ftps)
+  @providers ~w(hetzner_ftps)
 
   schema "deployment_targets" do
     field :public_id, :string
-    field :type, :string
     field :provider, :string
     field :public_hostname, :string
     # The default is not dumped at compile time: that would need the key,
@@ -28,33 +26,21 @@ defmodule Feather.Publishing.DeploymentTarget do
     timestamps()
   end
 
-  @doc "The valid types."
-  def types, do: @types
-
   @doc "The valid providers."
   def providers, do: @providers
-
-  @doc """
-  What a target's static export shows: staging the records as they are
-  (`:current`), production and backup their published versions
-  (`:published`).
-  """
-  @spec exported_content(t()) :: :current | :published
-  def exported_content(%__MODULE__{type: "staging"}), do: :current
-  def exported_content(%__MODULE__{}), do: :published
 
   @doc false
   def create_changeset(target, attrs) do
     target
-    |> cast(attrs, [:type, :provider, :public_hostname, :config])
+    |> cast(attrs, [:provider, :public_hostname, :config])
     |> validate()
     |> Feather.PublicId.put()
   end
 
-  @doc "Changeset for the fields a user may edit: hostname and type."
+  @doc "Changeset for the field a user may edit: the hostname."
   def update_changeset(target, attrs) do
     target
-    |> cast(attrs, [:type, :public_hostname])
+    |> cast(attrs, [:public_hostname])
     |> validate()
   end
 
@@ -70,8 +56,7 @@ defmodule Feather.Publishing.DeploymentTarget do
       hostname when is_binary(hostname) -> hostname |> String.trim() |> String.downcase()
       nil -> nil
     end)
-    |> validate_required([:type, :provider, :public_hostname])
-    |> validate_inclusion(:type, @types)
+    |> validate_required([:provider, :public_hostname])
     |> validate_inclusion(:provider, @providers)
     |> unsafe_validate_unique(:public_hostname, Feather.Repo)
     |> unique_constraint(:public_hostname)

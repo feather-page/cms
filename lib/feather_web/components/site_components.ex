@@ -6,15 +6,14 @@ defmodule FeatherWeb.SiteComponents do
   pages (pagination, image URLs, star ratings).
 
   Pages under `/sites/:site_id` live in the `:site` live_session, whose
-  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices`, `site_deploy`
-  and `site_preview_path`:
+  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices` and
+  `site_deploy`:
 
       <.site_shell
         flash={@flash}
         current_scope={@current_scope}
         notices={@site_notices}
         deploy={@site_deploy}
-        preview_path={@site_preview_path}
         active={:posts}
       >
         ...
@@ -49,14 +48,19 @@ defmodule FeatherWeb.SiteComponents do
   attr :active, :atom, default: nil
   attr :notices, :list, default: [], doc: "site notices, see FeatherWeb.SiteAuth"
   attr :deploy, :map, default: nil, doc: "the deploy status, see FeatherWeb.SiteAuth"
-  attr :preview_path, :string, default: nil, doc: "the preview of the site, if any"
   slot :bar, doc: "detail pages: breadcrumbs and status, see setzkasten's app_shell"
   slot :bar_actions, doc: "detail pages: the page's own actions, see setzkasten's app_shell"
   slot :inner_block, required: true
 
   def site_shell(assigns) do
+    site = assigns.current_scope.site
+
     assigns =
-      assign(assigns, site: assigns.current_scope.site, nav: nav(assigns.current_scope.site))
+      assign(assigns,
+        site: site,
+        nav: nav(site),
+        preview_path: ~p"/preview/#{site.public_id}"
+      )
 
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} nav={@nav} current={@active}>
@@ -75,7 +79,6 @@ defmodule FeatherWeb.SiteComponents do
       <:trailing>
         <div class="flex items-center gap-1 xl:hidden">
           <.button
-            :if={@preview_path}
             href={@preview_path}
             target="_blank"
             variant={:ghost}
@@ -181,14 +184,14 @@ defmodule FeatherWeb.SiteComponents do
   end
 
   @doc """
-  The deploy control at the bottom of the sidebar: while a production
-  target deploys, its step; with published changes it does not show yet,
-  their number and a button that deploys every production target
-  (`"deploy_site"`, see `FeatherWeb.SiteAuth`); otherwise since when the
-  site is live. Below it the link to the site's preview.
+  The deploy control at the bottom of the sidebar: while a deployment
+  target deploys, its step; with changes it does not show yet, their
+  number and a button that deploys every target (`"deploy_site"`, see
+  `FeatherWeb.SiteAuth`); otherwise since when the site is live. Below it
+  the link to the site's preview.
   """
   attr :deploy, :map, required: true
-  attr :preview_path, :string, default: nil
+  attr :preview_path, :string, required: true
   attr :place, :atom, required: true, doc: "where the sidebar renders it, for unique ids"
 
   def deploy_panel(assigns) do
@@ -196,7 +199,6 @@ defmodule FeatherWeb.SiteComponents do
 
     ~H"""
     <div
-      :if={@state != :none or @preview_path}
       id={"deploy-panel-#{@place}"}
       class="grid gap-2 px-5 py-4 text-sm"
       aria-live="polite"
@@ -237,7 +239,6 @@ defmodule FeatherWeb.SiteComponents do
         <% :none -> %>
       <% end %>
       <a
-        :if={@preview_path}
         href={@preview_path}
         target="_blank"
         id={"site-preview-link-#{@place}"}
@@ -272,7 +273,7 @@ defmodule FeatherWeb.SiteComponents do
           aria-label={"Deploy, #{pending_text(count)}"}
         >
           <span class="max-lg:hidden">Deploy</span>
-          <span :if={count > 0} class="flex items-center gap-1 tabular-nums">
+          <span class="flex items-center gap-1 tabular-nums">
             <span class="status status-warning" aria-hidden="true"></span>{count}
           </span>
         </.button>
@@ -304,7 +305,7 @@ defmodule FeatherWeb.SiteComponents do
         step = get_in(progress, [running.public_id, :step]) || :build
         {:running, running, step}
 
-      pending > 0 or Enum.any?(targets, &is_nil(&1.last_deployed_at)) ->
+      pending > 0 ->
         {:pending, pending}
 
       true ->
@@ -313,7 +314,6 @@ defmodule FeatherWeb.SiteComponents do
     end
   end
 
-  defp pending_text(0), do: "Not deployed yet"
   defp pending_text(1), do: "1 change not live"
   defp pending_text(count), do: "#{count} changes not live"
 

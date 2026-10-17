@@ -28,7 +28,7 @@ defmodule Feather.Publishing.Rclone.HetznerFtps do
   end
 
   @impl true
-  def remote(%DeploymentTarget{} = target, _opts) do
+  def remote(%DeploymentTarget{} = target) do
     with {:ok, [path]} <- Provider.fetch_config(target, ["path"]) do
       {:ok, "hetzner-ftps:#{path}"}
     end

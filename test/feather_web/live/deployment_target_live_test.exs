@@ -18,35 +18,28 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
     setup [:register_and_log_in_user, :create_site_for_user]
 
     test "lists the site's targets", %{conn: conn, site: site, scope: scope} do
-      [staging] = Publishing.list_targets(scope)
-      production = deployment_target_fixture(scope, public_hostname: "www.example.org")
+      first = deployment_target_fixture(scope, public_hostname: "www.example.org")
+      second = deployment_target_fixture(scope, public_hostname: "blog.example.org")
       other = deployment_target_fixture(site_scope_fixture())
 
-      :ok = Publishing.record_deploy(production, DateTime.add(DateTime.utc_now(), -3, :day))
+      :ok = Publishing.record_deploy(first, DateTime.add(DateTime.utc_now(), -3, :day))
 
       {:ok, lv, html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
 
-      assert has_element?(lv, "#target-#{staging.public_id} a", "Staging")
+      assert has_element?(lv, "#target-#{first.public_id} a", "www.example.org")
+      assert has_element?(lv, "#target-#{first.public_id} .target-provider", "Hetzner (FTPS)")
 
       assert has_element?(
                lv,
-               "#target-#{staging.public_id} .target-host",
-               staging.public_hostname
-             )
-
-      assert has_element?(lv, "#target-#{staging.public_id} .target-provider", "Built-in")
-      assert has_element?(lv, "#target-#{staging.public_id} .target-deployed", "Never deployed")
-      assert has_element?(lv, "#target-#{production.public_id} a", "Production")
-      assert has_element?(lv, "#target-#{production.public_id} .target-host", "www.example.org")
-
-      assert has_element?(
-               lv,
-               "#target-#{production.public_id} .target-deployed",
+               "#target-#{first.public_id} .target-deployed",
                "Deployed 3 days ago"
              )
 
+      assert has_element?(lv, "#target-#{second.public_id} a", "blog.example.org")
+      assert has_element?(lv, "#target-#{second.public_id} .target-deployed", "Never deployed")
+
       refute has_element?(lv, "#target-#{other.public_id}")
-      refute has_element?(lv, "#deploying-#{production.public_id}")
+      refute has_element?(lv, "#deploying-#{first.public_id}")
 
       ids =
         html
@@ -54,7 +47,12 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
         |> LazyHTML.query("#deployment-targets > li")
         |> LazyHTML.attribute("id")
 
-      assert ids == ["target-#{production.public_id}", "target-#{staging.public_id}"]
+      assert ids == ["target-#{first.public_id}", "target-#{second.public_id}"]
+    end
+
+    test "without targets shows the empty state", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
+      assert has_element?(lv, "#no-deployment-targets")
     end
 
     test "shows the deploying badge", %{conn: conn, site: site, scope: scope} do
@@ -266,8 +264,8 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
   describe "edit" do
     setup [:register_and_log_in_user, :create_site_for_user]
 
-    test "updates host name and type", %{conn: conn, site: site, scope: scope} do
-      target = deployment_target_fixture(scope, type: "backup")
+    test "updates the host name", %{conn: conn, site: site, scope: scope} do
+      target = deployment_target_fixture(scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
 
       {:ok, lv, _html} =
@@ -280,18 +278,15 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
         )
 
       refute has_element?(lv, "input[name*=config]")
-      assert has_element?(lv, "h1", "Backup")
+      refute has_element?(lv, "select")
+      assert has_element?(lv, "h1", target.public_hostname)
 
-      assert has_element?(
-               lv,
-               ".setzkasten-page-bar",
-               "#{target.public_hostname} · Hetzner (FTPS)"
-             )
+      assert has_element?(lv, ".setzkasten-page-bar", "Hetzner (FTPS)")
 
       {:ok, _lv, html} =
         lv
         |> form("#deployment-target-form",
-          deployment_target: %{public_hostname: " New.Example.com ", type: "production"}
+          deployment_target: %{public_hostname: " New.Example.com "}
         )
         |> render_submit()
         |> follow_redirect(conn, ~p"/sites/#{site.public_id}/deployments")
@@ -299,7 +294,6 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
       assert html =~ "Deployment target was successfully updated."
       target = Publishing.get_target!(scope, target.public_id)
       assert target.public_hostname == "new.example.com"
-      assert target.type == "production"
     end
 
     test "shows validation errors", %{conn: conn, site: site, scope: scope} do

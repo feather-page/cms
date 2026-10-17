@@ -3,6 +3,10 @@ defmodule Feather.Sites do
   Sites, their members, invitations, social media links and the main
   navigation.
 
+  Changes to the settings, images, social media links and navigation move
+  the site's `updated_at`, so `Feather.Publishing.undeployed_count/1`
+  counts them as not deployed yet.
+
   Authorisation: a user may access a site if they are a super admin or a
   member of it. Lookups for sites the user may not access behave as if the
   site did not exist (`Ecto.NoResultsError` / `nil`).
@@ -90,17 +94,15 @@ defmodule Feather.Sites do
   @doc """
   Creates a site for the scope's user.
 
-  Like Rails' `Sites::CreateSite`, in one transaction: saves the site, adds
-  the creator as a member, creates and publishes the homepage (title
-  "Home", slug "/") and the internal staging deployment target.
+  In one transaction: saves the site, adds the creator as a member and
+  creates and publishes the homepage (title "Home", slug "/").
   """
   @spec create_site(Scope.t(), map()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def create_site(%Scope{user: %User{} = user}, attrs) do
     Repo.transact(fn ->
       with {:ok, site} <- %Site{} |> Site.create_changeset(attrs) |> Repo.insert(),
            {:ok, _site_user} <- add_member(site, user),
-           {:ok, _homepage} <- create_homepage(site),
-           {:ok, _target} <- Feather.Publishing.create_staging_target(site) do
+           {:ok, _homepage} <- create_homepage(site) do
         {:ok, site}
       end
     end)
@@ -349,8 +351,8 @@ defmodule Feather.Sites do
   Invites an email address to the scope's site.
 
   Inviting an address again that has a pending invitation updates the
-  inviting user, like Rails did. Existing members cannot be invited.
-  Does not send the email, see `deliver_invitation/2`.
+  inviting user. Existing members cannot be invited. Does not send the
+  email, see `deliver_invitation/2`.
   """
   @spec create_invitation(Scope.t(), map()) ::
           {:ok, Invitation.t()} | {:error, Ecto.Changeset.t()}
@@ -570,6 +572,7 @@ defmodule Feather.Sites do
     %SocialMediaLink{site_id: site_id}
     |> SocialMediaLink.changeset(attrs)
     |> Repo.insert()
+    |> touch_site_on_success(site_id)
   end
 
   @doc "Updates a social media link."
@@ -581,13 +584,17 @@ defmodule Feather.Sites do
     link
     |> SocialMediaLink.changeset(attrs)
     |> Repo.update()
+    |> touch_site_on_success(site_id)
   end
 
   @doc "Deletes a social media link."
   @spec delete_social_media_link(Scope.t(), SocialMediaLink.t()) :: {:ok, SocialMediaLink.t()}
   def delete_social_media_link(%Scope{site: %Site{id: site_id}}, link) do
     %SocialMediaLink{site_id: ^site_id} = link
-    Repo.delete(link)
+
+    link
+    |> Repo.delete()
+    |> touch_site_on_success(site_id)
   end
 
   @doc "Returns a changeset for a social media link form."
@@ -640,11 +647,9 @@ defmodule Feather.Sites do
               from n in NavigationItem, where: n.site_id == ^site_id, select: max(n.position)
             )
 
-          Repo.insert(%NavigationItem{
-            site_id: site_id,
-            page_id: page.id,
-            position: (max || 0) + 1
-          })
+          %NavigationItem{site_id: site_id, page_id: page.id, position: (max || 0) + 1}
+          |> Repo.insert()
+          |> touch_site_on_success(site_id)
       end
     end)
   end
@@ -657,11 +662,13 @@ defmodule Feather.Sites do
   def remove_from_navigation(%Scope{site: %Site{id: site_id}}, %Page{site_id: site_id} = page) do
     {:ok, :ok} =
       Repo.transact(fn ->
-        Repo.delete_all(
-          from n in NavigationItem, where: n.site_id == ^site_id and n.page_id == ^page.id
-        )
+        {deleted, _} =
+          Repo.delete_all(
+            from n in NavigationItem, where: n.site_id == ^site_id and n.page_id == ^page.id
+          )
 
         renumber_navigation(site_id)
+        if deleted > 0, do: touch_site(site_id)
         {:ok, :ok}
       end)
 
@@ -700,8 +707,10 @@ defmodule Feather.Sites do
         index = Enum.find_index(ids, &(&1 == item.id))
         target = index && index + offset
 
+        moves? = index && target >= 0 && target < length(ids)
+
         ids =
-          if index && target >= 0 && target < length(ids) do
+          if moves? do
             ids
             |> List.replace_at(index, Enum.at(ids, target))
             |> List.replace_at(target, item.id)
@@ -710,6 +719,7 @@ defmodule Feather.Sites do
           end
 
         write_positions(ids)
+        if moves?, do: touch_site(site_id)
         {:ok, :ok}
       end)
 
@@ -724,6 +734,19 @@ defmodule Feather.Sites do
     )
     |> Repo.all()
     |> write_positions()
+  end
+
+  defp touch_site_on_success({:ok, _record} = result, site_id) do
+    touch_site(site_id)
+    result
+  end
+
+  defp touch_site_on_success(error, _site_id), do: error
+
+  defp touch_site(site_id) do
+    Repo.update_all(from(s in Site, where: s.id == ^site_id),
+      set: [updated_at: DateTime.utc_now()]
+    )
   end
 
   defp write_positions(ids) do

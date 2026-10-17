@@ -61,12 +61,6 @@ defmodule FeatherWeb.Router do
     get "/up", HealthController, :show
   end
 
-  # Caddy's on-demand TLS check (ops/Caddyfile). Unauthenticated and
-  # outside the :api pipeline: Caddy sends no Accept header we could rely on.
-  scope "/api", FeatherWeb.Api do
-    get "/caddy/check_domain", CaddyController, :check_domain
-  end
-
   # The content API, see docs/api/openapi.yml. Authenticated with bearer
   # API tokens (`mix feather.api_token`); the token's user must have access
   # to the site.
@@ -124,12 +118,12 @@ defmodule FeatherWeb.Router do
   end
 
   # The preview of a site's static pages: logged-in users with access to
-  # the target's site (checked in the controller).
+  # the site (checked in the controller).
   scope "/preview", FeatherWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    get "/:target_id", PreviewController, :show
-    get "/:target_id/*path", PreviewController, :show
+    get "/:site_id", PreviewController, :show
+    get "/:site_id/*path", PreviewController, :show
   end
 
   ## Site content admin

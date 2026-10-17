@@ -2,12 +2,11 @@ defmodule FeatherWeb.PageLive.Index do
   @moduledoc """
   The pages of a site: the pages in the main navigation (ordered, move
   up/down, remove) and the other pages (20 per page, add to navigation).
-  Every navigation change publishes the site, like Rails'
-  `NavigationItemsController` did.
+  Navigation changes count as not deployed at once.
   """
   use FeatherWeb, :live_view
 
-  alias Feather.{Content, Publishing, Sites}
+  alias Feather.{Content, Sites}
   alias Feather.Content.Page
 
   @gone "This page no longer exists."
@@ -20,7 +19,6 @@ defmodule FeatherWeb.PageLive.Index do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:pages}
     >
       <.header>
@@ -195,8 +193,9 @@ defmodule FeatherWeb.PageLive.Index do
     socket =
       with %Page{} = page <- Content.get_page(scope, id),
            {:ok, _page} <- Content.delete_page(scope, page) do
-        if page.add_to_navigation, do: Publishing.publish_site(scope)
-        put_flash(socket, :info, "Page was successfully deleted.")
+        socket
+        |> FeatherWeb.SiteAuth.refresh_deploy_status()
+        |> put_flash(:info, "Page was successfully deleted.")
       else
         nil -> put_flash(socket, :error, @gone)
         {:error, _reason} -> put_flash(socket, :error, "The page could not be deleted.")
@@ -285,10 +284,9 @@ defmodule FeatherWeb.PageLive.Index do
   defp opposite(:down), do: :up
 
   defp navigation_changed(socket, message) do
-    Publishing.publish_site(socket.assigns.current_scope)
-
     {:noreply,
      socket
+     |> FeatherWeb.SiteAuth.refresh_deploy_status()
      |> put_flash(:info, message)
      |> load(socket.assigns.pagination.page)}
   end

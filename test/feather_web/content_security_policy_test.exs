@@ -18,8 +18,7 @@ defmodule FeatherWeb.ContentSecurityPolicyTest do
     end
   end
 
-  test "the preview, on the same origin, gets the policy too", %{conn: conn, scope: scope} do
-    target = Feather.Publishing.get_staging_target(scope)
-    assert "script-src 'self'" in (conn |> get("/preview/#{target.public_id}/") |> directives())
+  test "the preview, on the same origin, gets the policy too", %{conn: conn, site: site} do
+    assert "script-src 'self'" in (conn |> get("/preview/#{site.public_id}/") |> directives())
   end
 end

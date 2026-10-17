@@ -28,7 +28,6 @@ config :feather,
   deploy_mode: :manual,
   base_url: "http://localhost:4002",
   storage_root: Path.expand("../tmp/test_storage", __DIR__),
-  staging_sites_path: Path.expand("../tmp/test_storage/staging_sites", __DIR__),
   # 32 random bytes, base64. Only for tests.
   config_encryption_key: "TNNvQkxC2kCFMB1wciLl7rHKXNTwz4kCIREO7dEvVKA="
 

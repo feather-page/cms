@@ -1,18 +1,17 @@
 defmodule Feather.StaticSite.Preview do
   @moduledoc """
   Live rendering of a site inside the CMS with the export's renderer and theme,
-  addressed under `/preview/<target public id>/` (see
-  `Feather.StaticSite.Routes`). Shows the records as they are, unpublished
-  changes and drafts included, like a staging export. Scheduled posts can
-  be previewed by their address; the post list leaves them out.
+  addressed under `/preview/<site public id>/` (see
+  `Feather.StaticSite.Routes.preview/1`). Shows the records as they are,
+  unpublished changes and drafts included. Scheduled posts can be
+  previewed by their address; the post list leaves them out.
 
-  Access control is the caller's job: load the target with
-  `Feather.Publishing.get_preview_target/2`.
+  Access control is the caller's job: load the site with
+  `Feather.Sites.get_site/2`.
   """
 
   alias Feather.Media
   alias Feather.Media.Variants
-  alias Feather.Publishing.DeploymentTarget
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Renderer, Routes, SiteData, Themes}
 
@@ -24,16 +23,16 @@ defmodule Feather.StaticSite.Preview do
 
   @doc """
   Renders what lives at `path` (relative to the preview root, a string or
-  path segments) of the target's site (preloaded on the target):
+  path segments) of the site:
 
     * `{:html, iodata}` - a page
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`
     * `{:file, path, content_type}` - an image variant or a font of the site's theme
     * `{:not_found, iodata}` - the site's 404 page
   """
-  @spec render(DeploymentTarget.t(), String.t() | [String.t()]) :: result()
-  def render(%DeploymentTarget{site: %Site{} = site} = target, path) do
-    routes = Routes.for(target, :preview)
+  @spec render(Site.t(), String.t() | [String.t()]) :: result()
+  def render(%Site{} = site, path) do
+    routes = Routes.preview(site)
 
     case Routes.resolve(routes, path) do
       nil ->

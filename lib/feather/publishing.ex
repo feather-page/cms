@@ -10,14 +10,12 @@ defmodule Feather.Publishing do
   alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Publishing.{Deploy, DeploymentTarget}
-  alias Feather.Sites
   alias Feather.Sites.Site
 
   @registry Feather.Publishing.Registry
 
   @doc """
-  Lists the deployment targets of the scope's site: staging first, then
-  production, then backup, each type oldest first.
+  Lists the deployment targets of the scope's site, oldest first.
 
   Without the (encrypted) `config`, which stays at its default: listing
   works even when the credentials cannot be decrypted. Use `get_target!/2`
@@ -25,24 +23,11 @@ defmodule Feather.Publishing do
   """
   @spec list_targets(Scope.t()) :: [DeploymentTarget.t()]
   def list_targets(%Scope{site: %Site{id: site_id}}) do
-    from(t in DeploymentTarget,
-      where: t.site_id == ^site_id,
-      order_by: [asc: t.inserted_at],
-      select: struct(t, ^metadata_fields())
-    )
-    |> Repo.all()
-    |> Enum.sort_by(&Enum.find_index(DeploymentTarget.types(), fn type -> type == &1.type end))
-  end
-
-  @doc "Lists the deployment targets of the scope's site with the given type, oldest first."
-  @spec list_targets(Scope.t(), String.t() | atom()) :: [DeploymentTarget.t()]
-  def list_targets(%Scope{site: %Site{id: site_id}}, type) do
-    type = to_string(type)
-
     Repo.all(
       from t in DeploymentTarget,
-        where: t.site_id == ^site_id and t.type == ^type,
-        order_by: [asc: t.inserted_at]
+        where: t.site_id == ^site_id,
+        order_by: [asc: t.inserted_at],
+        select: struct(t, ^metadata_fields())
     )
   end
 
@@ -65,88 +50,11 @@ defmodule Feather.Publishing do
     )
   end
 
-  @doc """
-  The public id of the target the admin links as the site's preview (its
-  internal target), or nil. Reads no credentials.
-  """
-  @spec preview_target_public_id(Scope.t()) :: String.t() | nil
-  def preview_target_public_id(%Scope{} = scope) do
-    scope
-    |> list_targets()
-    |> Enum.find_value(&(&1.provider == "internal" && &1.public_id))
-  end
-
-  @doc """
-  Gets a deployment target by public id for the preview, with its site
-  preloaded, if the scope's user may access that site. Returns nil
-  otherwise. (The preview is addressed by target, not by site.) Without
-  the `config`, which the preview does not need.
-  """
-  @spec get_preview_target(Scope.t(), String.t()) :: DeploymentTarget.t() | nil
-  def get_preview_target(%Scope{} = scope, public_id) do
-    target =
-      Repo.one(
-        from t in DeploymentTarget,
-          where: t.public_id == ^public_id,
-          select: struct(t, ^metadata_fields()),
-          preload: :site
-      )
-
-    if target && Sites.can_access_site?(scope, target.site), do: target
-  end
-
-  # Every field but the encrypted config.
   defp metadata_fields, do: DeploymentTarget.__schema__(:fields) -- [:config]
 
-  @doc "The staging target of the scope's site, or nil."
-  @spec get_staging_target(Scope.t()) :: DeploymentTarget.t() | nil
-  def get_staging_target(%Scope{} = scope) do
-    scope |> list_targets(:staging) |> List.first()
-  end
-
   @doc """
-  Returns true if we serve the host name ourselves: a staging or
-  production target with the `internal` provider has it as its public host
-  name. Caddy asks this before obtaining a TLS certificate on demand.
-  """
-  @spec internally_hosted?(String.t()) :: boolean()
-  def internally_hosted?(hostname) when is_binary(hostname) do
-    hostname = hostname |> String.trim() |> String.downcase()
-
-    Repo.exists?(
-      from t in DeploymentTarget,
-        where: t.public_hostname == ^hostname and t.provider == "internal" and t.type != "backup"
-    )
-  end
-
-  @doc """
-  The host name of a new site's staging target:
-  `<site public_id>.stage.<staging_host>`, lowercased like every host name.
-  """
-  @spec staging_hostname(Site.t()) :: String.t()
-  def staging_hostname(%Site{public_id: public_id}) do
-    String.downcase("#{public_id}.stage.#{Application.fetch_env!(:feather, :staging_host)}")
-  end
-
-  @doc """
-  Creates the internal staging target of a site (done when the site is
-  created).
-  """
-  @spec create_staging_target(Site.t()) ::
-          {:ok, DeploymentTarget.t()} | {:error, Ecto.Changeset.t()}
-  def create_staging_target(%Site{} = site) do
-    %DeploymentTarget{site_id: site.id}
-    |> DeploymentTarget.create_changeset(%{
-      type: "staging",
-      provider: "internal",
-      public_hostname: staging_hostname(site)
-    })
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a deployment target in the scope's site. Accepts `type`,
-  `provider`, `public_hostname` and `config`.
+  Creates a deployment target in the scope's site. Accepts `provider`,
+  `public_hostname` and `config`.
   """
   @spec create_target(Scope.t(), map()) ::
           {:ok, DeploymentTarget.t()} | {:error, Ecto.Changeset.t()}
@@ -157,7 +65,7 @@ defmodule Feather.Publishing do
   end
 
   @doc """
-  Updates the host name and type of a deployment target.
+  Updates the host name of a deployment target.
   """
   @spec update_target(Scope.t(), DeploymentTarget.t(), map()) ::
           {:ok, DeploymentTarget.t()} | {:error, Ecto.Changeset.t()}
@@ -192,7 +100,7 @@ defmodule Feather.Publishing do
     Repo.delete(t)
   end
 
-  @doc "Returns a changeset for the deployment target form (hostname, type)."
+  @doc "Returns a changeset for the deployment target form (hostname)."
   @spec change_target(DeploymentTarget.t(), map()) :: Ecto.Changeset.t()
   def change_target(%DeploymentTarget{} = target, attrs \\ %{}) do
     DeploymentTarget.update_changeset(target, attrs)
@@ -282,30 +190,13 @@ defmodule Feather.Publishing do
   end
 
   @doc """
-  Deploys all staging targets of a site (a scope with a site, or a site
-  for trusted internal callers), like Rails did after changes to the
-  site, its navigation or its social links. Returns `:ok` at once.
-  """
-  @spec publish_site(Scope.t() | Site.t(), keyword()) :: :ok
-  def publish_site(scope_or_site, opts \\ [])
-
-  def publish_site(%Scope{site: %Site{} = site}, opts), do: publish_site(site, opts)
-
-  def publish_site(%Site{} = site, opts) do
-    site
-    |> Scope.for_site()
-    |> list_targets(:staging)
-    |> Enum.each(&start_deploy(&1, opts))
-  end
-
-  @doc """
-  Deploys every production target of the scope's site, like `deploy/3`.
+  Deploys every deployment target of the scope's site, like `deploy/3`.
   Returns `:ok` at once.
   """
-  @spec deploy_production(Scope.t(), keyword()) :: :ok
-  def deploy_production(%Scope{} = scope, opts \\ []) do
-    scope
-    |> list_targets(:production)
+  @spec deploy_site(Scope.t(), keyword()) :: :ok
+  def deploy_site(%Scope{site: %Site{id: site_id}}, opts \\ []) do
+    from(t in DeploymentTarget, where: t.site_id == ^site_id, order_by: [asc: t.inserted_at])
+    |> Repo.all()
     |> Enum.each(&start_deploy(&1, opts))
   end
 
@@ -333,22 +224,19 @@ defmodule Feather.Publishing do
   ## Undeployed changes
 
   @doc """
-  The number of posts, pages and projects whose newest publish a production
-  target does not show yet: published after the oldest production deploy,
-  or every published one if a production target was never deployed. 0
-  without a production target.
+  The number of changes a deployment target does not show yet: the posts,
+  pages and projects published after the oldest deploy, plus 1 if the
+  site itself (settings, images, social media links, navigation, see
+  `Feather.Sites`) changed since. Counts everything published, and the
+  site, if a target was never deployed; 0 without a deployment target.
 
-  Only production counts: staging shows the records as they are anyway, and
-  a backup is not what visitors see. Unpublishing creates no version, so it
-  does not count.
+  Unpublishing creates no version, so it does not count.
   """
   @spec undeployed_count(Scope.t()) :: non_neg_integer()
   def undeployed_count(%Scope{site: %Site{id: site_id}}) do
     deploys =
       Repo.all(
-        from t in DeploymentTarget,
-          where: t.site_id == ^site_id and t.type == "production",
-          select: t.last_deployed_at
+        from t in DeploymentTarget, where: t.site_id == ^site_id, select: t.last_deployed_at
       )
 
     case deploys do
@@ -357,8 +245,16 @@ defmodule Feather.Publishing do
 
       deploys ->
         since = if Enum.any?(deploys, &is_nil/1), do: nil, else: Enum.min(deploys, DateTime)
-        count_published_since(site_id, since)
+        count_published_since(site_id, since) + count_site_changed_since(site_id, since)
     end
+  end
+
+  defp count_site_changed_since(_site_id, nil), do: 1
+
+  defp count_site_changed_since(site_id, since) do
+    if Repo.exists?(from s in Site, where: s.id == ^site_id and s.updated_at > ^since),
+      do: 1,
+      else: 0
   end
 
   defp count_published_since(site_id, since) do
@@ -378,11 +274,11 @@ defmodule Feather.Publishing do
   end
 
   @doc """
-  Whether a published version is on the live site: every production
+  Whether a published version is on the live site: every deployment
   target in `targets` deployed since it was published and, for a post,
   since its `publish_at` (the static export leaves out a post until then).
   A post whose `publish_at` is in the future is never live. True without a
-  published version, and for a due one without a production target, where
+  published version, and for a due one without a deployment target, where
   there is nothing to wait for.
   """
   @spec live?([DeploymentTarget.t()], map() | nil, DateTime.t()) :: boolean()

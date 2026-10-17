@@ -8,7 +8,7 @@ defmodule Feather.SitesTest do
   alias Feather.Sites.{Invitation, Site, SocialMediaService}
 
   describe "create_site/2" do
-    test "creates the site, membership, homepage and staging target" do
+    test "creates the site, membership and homepage, but no deployment target" do
       user = user_fixture()
       scope = Scope.for_user(user)
 
@@ -30,12 +30,7 @@ defmodule Feather.SitesTest do
       assert homepage.slug == "/"
       assert Content.publication_status(homepage) == :published
 
-      assert [target] = Publishing.list_targets(site_scope)
-      assert target.type == "staging"
-      assert target.provider == "internal"
-
-      assert target.public_hostname ==
-               "#{String.downcase(site.public_id)}.stage.#{Application.fetch_env!(:feather, :staging_host)}"
+      assert Publishing.list_targets(site_scope) == []
     end
 
     test "validates the site and creates nothing on error" do

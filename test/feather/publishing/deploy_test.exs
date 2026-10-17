@@ -7,17 +7,17 @@ defmodule Feather.Publishing.DeployTest do
   @moduletag :tmp_dir
   @moduletag :capture_log
 
-  setup %{tmp_dir: tmp} do
+  setup do
     scope = site_scope_fixture()
     post_fixture(scope, %{title: "Hello", slug: "/hello"})
-    target = Publishing.get_staging_target(scope)
+    target = deployment_target_fixture(scope)
     :ok = Publishing.subscribe_notices(scope.site)
     on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
 
     %{
       scope: scope,
       target: target,
-      opts: [runner: runner(), brotli: false, staging_sites_path: tmp]
+      opts: [runner: runner(), brotli: false]
     }
   end
 
@@ -43,10 +43,8 @@ defmodule Feather.Publishing.DeployTest do
     assert File.ls!(Deploy.build_path(c.target)) == ["public"]
 
     host = c.target.public_hostname
-    assert_received {:synced, source, remote, files}
+    assert_received {:synced, source, "hetzner-ftps:/site", files}
     assert source == live <> "/"
-    [host_without_port | _] = String.split(host, ":")
-    assert remote == "internal:" <> Path.join(c.tmp_dir, host_without_port)
     assert "index.html" in files
 
     refute Publishing.deploying?(c.target)
@@ -91,10 +89,9 @@ defmodule Feather.Publishing.DeployTest do
   test "a second deploy replaces the live directory", c do
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
-    {:ok, _} =
-      Feather.Content.update_post(c.scope, Feather.Content.get_post_by_slug(c.scope, "/hello"), %{
-        slug: "/moved"
-      })
+    post = Feather.Content.get_post_by_slug(c.scope, "/hello")
+    {:ok, post} = Feather.Content.update_post(c.scope, post, %{slug: "/moved"})
+    {:ok, _post} = Feather.Content.publish(c.scope, post)
 
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
@@ -104,23 +101,16 @@ defmodule Feather.Publishing.DeployTest do
     assert File.ls!(Deploy.build_path(c.target)) == ["public"]
   end
 
-  test "staging shows unpublished changes, production and backup the published versions", c do
+  test "exports the published versions, not the unpublished changes", c do
     c.scope
     |> Feather.Content.get_post_by_slug("/hello")
     |> Ecto.Changeset.change(title: "Unpublished")
     |> Repo.update!()
 
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
-    assert File.read!(Path.join(Deploy.live_dir(c.target), "hello/index.html")) =~ "Unpublished"
-
-    for type <- ~w(production backup) do
-      target = deployment_target_fixture(c.scope, %{type: type, provider: "internal"})
-      on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
-
-      assert {:ok, :deployed} = Deploy.run(target, c.opts)
-      html = File.read!(Path.join(Deploy.live_dir(target), "hello/index.html"))
-      assert html =~ "<h1>Hello</h1>"
-    end
+    html = File.read!(Path.join(Deploy.live_dir(c.target), "hello/index.html"))
+    assert html =~ "<h1>Hello</h1>"
+    refute html =~ "Unpublished"
   end
 
   test "a failing rclone sync releases the lock and broadcasts the failure", c do
@@ -252,29 +242,24 @@ defmodule Feather.Publishing.DeployTest do
     end
 
     test "deploy/3 refuses targets of other sites", c do
-      other = Publishing.get_staging_target(site_scope_fixture())
+      other = deployment_target_fixture(site_scope_fixture())
       assert_raise FunctionClauseError, fn -> Publishing.deploy(c.scope, other) end
     end
 
-    test "publish_site/1 deploys the staging targets only", c do
-      deployment_target_fixture(c.scope, type: "production")
+    test "deploy_site/1 deploys every target of the site", c do
+      %{id: first} = c.target
+      %{id: second} = deployment_target_fixture(c.scope)
+      %{id: other} = deployment_target_fixture(site_scope_fixture())
 
-      assert :ok = Publishing.publish_site(c.scope)
-      assert_received {:deploy_requested, %{type: "staging"}}
-      refute_received {:deploy_requested, %{type: "production"}}
-
-      assert :ok = Publishing.publish_site(c.scope.site)
-      assert_received {:deploy_requested, %{type: "staging"}}
-    end
-
-    test "deploy_production/1 deploys the production targets only", c do
-      %{id: first} = deployment_target_fixture(c.scope, type: "production")
-      %{id: second} = deployment_target_fixture(c.scope, type: "production")
-
-      assert :ok = Publishing.deploy_production(c.scope)
+      assert :ok = Publishing.deploy_site(c.scope)
       assert_received {:deploy_requested, %{id: ^first}}
       assert_received {:deploy_requested, %{id: ^second}}
-      refute_received {:deploy_requested, %{type: "staging"}}
+      refute_received {:deploy_requested, %{id: ^other}}
+    end
+
+    test "deploy_site/1 deploys targets with their config", c do
+      assert :ok = Publishing.deploy_site(c.scope)
+      assert_received {:deploy_requested, %{config: %{"host" => "ftp.example.com"}}}
     end
 
     test "notices go to the site's topic", c do

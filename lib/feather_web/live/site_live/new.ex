@@ -1,8 +1,7 @@
 defmodule FeatherWeb.SiteLive.New do
   @moduledoc """
   Creates a site: title, domain and language. The creator becomes a
-  member; the site gets a homepage and a staging target
-  (`Feather.Sites.create_site/2`).
+  member; the site gets a homepage (`Feather.Sites.create_site/2`).
   """
   use FeatherWeb, :live_view
 

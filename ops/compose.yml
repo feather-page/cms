@@ -18,21 +18,8 @@ services:
     volumes:
       # Database (feather.db), images and build output. Owned by uid 1000.
       - /web/data/featherpage/phoenix:/data
-      # Staging sites, served by featherpage_caddy as /static/{host}.
-      - /web/data/featherpage/caddy/static:/static
     networks:
       # Pangolin (newt) reaches the app as featherpage:4000.
-      - frontend
-      - default
-
-  featherpage_caddy:
-    image: caddy:2
-    restart: unless-stopped
-    volumes:
-      - /web/data/featherpage/caddy/static:/static
-      - /web/data/featherpage/caddy/data:/data
-      - /web/data/featherpage/caddy/config:/etc/caddy
-    networks:
       - frontend
       - default
 

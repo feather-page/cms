@@ -28,8 +28,6 @@ defmodule FeatherWeb.SiteAuth do
       `check_component_events/1` on mount (and `check_access/1` where it
       acts outside events, e.g. on upload progress). The changes the
       `FeatherWeb.HeaderImagePicker` sends its LiveView are checked too,
-    * assigns `site_preview_path`: the preview of the site's internal
-      staging target, or nil,
     * subscribes to the site's notices (`Feather.Publishing.subscribe_notices/1`)
       and collects `{:site_notice, notice}` broadcasts (e.g. from the deploy
       pipeline) in `site_notices`, which `FeatherWeb.SiteComponents.site_shell/1`
@@ -37,13 +35,13 @@ defmodule FeatherWeb.SiteAuth do
       `"dismiss_site_notice"` removes one, `"retry_deploy"` deploys the
       notice's target again and removes it,
     * assigns `site_deploy` for the deploy control of the shell: the
-      production targets, how many published changes they do not show yet
+      deployment targets, how many changes they do not show yet
       (`Feather.Publishing.undeployed_count/1`) and the progress of their
       running deploys. It is loaded on mount, again with every notice
       (a deploy ends with one), updated with every `{:deploy_progress, _}`
       and reloaded when a LiveView calls `refresh_deploy_status/1` after
-      publishing in place. The event `"deploy_site"` deploys every
-      production target. A LiveView that assigns
+      publishing in place or changing the site. The event `"deploy_site"`
+      deploys every target. A LiveView that assigns
       `forward_site_notices: true` receives the notices in its own
       `handle_info/2` too, and the deploy pipeline's
       `{:deploy_progress, progress}` messages, which other LiveViews never
@@ -73,7 +71,6 @@ defmodule FeatherWeb.SiteAuth do
     socket =
       socket
       |> Phoenix.Component.assign(:current_scope, scope)
-      |> Phoenix.Component.assign(:site_preview_path, preview_path(scope))
       |> Phoenix.Component.assign(:site_notices, [])
       |> Phoenix.Component.assign(:site_deploy, deploy_status(scope))
       |> LiveView.attach_hook(:site_access_on_event, :handle_event, &check_access_on_event/3)
@@ -174,7 +171,7 @@ defmodule FeatherWeb.SiteAuth do
   end
 
   defp deploy_status(scope) do
-    targets = Publishing.list_targets(scope, :production)
+    targets = Publishing.list_targets(scope)
 
     %{
       targets: targets,
@@ -207,7 +204,7 @@ defmodule FeatherWeb.SiteAuth do
   end
 
   defp handle_notice_event("deploy_site", _params, socket) do
-    :ok = Publishing.deploy_production(socket.assigns.current_scope)
+    :ok = Publishing.deploy_site(socket.assigns.current_scope)
     {:halt, refresh_deploy_status(socket)}
   end
 
@@ -216,13 +213,6 @@ defmodule FeatherWeb.SiteAuth do
   defp drop_notice(socket, id) do
     notices = Enum.reject(socket.assigns.site_notices, &(to_string(&1.id) == to_string(id)))
     Phoenix.Component.assign(socket, :site_notices, notices)
-  end
-
-  defp preview_path(scope) do
-    case Publishing.preview_target_public_id(scope) do
-      nil -> nil
-      public_id -> ~p"/preview/#{public_id}"
-    end
   end
 
   @doc """

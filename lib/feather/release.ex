@@ -74,12 +74,10 @@ defmodule Feather.Release do
 
   @doc """
   Replaces the provider config (credentials) of the deployment target with
-  the given public id. The admin does
-  not edit credentials. Keys per provider: `fastmail` takes `email`,
-  `password` and `path`; `hetzner_ftps` takes `host`, `user`, `password`
-  and `path`.
+  the given public id. The admin does not edit credentials. The
+  `hetzner_ftps` provider takes `host`, `user`, `password` and `path`.
 
-      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"email" => "...", "password" => "...", "path" => "..."})'
+      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"host" => "...", "user" => "...", "password" => "...", "path" => "..."})'
   """
   def set_target_config(target_public_id, %{} = config) do
     with_app(fn ->

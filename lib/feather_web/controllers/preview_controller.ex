@@ -1,20 +1,20 @@
 defmodule FeatherWeb.PreviewController do
   @moduledoc """
-  Serves the preview of a site: `/preview/<target public id>/<path>`
-  renders the static site's templates live (see
-  `Feather.StaticSite.Preview`). Only users who may access the target's
-  site get it; for everyone else the target does not exist.
+  Serves the preview of a site: `/preview/<site public id>/<path>` renders
+  the static site's templates live (see `Feather.StaticSite.Preview`). Only
+  users who may access the site get it; for everyone else it does not
+  exist.
   """
 
   use FeatherWeb, :controller
 
-  alias Feather.Publishing
+  alias Feather.Sites
   alias Feather.StaticSite.Preview
 
-  def show(conn, %{"target_id" => target_id} = params) do
-    case Publishing.get_preview_target(conn.assigns.current_scope, target_id) do
+  def show(conn, %{"site_id" => site_id} = params) do
+    case Sites.get_site(conn.assigns.current_scope, site_id) do
       nil -> send_resp(conn, :not_found, "Not Found")
-      target -> respond(conn, Preview.render(target, Map.get(params, "path", [])))
+      site -> respond(conn, Preview.render(site, Map.get(params, "path", [])))
     end
   end
 

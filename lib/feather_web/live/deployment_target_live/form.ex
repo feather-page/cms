@@ -1,13 +1,12 @@
 defmodule FeatherWeb.DeploymentTargetLive.Form do
   @moduledoc """
-  Edits the host name and type of a deployment target. The provider config
-  (credentials) is not editable here: it comes from the import or the
-  console, as in the Rails app.
+  Edits the host name of a deployment target. The provider config
+  (credentials) is not editable here: it is set on the console
+  (`Feather.Release.set_target_config/2`).
   """
   use FeatherWeb, :live_view
 
   alias Feather.Publishing
-  alias Feather.Publishing.DeploymentTarget
   alias FeatherWeb.DeploymentTargetLive.Index
 
   @impl true
@@ -18,16 +17,15 @@ defmodule FeatherWeb.DeploymentTargetLive.Form do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
-      preview_path={@site_preview_path}
       active={:deployments}
     >
       <:bar>
         <.breadcrumbs label="Breadcrumb">
           <:crumb navigate={index_path(@current_scope)}>Deployments</:crumb>
-          <:crumb>{Index.type_label(@target.type)}</:crumb>
+          <:crumb>{@target.public_hostname}</:crumb>
         </.breadcrumbs>
         <span class="truncate text-sm text-base-content/70 max-sm:hidden">
-          {@target.public_hostname} · {Index.provider_label(@target.provider)}
+          {Index.provider_label(@target.provider)}
         </span>
       </:bar>
 
@@ -38,17 +36,12 @@ defmodule FeatherWeb.DeploymentTargetLive.Form do
         phx-change="validate"
         phx-submit="save"
       >
-        <div class="grid gap-x-4 sm:grid-cols-3">
-          <div class="sm:col-span-2">
-            <.input
-              field={@form[:public_hostname]}
-              type="text"
-              label="Public hostname"
-              help="Without https://, for example www.example.org"
-            />
-          </div>
-          <.input field={@form[:type]} type="select" label="Type" options={@type_options} />
-        </div>
+        <.input
+          field={@form[:public_hostname]}
+          type="text"
+          label="Public hostname"
+          help="Without https://, for example www.example.org"
+        />
         <.action_bar class="mt-6">
           <.button navigate={index_path(@current_scope)}>Cancel</.button>
           <.button type="submit" variant={:primary} phx-disable-with="Saving…" id="save-target">
@@ -68,10 +61,6 @@ defmodule FeatherWeb.DeploymentTargetLive.Form do
      socket
      |> assign(:page_title, "Edit deployment target")
      |> assign(:target, target)
-     |> assign(
-       :type_options,
-       Enum.map(DeploymentTarget.types(), &{Index.type_label(&1), &1})
-     )
      |> assign(:form, to_form(Publishing.change_target(target)))}
   end
 
