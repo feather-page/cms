@@ -82,9 +82,10 @@ A post, page or project without a published version, because it was never publis
 _Avoid_: using it for unpublished changes of a published record
 
 **Deployment Target**:
-A destination a site is published to, typed `staging`, `production` or `backup`, backed by an rclone provider
-(`internal`, `fastmail`, `hetzner_ftps`).
-_Avoid_: Host, Server, Environment
+An external host a site is deployed to by FTPS, backed by an rclone provider (`hetzner_ftps`). A deploy shows the
+published versions; changes to the site itself (settings, images, social media links, navigation) count as not
+deployed until the next deploy.
+_Avoid_: Host, Server, Environment, Staging
 
 **Static Export**:
 Rendering a site to static files through a sink. Syncing them to a deployment target is a separate step; both
@@ -97,6 +98,6 @@ files; knows nothing about sites, posts or deployment.
 _Avoid_: Output, Target (a target is a deployment target)
 
 **Preview**:
-Live rendering of the same templates inside the CMS (`/preview/<deployment target>/`), with no export and no
-deployment.
+Live rendering of the same templates inside the CMS (`/preview/<site>/`), with no export and no deployment. Shows the
+records as they are, unpublished changes and drafts included.
 _Avoid_: Draft View, Staging

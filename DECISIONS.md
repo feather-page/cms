@@ -33,9 +33,8 @@ covered by RSpec, but the scenarios never got step definitions.
 With the port to Phoenix ([0007](#0007-port-to-phoenix-and-sqlite)) `features/` and its index
 `features/README.md` are gone: the executable specification is the ExUnit suite in `test/`
 ([0008](#0008-behaviour-is-specified-in-exunit)). The structure is otherwise unchanged. Next to
-the files above there are `docs/api/` (the content API: `openapi.yml` and a README),
-`docs/cutover.md` (the one-time runbook for the move from Rails) and `docs/agents/` (how agent
-skills use the issue tracker and these docs).
+the files above there are `docs/api/` (the content API: `openapi.yml` and a README) and
+`docs/agents/` (how agent skills use the issue tracker and these docs).
 
 ## 0003. Code coverage policy
 
@@ -241,9 +240,8 @@ Phoenix 1.8 application on SQLite rather than translating Rails idioms one to on
 - **Magic-link-only authentication** from `phx.gen.auth` with passwords and registration removed.
   Users come in through an invitation or `mix feather.create_user`. API tokens keep the Rails
   SHA-256 digest format.
-- **A one-time dump and import** (`mix feather.import`, `Feather.Release.import_dump/2`, see
-  `docs/cutover.md`) moves the data instead of a compatibility layer: no shared schema, no dual
-  writes, no Rails-shaped tables kept for the sake of the import. Ids, public ids and timestamps
+- **A one-time move of the data** instead of a compatibility layer: no shared schema, no dual
+  writes, no Rails-shaped tables kept for the sake of the move. Ids, public ids and timestamps
   are preserved.
 
 ### Consequences
@@ -256,7 +254,7 @@ touch the database run synchronously for the same reason.
 Deliberately dropped or changed in the port:
 
 - **Navigations table**: navigation items belong to the site directly (`navigation_items.site_id`);
-  the one-navigation-per-site indirection is gone and the import merges it into the site.
+  the one-navigation-per-site indirection is gone.
 - **Polymorphic images**: `images.imageable_type/imageable_id` became explicit foreign keys.
   `post_id`, `page_id` and `project_id` record which record embeds the image in its content;
   header, thumbnail and cover images are referenced by their owner (`header_image_id`,
@@ -270,7 +268,7 @@ Deliberately dropped or changed in the port:
   item shorthand. The pagination `meta` and the `?p=` parameter, which Rails already had, are now
   documented.
 - **Invitations** are signed `Phoenix.Token`s valid for seven days; Rails invitation links stopped
-  working at the cutover.
+  working with the move.
 - Smaller things: the Unsplash endpoints of the Rails admin became part of the header image
   picker LiveComponent, the page form has no "created at" field, and the Jekyll importer (`lib/jekyll_importer`, a
   client of the content API) and Lookbook were not ported.
@@ -285,7 +283,7 @@ ExUnit ([0008](#0008-behaviour-is-specified-in-exunit)), the static site is rend
 **A compatibility layer** (reading the Rails schema, or both apps side by side on one database).
 Rejected: it would have tied the new schema to the old one (navigations, polymorphic images,
 Active Storage tables, integer enums) for the sake of a move that happens once. With two sites, an
-hour of frozen editing for dump and import (`docs/cutover.md`) is the cheaper price.
+hour of frozen editing for moving the data is the cheaper price.
 
 ### Update (2026-10-09)
 
@@ -338,7 +336,7 @@ the issue) before the test is written.
 Accepted, 2026-10-09
 
 - **Context:** [0002](#0002-flat-documentation-structure) kept ADRs as separate files in `docs/adr/`; read in order and searched as a whole, one file serves better.
-- **Decision:** All ADRs live in `DECISIONS.md` at the root, the older ones moved word for word; the rest of the flat structure of 0002 holds (`CONTEXT.md`, `AGENTS.md`, `docs/api/`, `docs/cutover.md`, `docs/agents/`).
+- **Decision:** All ADRs live in `DECISIONS.md` at the root, the older ones moved word for word; the rest of the flat structure of 0002 holds (`CONTEXT.md`, `AGENTS.md`, `docs/api/`, `docs/agents/`).
 - **Consequences:** ADRs link to each other by anchor instead of file name, and new ones follow the format of the newest entries; `docs/adr/TEMPLATE.md` is gone.
 
 ## 0010. ProseMirror replaces Editor.js
@@ -363,6 +361,12 @@ No site notice shows the published changes not yet deployed any more: the deploy
 bottom of the sidebar ([0013](#0013-the-admin-uses-setzkasten-tailwind-and-daisyui)) shows how
 many of them production does not show yet (`Feather.Publishing.undeployed_count/1`), next to a
 Deploy to production button.
+
+### Update (2026-10-17)
+
+Staging and backup targets are gone ([0016](#0016-sites-are-delivered-only-to-external-hosts-by-ftps)):
+every deployment target exports the published versions, and only the preview shows the records as
+they are. The count of the deploy control also includes the site's own changes.
 
 ## 0012. Autosave with a per-block delta sync
 
@@ -395,3 +399,11 @@ Accepted, 2026-10-16
 - **Context:** One shared theme renders every site, but rocu.de needs a theme of its own while zipfelmaus and the other sites keep the current one.
 - **Decision:** A site has a `theme` column holding one of a fixed list of themes in code: `feather` (the default, the current theme) and `simple_sidebar` (first used by rocu.de); every site member picks it in the site settings. A theme brings its own templates, CSS and fonts, while block rendering, routes, Gettext, meta tags, feed and sitemap stay shared. The sidebar theme takes its portrait from a new optional image slot on the site (`portrait_image_id`), built like the mascot slots of 0014. Rejected: a domain-to-theme map in the config (invisible in the admin, a deploy for every change) and CSS or templates stored per site in the database (untested and unversioned).
 - **Consequences:** A new theme is a code change with its own tests and templates for every page type; the export and the preview render through the site's theme, and the image cleanup counts the portrait as in use.
+
+## 0016. Sites are delivered only to external hosts by FTPS
+
+Accepted, 2026-10-17
+
+- **Context:** Besides production targets on the owners' web hosting, the CMS kept a staging target per site that it served itself (the `internal` rclone provider writing into a directory, a Caddy container with on-demand TLS asking `/api/caddy/check_domain`), backup targets and a `fastmail` WebDAV provider; changes to settings, navigation and social links redeployed staging. Staging duplicated the preview, and the internal hosting was a second web server with its own volume, TLS and attack surface to run.
+- **Decision:** Sites are delivered only to external hosts by FTPS (`hetzner_ftps`; SFTP will follow as another provider). Staging and backup targets, the target `type`, the `internal` and `fastmail` providers and the internal Caddy hosting are removed; a migration deletes those targets and drops the column. The preview is addressed by site (`/preview/<site public id>/`), renders live for everyone who may access the site and needs no target. A change to the site itself (settings, images, social media links, navigation) moves the site's `updated_at` and counts once as not deployed in `Feather.Publishing.undeployed_count/1` instead of redeploying staging. Precompression stays: the `.br` and `.gz` files are uploaded with the site for external Caddy servers.
+- **Consequences:** A new site has no deployment target until one is created on the console, and nothing shows it on a public address before its first deploy; the production server drops the Caddy container, its volumes and the staging environment variables (`BASE_HOSTNAME_AND_PORT`, `STAGING_SITES_PATH`).
