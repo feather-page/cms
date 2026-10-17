@@ -7,6 +7,9 @@ defmodule Feather.Media do
       <storage_root>/images/<public_id>/original.<ext>
       <storage_root>/images/<public_id>/mobile_x1.webp   (and the other variants)
 
+  Rendered diagrams live next to them in `<storage_root>/diagrams/` (see
+  `Feather.Diagrams`).
+
   Variants are generated synchronously on create, see
   `Feather.Media.Variants` for the list.
   """

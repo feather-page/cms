@@ -248,6 +248,24 @@ components:
         emoji:
           type: string
 
+    DiagramBlock:
+      type: object
+      required: [type, code]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          const: diagram
+        code:
+          type: string
+          description: "Diagram source in D2 (https://d2lang.com) without icons, links or imports, rendered to an SVG image on the published site."
+        caption:
+          type: string
+          default: ""
+          description: "Optional caption, also the image's alternative text."
+
     Block:
       oneOf:
         - $ref: "#/components/schemas/ParagraphBlock"
@@ -259,6 +277,7 @@ components:
         - $ref: "#/components/schemas/TableBlock"
         - $ref: "#/components/schemas/EmbedBlock"
         - $ref: "#/components/schemas/BookBlock"
+        - $ref: "#/components/schemas/DiagramBlock"
       discriminator:
         propertyName: type
         mapping:
@@ -271,6 +290,7 @@ components:
           table: "#/components/schemas/TableBlock"
           embed: "#/components/schemas/EmbedBlock"
           book: "#/components/schemas/BookBlock"
+          diagram: "#/components/schemas/DiagramBlock"
 
     ContentBlocks:
       type: array

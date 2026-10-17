@@ -14,6 +14,10 @@ ARG DEBIAN_VERSION=trixie-20261005-slim
 ARG BUILDER_IMAGE="docker.io/hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
 
+# d2 renders the diagram blocks; Dependabot updates the tag and digest, and CI
+# installs the same version for the tests.
+FROM docker.io/d2lang/d2:v0.9.0@sha256:0f9237e0213338415de5ef7436c92450ddd04e0e6e7df2db3f41387322df97b9 AS d2
+
 FROM ${BUILDER_IMAGE} AS builder
 
 # nodejs and npm: the asset build installs the ProseMirror packages with npm ci.
@@ -55,7 +59,7 @@ FROM ${RUNNER_IMAGE}
 
 # libstdc++6: needed by vix's libvips. rclone: deployments. brotli:
 # precompressed static output. sqlite3: for ops (inspecting and backing up
-# /data/feather.db). curl: the health check.
+# /data/feather.db). curl: the health check. d2 (a static binary): diagrams.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 locales ca-certificates \
@@ -63,6 +67,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
+
+COPY --from=d2 /usr/local/bin/d2 /usr/local/bin/d2
 
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \

@@ -260,6 +260,31 @@ export const schema = new Schema({
       ]
     },
 
+    // A plain rendering only; the block's own node view shows the rendered diagram.
+    diagram: {
+      group: "block",
+      content: "diagram_code diagram_caption",
+      attrs: id,
+      defining: true,
+      parseDOM: [{tag: "figure.pm-diagram"}],
+      toDOM: () => ["figure", {class: "pm-diagram"}, 0]
+    },
+
+    diagram_code: {
+      content: "text*",
+      marks: "",
+      code: true,
+      defining: true,
+      parseDOM: [{tag: "pre.pm-diagram__code", priority: 60, preserveWhitespace: "full"}],
+      toDOM: () => ["pre", {class: "pm-diagram__code", "data-language": "d2"}, 0]
+    },
+
+    diagram_caption: {
+      content: "inline*",
+      parseDOM: [{tag: "figcaption.pm-diagram__caption"}],
+      toDOM: () => ["figcaption", {class: "pm-diagram__caption"}, 0]
+    },
+
     text: {group: "inline"},
 
     hard_break: {

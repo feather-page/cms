@@ -7,7 +7,9 @@ defmodule Feather.StaticSite.Blocks do
   cells) goes through `Feather.Content.HTML.sanitize/1`; everything else is
   escaped. Image and book blocks look their records up in the maps given
   in the context (by public id) and render nothing when the record is
-  missing.
+  missing. Diagram blocks look their SVG file up by their source (see
+  `Feather.Diagrams.render_all/2`) and show the source as d2 code when
+  the diagram was not rendered.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -22,22 +24,24 @@ defmodule Feather.StaticSite.Blocks do
   @content_image_sizes "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
 
   @enforce_keys [:routes]
-  defstruct [:routes, images: %{}, books: %{}]
+  defstruct [:routes, images: %{}, books: %{}, diagrams: %{}]
 
   @typedoc """
-  What rendering needs besides the blocks: the routes, and the site's
-  images and books by public id (books with `cover_image` preloaded).
+  What rendering needs besides the blocks: the routes, the site's images
+  and books by public id (books with `cover_image` preloaded) and the file
+  names of the rendered diagrams by source.
   """
   @type context :: %__MODULE__{
           routes: Routes.t(),
           images: %{String.t() => Image.t()},
-          books: %{String.t() => Book.t()}
+          books: %{String.t() => Book.t()},
+          diagrams: %{String.t() => String.t()}
         }
 
   @doc "Builds a rendering context."
-  @spec context(Routes.t(), map(), map()) :: context()
-  def context(%Routes{} = routes, images \\ %{}, books \\ %{}),
-    do: %__MODULE__{routes: routes, images: images, books: books}
+  @spec context(Routes.t(), map(), map(), map()) :: context()
+  def context(%Routes{} = routes, images \\ %{}, books \\ %{}, diagrams \\ %{}),
+    do: %__MODULE__{routes: routes, images: images, books: books, diagrams: diagrams}
 
   @doc """
   Renders a list of blocks. Returns safe HTML for templates.
@@ -72,23 +76,8 @@ defmodule Feather.StaticSite.Blocks do
     ["<blockquote><p>", sanitize(text), "</p>", cite, "</blockquote>"]
   end
 
-  def render_block(%{"type" => "code", "code" => code} = block, _context) do
-    case code_language(block["language"]) do
-      nil ->
-        ["<pre><code>", escape(code), "</code></pre>"]
-
-      language ->
-        [
-          "<pre data-language=\"",
-          language,
-          "\"><code class=\"language-",
-          language,
-          "\">",
-          escape(code),
-          "</code></pre>"
-        ]
-    end
-  end
+  def render_block(%{"type" => "code", "code" => code} = block, _context),
+    do: code_block(code, code_language(block["language"]))
 
   def render_block(%{"type" => "image", "image_id" => image_id} = block, context) do
     case Map.get(context.images, image_id) do
@@ -147,7 +136,46 @@ defmodule Feather.StaticSite.Blocks do
     end
   end
 
+  def render_block(%{"type" => "diagram", "code" => code} = block, context) do
+    case Map.get(context.diagrams, code) do
+      nil -> if present?(code), do: code_block(code, "d2"), else: []
+      name -> diagram(name, block["caption"], context.routes)
+    end
+  end
+
   def render_block(_block, _context), do: []
+
+  defp code_block(code, nil), do: ["<pre><code>", escape(code), "</code></pre>"]
+
+  defp code_block(code, language) do
+    [
+      "<pre data-language=\"",
+      language,
+      "\"><code class=\"language-",
+      language,
+      "\">",
+      escape(code),
+      "</code></pre>"
+    ]
+  end
+
+  defp diagram(name, caption, routes) do
+    alt = ContentBlocks.strip_tags(caption)
+    alt = if present?(alt), do: alt, else: gettext("Diagram")
+
+    figcaption =
+      if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
+
+    [
+      "<figure class=\"diagram\"><img loading=\"lazy\" src=\"",
+      escape(Routes.diagram_url(routes, name)),
+      "\" alt=\"",
+      escape(alt),
+      "\">",
+      figcaption,
+      "</figure>"
+    ]
+  end
 
   defp list(_style, []), do: []
 

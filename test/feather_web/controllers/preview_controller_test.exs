@@ -77,6 +77,54 @@ defmodule FeatherWeb.PreviewControllerTest do
              404
   end
 
+  test "renders diagrams and serves their SVG files without scripts", %{
+    conn: conn,
+    scope: scope,
+    root: root,
+    user: user
+  } do
+    Feather.FakeD2.install()
+
+    post_fixture(scope, %{
+      slug: "/flow",
+      publish_at: DateTime.add(DateTime.utc_now(), 1, :day),
+      content: [%{"type" => "diagram", "code" => "a -> b", "caption" => "Flow"}]
+    })
+
+    html = html_response(get(conn, root <> "/flow/"), 200)
+    [_, src] = Regex.run(~r{<img loading="lazy" src="([^"]+)" alt="Flow">}, html)
+    assert String.starts_with?(src, root <> "/diagrams/")
+
+    conn = get(fresh(user), src)
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") == ["image/svg+xml"]
+    assert [csp] = get_resp_header(conn, "content-security-policy")
+    assert csp =~ "default-src 'none'"
+    assert csp =~ "sandbox"
+    assert conn.resp_body =~ "a -> b"
+
+    missing = root <> "/diagrams/" <> String.duplicate("0", 64) <> ".svg"
+    assert get(fresh(user), missing).status == 404
+  end
+
+  test "renders diagrams only for what shows content", %{
+    conn: conn,
+    scope: scope,
+    root: root,
+    user: user
+  } do
+    Feather.FakeD2.install()
+    post_fixture(scope, %{content: [%{"type" => "diagram", "code" => "a -> b"}]})
+
+    assert get(conn, root <> "/missing/").status == 404
+    assert get(fresh(user), root <> "/robots.txt").status == 200
+    assert get(fresh(user), root <> "/sitemap.xml").status == 200
+    refute_received {:d2_rendered, _source}
+
+    assert get(fresh(user), root <> "/feed.xml").status == 200
+    assert_received {:d2_rendered, _source}
+  end
+
   test "serves the theme fonts", %{conn: conn, root: root} do
     conn = get(conn, root <> "/fonts/nunito-latin-800.woff2")
 

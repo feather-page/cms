@@ -1,8 +1,9 @@
 defmodule Feather.StaticSite.SiteData do
   @moduledoc """
   Everything a static export renders, loaded once up front with the
-  associations the templates use. Rendering then works on this data
-  alone, without touching the database, so it can run in parallel.
+  associations the templates use, and its diagrams rendered up front
+  (`render_diagrams/2`). Rendering then works on this data alone, without
+  touching the database or running d2, so it can run in parallel.
   """
 
   import Ecto.Query, warn: false
@@ -13,7 +14,7 @@ defmodule Feather.StaticSite.SiteData do
   alias Feather.Media.Image
   alias Feather.Repo
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
-  alias Feather.{Books, Content, Media, Sites}
+  alias Feather.{Books, Content, Diagrams, Media, Sites}
   alias Feather.StaticSite.Themes
 
   defstruct [
@@ -28,7 +29,8 @@ defmodule Feather.StaticSite.SiteData do
     navigation: [],
     social_links: [],
     images: %{},
-    books_by_public_id: %{}
+    books_by_public_id: %{},
+    diagrams: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -43,7 +45,8 @@ defmodule Feather.StaticSite.SiteData do
           navigation: [NavigationItem.t()],
           social_links: [SocialMediaLink.t()],
           images: %{String.t() => Image.t()},
-          books_by_public_id: %{String.t() => Book.t()}
+          books_by_public_id: %{String.t() => Book.t()},
+          diagrams: %{String.t() => String.t()}
         }
 
   @post_preloads [:header_image, :thumbnail_image, book: [:cover_image, :post]]
@@ -138,6 +141,22 @@ defmodule Feather.StaticSite.SiteData do
     for item <- navigation,
         Map.has_key?(pages_by_id, item.page_id),
         do: %{item | page: Map.fetch!(pages_by_id, item.page_id)}
+  end
+
+  @doc """
+  Renders the diagrams in the content of the posts, pages and projects and
+  of `records` (`Feather.Diagrams.render_all/2`) into `diagrams`, the SVG
+  file names by source. Diagrams that fail are left out and render as
+  their source.
+  """
+  @spec render_diagrams(t(), [Post.t() | Page.t() | Project.t()]) :: t()
+  def render_diagrams(%__MODULE__{} = data, records \\ []) do
+    codes =
+      Enum.flat_map(data.posts ++ data.pages ++ data.projects ++ records, fn record ->
+        Blocks.diagram_codes(record.content)
+      end)
+
+    %{data | diagrams: Diagrams.render_all(codes)}
   end
 
   @doc "Preloads what the templates need on a post, page or project."

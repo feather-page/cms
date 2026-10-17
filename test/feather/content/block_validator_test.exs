@@ -50,11 +50,13 @@ defmodule Feather.Content.BlockValidatorTest do
           "embed" => "https://www.youtube.com/embed/x",
           "width" => nil
         },
-        %{"type" => "book", "book_public_id" => "abc123"}
+        %{"type" => "book", "book_public_id" => "abc123"},
+        %{"type" => "diagram", "code" => "a -> b", "caption" => "A flow"}
       ]
 
       assert {:ok, blocks} = BlockValidator.validate(content)
-      assert length(blocks) == 9
+      assert length(blocks) == 10
+      assert List.last(blocks)["code"] == "a -> b"
     end
 
     test "accepts empty content" do
@@ -111,7 +113,7 @@ defmodule Feather.Content.BlockValidatorTest do
 
       assert unknown ==
                "Block 0: unknown or missing type 'fancy'. Valid types: " <>
-                 "paragraph, header, code, image, quote, list, table, embed, book"
+                 "paragraph, header, code, image, quote, list, table, embed, book, diagram"
 
       assert missing =~ "Block 1: unknown or missing type ''"
       assert not_a_map =~ "Block 2: unknown or missing type ''"

@@ -14,6 +14,7 @@ defmodule Feather.StaticSite.Routes do
   | project           | `/projects/<slug>/`          | `projects/<slug>/index.html`        |
   | image variant     | `/images/<public id>/<file>` | `images/<public id>/<file>`         |
   | theme font        | `/fonts/<file>`              | `fonts/<file>`                      |
+  | diagram           | `/diagrams/<hash>.svg`       | `diagrams/<hash>.svg`               |
   | artifact          | `/feed.xml`, ...             | `feed.xml`, ...                     |
   | not found page    | (any missing path)           | `404.html`                          |
 
@@ -26,6 +27,7 @@ defmodule Feather.StaticSite.Routes do
   import Ecto.Query, warn: false
 
   alias Feather.Content.{Page, Post, Project, Slug}
+  alias Feather.Diagrams
   alias Feather.Media.{Image, Variants}
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Repo
@@ -42,6 +44,7 @@ defmodule Feather.StaticSite.Routes do
           | {:artifact, String.t()}
           | {:image, Image.t(), Variants.variant()}
           | {:font, String.t()}
+          | {:diagram, String.t()}
           | {:project, Project.t()}
           | {:post, Post.t()}
           | {:page, Page.t()}
@@ -131,6 +134,10 @@ defmodule Feather.StaticSite.Routes do
   def font_url(%__MODULE__{site_root: root} = routes, name),
     do: root <> font_segment(routes, name)
 
+  @doc "The URL of a rendered diagram by its file name (see `Feather.Diagrams`)."
+  @spec diagram_url(t(), String.t()) :: String.t()
+  def diagram_url(%__MODULE__{site_root: root}, name), do: root <> diagram_segment(name)
+
   @doc """
   The URL of a generated file at the site root (`feed.xml`, `robots.txt`,
   `sitemap.xml`). Raises for anything else.
@@ -169,6 +176,10 @@ defmodule Feather.StaticSite.Routes do
   @spec font_path(t(), String.t()) :: String.t()
   def font_path(%__MODULE__{} = routes, name), do: font_segment(routes, name)
 
+  @doc "The output path of a rendered diagram."
+  @spec diagram_path(t(), String.t()) :: String.t()
+  def diagram_path(%__MODULE__{}, name), do: diagram_segment(name)
+
   @doc "The output path of a generated file at the site root."
   @spec artifact_path(t(), String.t()) :: String.t()
   def artifact_path(%__MODULE__{}, name), do: artifact(name)
@@ -189,6 +200,12 @@ defmodule Feather.StaticSite.Routes do
     if font?(site, name),
       do: "fonts/" <> name,
       else: raise(ArgumentError, "unknown font file #{inspect(name)}")
+  end
+
+  defp diagram_segment(name) do
+    if Diagrams.file_name?(name),
+      do: "diagrams/" <> name,
+      else: raise(ArgumentError, "unknown diagram file #{inspect(name)}")
   end
 
   defp post_segment(%Post{slug: slug, public_id: public_id}) do
@@ -219,7 +236,7 @@ defmodule Feather.StaticSite.Routes do
   there, or nil. Content of other sites is never found; drafts are (the
   preview shows them).
 
-  Precedence for ambiguous paths: home, artifact, image, font, project,
+  Precedence for ambiguous paths: home, artifact, image, font, diagram, project,
   post by public id, page, post by slug. A trailing `index.html`, `.html` or `/`
   is ignored.
   """
@@ -236,6 +253,7 @@ defmodule Feather.StaticSite.Routes do
         &resolve_artifact/2,
         &resolve_image/2,
         fn path, _site_id -> resolve_font(path, site) end,
+        &resolve_diagram/2,
         &resolve_project/2,
         &resolve_post_by_public_id/2,
         &resolve_page/2,
@@ -280,6 +298,11 @@ defmodule Feather.StaticSite.Routes do
 
   defp resolve_font("fonts/" <> name, site), do: if(font?(site, name), do: {:font, name})
   defp resolve_font(_path, _site), do: nil
+
+  defp resolve_diagram("diagrams/" <> name, _site_id),
+    do: if(Diagrams.file_name?(name), do: {:diagram, name})
+
+  defp resolve_diagram(_path, _site_id), do: nil
 
   defp font?(site, name), do: Map.has_key?(Themes.module(site).fonts(), name)
 

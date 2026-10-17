@@ -147,6 +147,18 @@ defmodule Feather.Content.BlockValidator do
          "cover_url" => %{"type" => "string"},
          "emoji" => %{"type" => "string"}
        }
+     }},
+    {"diagram",
+     %{
+       "type" => "object",
+       "required" => ["type", "code"],
+       "additionalProperties" => false,
+       "properties" => %{
+         "id" => @id,
+         "type" => %{"type" => "string", "const" => "diagram"},
+         "code" => %{"type" => "string"},
+         "caption" => %{"type" => "string", "default" => ""}
+       }
      }}
   ]
 

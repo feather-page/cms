@@ -59,6 +59,13 @@ defmodule Feather.Content.ProseMirrorTest do
       "caption" => "A video"
     },
     %{
+      "id" => "dia1",
+      "type" => "diagram",
+      "code" => "a -> b: <b>hi</b>\n",
+      "caption" => "A <b>flow</b>"
+    },
+    %{"id" => "dia2", "type" => "diagram", "code" => "", "caption" => ""},
+    %{
       "id" => "bok1",
       "type" => "book",
       "book_public_id" => "v5ejxZVJ66q8",
@@ -251,6 +258,27 @@ defmodule Feather.Content.ProseMirrorTest do
                  "height" => 320
                },
                "content" => [text("A video")]
+             }
+
+      assert node_of(doc, "dia1") == %{
+               "type" => "diagram",
+               "attrs" => %{"id" => "dia1"},
+               "content" => [
+                 %{"type" => "diagram_code", "content" => [text("a -> b: <b>hi</b>\n")]},
+                 %{
+                   "type" => "diagram_caption",
+                   "content" => [
+                     text("A "),
+                     %{"type" => "text", "text" => "flow", "marks" => [%{"type" => "bold"}]}
+                   ]
+                 }
+               ]
+             }
+
+      assert node_of(doc, "dia2") == %{
+               "type" => "diagram",
+               "attrs" => %{"id" => "dia2"},
+               "content" => [%{"type" => "diagram_code"}, %{"type" => "diagram_caption"}]
              }
 
       assert node_of(doc, "bok1") == %{

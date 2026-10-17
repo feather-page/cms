@@ -39,6 +39,12 @@ defmodule Feather.Content.BlocksTest do
       "caption" => "A video"
     },
     %{
+      "id" => "dia1",
+      "type" => "diagram",
+      "code" => "a -> b: <hi>\n",
+      "caption" => "A <b>flow</b>"
+    },
+    %{
       "id" => "bok1",
       "type" => "book",
       "book_public_id" => "v5ejxZVJ66q8",
@@ -74,6 +80,13 @@ defmodule Feather.Content.BlocksTest do
       end
     end
 
+    test "keeps only string code in diagram blocks and defaults the caption" do
+      for code <- [%{"a" => 1}, 42, nil] do
+        assert [%{"code" => "", "caption" => ""}] =
+                 Blocks.normalize([%{"type" => "diagram", "code" => code}])
+      end
+    end
+
     test "stringifies keys and drops unknown types" do
       assert [%{"id" => "x", "type" => "paragraph", "text" => "Hi"}] =
                Blocks.normalize([
@@ -100,6 +113,7 @@ defmodule Feather.Content.BlocksTest do
       },
       %{"id" => "t", "type" => "table", "content" => [[@payload, "x"]], "with_headings" => true},
       %{"id" => "i", "type" => "image", "image_id" => "IMAGE1234567", "caption" => @payload},
+      %{"id" => "d", "type" => "diagram", "code" => @payload, "caption" => @payload},
       %{
         "id" => "e",
         "type" => "embed",
@@ -111,7 +125,7 @@ defmodule Feather.Content.BlocksTest do
     ]
 
     test "normalize/1 sanitizes every inline HTML field" do
-      [p, h, q, l, t, i, e] = Blocks.normalize(@dirty_blocks)
+      [p, h, q, l, t, i, d, e] = Blocks.normalize(@dirty_blocks)
 
       assert p["text"] == @clean
       assert h["text"] == @clean
@@ -124,6 +138,7 @@ defmodule Feather.Content.BlocksTest do
 
       assert t["content"] == [[@clean, "x"]]
       assert i["caption"] == @clean
+      assert {d["code"], d["caption"]} == {@payload, @clean}
       assert e["caption"] == @clean
       assert {e["source"], e["embed"]} == {nil, nil}
     end
@@ -158,6 +173,11 @@ defmodule Feather.Content.BlocksTest do
     test "image_ids/1 and book_ids/1" do
       assert Blocks.image_ids(@blocks) == ["DrqGSEC4zyvZ"]
       assert Blocks.book_ids(@blocks) == ["v5ejxZVJ66q8"]
+    end
+
+    test "diagram_codes/1 lists the sources of diagram blocks once" do
+      blocks = @blocks ++ [%{"type" => "diagram", "code" => "a -> b: <hi>\n"}]
+      assert Blocks.diagram_codes(blocks) == ["a -> b: <hi>\n"]
     end
 
     test "excerpt/2 joins text blocks without HTML" do
