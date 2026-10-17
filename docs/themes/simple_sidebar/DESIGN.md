@@ -10,21 +10,17 @@ colors:
   ink: "#161616"
   anthracite: "#242424"
   quiet: "#5e5e5b"
-  faint: "#a3a49f"
-  star-off: "#bdbdb8"
-  signal: "#e5531a"
-  on-signal: "#111111"
+  signal: "#cc4a12"
+  on-signal: "#ffffff"
   ground-dark: "#141413"
   panel-dark: "#222220"
-  seam-dark: "#4a4a47"
+  seam-dark: "#5a5a56"
   hair-dark: "#393936"
   rule-dark: "#30302d"
   ink-dark: "#e6e6e2"
   anthracite-dark: "#f2f2ee"
   quiet-dark: "#a3a39e"
-  faint-dark: "#6a6a66"
-  star-off-dark: "#4a4a47"
-  signal-dark: "#f0642a"
+  signal-dark: "#cc4a12"
 typography:
   display:
     fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
@@ -112,6 +108,12 @@ components:
   meta-label:
     textColor: "{colors.quiet}"
     typography: "{typography.label}"
+  text-link:
+    textColor: "{colors.anthracite}"
+    underline: "1px {colors.anthracite}; hover and focus 2px {colors.signal}"
+  nav-link:
+    textColor: "{colors.anthracite}"
+    underline: "none; hover and focus 2px {colors.signal}"
   new-label:
     backgroundColor: "{colors.signal}"
     textColor: "{colors.on-signal}"
@@ -135,7 +137,7 @@ components:
 
 **Creative North Star: "The Useful Device"**
 
-Dieter Rams' industrial design, taken only where it does a job. A housing-grey panel carries the person's name as a bold type designation and lists the pages; the reading column is calm grotesque type on off-white; every piece of metadata is printed like the scale on a device, small tracked capitals with a hairline running out after it. One signal orange appears, and only as a function: where you are, what is new, what has focus, what is a link.
+Dieter Rams' industrial design, taken only where it does a job. A housing-grey panel carries the person's name as a bold type designation and lists the pages; the reading column is calm grotesque type on off-white; every piece of metadata is printed like the scale on a device, small tracked capitals with a hairline running out after it. One signal orange appears, and only as a function: where you are, what is new, what is under the pointer or has focus.
 
 The theme is a reader's surface for a personal log. Density is moderate and quiet: one reading column of about 36rem, generous gaps between entries, no boxes around them. On inner pages the panel slims and the content leads. It works without JavaScript; the only interactive element is a native `<details>` menu on phones.
 
@@ -153,24 +155,24 @@ Rejected in the build's history and not to return: decorative device fronts (gri
 A near-neutral warm grey world with one hot signal; dark mode keeps the same roles, ground going to near-black and the panel one step lighter.
 
 ### Primary
-- **Signal Orange** (`signal`, dark `signal-dark`): the current-page square, the NEW label on the newest post, focus outlines, link underlines, text selection, the current pagination underline, the Menu plus sign. Text on it is `on-signal` near-black in both modes.
+- **Signal Orange** (`signal`, the same value as `signal-dark`): at rest only the current-page square, the NEW label on the newest post and the current pagination underline. On interaction: link underlines on hover and focus, focus outlines, text selection. Text on it (the NEW label, selected text) is `on-signal` white in both modes; the orange is dark enough for white small bold caps (4.6:1) and still keeps 3:1 against both grounds and the panel for underlines and focus rings.
 
 ### Neutral
 - **Off-White Ground** (`ground`): the reading surface.
 - **Housing Grey** (`panel`): the sidebar panel, the emoji slot, code blocks and inline code, image placeholders.
-- **Seam** (`seam`): the 1px edge between panel and ground, the rule under the name on the panel, footer link underlines.
-- **Hairline** (`hair`): separators between nav items.
-- **Rule** (`rule`): the line after a meta label, table rows, book rows, the facts and post-nav top rules.
+- **Seam** (`seam`): the 1px edge between panel and ground, the rule under the name on the panel, separator dots, the tag hash, unlit rating stars, scrollbars; never for readable text.
+- **Hairline** (`hair`): separators between nav items on the panel. It is the rule tuned to the darker plane; one value for both would vanish on the panel or weigh on the ground.
+- **Rule** (`rule`): the line after a meta label and after a year heading, table rows, book rows, `hr`, the facts, post-nav and phone footer top rules.
 - **Ink** (`ink`): body text.
-- **Anthracite** (`anthracite`): headings, link text, nav items, star ratings.
+- **Anthracite** (`anthracite`): headings, link text and underlines, nav items, star ratings, the Menu sign, the quote bar and the table head rule.
 - **Quiet Grey** (`quiet`): scale labels, bylines, captions, list markers, copyright.
-- **Faint** (`faint`): separator dots and the tag hash only; never for readable text.
-- **Star Off** (`star-off`): unlit rating stars.
 
 ### Named Rules
-**The Orange Only As Signal Rule.** Orange marks state or function: current, new, focus, link, selection. It never fills a heading, a background area or an ornament. Apart from post emojis, it is the only colour on the page.
+**The Orange Only As Signal Rule.** Orange marks state: current, new, hover, focus, selection. At rest a page shows it in three places only: the current-page square, the NEW label and the current page number. It never fills a heading, a background area or an ornament. Apart from post emojis, it is the only colour on the page.
 
-**The Anthracite Link Rule.** Link text stays anthracite; the orange lives in the underline (1px, 2px on hover).
+**The Link Grammar Rule.** Link text is anthracite; in scale labels (meta line, social links, copyright, photo credit) it is quiet and turns anthracite on hover and focus. Running-text links (content, "Continue reading", fact values, the 404 links, copyright and photo credit) carry a 1px underline in their text colour at rest. Navigational links (site name, panel nav, entry and project titles, meta-line links, post-nav including "All posts", "All projects", pagination, book titles, social links) have no underline at rest. Both turn to a 2px signal underline on hover and focus.
+
+**The Focus Rule.** Focus is a 2px signal outline, 3px out, on the ground and the panel alike; focus never changes colour.
 
 ## Typography
 
@@ -182,14 +184,19 @@ A near-neutral warm grey world with one hot signal; dark mode keeps the same rol
 ### Hierarchy
 - **Display** (700, up to 3.375rem, 0.95, -0.035em): the site name on the home panel; `display-slim` on inner pages.
 - **Headline** (700, fluid 1.875 to 2.625rem, 1.1): page and post `h1`.
-- **Title** (700, 1.6875rem; 1.5625rem on phones, 1.16): stream entry titles.
-- **Title Small** (700, 1.375rem; 1.125rem in the work list and on phones): project titles; content `h2` uses 1.375rem, `h3` 1.1875rem.
-- **Body** (400, 1.0625rem/1.6 on phones, 1.09375rem/1.62 from 52rem): reading text, column max 36rem.
-- **Body Small** (400, 0.9375rem): descriptions, facts, tables, "Continue reading" and back links at 600.
+- **Title** (700, 1.6875rem, 1.16): stream entry titles, content `h2`, the "Work" heading.
+- **Title Small** (700, 1.375rem, 1.2): own project titles, content `h3`, the project lead at 400.
+- **Body** (400, 1.0625rem/1.6 on phones, 1.09375rem/1.62 from 52rem): reading text, column max 36rem; at 700 also content `h4`, work-list titles, project titles on phones and the name in the phone menu bar.
+- **Body Small** (400, 0.9375rem): the panel intro and nav, descriptions, facts, tables, captions, quote citations, book authors, "Continue reading" and back links at 600.
 - **Label** (600, 0.6875rem, 0.15em tracking, uppercase, tabular lining numerals): the scale printing.
+- **Mono** (400, 0.8125rem): code blocks.
+
+Each step is a custom property on `:root` (`--display` to `--code`); rules use the property, not a number. Content headings step at least 1.2 apart (body, `h3`, `h2`).
+
+Kept exceptions, each deliberate: the home name on phones is a fixed 2.125rem (the display clamp is tuned to the desktop panel); stream titles drop to 1.5625rem on phones for fewer lines in the narrow column; emoji glyphs take their size from the slot or heading they sit in (inherited body size, `0.8em` beside a heading), the emoji portrait from the portrait it replaces; inline code is `0.875em` of its context.
 
 ### Named Rules
-**The Scale Printing Rule.** Dates, kinds, statuses, stacks, the domain, social links, tags, year headings, book dates, fact terms and the Menu toggle are all set as the label style in quiet grey. Digits are tabular; punctuation inside dates is reset to proportional so separators keep their width.
+**The Scale Printing Rule.** Dates, kinds, statuses, stacks, the domain, social links, the copyright, photo credits, tags, year headings and counts, book dates, fact terms, code languages, the NEW label and the Menu toggle are all set as the label style, in quiet grey unless they carry a state. Digits are tabular; punctuation inside dates is reset to proportional so separators keep their width.
 
 ## Layout
 
@@ -201,7 +208,7 @@ Below 30rem the facts list stacks term over value.
 
 Fluid sizing: the site name, portrait (56 to 108px), panel width, panel padding, inset and gap all scale with the viewport between the breakpoints; nothing jumps at 52rem except the panel's change of form.
 
-Rhythm: meta line to title 0.625rem, entries 3.5rem apart (2.5rem on phones), content blocks 0.75em apart, sections and rule-topped blocks 2.25rem.
+Rhythm: meta line to title 0.625rem (title to byline too), entries 3.5rem apart (2.5rem on phones), content blocks 0.75em apart. One section value, `--section` 2.25rem, for every section and rule-topped block: content headings, `hr`, books years, tags, post-nav, facts, back links, the space under a header image, lead or project image, and the projects list after content. No negative margins patch spacing.
 
 ## Elevation & Depth
 
@@ -216,36 +223,39 @@ Square by default. Radius appears only on three small things: the focus outline 
 ## Components
 
 ### Panel and Identity
-The name in Display beside the cut-out portrait (108px, bottom-aligned with the name) on home; under them the domain as a scale label on a seam-coloured rule, then the intro paragraph at 0.96875rem. Inner pages drop portrait and intro and use `display-slim`; they keep the domain on desktop, phones hide it. An emoji stands in when no portrait exists.
+The name in Display beside the cut-out portrait (108px, bottom-aligned with the name) on home; under them the domain as a scale label on a seam-coloured rule, then the intro paragraph in Body Small. Inner pages drop portrait and intro and use `display-slim`; they keep the domain on desktop, phones hide it. An emoji stands in when no portrait exists.
 
 ### Navigation List
-A list of page titles at weight 500, 0.96875rem, separated by hairlines top and bottom, rows at least 2.5rem tall. The current page (and the ancestor of the current page) gets weight 600 and the orange 7px square, which hangs in the panel gutter 15px left of the label so the label never shifts. Hover underlines in anthracite, not orange.
+A list of page titles in Body Small at weight 500, separated by hairlines top and bottom, rows at least 2.5rem tall. The current page (and the ancestor of the current page) gets weight 600 and the orange 7px square, which hangs in the panel gutter 15px left of the label so the label never shifts. Hover follows the link grammar.
 
 ### Mobile Menu Bar
-On inner pages under 52rem: the name in 1.125rem bold at left, the "Menu" summary in label style at right with a 10px orange plus drawn from two bars; opening the menu collapses the vertical bar into a minus (0.2s, ease-out-expo). The same nav list with the same orange square opens below.
+On inner pages under 52rem: the name in bold body size at left, the "Menu" summary in label style at right with a 10px anthracite plus drawn from two bars; opening the menu collapses the vertical bar into a minus (0.2s, ease-out-expo). The same nav list with the same orange square opens below.
 
 ### Meta Line
-Emoji slot, then the label (date and kind, separated by a faint dot), then a 1px rule that fills the rest of the line, then, on the newest post only, the NEW label: orange fill, near-black 700 text, 3px corners. On notes the date links to the post. The rule is the entry's only line. Project and work entries reuse the meta line with status, stack and link, or role, company and period.
+Emoji slot, then the label (date and kind, separated by a seam dot), then a 1px rule that fills the rest of the line, then, on the newest post only and while it is at most 30 days old, the NEW label: orange fill, white 700 text, 3px corners. On notes the date links to the post. The rule is the entry's only line. Project and work entries reuse the meta line with status, stack and link, or role, company and period.
 
 ### Stream Entry
 Meta line, title, then the excerpt and "Continue reading" (articles), the byline with stars and full text (books), or the full text in place (notes). No separators between entries; 3.5rem of space does the separating.
 
 ### Emoji Slot
-A 2rem housing-grey square with 4px corners holding the post emoji at 1rem (1.75rem on phones). On desktop it hangs in the gap left of the reading column, vertically centred on the meta line, so the labels align with the text edge.
+A 2rem housing-grey square (1.75rem on phones) with 4px corners holding the post emoji at body size. On desktop it hangs in the gap left of the reading column, vertically centred on the meta line, so the labels align with the text edge.
 
 ### Work List
-Own projects first: a 200px 16:10 shot (112px on phones) beside the title, meta line and description. Then a "Work" heading and the references as a text-only list, titles at 1.125rem. A project page adds a 1.1875rem lead, a 16:10 image, the content, and the facts list.
+Own projects first: a 200px 16:10 shot (112px on phones) beside the title, meta line and description. Then a "Work" heading in Title and the references as a text-only list, titles in bold body size. A project page adds a lead in Title Small at 400, a 16:10 image, the content, and the facts list.
 
 ### Facts List
 A two-column definition list under a rule: terms in label style, values in Body Small; stacked below 30rem.
 
 ### Books List
-Year headings in label style with the count and a rule running out after them; each book a three-column row (cover or emoji 1.75rem, title over author, stars over date) separated by rules.
+Year headings in label style: the year, a seam dot, the count, then a rule running out; screen readers hear "2026, 28 books". Each book a three-column row (cover or emoji 1.75rem, title over author, stars over date) separated by rules; the date drops the year its heading already gives ("OCT 15").
+
+### Book Card
+A book block inside a post is a quiet row in the books-list grammar: the 1.75rem cover or emoji column beside title over author. No lines, so a stream entry keeps its one rule.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep orange to signal duties: current square, NEW, focus, link underline, selection, current page number.
+- **Do** keep orange to signal duties: at rest the current square, NEW and the current page number; on interaction hover underlines, focus and selection.
 - **Do** set every date, kind, status and count in the label style with tabular numerals.
 - **Do** give each stream entry exactly one rule, the one after its meta label.
 - **Do** put a post's emoji in the housing-grey slot of its meta line; project titles and page headings may carry their emoji inline.
@@ -256,4 +266,4 @@ Year headings in label style with the count and a rule running out after them; e
 - **Don't** put emojis in the navigation; nav items are text plus, when current, the orange square.
 - **Don't** draw separators between stream entries or box entries in cards.
 - **Don't** use shadows, gradients or a second typeface.
-- **Don't** colour link text orange or use faint grey for readable text.
+- **Don't** colour link text orange or use seam grey for readable text.

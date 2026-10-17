@@ -135,20 +135,30 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
     {:safe, [~s(<a href="), escape(url), open, escape(page.title), "</a>"]}
   end
 
-  # Tabular figures widen punctuation too, so the separators keep proportional widths.
   defp date_tag(nil), do: {:safe, ""}
   defp date_tag(%DateTime{} = datetime), do: datetime |> DateTime.to_date() |> date_tag()
 
-  defp date_tag(%Date{} = date) do
+  defp date_tag(%Date{} = date), do: time_element(date, format_short_date(date))
+
+  # Under a year heading the year is dropped; a format that does not end in it stays whole.
+  defp day_tag(%Date{} = date),
+    do: time_element(date, String.replace(format_short_date(date), ~r/[\s,]*#{date.year}\z/, ""))
+
+  # Tabular figures widen punctuation too, so the separators keep proportional widths.
+  defp time_element(date, text) do
     text =
-      date
-      |> format_short_date()
+      text
       |> escape()
       |> IO.iodata_to_binary()
       |> String.replace(~r/[,.]/, ~s(<span class="punct">\\0</span>))
 
     {:safe, [~s(<time datetime="), Date.to_iso8601(date), ~s(">), text, "</time>"]}
   end
+
+  @new_for_days 30
+
+  defp recent?(%SiteData{now: now}, post),
+    do: Date.diff(DateTime.to_date(now), DateTime.to_date(post.publish_at)) <= @new_for_days
 
   defp safe_links(links), do: Enum.filter(links, &HTML.safe_url?(&1.url))
 
@@ -164,13 +174,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   defp kind_label(:note), do: pgettext("post kind", "Note")
   defp kind_label(:book), do: pgettext("post kind", "Book")
 
-  defp heading(post) do
-    cond do
-      present?(post.title) -> post.title
-      book(post) -> book(post).title
-      true -> nil
-    end
-  end
+  defp heading(post), do: if(kind(post) != :note, do: post_label(post))
 
   defp byline(post) do
     book = book(post)

@@ -92,7 +92,7 @@ msgstr ""
 msgid "Older post"
 msgstr ""
 
-#: lib/feather/static_site/renderer.ex:138
+#: lib/feather/static_site/renderer.ex:139
 #, elixir-autogen, elixir-format
 msgid "Page not found"
 msgstr ""
@@ -345,43 +345,43 @@ msgstr ""
 msgid "Newest post"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:144
+#: lib/feather/static_site/themes/simple_sidebar.ex:173
 #, elixir-autogen, elixir-format
 msgctxt "post kind"
 msgid "Article"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:146
+#: lib/feather/static_site/themes/simple_sidebar.ex:175
 #, elixir-autogen, elixir-format
 msgctxt "post kind"
 msgid "Book"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:145
+#: lib/feather/static_site/themes/simple_sidebar.ex:174
 #, elixir-autogen, elixir-format
 msgctxt "post kind"
 msgid "Note"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:240
+#: lib/feather/static_site/themes/simple_sidebar.ex:282
 #, elixir-autogen, elixir-format
 msgctxt "project"
 msgid "Company"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:241
+#: lib/feather/static_site/themes/simple_sidebar.ex:283
 #, elixir-autogen, elixir-format
 msgctxt "project"
 msgid "Period"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:239
+#: lib/feather/static_site/themes/simple_sidebar.ex:281
 #, elixir-autogen, elixir-format
 msgctxt "project"
 msgid "Role"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:238
+#: lib/feather/static_site/themes/simple_sidebar.ex:280
 #, elixir-autogen, elixir-format
 msgctxt "project"
 msgid "Status"
@@ -392,13 +392,13 @@ msgstr ""
 msgid "All projects"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:237
+#: lib/feather/static_site/themes/simple_sidebar.ex:279
 #, elixir-autogen, elixir-format
 msgctxt "project"
 msgid "Stack"
 msgstr ""
 
-#: lib/feather/static_site/themes/simple_sidebar.ex:201
+#: lib/feather/static_site/themes/simple_sidebar.ex:243
 #, elixir-autogen, elixir-format
 msgctxt "project link"
 msgid "Source"
@@ -420,3 +420,10 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Menu"
 msgstr ""
+
+#: lib/feather/static_site/themes/simple_sidebar/books_list.html.eex:3
+#, elixir-autogen, elixir-format
+msgid "%{count} book"
+msgid_plural "%{count} books"
+msgstr[0] ""
+msgstr[1] ""

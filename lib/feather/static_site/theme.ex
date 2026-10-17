@@ -20,8 +20,10 @@ defmodule Feather.StaticSite.Theme do
     * `data` (`Feather.StaticSite.SiteData`), `site` (its mascots and
       portrait preloaded), `routes`, `ctx` (for `Feather.StaticSite.Blocks`),
       `social_links`
-    * `page_title`, `document_title`, `page_emoji`, `is_home`, `noindex`,
-      the meta tags (`description`, `canonical_url`, `og_type`,
+    * `page_title` (the visible heading), `meta_title` (the name in
+      `<title>` and `og:title`; an untitled post's label where `page_title`
+      is the site title), `document_title`, `page_emoji`, `is_home`,
+      `noindex`, the meta tags (`description`, `canonical_url`, `og_type`,
       `og_image_url`; render them with `ThemeHelpers.head_meta/1`)
     * `header_image`, `title_mascot`, `published_at`, `masthead_image`,
       `rss_url`, `trail` (breadcrumb entries `%{title, emoji, url}`), all
