@@ -10,8 +10,8 @@ colors:
   ink: "#161616"
   anthracite: "#242424"
   quiet: "#5e5e5b"
-  signal: "#e5531a"
-  on-signal: "#111111"
+  signal: "#cc4a12"
+  on-signal: "#ffffff"
   ground-dark: "#141413"
   panel-dark: "#222220"
   seam-dark: "#5a5a56"
@@ -20,7 +20,7 @@ colors:
   ink-dark: "#e6e6e2"
   anthracite-dark: "#f2f2ee"
   quiet-dark: "#a3a39e"
-  signal-dark: "#f0642a"
+  signal-dark: "#cc4a12"
 typography:
   display:
     fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
@@ -155,7 +155,7 @@ Rejected in the build's history and not to return: decorative device fronts (gri
 A near-neutral warm grey world with one hot signal; dark mode keeps the same roles, ground going to near-black and the panel one step lighter.
 
 ### Primary
-- **Signal Orange** (`signal`, dark `signal-dark`): at rest only the current-page square, the NEW label on the newest post and the current pagination underline. On interaction: link underlines on hover and focus, focus outlines on the ground, text selection. Text on it is `on-signal` near-black in both modes.
+- **Signal Orange** (`signal`, the same value as `signal-dark`): at rest only the current-page square, the NEW label on the newest post and the current pagination underline. On interaction: link underlines on hover and focus, focus outlines on the ground, text selection. Text on it (the NEW label, selected text) is `on-signal` white in both modes; the orange is dark enough for white small bold caps (4.6:1) and still keeps 3:1 against both grounds for underlines and focus rings.
 
 ### Neutral
 - **Off-White Ground** (`ground`): the reading surface.
@@ -172,7 +172,7 @@ A near-neutral warm grey world with one hot signal; dark mode keeps the same rol
 
 **The Link Grammar Rule.** Link text is anthracite; in scale labels (meta line, social links, copyright, photo credit) it is quiet and turns anthracite on hover and focus. Running-text links (content, "Continue reading", fact values, the 404 links, copyright and photo credit) carry a 1px underline in their text colour at rest. Navigational links (site name, panel nav, entry and project titles, meta-line links, post-nav including "All posts", "All projects", pagination, book titles, social links) have no underline at rest. Both turn to a 2px signal underline on hover and focus.
 
-**The Focus Rule.** Focus is a 2px outline, 3px out, signal on the ground. On the housing-grey panel signal falls under 3:1, so the outline is anthracite there.
+**The Focus Rule.** Focus is a 2px outline, 3px out, signal on the ground. On the housing-grey panel the outline is anthracite, which reads far stronger there than signal.
 
 ## Typography
 
@@ -232,7 +232,7 @@ A list of page titles in Body Small at weight 500, separated by hairlines top an
 On inner pages under 52rem: the name in bold body size at left, the "Menu" summary in label style at right with a 10px anthracite plus drawn from two bars; opening the menu collapses the vertical bar into a minus (0.2s, ease-out-expo). The same nav list with the same orange square opens below.
 
 ### Meta Line
-Emoji slot, then the label (date and kind, separated by a seam dot), then a 1px rule that fills the rest of the line, then, on the newest post only and while it is at most 30 days old, the NEW label: orange fill, near-black 700 text, 3px corners. On notes the date links to the post. The rule is the entry's only line. Project and work entries reuse the meta line with status, stack and link, or role, company and period.
+Emoji slot, then the label (date and kind, separated by a seam dot), then a 1px rule that fills the rest of the line, then, on the newest post only and while it is at most 30 days old, the NEW label: orange fill, white 700 text, 3px corners. On notes the date links to the post. The rule is the entry's only line. Project and work entries reuse the meta line with status, stack and link, or role, company and period.
 
 ### Stream Entry
 Meta line, title, then the excerpt and "Continue reading" (articles), the byline with stars and full text (books), or the full text in place (notes). No separators between entries; 3.5rem of space does the separating.
