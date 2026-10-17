@@ -70,7 +70,7 @@ defmodule Feather.Content.Page do
   def create_changeset(page, attrs) do
     page
     |> changeset(attrs)
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 
   @doc "Returns true for the homepage (slug `/`)."

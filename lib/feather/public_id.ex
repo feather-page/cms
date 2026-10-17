@@ -2,8 +2,7 @@ defmodule Feather.PublicId do
   @moduledoc """
   Public ids identify records in URLs, exported paths and the API.
 
-  They are 12 characters from `0-9a-zA-Z` (no `_` or `-`, for nicer URLs),
-  the same alphabet and length as the Rails app, so imported ids stay valid.
+  They are 12 characters from `0-9a-zA-Z` (no `_` or `-`, for nicer URLs).
   """
 
   @alphabet ~c"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -38,22 +37,8 @@ defmodule Feather.PublicId do
 
   defp char(byte), do: elem(@alphabet_tuple, rem(byte, @alphabet_size))
 
-  @doc """
-  Returns true if the string looks like a public id.
-  """
-  @spec valid?(term()) :: boolean()
-  def valid?(value) when is_binary(value), do: value =~ ~r/\A[0-9a-zA-Z]{12}\z/
-  def valid?(_value), do: false
-
-  @doc """
-  Puts a freshly generated public id into an insert changeset unless one is
-  already set (imports keep their existing ids).
-  """
-  @spec put_new(Ecto.Changeset.t()) :: Ecto.Changeset.t()
-  def put_new(%Ecto.Changeset{} = changeset) do
-    case Ecto.Changeset.get_field(changeset, :public_id) do
-      nil -> Ecto.Changeset.put_change(changeset, :public_id, generate())
-      _ -> changeset
-    end
-  end
+  @doc "Puts a freshly generated public id into an insert changeset."
+  @spec put(Ecto.Changeset.t()) :: Ecto.Changeset.t()
+  def put(%Ecto.Changeset{} = changeset),
+    do: Ecto.Changeset.put_change(changeset, :public_id, generate())
 end

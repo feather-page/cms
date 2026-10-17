@@ -48,7 +48,7 @@ defmodule Feather.Publishing.DeploymentTarget do
     target
     |> cast(attrs, [:type, :provider, :public_hostname, :config])
     |> validate()
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 
   @doc "Changeset for the fields a user may edit: hostname and type."

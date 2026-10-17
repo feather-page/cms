@@ -58,7 +58,7 @@ defmodule Feather.Content.Post do
   def create_changeset(post, attrs) do
     post
     |> changeset(attrs)
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 
   defp put_default_publish_at(changeset) do

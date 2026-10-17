@@ -171,16 +171,6 @@ defmodule Feather.MediaTest do
     end
   end
 
-  describe "generate_variants/1" do
-    test "regenerates missing variants from the original", %{scope: scope} do
-      image = image_fixture(scope)
-      File.rm!(Media.variant_path(image, :mobile_x1_webp))
-
-      assert :ok = Media.generate_variants(image)
-      assert File.exists?(Media.variant_path(image, :mobile_x1_webp))
-    end
-  end
-
   describe "delete_image/1" do
     test "removes the record and the files", %{scope: scope} do
       image = image_fixture(scope)

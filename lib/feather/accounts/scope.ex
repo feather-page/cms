@@ -8,10 +8,10 @@ defmodule Feather.Accounts.Scope do
   `Feather.Sites`) work on `scope.site` and trust it: only put a site into a
   scope that came out of an authorised lookup such as
   `Feather.Sites.get_site!/2`, or use `for_site/1` in trusted internal code
-  (export, import, background work).
+  (export, background work).
 
-  Authorisation rule (ported from the Rails policies): a user may access a
-  site if they are a super admin or a member of the site (`site_users`).
+  Authorisation rule: a user may access a site if they are a super admin
+  or a member of the site (`site_users`).
   """
 
   alias Feather.Accounts.User

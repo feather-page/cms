@@ -108,6 +108,6 @@ defmodule Feather.Sites.Site do
   def create_changeset(site, attrs) do
     site
     |> changeset(attrs)
-    |> Feather.PublicId.put_new()
+    |> Feather.PublicId.put()
   end
 end
