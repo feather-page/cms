@@ -155,7 +155,7 @@ Rejected in the build's history and not to return: decorative device fronts (gri
 A near-neutral warm grey world with one hot signal; dark mode keeps the same roles, ground going to near-black and the panel one step lighter.
 
 ### Primary
-- **Signal Orange** (`signal`, the same value as `signal-dark`): at rest only the current-page square, the NEW label on the newest post and the current pagination underline. On interaction: link underlines on hover and focus, focus outlines on the ground, text selection. Text on it (the NEW label, selected text) is `on-signal` white in both modes; the orange is dark enough for white small bold caps (4.6:1) and still keeps 3:1 against both grounds for underlines and focus rings.
+- **Signal Orange** (`signal`, the same value as `signal-dark`): at rest only the current-page square, the NEW label on the newest post and the current pagination underline. On interaction: link underlines on hover and focus, focus outlines, text selection. Text on it (the NEW label, selected text) is `on-signal` white in both modes; the orange is dark enough for white small bold caps (4.6:1) and still keeps 3:1 against both grounds and the panel for underlines and focus rings.
 
 ### Neutral
 - **Off-White Ground** (`ground`): the reading surface.
@@ -164,7 +164,7 @@ A near-neutral warm grey world with one hot signal; dark mode keeps the same rol
 - **Hairline** (`hair`): separators between nav items on the panel. It is the rule tuned to the darker plane; one value for both would vanish on the panel or weigh on the ground.
 - **Rule** (`rule`): the line after a meta label and after a year heading, table rows, book rows, `hr`, the facts, post-nav and phone footer top rules.
 - **Ink** (`ink`): body text.
-- **Anthracite** (`anthracite`): headings, link text and underlines, nav items, star ratings, the Menu sign, the quote bar and the table head rule, focus outlines on the panel.
+- **Anthracite** (`anthracite`): headings, link text and underlines, nav items, star ratings, the Menu sign, the quote bar and the table head rule.
 - **Quiet Grey** (`quiet`): scale labels, bylines, captions, list markers, copyright.
 
 ### Named Rules
@@ -172,7 +172,7 @@ A near-neutral warm grey world with one hot signal; dark mode keeps the same rol
 
 **The Link Grammar Rule.** Link text is anthracite; in scale labels (meta line, social links, copyright, photo credit) it is quiet and turns anthracite on hover and focus. Running-text links (content, "Continue reading", fact values, the 404 links, copyright and photo credit) carry a 1px underline in their text colour at rest. Navigational links (site name, panel nav, entry and project titles, meta-line links, post-nav including "All posts", "All projects", pagination, book titles, social links) have no underline at rest. Both turn to a 2px signal underline on hover and focus.
 
-**The Focus Rule.** Focus is a 2px outline, 3px out, signal on the ground. On the housing-grey panel the outline is anthracite, which reads far stronger there than signal.
+**The Focus Rule.** Focus is a 2px signal outline, 3px out, on the ground and the panel alike; focus never changes colour.
 
 ## Typography
 

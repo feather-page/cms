@@ -110,11 +110,6 @@ a:is(:hover, :focus-visible) {
   border-radius: 2px;
 }
 
-/* Anthracite reads far stronger than signal on housing grey. */
-.sidebar :focus-visible {
-  outline-color: var(--anth);
-}
-
 ::selection {
   background: var(--signal);
   color: var(--on-signal);
