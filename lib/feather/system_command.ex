@@ -54,7 +54,8 @@ defmodule Feather.SystemCommand do
 
   defp kill(port) do
     case Port.info(port, :os_pid) do
-      {:os_pid, os_pid} -> System.cmd("kill", ["-KILL", Integer.to_string(os_pid)])
+      # The shell's builtin kill: the release image has no kill executable.
+      {:os_pid, os_pid} -> System.cmd("/bin/sh", ["-c", "kill -9 #{os_pid}"])
       nil -> :ok
     end
 
