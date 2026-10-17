@@ -176,7 +176,6 @@ defmodule Feather.Publishing do
   `:mode` option):
 
     * `:async` (default) - under `Feather.TaskSupervisor`
-    * `:inline` - in the calling process
     * `:manual` (tests) - not at all; the caller receives
       `{:deploy_requested, target}` instead
 
@@ -193,11 +192,11 @@ defmodule Feather.Publishing do
   Deploys every deployment target of the scope's site, like `deploy/3`.
   Returns `:ok` at once.
   """
-  @spec deploy_site(Scope.t(), keyword()) :: :ok
-  def deploy_site(%Scope{site: %Site{id: site_id}}, opts \\ []) do
+  @spec deploy_site(Scope.t()) :: :ok
+  def deploy_site(%Scope{site: %Site{id: site_id}}) do
     from(t in DeploymentTarget, where: t.site_id == ^site_id, order_by: [asc: t.inserted_at])
     |> Repo.all()
-    |> Enum.each(&start_deploy(&1, opts))
+    |> Enum.each(&start_deploy(&1, []))
   end
 
   defp start_deploy(%DeploymentTarget{} = target, opts) do
@@ -209,10 +208,6 @@ defmodule Feather.Publishing do
         {:ok, _pid} =
           Task.Supervisor.start_child(Feather.TaskSupervisor, fn -> Deploy.run(target, opts) end)
 
-        :ok
-
-      :inline ->
-        Deploy.run(target, opts)
         :ok
 
       :manual ->

@@ -550,14 +550,6 @@ defmodule Feather.Sites do
   end
 
   @doc """
-  Gets a social media link of the scope's site. Raises if not found.
-  """
-  @spec get_social_media_link!(Scope.t(), Ecto.UUID.t()) :: SocialMediaLink.t()
-  def get_social_media_link!(%Scope{site: %Site{id: site_id}}, id) do
-    Repo.one!(from l in SocialMediaLink, where: l.id == ^id and l.site_id == ^site_id)
-  end
-
-  @doc """
   Gets a social media link of the scope's site, or nil.
   """
   @spec get_social_media_link(Scope.t(), Ecto.UUID.t()) :: SocialMediaLink.t() | nil
@@ -572,18 +564,6 @@ defmodule Feather.Sites do
     %SocialMediaLink{site_id: site_id}
     |> SocialMediaLink.changeset(attrs)
     |> Repo.insert()
-    |> touch_site_on_success(site_id)
-  end
-
-  @doc "Updates a social media link."
-  @spec update_social_media_link(Scope.t(), SocialMediaLink.t(), map()) ::
-          {:ok, SocialMediaLink.t()} | {:error, Ecto.Changeset.t()}
-  def update_social_media_link(%Scope{site: %Site{id: site_id}}, link, attrs) do
-    %SocialMediaLink{site_id: ^site_id} = link
-
-    link
-    |> SocialMediaLink.changeset(attrs)
-    |> Repo.update()
     |> touch_site_on_success(site_id)
   end
 

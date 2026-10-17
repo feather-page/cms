@@ -342,8 +342,6 @@ defmodule Feather.SitesTest do
       assert id == link.id
       assert Sites.SocialMediaLink.svg(link) =~ "<svg"
 
-      {:ok, link} = Sites.update_social_media_link(scope, link, %{url: "https://x.social/@me"})
-      assert link.url == "https://x.social/@me"
       {:ok, _} = Sites.delete_social_media_link(scope, link)
       assert Sites.list_social_media_links(scope) == []
     end
