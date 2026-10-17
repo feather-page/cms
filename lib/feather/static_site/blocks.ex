@@ -168,8 +168,6 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp image(%Image{} = image, caption, routes) do
-    caption = caption || ""
-
     figcaption =
       if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
 
