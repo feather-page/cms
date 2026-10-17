@@ -8,6 +8,7 @@ defmodule Feather.StaticSite.BlocksTest do
 
   @image %Image{public_id: "img000000001", width: 800, height: 600}
   @cover %Image{public_id: "cov000000001", width: 200, height: 300}
+  @diagram String.duplicate("d1", 32) <> ".svg"
 
   setup do
     routes = Routes.new(%Site{public_id: "site00000001"})
@@ -29,7 +30,10 @@ defmodule Feather.StaticSite.BlocksTest do
       }
     }
 
-    %{context: Blocks.context(routes, %{@image.public_id => @image}, books)}
+    %{
+      context:
+        Blocks.context(routes, %{@image.public_id => @image}, books, %{"a -> b" => @diagram})
+    }
   end
 
   defp html(block, context), do: Blocks.to_html([block], context)
@@ -77,6 +81,24 @@ defmodule Feather.StaticSite.BlocksTest do
     assert html(%{"type" => "code", "code" => "<b>\"x\" & y</b>\n", "language" => "html"}, c) ==
              ~s(<pre data-language="html"><code class="language-html">) <>
                "&lt;b&gt;&quot;x&quot; &amp; y&lt;/b&gt;\n</code></pre>"
+  end
+
+  test "diagram renders as a figure with the image and caption", %{context: c} do
+    block = %{"type" => "diagram", "code" => "a -> b", "caption" => "A <b>flow</b>"}
+
+    assert html(block, c) ==
+             ~s(<figure class="diagram"><img loading="lazy" src="/diagrams/#{@diagram}" alt="A flow">) <>
+               ~s(<figcaption>A <b>flow</b></figcaption></figure>)
+
+    assert html(%{block | "caption" => ""}, c) ==
+             ~s(<figure class="diagram"><img loading="lazy" src="/diagrams/#{@diagram}" alt="Diagram"></figure>)
+  end
+
+  test "a diagram that was not rendered shows its source as d2 code", %{context: c} do
+    assert html(%{"type" => "diagram", "code" => "a -> <b>", "caption" => "Flow"}, c) ==
+             ~s(<pre data-language="d2"><code class="language-d2">a -&gt; &lt;b&gt;</code></pre>)
+
+    assert html(%{"type" => "diagram", "code" => " \n", "caption" => "Flow"}, c) == ""
   end
 
   test "code without a meaningful language has no label", %{context: c} do

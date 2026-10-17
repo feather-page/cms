@@ -395,3 +395,11 @@ Accepted, 2026-10-16
 - **Context:** One shared theme renders every site, but rocu.de needs a theme of its own while zipfelmaus and the other sites keep the current one.
 - **Decision:** A site has a `theme` column holding one of a fixed list of themes in code: `feather` (the default, the current theme) and `simple_sidebar` (first used by rocu.de); every site member picks it in the site settings. A theme brings its own templates, CSS and fonts, while block rendering, routes, Gettext, meta tags, feed and sitemap stay shared. The sidebar theme takes its portrait from a new optional image slot on the site (`portrait_image_id`), built like the mascot slots of 0014. Rejected: a domain-to-theme map in the config (invisible in the admin, a deploy for every change) and CSS or templates stored per site in the database (untested and unversioned).
 - **Consequences:** A new theme is a code change with its own tests and templates for every page type; the export and the preview render through the site's theme, and the image cleanup counts the portrait as in use.
+
+## 0016. Diagrams are written in D2 and rendered into SVG images at export
+
+Accepted, 2026-10-17
+
+- **Context:** Posts need diagrams, but published sites contain no JavaScript, and a diagram's post body also appears on list pages and in the feed. Mermaid renders only in a browser, through client-side JavaScript or a headless Chromium; its browserless renderers are young reimplementations.
+- **Decision:** A `diagram` block holds D2 source, which the export and the preview render with the `d2` binary (TALA layout, MPL-2.0 since v0.9.0) into SVG files referenced by `<img>`, each with a light and a dark D2 theme and cached under the storage root by a hash of source, d2 version and options. Rejected: Mermaid, and inline SVG, which would bloat every list page and lose its styles in feed readers.
+- **Consequences:** `d2` is a new runtime binary, copied from the official `d2lang/d2` image into the release image as a pinned stage that Dependabot updates. Diagrams have no clickable links, selectable text or remote icons, and their colours come from D2 themes, not from the site theme.

@@ -22,6 +22,8 @@ site owner's own hosting.
 
 *   Erlang/OTP 28 and Elixir 1.19
 *   `rclone` for deployments
+*   `d2` (at least v0.9.0; the `Dockerfile` pins the exact version) to render diagram blocks;
+    without it diagrams show their D2 source
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 *   `inotify-tools` (optional, Linux) for live reload in development
@@ -66,7 +68,7 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `SECRET_KEY_BASE` | Signs cookies and tokens (prod, required) | |
 | `DATABASE_PATH` | SQLite database file (prod, required) | |
 | `POOL_SIZE` | Database connections (prod) | `5` |
-| `STORAGE_PATH` | Images and build output (prod, required) | dev: `storage/` |
+| `STORAGE_PATH` | Images, rendered diagrams and build output (prod, required) | dev: `storage/` |
 | `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
 | `BASE_HOSTNAME_AND_PORT` | Base domain for staging hosts (`<site>.stage.<this>`) | `localhost:4000` |
 | `STAGING_SITES_PATH` | Where staging sites are written | `<storage>/staging_sites` |

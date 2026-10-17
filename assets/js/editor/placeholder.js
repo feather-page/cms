@@ -1,6 +1,7 @@
 // Placeholders in empty text blocks: always for headings, quotes and their
-// captions, for a top-level paragraph when it is the only block or holds
-// the cursor (CSS hides the latter while the editor is not focused).
+// captions, diagram captions, for a top-level paragraph when it is the only
+// block or holds the cursor (CSS hides the latter while the editor is not
+// focused).
 import {Plugin} from "prosemirror-state"
 import {Decoration, DecorationSet} from "prosemirror-view"
 
@@ -13,6 +14,7 @@ const text = (node, parent, state, pos) => {
     case "quote_text":
       return "Quote"
     case "quote_caption":
+    case "diagram_caption":
       return "Caption"
     case "paragraph": {
       if (parent !== state.doc) return null

@@ -42,11 +42,14 @@ defmodule Feather.Content.ProseMirror do
       `height`; content `inline*`, the caption. Block `embed`.
     * `book` - atom, attrs `id`, `book_public_id`, `title`, `author`,
       `cover_url`, `emoji`. Block `book`.
+    * `diagram` - attrs `id`; content `diagram_code diagram_caption`, the
+      code `text*` without marks and `code: true` (the raw D2 source), the
+      caption `inline*`. Block `diagram` (`code`, `caption`).
 
   Nested nodes: `list_item` (content `paragraph (bullet_list |
   ordered_list)*`), `quote_text`, `quote_caption`, `table_row`,
-  `table_cell`, `table_header`. Inline nodes: `text` and `hard_break`
-  (`<br>`).
+  `table_cell`, `table_header`, `diagram_code`, `diagram_caption`. Inline
+  nodes: `text` and `hard_break` (`<br>`).
 
   Marks, in this order (the schema's order decides how marks nest): `link`
   (attrs `href`, `target`, `rel`), `bold` (`<b>`), `italic` (`<i>`),
@@ -125,10 +128,8 @@ defmodule Feather.Content.ProseMirror do
     ])
   end
 
-  defp block_to_node(%{"type" => "code"} = b, _site, _books) do
-    content = if b["code"] in [nil, ""], do: [], else: [text_node(b["code"], [])]
-    node("code_block", %{"id" => b["id"], "language" => b["language"]}, content)
-  end
+  defp block_to_node(%{"type" => "code"} = b, _site, _books),
+    do: node("code_block", %{"id" => b["id"], "language" => b["language"]}, code_nodes(b["code"]))
 
   defp block_to_node(%{"type" => "image"} = b, site, _books) do
     attrs = %{
@@ -168,6 +169,16 @@ defmodule Feather.Content.ProseMirror do
     attrs = b |> Blocks.put_book(books) |> Map.delete("type")
     node("book", attrs, [])
   end
+
+  defp block_to_node(%{"type" => "diagram"} = b, _site, _books) do
+    node("diagram", %{"id" => b["id"]}, [
+      node("diagram_code", nil, code_nodes(b["code"])),
+      node("diagram_caption", nil, inline_nodes(b["caption"]))
+    ])
+  end
+
+  defp code_nodes(code) when code in [nil, ""], do: []
+  defp code_nodes(code), do: [text_node(code, [])]
 
   defp list_node(type, attrs, items) do
     items = if items == [], do: [%{"content" => "", "items" => []}], else: items
@@ -272,10 +283,8 @@ defmodule Feather.Content.ProseMirror do
     }
   end
 
-  defp node_to_block(%{"type" => "code_block"} = n) do
-    code = n |> children() |> Enum.map_join(&text_of/1)
-    %{"id" => id(n), "type" => "code", "code" => code, "language" => attr(n, "language")}
-  end
+  defp node_to_block(%{"type" => "code_block"} = n),
+    do: %{"id" => id(n), "type" => "code", "code" => code(n), "language" => attr(n, "language")}
 
   defp node_to_block(%{"type" => "image"} = n) do
     %{
@@ -317,7 +326,18 @@ defmodule Feather.Content.ProseMirror do
     |> Map.merge(%{"id" => id(n), "type" => "book"})
   end
 
+  defp node_to_block(%{"type" => "diagram"} = n) do
+    %{
+      "id" => id(n),
+      "type" => "diagram",
+      "code" => n |> child("diagram_code") |> code(),
+      "caption" => n |> child("diagram_caption") |> inline_html()
+    }
+  end
+
   defp node_to_block(_node), do: %{"type" => nil}
+
+  defp code(node), do: node |> children() |> Enum.map_join(&text_of/1)
 
   defp list_items(list) do
     list

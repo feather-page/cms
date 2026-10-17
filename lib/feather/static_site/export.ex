@@ -2,16 +2,18 @@ defmodule Feather.StaticSite.Export do
   @moduledoc """
   Renders a whole site into a sink: the pages of the post list, the posts
   that are due, projects, pages (the homepage is the first page of the post
-  list), the image variants in use, the fonts of the site's theme, `feed.xml`, `robots.txt`,
-  `sitemap.xml` and `404.html`.
+  list), the image variants in use, the fonts of the site's theme, the
+  rendered diagrams, `feed.xml`, `robots.txt`, `sitemap.xml` and
+  `404.html`.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
-  in parallel with bounded concurrency.
+  in parallel with bounded concurrency. Diagrams are rendered up front
+  too; one that fails shows its source and does not fail the export.
   """
 
   alias Feather.Content.Page
-  alias Feather.Media
+  alias Feather.{Diagrams, Media}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Renderer, Routes, Sink, SiteData, Themes}
@@ -30,7 +32,9 @@ defmodule Feather.StaticSite.Export do
   """
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
-    data = SiteData.load(site, Keyword.take(opts, [:content, :now]))
+    data =
+      site |> SiteData.load(Keyword.take(opts, [:content, :now])) |> SiteData.render_diagrams()
+
     images = SiteData.images_in_use(data)
     theme = Themes.module(site)
 
@@ -42,6 +46,7 @@ defmodule Feather.StaticSite.Export do
         Enum.map(~w(feed.xml robots.txt sitemap.xml), &{:artifact, &1}) ++
         [:not_found] ++
         (theme.fonts() |> Map.keys() |> Enum.sort() |> Enum.map(&{:font, theme, &1})) ++
+        (data.diagrams |> Map.values() |> Enum.map(&{:diagram, &1})) ++
         for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
 
     # A crashing task would take the caller down with it (tasks are
@@ -106,6 +111,9 @@ defmodule Feather.StaticSite.Export do
 
   defp run_job({:font, theme, name}, _data, routes, sink),
     do: Sink.copy(sink, Routes.font_path(routes, name), from: theme.font_path(name))
+
+  defp run_job({:diagram, name}, _data, routes, sink),
+    do: Sink.copy(sink, Routes.diagram_path(routes, name), from: Diagrams.path(name))
 
   defp run_job({:image, image, variant}, _data, routes, sink) do
     source = Media.variant_path(image, variant.name)

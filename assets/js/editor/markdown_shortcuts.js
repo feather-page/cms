@@ -1,9 +1,10 @@
 // Markdown shortcuts, like in Notion. Typed at the start of a block they
 // turn it into another block type, which keeps the block's id: "## ", "### "
 // and "#### " (and "# ") a heading, "- ", "* " or "+ " a bulleted list,
-// "1. " a numbered list, "> " a quote and "``` " (or "```js ", or "```js"
-// and Enter) a code block. Inline, **bold**, *italic*, _italic_ and `code`
-// become marks. Backspace right after a shortcut takes it back.
+// "1. " a numbered list, "> " a quote, "``` " (or "```js ", or "```js"
+// and Enter) a code block and "```d2 " (or "```d2" and Enter) a diagram.
+// Inline, **bold**, *italic*, _italic_ and `code` become marks. Backspace
+// right after a shortcut takes it back.
 import {InputRule, inputRules, undoInputRule} from "prosemirror-inputrules"
 import {TextSelection} from "prosemirror-state"
 import {schema} from "./schema"
@@ -64,11 +65,21 @@ const toQuote = (tr, pos, block) => {
 
 const codeLanguage = (typed) => typed.toLowerCase() || "plaintext"
 
-// The block's text as code: marks are dropped, line breaks become newlines.
+// The block's text as code (a diagram's source for d2): marks are dropped,
+// line breaks become newlines.
 function toCodeBlock(tr, pos, block, language) {
   const code = block.textBetween(0, block.content.size, null, (leaf) => (leaf.type === nodes.hard_break ? "\n" : ""))
-  const node = nodes.code_block.create({id: block.attrs.id, language}, code ? schema.text(code) : null)
-  return replaceBlock(tr, pos, block, node, 1)
+  const text = code ? schema.text(code) : null
+
+  if (language === "d2") {
+    const diagram = nodes.diagram.create({id: block.attrs.id}, [
+      nodes.diagram_code.create(null, text),
+      nodes.diagram_caption.create()
+    ])
+    return replaceBlock(tr, pos, block, diagram, 2)
+  }
+
+  return replaceBlock(tr, pos, block, nodes.code_block.create({id: block.attrs.id, language}, text), 1)
 }
 
 const FENCE = /^```([\w+#-]*)$/

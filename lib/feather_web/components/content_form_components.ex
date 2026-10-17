@@ -109,6 +109,7 @@ defmodule FeatherWeb.ContentFormComponents do
         data-image-upload-url={~p"/sites/#{@site.public_id}/images"}
         data-image-from-url-url={~p"/sites/#{@site.public_id}/images/from-url"}
         data-book-lookup-url={~p"/sites/#{@site.public_id}/books/lookup"}
+        data-diagram-preview-url={~p"/sites/#{@site.public_id}/diagrams/preview"}
         data-csrf-token={Plug.CSRFProtection.get_csrf_token()}
       >
         <div id={"#{@id}-document"} phx-update="ignore" data-doc={@value}>

@@ -161,7 +161,7 @@ export const schema = new Schema({
       defining: true,
       attrs: {...id, language: {default: "plaintext"}},
       parseDOM: [{tag: "pre", preserveWhitespace: "full", getAttrs: (dom) => ({language: codeLanguage(dom)})}],
-      toDOM: (node) => ["pre", {"data-language": node.attrs.language}, ["code", 0]]
+      toDOM: (node) => ["pre", {"data-language": node.attrs.language}, 0]
     },
 
     image: {
@@ -258,6 +258,31 @@ export const schema = new Schema({
         },
         [node.attrs.title, node.attrs.author].filter(Boolean).join(", ") || "Book"
       ]
+    },
+
+    // The rendered diagram comes from the node view of diagram_code (diagrams.js).
+    diagram: {
+      group: "block",
+      content: "diagram_code diagram_caption",
+      attrs: id,
+      defining: true,
+      parseDOM: [{tag: "figure.pm-diagram"}],
+      toDOM: () => ["figure", {class: "pm-diagram"}, 0]
+    },
+
+    diagram_code: {
+      content: "text*",
+      marks: "",
+      code: true,
+      defining: true,
+      parseDOM: [{tag: "pre.pm-diagram__code", priority: 60, preserveWhitespace: "full"}],
+      toDOM: () => ["pre", {class: "pm-diagram__code", "data-language": "d2"}, 0]
+    },
+
+    diagram_caption: {
+      content: "inline*",
+      parseDOM: [{tag: "figcaption.pm-diagram__caption"}],
+      toDOM: () => ["figcaption", {class: "pm-diagram__caption"}, 0]
     },
 
     text: {group: "inline"},

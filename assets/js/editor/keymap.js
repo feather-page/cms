@@ -2,8 +2,8 @@
 // lists (Enter splits an item, Tab and Shift-Tab nest and unnest, Backspace
 // at the start of an item unnests it), quotes with their caption, images,
 // embeds and books (their captions, Backspace and Delete next to them),
-// code blocks, table cells, marks and block types, and the keys of the
-// markdown shortcuts.
+// code blocks, diagrams (their source and caption), table cells, marks and
+// block types, and the keys of the markdown shortcuts.
 import {keymap} from "prosemirror-keymap"
 import {baseKeymap, chainCommands, newlineInCode, toggleMark} from "prosemirror-commands"
 import {redo, undo} from "prosemirror-history"
@@ -83,10 +83,13 @@ const backspaceInQuote = (state, dispatch) => {
 // Images and embeds: a block with a caption as its text.
 const captioned = (node) => node.type === nodes.image || node.type === nodes.embed
 
-// Enter in an image or embed caption deletes the selection and starts a
-// paragraph after the block (splitting would copy the image or embed).
+const isCaption = (node) =>
+  captioned(node) || node.type === nodes.diagram_caption || node.type === nodes.quote_caption
+
+// Enter in an image, embed or diagram caption deletes the selection and
+// starts a paragraph after the block (splitting would copy the block).
 const enterInCaption = (state, dispatch) => {
-  if (!captioned(state.selection.$from.parent)) return false
+  if (!isCaption(state.selection.$from.parent)) return false
 
   if (dispatch) {
     const tr = state.tr.deleteSelection()
@@ -97,14 +100,15 @@ const enterInCaption = (state, dispatch) => {
   return true
 }
 
-// Images, embeds and books are selected by Backspace before Backspace
-// deletes them.
-const selectedBeforeDeleting = (node) => captioned(node) || node.type === nodes.book
+// Images, embeds, books, diagrams and quotes are selected by Backspace
+// before Backspace deletes them.
+const selectedBeforeDeleting = (node) =>
+  captioned(node) || [nodes.book, nodes.diagram, nodes.quote].includes(node.type)
 
 // Backspace at the start of an image or embed caption, or of a block right
-// after an image, embed or book, selects that block instead of joining text
-// into or out of the caption (or deleting the book at once); an empty block
-// after it goes away. Backspace again deletes it.
+// after an image, embed, book, diagram or quote, selects that block instead
+// of joining text into or out of the caption (or deleting the book at once);
+// an empty block after it goes away. Backspace again deletes it.
 const backspaceAtCaptioned = (state, dispatch) => {
   const {$from, empty} = state.selection
   if (!empty || $from.parentOffset !== 0 || $from.depth !== 1) return false
@@ -136,9 +140,9 @@ const atBlockEnd = ($pos) => {
   return true
 }
 
-// Delete at the end of a block right before an image, embed or book
-// selects that block (an empty paragraph or heading before it goes away),
-// like Backspace after it; Delete again deletes it. At the end of a
+// Delete at the end of a block right before an image, embed, book, diagram
+// or quote selects that block (an empty paragraph or heading before it goes
+// away), like Backspace after it; Delete again deletes it. At the end of a
 // caption it never joins the next block into the caption.
 const deleteBeforeCaptioned = (state, dispatch) => {
   const {$from, empty} = state.selection
@@ -146,7 +150,7 @@ const deleteBeforeCaptioned = (state, dispatch) => {
 
   const index = $from.index(0)
   const next = index + 1 < state.doc.childCount && state.doc.child(index + 1)
-  const inCaption = captioned($from.parent)
+  const inCaption = isCaption($from.parent)
   if (!next || !selectedBeforeDeleting(next)) return inCaption
 
   if (dispatch) {
@@ -155,6 +159,34 @@ const deleteBeforeCaptioned = (state, dispatch) => {
     const blockPos = removeEmpty ? $from.before(1) : $from.after(1)
     dispatch(tr.setSelection(NodeSelection.create(tr.doc, blockPos)).scrollIntoView())
   }
+  return true
+}
+
+// Backspace at the start of a diagram's caption goes back to the end of its
+// source; at the start of the source it selects the diagram, so Backspace
+// again deletes it.
+const backspaceInDiagram = (state, dispatch) => {
+  const $caption = cursorIn(state, nodes.diagram_caption)
+
+  if (atStart($caption)) {
+    dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, $caption.before() - 1)))
+    return true
+  }
+
+  const $code = cursorIn(state, nodes.diagram_code)
+  if (!atStart($code)) return false
+
+  dispatch?.(state.tr.setSelection(NodeSelection.create(state.doc, $code.before(-1))))
+  return true
+}
+
+// Delete at the end of a diagram's source or a quote's text goes on to its
+// caption, the way Backspace comes back, instead of selecting the caption.
+const deleteToCaption = (state, dispatch) => {
+  const $from = cursorIn(state, nodes.diagram_code) || cursorIn(state, nodes.quote_text)
+  if (!$from || $from.parentOffset !== $from.parent.content.size) return false
+
+  dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, $from.after() + 1)))
   return true
 }
 
@@ -192,24 +224,28 @@ const setBlock =
   }
 
 // Enter on the empty last line of a code block (after a trailing newline)
-// removes that newline and starts a paragraph after the block: the way out
-// on keyboards without Mod-Enter or arrows.
+// removes that newline and starts a paragraph after the block, or in a
+// diagram's source goes on to its caption: the way out on keyboards without
+// Mod-Enter or arrows.
 const exitCodeOnEmptyLine = (state, dispatch) => {
   const {$from, empty} = state.selection
   const code = $from.parent
-  if (!empty || code.type !== nodes.code_block || $from.parentOffset !== code.content.size) return false
+  if (!empty || !code.type.spec.code || $from.parentOffset !== code.content.size) return false
   if (!code.textContent.endsWith("\n")) return false
 
   if (dispatch) {
+    const tr = state.tr.delete($from.pos - 1, $from.pos)
     const after = $from.after() - 1
-    const tr = state.tr.delete($from.pos - 1, $from.pos).insert(after, nodes.paragraph.create())
-    dispatch(tr.setSelection(TextSelection.create(tr.doc, after + 1)).scrollIntoView())
+
+    if (code.type === nodes.diagram_code) tr.setSelection(TextSelection.create(tr.doc, after + 1))
+    else tr.insert(after, nodes.paragraph.create()).setSelection(TextSelection.create(tr.doc, after + 1))
+    dispatch(tr.scrollIntoView())
   }
   return true
 }
 
 const indentCode = (state, dispatch) => {
-  if (state.selection.$from.parent.type !== nodes.code_block) return false
+  if (!state.selection.$from.parent.type.spec.code) return false
   dispatch?.(state.tr.insertText("  ").scrollIntoView())
   return true
 }
@@ -229,9 +265,15 @@ export const editorKeymap = () =>
       enterInCaption
     ),
     "Shift-Enter": chainCommands(newlineInCode, insertHardBreak),
-    Backspace: chainCommands(undoInputRule, backspaceInListItem, backspaceInQuote, backspaceAtCaptioned),
-    Delete: deleteBeforeCaptioned,
-    "Mod-Delete": deleteBeforeCaptioned,
+    Backspace: chainCommands(
+      undoInputRule,
+      backspaceInListItem,
+      backspaceInQuote,
+      backspaceInDiagram,
+      backspaceAtCaptioned
+    ),
+    Delete: chainCommands(deleteToCaption, deleteBeforeCaptioned),
+    "Mod-Delete": chainCommands(deleteToCaption, deleteBeforeCaptioned),
     Tab: chainCommands(indentCode, nextCell, sinkListItem(nodes.list_item)),
     "Shift-Tab": chainCommands(previousCell, liftListItem(nodes.list_item)),
 

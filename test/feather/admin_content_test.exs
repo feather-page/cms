@@ -57,10 +57,11 @@ defmodule Feather.AdminContentTest do
           "type" => "list",
           "items" => [%{"content" => "12", "items" => [%{"content" => "3", "items" => []}]}]
         },
+        %{"type" => "diagram", "code" => "not counted", "caption" => "12"},
         %{"type" => "book", "book_public_id" => "x", "title" => "Not counted"}
       ]
 
-      assert Blocks.content_length(blocks) == 5 + 3 + 3 + 4 + 6 + 3
+      assert Blocks.content_length(blocks) == 5 + 3 + 3 + 4 + 6 + 3 + 2
       assert Blocks.content_length(nil) == 0
     end
   end
