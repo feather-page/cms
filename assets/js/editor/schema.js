@@ -260,7 +260,7 @@ export const schema = new Schema({
       ]
     },
 
-    // A plain rendering only; the block's own node view shows the rendered diagram.
+    // The rendered diagram comes from the node view of diagram_code (diagrams.js).
     diagram: {
       group: "block",
       content: "diagram_code diagram_caption",

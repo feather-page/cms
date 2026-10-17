@@ -41,7 +41,8 @@ defmodule FeatherWeb.Router do
   end
 
   # Session-authenticated JSON and file endpoints of the admin (editor
-  # image uploads, the book block lookup, admin image files).
+  # image uploads, the book block lookup, the diagram preview, admin image
+  # files).
   pipeline :browser_json do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -179,6 +180,7 @@ defmodule FeatherWeb.Router do
     post "/images/from-url", ImageController, :from_url
     get "/images/:id", ImageController, :show
     get "/books/lookup", BookLookupController, :index
+    post "/diagrams/preview", DiagramPreviewController, :create
   end
 
   scope "/", FeatherWeb do

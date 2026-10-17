@@ -13,6 +13,7 @@ import {codeBlockView} from "./code_block"
 import {ImageUploads, imageDrops, imageView} from "./images"
 import {embedPaste, embedView} from "./embeds"
 import {BookLookup, bookView} from "./books"
+import {DiagramPreviews, diagramCodeView, diagramEditing} from "./diagrams"
 import {placeholder} from "./placeholder"
 import {slashMenu} from "./slash_menu"
 import {markdownShortcuts} from "./markdown_shortcuts"
@@ -54,7 +55,8 @@ export function createState(json, {uploads = new ImageUploads()} = {}) {
       tableEditing({allowTableNodeSelection: true}),
       tableFormat(),
       blockIds(),
-      placeholder()
+      placeholder(),
+      diagramEditing()
     ]
   })
 
@@ -67,8 +69,9 @@ export function createState(json, {uploads = new ImageUploads()} = {}) {
 // Mounts the editor in `mount`. `onChange(doc)` is called after every
 // change of the document. `images` names the image endpoints and the CSRF
 // token (see ImageUploads in images.js), `books` the book lookup (see
-// BookLookup in books.js).
-export function createEditor(mount, json, {label, onChange, images = {}, books = {}}) {
+// BookLookup in books.js), `diagrams` the diagram preview and the CSRF token
+// (see DiagramPreviews in diagrams.js).
+export function createEditor(mount, json, {label, onChange, images = {}, books = {}, diagrams = {}}) {
   const uploads = new ImageUploads(images)
   const view = new EditorView(mount, {
     state: createState(json, {uploads}),
@@ -77,7 +80,8 @@ export function createEditor(mount, json, {label, onChange, images = {}, books =
       image: imageView(uploads),
       embed: embedView,
       table: tableView,
-      book: bookView(new BookLookup(books))
+      book: bookView(new BookLookup(books)),
+      diagram_code: diagramCodeView(new DiagramPreviews(diagrams))
     },
     attributes: {
       class: "block-editor__document",
