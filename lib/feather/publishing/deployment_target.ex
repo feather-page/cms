@@ -8,8 +8,6 @@ defmodule Feather.Publishing.DeploymentTarget do
 
   @type t :: %__MODULE__{}
 
-  @providers ~w(hetzner_ftps)
-
   schema "deployment_targets" do
     field :public_id, :string
     field :provider, :string
@@ -25,9 +23,6 @@ defmodule Feather.Publishing.DeploymentTarget do
 
     timestamps()
   end
-
-  @doc "The valid providers."
-  def providers, do: @providers
 
   @doc false
   def create_changeset(target, attrs) do
@@ -57,7 +52,7 @@ defmodule Feather.Publishing.DeploymentTarget do
       nil -> nil
     end)
     |> validate_required([:provider, :public_hostname])
-    |> validate_inclusion(:provider, @providers)
+    |> validate_inclusion(:provider, Feather.Publishing.Rclone.provider_names())
     |> unsafe_validate_unique(:public_hostname, Feather.Repo)
     |> unique_constraint(:public_hostname)
   end

@@ -30,9 +30,9 @@ defmodule Feather.Publishing.Rclone do
   @type runner ::
           module() | ([String.t()], keyword() -> {:ok, String.t()} | {:error, String.t()})
 
-  @doc "The provider module of a provider name, or nil."
-  @spec provider(String.t()) :: module() | nil
-  def provider(name), do: Map.get(@providers, name)
+  @doc "The names of the providers a deployment target may use."
+  @spec provider_names() :: [String.t()]
+  def provider_names, do: Map.keys(@providers)
 
   @doc """
   Syncs `source_dir` to the target.
@@ -89,9 +89,9 @@ defmodule Feather.Publishing.Rclone do
   defp default_runner, do: Application.get_env(:feather, :rclone_runner, SystemRunner)
 
   defp fetch_provider(%DeploymentTarget{provider: name}) do
-    case provider(name) do
-      nil -> {:error, "unknown provider #{inspect(name)}"}
-      provider -> {:ok, provider}
+    case Map.fetch(@providers, name) do
+      {:ok, provider} -> {:ok, provider}
+      :error -> {:error, "unknown provider #{inspect(name)}"}
     end
   end
 
