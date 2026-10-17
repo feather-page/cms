@@ -290,10 +290,10 @@ defmodule Feather.StaticSite.ThemeHelpers do
   def book(%{book: %Book{} = book}), do: book
   def book(_post), do: nil
 
-  @doc "Returns true if the book's review is a titled post the exported site shows."
+  @doc "Returns true if the book's review is a post the exported site shows, titled or not."
   @spec review_linked?(SiteData.t(), Book.t()) :: boolean()
   def review_linked?(data, %Book{post: %Content.Post{} = post}),
-    do: present?(post.title) and SiteData.published?(data, post)
+    do: SiteData.published?(data, post)
 
   def review_linked?(_data, _book), do: false
 
@@ -364,12 +364,17 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @label_words 7
 
   @doc """
-  What links name a post by: its title, or the first words of an untitled
-  post (its date if it has no text).
+  What links and page titles name a post by: its title, the title of the
+  book an untitled review is about, or the first words of any other
+  untitled post (its date if it has no text).
   """
   @spec post_label(Content.Post.t()) :: String.t()
   def post_label(post) do
-    if present?(post.title), do: post.title, else: untitled_label(post)
+    cond do
+      present?(post.title) -> post.title
+      book(post) -> book(post).title
+      true -> untitled_label(post)
+    end
   end
 
   defp untitled_label(post) do

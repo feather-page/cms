@@ -203,6 +203,21 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     assert Floki.find(doc(sink, "older/index.html"), ".post-nav-seal") == []
   end
 
+  test "an untitled note is headed by the site title and titled by its first words" do
+    scope = site_scope_fixture(%{title: "Zipfelmaus"})
+
+    note =
+      post_fixture(scope, %{title: nil, slug: nil, content: [paragraph("Short note.")]})
+
+    sink = RecordingSink.new(start_supervised!(RecordingSink, id: make_ref()))
+    :ok = Export.run(Repo.reload!(scope.site), Routes.new(scope.site), sink)
+    post = doc(sink, "posts/#{String.downcase(note.public_id)}/index.html")
+
+    assert text(post, "main h1") == "Zipfelmaus"
+    assert text(post, ~s(.breadcrumb [aria-current="page"])) == "Zipfelmaus"
+    assert text(post, "title") == "Short note. · Zipfelmaus"
+  end
+
   describe "fonts" do
     setup do
       build_site(%{title: "Mice", emoji: "🐭"}, [])

@@ -1,7 +1,7 @@
 defmodule Feather.StaticSite.MetaTest do
   use Feather.DataCase
 
-  alias Feather.{Content, Sites}
+  alias Feather.{Books, Content, Sites}
   alias Feather.StaticSite.{Export, RecordingSink, Routes}
 
   @day ~U[2025-01-01 10:00:00.000000Z]
@@ -117,11 +117,39 @@ defmodule Feather.StaticSite.MetaTest do
              "https://example.com/images/#{c.picture.public_id}/desktop_x1.jpg"
   end
 
-  test "an untitled post is titled by the site alone", c do
+  test "an untitled post is titled by its first words", c do
     post = doc(c.sink, "posts/#{String.downcase(c.untitled.public_id)}/index.html")
 
-    assert title(post) == "Site"
+    assert title(post) == "Short note. · Site"
+    assert meta(post, "og:title") == "Short note."
     assert meta(post, "description") == "Short note."
+  end
+
+  test "an untitled review is titled by its book", c do
+    book = book_fixture(c.scope, %{title: "Dune", read_at: ~D[2025-02-01]})
+
+    {:ok, %{post: review}} =
+      Books.create_review(c.scope, book, %{slug: "/dune", content: [paragraph("Loved it.")]})
+
+    {:ok, _} = Content.publish(c.scope, review)
+
+    sink = RecordingSink.new(start_supervised!(RecordingSink, id: :review))
+    :ok = Export.run(c.scope.site, Routes.new(c.scope.site), sink)
+    post = doc(sink, "dune/index.html")
+
+    assert title(post) == "Dune · Site"
+    assert meta(post, "og:title") == "Dune"
+  end
+
+  test "an untitled post without text is titled by its date in the site language", c do
+    {:ok, site} = Sites.update_site(c.scope, c.scope.site, %{language_code: "de"})
+    empty = post_fixture(c.scope, %{title: nil, slug: nil, content: [], publish_at: @day})
+
+    sink = RecordingSink.new(start_supervised!(RecordingSink, id: :textless))
+    :ok = Export.run(site, Routes.new(site), sink)
+
+    assert sink |> doc("posts/#{String.downcase(empty.public_id)}/index.html") |> title() ==
+             "1. Januar 2025 · Site"
   end
 
   test "pages and projects are described by their content and summary", c do

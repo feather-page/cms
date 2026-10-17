@@ -6,6 +6,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
   alias Feather.StaticSite.Themes.SimpleSidebar
 
   @day ~U[2026-02-08 10:00:00.000000Z]
+  @now ~U[2026-03-08 10:00:00.000000Z]
 
   defp build_site(attrs, opts \\ []) do
     scope = site_scope_fixture(Map.merge(%{theme: "simple_sidebar"}, attrs))
@@ -122,9 +123,9 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     %{scope: scope, sink: export(scope)}
   end
 
-  defp export(scope) do
+  defp export(scope, now \\ @now) do
     sink = RecordingSink.new(start_supervised!(RecordingSink, id: make_ref()))
-    :ok = Export.run(Repo.reload!(scope.site), Routes.new(scope.site), sink)
+    :ok = Export.run(Repo.reload!(scope.site), Routes.new(scope.site), sink, now: now)
     sink
   end
 
@@ -405,8 +406,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       post_fixture(scope, %{publish_at: DateTime.add(@day, day, :day)})
     end
 
-    sink = RecordingSink.new(start_supervised!(RecordingSink, id: make_ref()))
-    :ok = Export.run(scope.site, Routes.new(scope.site), sink)
+    sink = export(scope)
 
     assert sink |> doc("index.html") |> find(".new") |> Enum.count() == 1
 
@@ -417,6 +417,21 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     assert text(page_two, "header.sidebar .intro") == "Hi."
     assert text(page_two, "header.sidebar .portrait--emoji") == "🐭"
     refute present?(page_two, ".sidebar--slim")
+  end
+
+  test "the new label is on the newest post only while it is at most 30 days old" do
+    for {published_on, new?} <- [
+          {~D[2026-10-11], true},
+          {~D[2026-09-17], true},
+          {~D[2026-09-16], false}
+        ] do
+      scope = site_scope_fixture(%{theme: "simple_sidebar"})
+      post_fixture(scope, %{publish_at: DateTime.new!(published_on, ~T[22:00:00], "Etc/UTC")})
+
+      home = scope |> export(~U[2026-10-17 08:00:00Z]) |> doc("index.html")
+
+      assert present?(home, "article.entry .new") == new?, "#{published_on}"
+    end
   end
 
   describe "a post" do
@@ -434,6 +449,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       assert attr(post, "nav.post-nav .post-nav-newer a", "href") == ["/ai-economics/"]
       assert attr(post, "nav.post-nav .post-nav-older a", "href") == ["/virtua/"]
+      assert text(post, "nav.post-nav .post-nav-older a") == "🧿Virtua"
       assert attr(post, "nav.post-nav .post-nav-all a", "href") == ["/#posts"]
 
       article = doc(sink, "ai-economics/index.html")
@@ -487,6 +503,23 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     assert texts(home, "article.entry--book .byline .book-title") == ["Qualityland"]
   end
 
+  test "the books page links a review only if the site shows it" do
+    %{scope: scope} = build_site(%{title: "Robert"})
+    book = book_fixture(scope, %{title: "Unwritten", read_at: ~D[2026-02-03]})
+
+    {:ok, _draft} =
+      Books.create_review(scope, book, %{
+        slug: "/unwritten",
+        content: [paragraph("Soon.")],
+        publish_at: @day
+      })
+
+    books = doc(export(scope), "books/index.html")
+
+    assert texts(books, "main .book a.book-title") == ["Virtua"]
+    assert texts(books, "main .book span.book-title") == ["Unwritten"]
+  end
+
   describe "pages and projects" do
     setup do
       build_site(%{title: "Robert Curth", domain: "rocu.de", emoji: "👨🏻‍💻"})
@@ -497,7 +530,11 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       assert text(books, "main h1") == "📙Books read"
       assert texts(books, "main .books-year h2 .year") == ["2026"]
-      assert text(books, "main .book .book-title") == "Virtua"
+      assert texts(books, "main .books-year h2 .count") == ["1"]
+      assert texts(books, "main .books-year h2 .visually-hidden") == [", 1 book"]
+      assert text(books, "main .book .book-date") == "Feb 1"
+      assert text(books, "main .book a.book-title") == "Virtua"
+      assert attr(books, "main .book a.book-title", "href") == ["/virtua/"]
       assert text(books, "main .book .book-author") == "Karl Olsberg"
     end
 
@@ -707,6 +744,10 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     assert text(doc(sink, "index.html"), "main .new") == "Neu"
     assert texts(doc(sink, "work/index.html"), "main h2.projects-heading") == ["Arbeit"]
     assert text(doc(sink, "work/index.html"), "details.nav-menu > summary") == "Menü"
+    assert text(doc(sink, "books/index.html"), "main .book .book-date") == "01.02."
+
+    assert text(doc(sink, "books/index.html"), "main .books-year h2 .visually-hidden") ==
+             ", 1 Buch"
 
     project = doc(sink, "projects/feather-page/index.html")
     assert text(project, "main .project-back a") == "Alle Projekte"

@@ -11,7 +11,7 @@ defmodule Feather.StaticSite.Renderer do
   alias Feather.Content.{Page, Post, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Media.Image
-  alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, Themes}
+  alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, ThemeHelpers, Themes}
 
   @posts_per_page 25
   @description_length 155
@@ -56,12 +56,13 @@ defmodule Feather.StaticSite.Renderer do
   @doc "A post (its book, header and thumbnail image preloaded)."
   @spec render_post(SiteData.t(), Routes.t(), Post.t()) :: iodata()
   def render_post(%SiteData{} = data, %Routes{} = routes, %Post{} = post) do
-    title = if blank?(post.title), do: data.site.title, else: post.title
+    heading = if blank?(post.title), do: data.site.title, else: post.title
+    label = in_site_language(data, fn -> ThemeHelpers.post_label(post) end)
     {newer, older} = SiteData.neighbours(data, post)
 
     assigns =
       data
-      |> base_assigns(routes, title, post.emoji, false)
+      |> base_assigns(routes, heading, post.emoji, false, label)
       |> Map.merge(
         sharing(
           routes,
@@ -175,7 +176,9 @@ defmodule Feather.StaticSite.Renderer do
   def block_context(%SiteData{} = data, %Routes{} = routes),
     do: Blocks.context(routes, data.images, data.books_by_public_id)
 
-  defp base_assigns(data, routes, page_title, page_emoji, is_home) do
+  defp base_assigns(data, routes, page_title, page_emoji, is_home, meta_title \\ nil) do
+    meta_title = meta_title || page_title
+
     %{
       data: data,
       site: data.site,
@@ -183,7 +186,8 @@ defmodule Feather.StaticSite.Renderer do
       ctx: block_context(data, routes),
       social_links: data.social_links,
       page_title: page_title,
-      document_title: document_title(data.site.title, page_title, is_home),
+      meta_title: meta_title,
+      document_title: document_title(data.site.title, meta_title, is_home),
       description: nil,
       canonical_url: nil,
       og_type: "website",
@@ -201,10 +205,10 @@ defmodule Feather.StaticSite.Renderer do
     }
   end
 
-  defp document_title(site_title, page_title, is_home) do
-    if is_home or page_title == site_title,
+  defp document_title(site_title, meta_title, is_home) do
+    if is_home or meta_title == site_title,
       do: site_title,
-      else: "#{page_title} · #{site_title}"
+      else: "#{meta_title} · #{site_title}"
   end
 
   defp sharing(routes, url, text, image, type \\ "website") do

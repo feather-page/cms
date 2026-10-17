@@ -1,6 +1,6 @@
 <%= for {year, books} <- books_by_year(@data.books) do %>
 <section class="books-year">
-  <h2><span class="year"><%= year %></span> <span class="count">(<%= length(books) %>)</span></h2>
+  <h2><span class="year"><%= year %></span><span class="sep" aria-hidden="true">·</span><span class="count" aria-hidden="true"><%= length(books) %></span><span class="visually-hidden">, <%= ngettext("%{count} book", "%{count} books", length(books)) %></span></h2>
   <ul class="books">
     <%= for book <- books do %>
     <li class="book">
@@ -15,7 +15,7 @@
       </span>
       <span class="book-side">
         <%= if book.rating do %><%= stars(book.rating) %><% end %>
-        <%= if book.read_at do %><span class="book-date"><%= date_tag(book.read_at) %></span><% end %>
+        <%= if book.read_at do %><span class="book-date"><%= day_tag(book.read_at) %></span><% end %>
       </span>
     </li>
     <% end %>

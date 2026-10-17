@@ -19,6 +19,7 @@ defmodule Feather.StaticSite.SiteData do
   defstruct [
     :site,
     :homepage,
+    :now,
     content: :published,
     posts: [],
     pages: [],
@@ -33,6 +34,7 @@ defmodule Feather.StaticSite.SiteData do
   @type t :: %__MODULE__{
           site: Site.t(),
           homepage: Page.t() | nil,
+          now: DateTime.t(),
           content: :published | :current,
           posts: [Post.t()],
           pages: [Page.t()],
@@ -52,7 +54,8 @@ defmodule Feather.StaticSite.SiteData do
   @doc """
   Loads the data of a site. `posts` are the posts whose `publish_at` has
   passed, newest first; `pages` are all pages, the homepage included; the
-  navigation leaves out pages that are not among them.
+  navigation leaves out pages that are not among them; `now` is the time
+  the site is exported at.
 
   ## Options
 
@@ -60,7 +63,8 @@ defmodule Feather.StaticSite.SiteData do
       project as its published version and leaves drafts out (production
       and backup targets); `:current` shows the records as they are,
       unpublished changes and drafts included (staging and the preview)
-    * `:now` - the time that decides which posts are due (default: now)
+    * `:now` - the time that decides which posts are due and how old they
+      are (default: now)
   """
   @spec load(Site.t(), keyword()) :: t()
   def load(%Site{} = site, opts \\ []) do
@@ -94,6 +98,7 @@ defmodule Feather.StaticSite.SiteData do
     %__MODULE__{
       site: Sites.preload_images(site),
       content: content,
+      now: now,
       homepage: Enum.find(pages, &Page.homepage?/1),
       posts: posts,
       pages: pages,

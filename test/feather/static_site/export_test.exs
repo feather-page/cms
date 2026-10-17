@@ -288,8 +288,8 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~
              ~s(<span class="book-date"><time datetime="2025-02-01">Feb 1, 2025</time></span>)
 
-    # The review has no title, so the book is not linked.
-    assert html =~ ~s(<span class="book-title">Dune</span>)
+    assert html =~ ~s(<a href="/dune-review/" class="book-title">Dune</a>)
+    assert html =~ ~s(<span class="book-title">Old</span>)
     assert html =~ ~s(<span class="book-rating" role="img" aria-label="4 of 5 stars">)
   end
 
