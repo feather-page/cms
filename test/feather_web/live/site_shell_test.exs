@@ -128,11 +128,10 @@ defmodule FeatherWeb.SiteShellTest do
     refute has_element?(lv, "header #site-switcher-bar")
   end
 
-  test "the deployment form renders in the shell", %{conn: conn, site: site, scope: scope} do
-    target = deployment_target_fixture(scope)
+  test "the deployments page renders in the shell", %{conn: conn, site: site, scope: scope} do
+    deployment_target_fixture(scope)
 
-    {:ok, lv, _html} =
-      live(conn, ~p"/sites/#{site.public_id}/deployments/#{target.public_id}/edit")
+    {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
 
     assert has_element?(lv, "nav[aria-label=Main] a[aria-current=page]", "Deployments")
   end

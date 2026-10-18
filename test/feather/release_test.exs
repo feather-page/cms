@@ -3,27 +3,32 @@ defmodule Feather.ReleaseTest do
 
   import ExUnit.CaptureIO
 
-  alias Feather.{Publishing, Release}
+  alias Feather.Release
 
   describe "set_target_config/2" do
-    test "replaces the config of a target" do
+    test "replaces the config of the target of the site with the domain" do
       scope = site_scope_fixture()
       target = deployment_target_fixture(scope, config: %{})
       config = %{"host" => "ftp.example.com", "user" => "u2", "password" => "new", "path" => "/"}
 
       output =
         capture_io(fn ->
-          assert {:ok, _} = Release.set_target_config(target.public_id, config)
+          domain = "https://" <> String.upcase(scope.site.domain)
+          assert {:ok, _} = Release.set_target_config(domain, config)
         end)
 
-      assert output =~ "set"
-      assert Publishing.get_target!(scope, target.public_id).config == config
+      assert output =~ "Config of #{scope.site.domain} (ftps) set."
+      assert Repo.reload!(target).config == config
     end
 
-    test "reports an unknown target" do
-      assert capture_io(:stderr, fn ->
-               assert Release.set_target_config("unknown12345", %{}) == {:error, :not_found}
-             end) =~ "No deployment target"
+    test "reports a domain without a target" do
+      scope = site_scope_fixture()
+
+      for domain <- ["unknown.example.com", scope.site.domain] do
+        assert capture_io(:stderr, fn ->
+                 assert Release.set_target_config(domain, %{}) == {:error, :not_found}
+               end) =~ "No deployment target for #{domain}."
+      end
     end
   end
 end

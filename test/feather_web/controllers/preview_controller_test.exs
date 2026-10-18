@@ -174,8 +174,8 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert response(get(fresh(user), "/preview/#{other.public_id}/about"), 404) == "Not Found"
   end
 
-  test "a site without deployment targets has a preview", %{conn: conn, scope: scope, root: root} do
-    assert Feather.Publishing.list_targets(scope) == []
+  test "a site without a deployment target has a preview", %{conn: conn, scope: scope, root: root} do
+    assert Feather.Publishing.get_target(scope) == nil
     assert html_response(get(conn, root <> "/"), 200) =~ ~s(<h2 id="posts">Posts</h2>)
   end
 

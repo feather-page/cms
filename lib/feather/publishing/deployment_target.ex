@@ -1,7 +1,7 @@
 defmodule Feather.Publishing.DeploymentTarget do
   @moduledoc """
-  An external host a site is deployed to, backed by an rclone provider
-  (`hetzner_ftps`). A deploy exports the published versions. The provider
+  The account a site is deployed to, through an rclone provider (`ftps`).
+  A site has at most one; its address is the site's `domain`. The provider
   `config` (credentials) is stored encrypted.
   """
   use Feather.Schema
@@ -13,7 +13,6 @@ defmodule Feather.Publishing.DeploymentTarget do
   schema "deployment_targets" do
     field :public_id, :string
     field :provider, :string
-    field :public_hostname, :string
     # The default is not dumped at compile time: that would need the key,
     # which a release only reads at runtime.
     field :config, Feather.Encrypted.Map, default: %{}, skip_default_validation: true
@@ -29,32 +28,15 @@ defmodule Feather.Publishing.DeploymentTarget do
   @doc false
   def create_changeset(target, attrs) do
     target
-    |> cast(attrs, [:provider, :public_hostname, :config])
-    |> validate()
+    |> cast(attrs, [:provider, :config])
+    |> validate_required([:provider])
+    |> validate_inclusion(:provider, Rclone.provider_names())
+    |> unique_constraint(:site_id, message: "already has a deployment target")
     |> Feather.PublicId.put()
-  end
-
-  @doc "Changeset for the field a user may edit: the hostname."
-  def update_changeset(target, attrs) do
-    target
-    |> cast(attrs, [:public_hostname])
-    |> validate()
   end
 
   @doc "Changeset replacing the provider config."
   def config_changeset(target, config) do
     cast(target, %{config: config}, [:config])
-  end
-
-  defp validate(changeset) do
-    changeset
-    |> update_change(:public_hostname, fn
-      hostname when is_binary(hostname) -> hostname |> String.trim() |> String.downcase()
-      nil -> nil
-    end)
-    |> validate_required([:provider, :public_hostname])
-    |> validate_inclusion(:provider, Rclone.provider_names())
-    |> unsafe_validate_unique(:public_hostname, Feather.Repo)
-    |> unique_constraint(:public_hostname)
   end
 end

@@ -30,7 +30,7 @@ defmodule Feather.SitesTest do
       assert homepage.slug == "/"
       assert Content.publication_status(homepage) == :published
 
-      assert Publishing.list_targets(site_scope) == []
+      assert Publishing.get_target(site_scope) == nil
     end
 
     test "validates the site and creates nothing on error" do

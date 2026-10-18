@@ -20,7 +20,7 @@ defmodule Feather.StaticSite.Routes do
 
   URLs are relative to `site_root`: `/` for a deployed site,
   `/preview/<site public id>/` for the preview. `canonical/1` returns the
-  same routes against the site's public address (`https://<hostname>/`),
+  same routes against the site's public address (`https://<domain>/`),
   used by the feed, the sitemap and robots.txt.
   """
 
@@ -29,7 +29,6 @@ defmodule Feather.StaticSite.Routes do
   alias Feather.Content.{Page, Post, Project, Slug}
   alias Feather.Diagrams
   alias Feather.Media.{Image, Variants}
-  alias Feather.Publishing.DeploymentTarget
   alias Feather.Repo
   alias Feather.Sites.Site
   alias Feather.StaticSite.Themes
@@ -62,15 +61,6 @@ defmodule Feather.StaticSite.Routes do
       site_root: site_root,
       canonical_url: opts[:canonical_url] || site_root
     }
-  end
-
-  @doc """
-  Routes for a deployment target (its `site` must be loaded): the site from
-  `/`, canonically at `https://<public hostname>/`.
-  """
-  @spec for(DeploymentTarget.t()) :: t()
-  def for(%DeploymentTarget{site: %Site{} = site} = target) do
-    new(site, site_root: "/", canonical_url: "https://#{target.public_hostname}/")
   end
 
   @doc """

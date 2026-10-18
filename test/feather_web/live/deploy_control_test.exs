@@ -34,7 +34,7 @@ defmodule FeatherWeb.DeployControlTest do
     lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
 
     assert has_element?(lv, @panel, "1 change not live")
-    assert has_element?(lv, "#deploy-site-sidebar", "Deploy to production")
+    assert has_element?(lv, "#deploy-site-sidebar", ~r/^\s*Deploy\s*$/)
   end
 
   test "live when deployed after the newest publish", %{
@@ -48,6 +48,7 @@ defmodule FeatherWeb.DeployControlTest do
     {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts")
 
     assert has_element?(lv, @panel, "Live · just now")
+    assert has_element?(lv, ~s(#{@panel} a[href="https://#{site.domain}"]), site.domain)
     refute has_element?(lv, "#deploy-site-sidebar")
   end
 
@@ -127,11 +128,12 @@ defmodule FeatherWeb.DeployControlTest do
       target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
 
       for {list, button} <- [
-            {"posts", "#delete-post-#{post.public_id}-menu-item"},
-            {"projects", "#delete-project-#{project.public_id}-menu-item"}
+            {~p"/sites/#{site.public_id}/posts", "#delete-post-#{post.public_id}-menu-item"},
+            {~p"/sites/#{site.public_id}/projects",
+             "#delete-project-#{project.public_id}-menu-item"}
           ] do
         deployed(target, DateTime.utc_now())
-        {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/#{list}")
+        {:ok, lv, _html} = live(conn, list)
         assert has_element?(lv, @panel, "Live")
 
         confirm_click(lv, button)
@@ -224,7 +226,7 @@ defmodule FeatherWeb.DeployControlTest do
     assert has_element?(lv, @panel, "Live")
   end
 
-  test "deploys every target and shows the step", %{
+  test "deploys the site and shows the step", %{
     conn: conn,
     site: site,
     scope: scope
@@ -245,7 +247,7 @@ defmodule FeatherWeb.DeployControlTest do
        %{target_id: target.public_id, step: :upload, started_at: DateTime.utc_now()}}
     )
 
-    assert has_element?(lv, @panel, "Deploying to #{target.public_hostname}")
+    assert has_element?(lv, @panel, "Deploying to #{site.domain}")
     assert has_element?(lv, @panel, "Uploading")
   end
 end

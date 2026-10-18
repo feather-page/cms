@@ -20,9 +20,9 @@ defmodule Feather.Publishing.Rclone do
   """
 
   alias Feather.Publishing.DeploymentTarget
-  alias Feather.Publishing.Rclone.{HetznerFtps, SystemRunner}
+  alias Feather.Publishing.Rclone.{Ftps, SystemRunner}
 
-  @providers %{"hetzner_ftps" => HetznerFtps}
+  @providers %{"ftps" => Ftps}
 
   @default_sync_timeout :timer.minutes(30)
   @obscure_timeout :timer.seconds(30)

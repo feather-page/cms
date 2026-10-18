@@ -1,6 +1,6 @@
 defmodule Feather.Publishing.Deploy do
   @moduledoc """
-  The deploy pipeline of one deployment target, run synchronously (the
+  The deploy pipeline of a site's deployment target, run synchronously (the
   public entry points in `Feather.Publishing` run it under
   `Feather.TaskSupervisor`):
 
@@ -166,7 +166,8 @@ defmodule Feather.Publishing.Deploy do
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
 
-      Export.run(target.site, Routes.for(target), sink, now: export_started_at)
+      routes = Routes.new(target.site, canonical_url: "https://#{target.site.domain}/")
+      Export.run(target.site, routes, sink, now: export_started_at)
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
@@ -218,8 +219,8 @@ defmodule Feather.Publishing.Deploy do
     Publishing.broadcast_notice(target.site, %{
       kind: :success,
       title: "#{target.site.title} is live",
-      message: "#{target.public_hostname} · deployed #{duration(started_at)}",
-      url: "https://#{target.public_hostname}",
+      message: "#{target.site.domain} · deployed #{duration(started_at)}",
+      url: "https://#{target.site.domain}",
       link_label: "Open site",
       external: true
     })
@@ -228,13 +229,13 @@ defmodule Feather.Publishing.Deploy do
   defp notify(_target, {:ok, :coalesced}, _started_at, _step), do: :ok
 
   defp notify(target, {:error, message}, _started_at, step) do
-    Logger.error("Deploying target #{target.id} (#{target.public_hostname}) failed: #{message}")
+    Logger.error("Deploying #{target.site.domain} failed: #{message}")
 
     Publishing.broadcast_notice(target.site, %{
       kind: :error,
-      title: "Deploy to #{target.public_hostname} failed",
+      title: "Deploy to #{target.site.domain} failed",
       message: failure_message(step, Blocks.truncate(message, 300)),
-      retry: target.public_id
+      retry: true
     })
   end
 

@@ -20,18 +20,17 @@ defmodule Feather.Publishing.RcloneTest do
     end
   end
 
-  test "hetzner_ftps: ftp with explicit TLS and an obscured password" do
+  test "ftps: ftp with explicit TLS and an obscured password" do
     target = %DeploymentTarget{
-      provider: "hetzner_ftps",
-      public_hostname: "www.example.com",
+      provider: "ftps",
       config: %{"host" => "ftp.example.com", "user" => "u1", "password" => "pw", "path" => "/"}
     }
 
     assert {:ok, _} = Rclone.deploy(target, "/src/", runner: runner())
-    assert_received {:rclone, [_, _, config, "/src/", "hetzner-ftps:/"], content, mode}
+    assert_received {:rclone, [_, _, config, "/src/", "ftps:/"], content, mode}
 
     assert content ==
-             "[hetzner-ftps]\ntype = ftp\nhost = ftp.example.com\nuser = u1\npass = obscured(pw)\n" <>
+             "[ftps]\ntype = ftp\nhost = ftp.example.com\nuser = u1\npass = obscured(pw)\n" <>
                "port = 21\nexplicit_tls = true\n"
 
     refute content =~ "pass = pw"
@@ -41,8 +40,7 @@ defmodule Feather.Publishing.RcloneTest do
 
   test "missing config or line breaks in values are errors without running rclone" do
     target = %DeploymentTarget{
-      provider: "hetzner_ftps",
-      public_hostname: "www.example.com",
+      provider: "ftps",
       config: %{"host" => "ftp.example.com\n[evil]", "user" => "u1", "path" => "/"}
     }
 
@@ -53,8 +51,7 @@ defmodule Feather.Publishing.RcloneTest do
 
   test "a failing sync is returned and the config is still removed" do
     target = %DeploymentTarget{
-      provider: "hetzner_ftps",
-      public_hostname: "www.example.com",
+      provider: "ftps",
       config: %{
         "host" => "ftp.example.com",
         "user" => "u1",
@@ -70,8 +67,7 @@ defmodule Feather.Publishing.RcloneTest do
 
   test "the password goes to rclone obscure on stdin, the sync gets a timeout" do
     target = %DeploymentTarget{
-      provider: "hetzner_ftps",
-      public_hostname: "www.example.com",
+      provider: "ftps",
       config: %{
         "host" => "ftp.example.com",
         "user" => "u1",

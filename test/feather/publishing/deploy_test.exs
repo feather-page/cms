@@ -42,8 +42,8 @@ defmodule Feather.Publishing.DeployTest do
     assert File.exists?(Path.join(live, "index.html.gz"))
     assert File.ls!(Deploy.build_path(c.target)) == ["public"]
 
-    host = c.target.public_hostname
-    assert_received {:synced, source, "hetzner-ftps:/site", files}
+    host = c.scope.site.domain
+    assert_received {:synced, source, "ftps:/site", files}
     assert source == live <> "/"
     assert "index.html" in files
 
@@ -121,10 +121,10 @@ defmodule Feather.Publishing.DeployTest do
 
     assert_received {:site_notice, %{kind: :error, title: title, message: message, retry: retry}}
 
-    assert title == "Deploy to #{c.target.public_hostname} failed"
+    assert title == "Deploy to #{c.scope.site.domain} failed"
     # The live directory was already swapped in: no claim the site is unchanged.
     assert message == "Uploading: rclone sync failed (exit 1): nope."
-    assert retry == c.target.public_id
+    assert retry == true
   end
 
   test "a failing export or precompression leaves the live directory alone", c do
@@ -226,40 +226,26 @@ defmodule Feather.Publishing.DeployTest do
   end
 
   describe "Feather.Publishing entry points" do
-    test "deploy/3 runs under the task supervisor and reports through a notice", c do
-      assert :ok = Publishing.deploy(c.scope, c.target, Keyword.put(c.opts, :mode, :async))
-      host = c.target.public_hostname
-      url = "https://" <> host
+    test "deploy_site/2 runs under the task supervisor and reports through a notice", c do
+      assert :ok = Publishing.deploy_site(c.scope, Keyword.put(c.opts, :mode, :async))
+      url = "https://" <> c.scope.site.domain
       assert_receive {:site_notice, %{kind: :success, url: ^url}}, 10_000
       wait_until(fn -> not Publishing.deploying?(c.target) end)
     end
 
-    test "in tests deploys are only requested", c do
-      assert :ok = Publishing.deploy(c.scope, c.target)
-      assert_received {:deploy_requested, %{id: id}}
+    test "in tests deploys are only requested, with the target's config", c do
+      assert :ok = Publishing.deploy_site(c.scope)
+      assert_received {:deploy_requested, %{id: id, config: %{"host" => "ftp.example.com"}}}
       assert id == c.target.id
       refute_received {:synced, _, _, _}
     end
 
-    test "deploy/3 refuses targets of other sites", c do
-      other = deployment_target_fixture(site_scope_fixture())
-      assert_raise FunctionClauseError, fn -> Publishing.deploy(c.scope, other) end
-    end
+    test "deploy_site/2 deploys only the site's own target", c do
+      deployment_target_fixture(site_scope_fixture())
+      {:ok, _target} = Publishing.delete_target(c.scope, c.target)
 
-    test "deploy_site/1 deploys every target of the site", c do
-      %{id: first} = c.target
-      %{id: second} = deployment_target_fixture(c.scope)
-      %{id: other} = deployment_target_fixture(site_scope_fixture())
-
-      assert :ok = Publishing.deploy_site(c.scope)
-      assert_received {:deploy_requested, %{id: ^first}}
-      assert_received {:deploy_requested, %{id: ^second}}
-      refute_received {:deploy_requested, %{id: ^other}}
-    end
-
-    test "deploy_site/1 deploys targets with their config", c do
-      assert :ok = Publishing.deploy_site(c.scope)
-      assert_received {:deploy_requested, %{config: %{"host" => "ftp.example.com"}}}
+      assert Publishing.deploy_site(c.scope) == {:error, :no_target}
+      refute_received {:deploy_requested, _target}
     end
 
     test "notices go to the site's topic", c do

@@ -163,7 +163,6 @@ defmodule FeatherWeb.Router do
       live "/settings", SiteLive.Settings, :edit
       live "/users", MemberLive.Index, :index
       live "/deployments", DeploymentTargetLive.Index, :index
-      live "/deployments/:id/edit", DeploymentTargetLive.Form, :edit
     end
   end
 

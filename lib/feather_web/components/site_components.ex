@@ -75,7 +75,12 @@ defmodule FeatherWeb.SiteComponents do
         />
       </:leading>
       <:nav_footer :let={place}>
-        <.deploy_panel deploy={@deploy} preview_path={@preview_path} place={place} />
+        <.deploy_panel
+          deploy={@deploy}
+          domain={@site.domain}
+          preview_path={@preview_path}
+          place={place}
+        />
       </:nav_footer>
       <:trailing>
         <div class="flex items-center gap-1 xl:hidden">
@@ -126,7 +131,7 @@ defmodule FeatherWeb.SiteComponents do
               id={"retry-deploy-#{notice.id}"}
               size={:sm}
               icon="rotate-ccw"
-              phx-click={JS.push("retry_deploy", value: %{id: notice.id, target: notice.retry})}
+              phx-click={JS.push("retry_deploy", value: %{id: notice.id})}
             >
               Retry
             </.button>
@@ -185,13 +190,14 @@ defmodule FeatherWeb.SiteComponents do
   end
 
   @doc """
-  The deploy control at the bottom of the sidebar: while a deployment
-  target deploys, its step; with changes it does not show yet, their
-  number and a button that deploys every target (`"deploy_site"`, see
-  `FeatherWeb.SiteAuth`); otherwise since when the site is live. Below it
-  the link to the site's preview.
+  The deploy control at the bottom of the sidebar: while the site
+  deploys, the step; with changes its deployment target does not show
+  yet, their number and a button that deploys the site (`"deploy_site"`,
+  see `FeatherWeb.SiteAuth`); otherwise since when the site is live at its
+  domain. Below it the link to the site's preview.
   """
   attr :deploy, :map, required: true
+  attr :domain, :string, required: true
   attr :preview_path, :string, required: true
   attr :place, :atom, required: true, doc: "where the sidebar renders it, for unique ids"
 
@@ -205,10 +211,10 @@ defmodule FeatherWeb.SiteComponents do
       aria-live="polite"
     >
       <%= case @state do %>
-        <% {:running, target, step} -> %>
+        <% {:running, step} -> %>
           <p class="flex items-center gap-2">
             <span class="loading loading-spinner loading-xs"></span>
-            <span class="wrap-anywhere">Deploying to {target.public_hostname}</span>
+            <span class="wrap-anywhere">Deploying to {@domain}</span>
           </p>
           <p class="text-sidebar-muted">{Publishing.deploy_step_label(step, :running)}</p>
         <% {:pending, count} -> %>
@@ -222,20 +228,20 @@ defmodule FeatherWeb.SiteComponents do
             icon="rocket"
             phx-click="deploy_site"
           >
-            Deploy to production
+            Deploy
           </.button>
-        <% {:live, target, deployed_at} -> %>
+        <% {:live, deployed_at} -> %>
           <p class="flex items-center gap-2">
             <span class="status status-success" aria-hidden="true"></span>
             Live · {time_ago(deployed_at)}
           </p>
           <a
-            href={"https://#{target.public_hostname}"}
+            href={"https://#{@domain}"}
             target="_blank"
             rel="noopener"
             class="link link-hover wrap-anywhere text-sidebar-muted"
           >
-            {target.public_hostname}
+            {@domain}
           </a>
         <% :none -> %>
       <% end %>
@@ -259,7 +265,7 @@ defmodule FeatherWeb.SiteComponents do
 
     ~H"""
     <%= case @state do %>
-      <% {:running, _target, step} -> %>
+      <% {:running, step} -> %>
         <span class="btn btn-sm btn-ghost pointer-events-none" role="status">
           <span class="loading loading-spinner loading-xs"></span>
           <span class="max-sm:sr-only">{Publishing.deploy_step_label(step, :running)}</span>
@@ -296,22 +302,13 @@ defmodule FeatherWeb.SiteComponents do
   end
 
   defp deploy_state(nil), do: :none
-  defp deploy_state(%{targets: []}), do: :none
+  defp deploy_state(%{target: nil}), do: :none
 
-  defp deploy_state(%{targets: targets, pending: pending, progress: progress}) do
-    running = Enum.find(targets, &(&1.deploying or Map.has_key?(progress, &1.public_id)))
-
+  defp deploy_state(%{target: target, pending: pending, progress: progress}) do
     cond do
-      running ->
-        step = get_in(progress, [running.public_id, :step]) || :build
-        {:running, running, step}
-
-      pending > 0 ->
-        {:pending, pending}
-
-      true ->
-        target = Enum.min_by(targets, & &1.last_deployed_at, DateTime)
-        {:live, target, target.last_deployed_at}
+      target.deploying or progress != nil -> {:running, (progress && progress.step) || :build}
+      pending > 0 -> {:pending, pending}
+      true -> {:live, target.last_deployed_at}
     end
   end
 

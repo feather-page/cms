@@ -11,6 +11,8 @@ defmodule Feather.Release do
 
   alias Feather.Accounts.Scope
   alias Feather.Publishing
+  alias Feather.Publishing.DeploymentTarget
+  alias Feather.Sites.Site
 
   @app :feather
 
@@ -78,42 +80,44 @@ defmodule Feather.Release do
   end
 
   @doc """
-  Replaces the provider config (credentials) of the deployment target with
-  the given public id. The admin does not edit credentials. The
-  `hetzner_ftps` provider takes `host`, `user`, `password` and `path`.
+  Replaces the provider config (credentials) of the deployment target of
+  the site with the given domain. The admin does not edit credentials. The
+  `ftps` provider takes `host`, `user`, `password` and `path`.
 
-      bin/feather eval 'Feather.Release.set_target_config("AbCdEfGhIjKl", %{"host" => "...", "user" => "...", "password" => "...", "path" => "..."})'
+      bin/feather eval 'Feather.Release.set_target_config("www.example.org", %{"host" => "...", "user" => "...", "password" => "...", "path" => "..."})'
   """
-  def set_target_config(target_public_id, %{} = config) do
+  def set_target_config(domain, %{} = config) do
+    domain = Site.normalize_domain(domain)
+
     with_app(fn ->
       import Ecto.Query, only: [from: 2]
 
       # Without the old config: it is replaced, and it may not decrypt.
-      fields = Publishing.DeploymentTarget.__schema__(:fields) -- [:config]
+      fields = DeploymentTarget.__schema__(:fields) -- [:config]
 
       query =
-        from t in Publishing.DeploymentTarget,
-          where: t.public_id == ^target_public_id,
-          select: struct(t, ^fields)
+        from t in DeploymentTarget,
+          join: s in assoc(t, :site),
+          where: s.domain == ^domain,
+          select: {struct(t, ^fields), s}
 
       case Feather.Repo.one(query) do
         nil ->
-          IO.puts(:stderr, "No deployment target #{target_public_id}.")
+          IO.puts(:stderr, "No deployment target for #{domain}.")
           {:error, :not_found}
 
-        target ->
-          update_target_config(target, config)
+        {target, site} ->
+          update_target_config(%{target | site: site}, config)
       end
     end)
   end
 
   defp update_target_config(target, config) do
-    target = Feather.Repo.preload(target, :site)
     scope = Scope.for_site(target.site)
 
-    with {:ok, target} <- Publishing.update_target_config(scope, target, config) do
-      IO.puts("Config of #{target.public_id} (#{target.provider}) set.")
-      {:ok, target}
+    with {:ok, updated} <- Publishing.update_target_config(scope, target, config) do
+      IO.puts("Config of #{target.site.domain} (#{updated.provider}) set.")
+      {:ok, updated}
     end
   end
 

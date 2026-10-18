@@ -1,13 +1,11 @@
 defmodule FeatherWeb.DeploymentTargetLive.Index do
   @moduledoc """
-  The deployment targets of a site, with a button to deploy each.
+  The deployment target of a site, with a button to deploy the site.
 
-  While a target deploys, a section above the list shows its steps
-  (`Feather.Publishing.deploy_steps/0`) and how long it has been running.
-  The pipeline broadcasts `{:deploy_progress, progress}` at every step and
-  `{:site_notice, notice}` when it finishes; the site shell shows the
-  notice (see `FeatherWeb.SiteAuth`), and this page receives both
-  (`forward_site_notices`) to update the steps and the list.
+  While the site deploys, a section above the target shows the steps
+  (`Feather.Publishing.deploy_steps/0`) and how long the deploy has been
+  running. Target and progress come from the shell's `site_deploy` (see
+  `FeatherWeb.SiteAuth`), which follows the pipeline's broadcasts.
   """
   use FeatherWeb, :live_view
 
@@ -26,28 +24,37 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
       <.header>
         Deployments
         <:subtitle>Where {@current_scope.site.title} is published</:subtitle>
+        <:actions :if={@site_deploy.target}>
+          <.button
+            id="deploy-target"
+            icon="rocket"
+            phx-click="deploy_site"
+            disabled={@site_deploy.target.deploying}
+          >
+            Deploy
+          </.button>
+        </:actions>
       </.header>
 
       <section
-        :for={target <- @targets}
-        :if={@progress[target.public_id]}
-        id={"deploy-progress-#{target.public_id}"}
+        :if={@site_deploy.progress}
+        id="deploy-progress"
         class="mb-6 rounded-box border border-base-content/10 p-4"
         aria-live="polite"
       >
         <div class="flex items-center justify-between gap-4">
-          <h2 class="font-semibold wrap-anywhere">Deploying to {target.public_hostname}</h2>
+          <h2 class="font-semibold wrap-anywhere">Deploying to {@current_scope.site.domain}</h2>
           <span
-            id={"deploy-elapsed-#{target.public_id}"}
+            id="deploy-elapsed"
             phx-hook=".Elapsed"
             phx-update="ignore"
-            data-started-at={DateTime.to_iso8601(@progress[target.public_id].started_at)}
+            data-started-at={DateTime.to_iso8601(@site_deploy.progress.started_at)}
             class="text-sm tabular-nums text-base-content/70"
           ></span>
         </div>
         <ol class="mt-3 grid gap-2 text-sm">
           <li
-            :for={{step, state} <- steps(@progress[target.public_id].step)}
+            :for={{step, state} <- steps(@site_deploy.progress.step)}
             data-step={step}
             data-state={state}
             class={["flex items-center gap-2", state == :current && "font-medium"]}
@@ -56,7 +63,7 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
             <span :if={state == :current} class="loading loading-spinner loading-sm text-primary"></span>
             <.icon :if={state == :pending} name="circle" class="size-5 text-base-content/30" />
             <span class={state == :pending && "text-base-content/70"}>
-              {step_label(step, target)}
+              {step_label(step, @site_deploy.target)}
             </span>
           </li>
         </ol>
@@ -79,79 +86,40 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
         }
       </script>
 
-      <.empty_state :if={@targets == []} id="no-deployment-targets" icon="globe">
-        No deployment targets configured.
+      <.empty_state :if={!@site_deploy.target} id="no-deployment-target" icon="globe">
+        No deployment target configured.
       </.empty_state>
 
-      <.list :if={@targets != []} id="deployment-targets">
-        <.list_row
-          :for={target <- @targets}
-          id={"target-#{target.public_id}"}
-          navigate={~p"/sites/#{@current_scope.site.public_id}/deployments/#{target.public_id}/edit"}
-          title={target.public_hostname}
-        >
-          <:leading><.tile icon="globe" /></:leading>
-          <:meta>
-            <span class="target-provider">{provider_label(target.provider)}</span>
-            · <span class="target-deployed">{deployed_label(target.last_deployed_at)}</span>
-          </:meta>
-          <:trailing>
-            <.badge :if={target.deploying} id={"deploying-#{target.public_id}"}>
+      <.description_list :if={@site_deploy.target} id="deployment-target" class="max-w-3xl">
+        <:item label="Address">
+          <a
+            href={"https://#{@current_scope.site.domain}"}
+            target="_blank"
+            rel="noopener"
+            class="link link-hover"
+          >
+            {@current_scope.site.domain}
+          </a>
+        </:item>
+        <:item label="Provider">
+          <span id="target-provider">{provider_label(@site_deploy.target.provider)}</span>
+        </:item>
+        <:item label="Last deploy">
+          <span id="target-deployed" class="inline-flex items-center gap-2">
+            <.badge :if={@site_deploy.target.deploying} id="target-deploying">
               <span class="loading loading-spinner loading-xs"></span> Deploying
             </.badge>
-            <.button
-              id={"deploy-#{target.public_id}"}
-              size={:sm}
-              icon="rocket"
-              class="relative z-10"
-              phx-click={JS.push("deploy", value: %{id: target.public_id})}
-              disabled={target.deploying}
-            >
-              Deploy
-            </.button>
-          </:trailing>
-        </.list_row>
-      </.list>
+            {deployed_label(@site_deploy.target.last_deployed_at)}
+          </span>
+        </:item>
+      </.description_list>
     </.site_shell>
     """
   end
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:page_title, "Deployments")
-     |> assign(:forward_site_notices, true)
-     |> assign_targets()}
-  end
-
-  @impl true
-  def handle_event("deploy", %{"id" => id}, socket) do
-    scope = socket.assigns.current_scope
-    target = Publishing.get_target!(scope, id)
-    # Returns at once; a deploy already running coalesces with this one.
-    :ok = Publishing.deploy(scope, target)
-    {:noreply, assign_targets(socket)}
-  end
-
-  @impl true
-  def handle_info({:site_notice, _notice}, socket) do
-    {:noreply, assign_targets(socket)}
-  end
-
-  def handle_info({:deploy_progress, %{target_id: id} = progress}, socket) do
-    {:noreply, update(socket, :progress, &Map.put(&1, id, progress))}
-  end
-
-  def handle_info(_message, socket), do: {:noreply, socket}
-
-  # The progress of running deploys, by target public id: after a reload
-  # from the registry, then from the broadcasts. A deploy requested here
-  # shows up with its first step.
-  defp assign_targets(socket) do
-    targets = Publishing.list_targets(socket.assigns.current_scope)
-
-    assign(socket, targets: targets, progress: Publishing.deploy_progress_by_target(targets))
+    {:ok, assign(socket, :page_title, "Deployments")}
   end
 
   defp steps(current) do
@@ -176,14 +144,12 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
 
   defp step_label(step, target) do
     label = Publishing.deploy_step_label(step, :checklist)
-    if step == :upload, do: "#{label} to #{provider_label(target.provider)}", else: label
+    if step == :upload, do: "#{label} via #{provider_label(target.provider)}", else: label
   end
 
-  @doc ~s(When the target was last deployed, e.g. "Deployed 3 days ago".)
-  def deployed_label(nil), do: "Never deployed"
-  def deployed_label(at), do: "Deployed #{FeatherWeb.SiteComponents.time_ago(at)}"
+  defp deployed_label(nil), do: "Never deployed"
+  defp deployed_label(at), do: "Deployed #{FeatherWeb.SiteComponents.time_ago(at)}"
 
-  @doc "The name of a provider for people, e.g. `Hetzner (FTPS)`."
-  def provider_label("hetzner_ftps"), do: "Hetzner (FTPS)"
-  def provider_label(provider), do: provider
+  defp provider_label("ftps"), do: "FTPS"
+  defp provider_label(provider), do: provider
 end

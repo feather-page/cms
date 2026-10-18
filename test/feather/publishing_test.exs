@@ -7,45 +7,25 @@ defmodule Feather.PublishingTest do
     %{scope: site_scope_fixture()}
   end
 
-  test "targets are listed oldest first, only the site's own", %{scope: scope} do
-    assert Publishing.list_targets(scope) == []
+  test "get_target/1 returns the site's own target without its config", %{scope: scope} do
+    assert Publishing.get_target(scope) == nil
 
-    %{id: first} = deployment_target_fixture(scope)
-    %{id: second} = deployment_target_fixture(scope)
+    %{id: id} = deployment_target_fixture(scope)
     deployment_target_fixture(site_scope_fixture())
 
-    assert [%{id: ^first}, %{id: ^second}] = Publishing.list_targets(scope)
+    assert %{id: ^id, config: %{} = config} = Publishing.get_target(scope)
+    assert config == %{}
   end
 
-  test "validates provider and a unique, normalized hostname", %{scope: scope} do
-    target = deployment_target_fixture(scope, public_hostname: "  WWW.Example.COM ")
-    assert target.public_hostname == "www.example.com"
+  test "a site has one deployment target with a known provider", %{scope: scope} do
+    assert {:error, changeset} = Publishing.create_target(scope, %{provider: "s3"})
+    assert "is invalid" in errors_on(changeset).provider
 
-    assert {:error, changeset} =
-             Publishing.create_target(scope, %{
-               provider: "s3",
-               public_hostname: "www.example.com"
-             })
-
-    errors = errors_on(changeset)
-    assert "is invalid" in errors.provider
-    assert "has already been taken" in errors.public_hostname
-  end
-
-  test "update_target/3 changes the hostname only", %{scope: scope} do
     target = deployment_target_fixture(scope)
+    assert target.provider == "ftps"
 
-    assert {:ok, updated} =
-             Publishing.update_target(scope, target, %{
-               public_hostname: "New.Example.com",
-               provider: "s3"
-             })
-
-    assert updated.public_hostname == "new.example.com"
-    assert updated.provider == "hetzner_ftps"
-
-    assert {:error, changeset} = Publishing.update_target(scope, target, %{public_hostname: ""})
-    assert "can't be blank" in errors_on(changeset).public_hostname
+    assert {:error, changeset} = Publishing.create_target(scope, %{provider: "ftps"})
+    assert "already has a deployment target" in errors_on(changeset).site_id
   end
 
   describe "encrypted config" do
@@ -59,7 +39,7 @@ defmodule Feather.PublishingTest do
         "path" => "/site"
       }
 
-      assert Publishing.get_target!(scope, target.public_id).config == config
+      assert Repo.reload!(target).config == config
 
       [[raw]] =
         Repo.query!("SELECT config FROM deployment_targets WHERE id = ?", [target.id]).rows
@@ -69,7 +49,7 @@ defmodule Feather.PublishingTest do
       refute raw =~ "ftp.example.com"
 
       {:ok, updated} = Publishing.update_target_config(scope, target, %{password: "new"})
-      assert Publishing.get_target!(scope, updated.public_id).config == %{"password" => "new"}
+      assert Repo.reload!(updated).config == %{"password" => "new"}
     end
 
     test "uses a fresh IV for every write" do
@@ -103,7 +83,7 @@ defmodule Feather.PublishingTest do
 
     test "release_stale_locks/0 releases every held lock", %{scope: scope} do
       target = deployment_target_fixture(scope)
-      other = deployment_target_fixture(scope)
+      other = deployment_target_fixture(site_scope_fixture())
       assert Publishing.acquire_deploy_lock(target)
       assert Publishing.acquire_deploy_lock(other)
 
@@ -157,7 +137,6 @@ defmodule Feather.PublishingTest do
     test "a target never deployed counts every published record and the site", %{
       scope: scope
     } do
-      scope |> deployment_target_fixture() |> deployed(in_a_minute())
       deployment_target_fixture(scope)
       post_fixture(scope)
 
@@ -165,7 +144,7 @@ defmodule Feather.PublishingTest do
       assert Publishing.undeployed_count(scope) == 3
     end
 
-    test "counts the records published after the oldest deploy",
+    test "counts the records published after the last deploy",
          %{scope: scope} do
       assert Publishing.undeployed_count(scope) == 0
 
@@ -470,8 +449,8 @@ defmodule Feather.PublishingTest do
     end
 
     test "undeployed_count/2 leaves out a post not due yet, even for a target never deployed",
-         %{scope: scope} do
-      deployment_target_fixture(scope)
+         %{scope: scope, target: target} do
+      deployed(target, nil)
       post_published(scope, at("07:24"), at("08:08"))
 
       # The homepage and the site.
@@ -525,15 +504,15 @@ defmodule Feather.PublishingTest do
       refute_received {:deploy_requested, _target}
     end
 
-    test "deploy_due_posts/2 deploys only the targets of a site deployed before the post was due",
-         %{scope: scope, target: target} do
-      %{id: other_id} = scope |> deployment_target_fixture() |> deployed(at("08:08"))
+    test "deploy_due_posts/2 leaves a target deployed after the post was due alone", %{
+      scope: scope,
+      target: target
+    } do
       post_published(scope, at("07:24"), at("08:08"))
-      deployed(target, at("07:25"))
+      deployed(target, at("08:08"))
 
-      assert [%{id: id}] = Publishing.deploy_due_posts(at("08:07"), at("08:09"))
-      assert id == target.id
-      refute_received {:deploy_requested, %{id: ^other_id}}
+      assert Publishing.deploy_due_posts(at("08:07"), at("08:09")) == []
+      refute_received {:deploy_requested, _target}
     end
 
     test "deploy_due_posts/2 skips a target whose config does not decrypt", %{
@@ -556,21 +535,22 @@ defmodule Feather.PublishingTest do
           assert id == other_target.id
         end)
 
-      assert log =~ target.public_hostname
+      assert log =~ scope.site.domain
       assert_received {:deploy_requested, %{id: id}}
       assert id == other_target.id
       refute_received {:deploy_requested, _target}
     end
 
-    test "deploy_due_posts/2 deploys the targets deployed before a post became due", %{
+    test "deploy_due_posts/2 deploys a target deployed before a post became due", %{
       scope: scope,
       target: target
     } do
       post_published(scope, at("07:24"), at("08:08"))
       deployed(target, at("07:25"))
 
-      assert [%{id: id}] = Publishing.deploy_due_posts(at("08:07"), at("08:08"))
+      assert [%{id: id, site: site}] = Publishing.deploy_due_posts(at("08:07"), at("08:08"))
       assert id == target.id
+      assert site.domain == scope.site.domain
       assert_received {:deploy_requested, %{id: ^id}}
     end
 
@@ -633,23 +613,23 @@ defmodule Feather.PublishingTest do
   end
 
   describe "live?/3" do
-    test "a published version is live once every deployment target deployed after it" do
+    test "a published version is live once the deployment target deployed after it" do
       now = DateTime.utc_now()
       version = %{published_at: DateTime.add(now, -1, :hour)}
 
-      assert Publishing.live?([%{last_deployed_at: now}], version)
-      refute Publishing.live?([%{last_deployed_at: now}, %{last_deployed_at: nil}], version)
-      refute Publishing.live?([%{last_deployed_at: DateTime.add(now, -2, :hour)}], version)
+      assert Publishing.live?(%{last_deployed_at: now}, version)
+      refute Publishing.live?(%{last_deployed_at: nil}, version)
+      refute Publishing.live?(%{last_deployed_at: DateTime.add(now, -2, :hour)}, version)
 
       # Without a deployment target or a published version there is nothing to wait for.
-      assert Publishing.live?([], version)
-      assert Publishing.live?([%{last_deployed_at: nil}], nil)
+      assert Publishing.live?(nil, version)
+      assert Publishing.live?(%{last_deployed_at: nil}, nil)
     end
 
-    test "a post is live once every deployment target deployed after its publish_at" do
+    test "a post is live once the deployment target deployed after its publish_at" do
       now = DateTime.utc_now()
       published_at = DateTime.add(now, -3, :hour)
-      deployed = [%{last_deployed_at: DateTime.add(now, -1, :hour)}]
+      deployed = %{last_deployed_at: DateTime.add(now, -1, :hour)}
 
       assert Publishing.live?(deployed, %{
                published_at: published_at,
@@ -662,7 +642,7 @@ defmodule Feather.PublishingTest do
       # Scheduled: not live, not even without a deployment target.
       tomorrow = DateTime.add(now, 1, :day)
       refute Publishing.live?(deployed, %{published_at: published_at, publish_at: tomorrow})
-      refute Publishing.live?([], %{published_at: published_at, publish_at: tomorrow})
+      refute Publishing.live?(nil, %{published_at: published_at, publish_at: tomorrow})
     end
   end
 end

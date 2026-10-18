@@ -1,6 +1,7 @@
 defmodule Feather.PublishingFixtures do
   @moduledoc """
-  Test helpers for deployment targets. All take a scope with a site.
+  Test helpers for deployment targets. All take a scope with a site, which
+  can have one target.
   """
 
   def deployment_target_fixture(scope, attrs \\ %{}) do
@@ -8,8 +9,7 @@ defmodule Feather.PublishingFixtures do
       Feather.Publishing.create_target(
         scope,
         Enum.into(attrs, %{
-          provider: "hetzner_ftps",
-          public_hostname: "www#{System.unique_integer([:positive])}.example.com",
+          provider: "ftps",
           config: %{
             "host" => "ftp.example.com",
             "user" => "u1",

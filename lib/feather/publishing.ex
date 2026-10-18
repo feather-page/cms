@@ -1,6 +1,6 @@
 defmodule Feather.Publishing do
   @moduledoc """
-  Deployment targets, the deploy lock, deploying (static export,
+  The deployment target of a site, the deploy lock, deploying (static export,
   precompression and rclone sync, see `Feather.Publishing.Deploy`), the
   deploys of scheduled posts as they become due (see
   `Feather.Publishing.ScheduledDeploys`) and the notices a deploy
@@ -20,46 +20,27 @@ defmodule Feather.Publishing do
   @registry Feather.Publishing.Registry
 
   @doc """
-  Lists the deployment targets of the scope's site, oldest first.
+  The deployment target of the scope's site, or nil: a site has at most
+  one.
 
-  Without the (encrypted) `config`, which stays at its default: listing
-  works even when the credentials cannot be decrypted. Use `get_target!/2`
-  for a target to edit or deploy.
+  Without the (encrypted) `config`, which stays at its default: this works
+  even when the credentials cannot be decrypted. `deploy_site/2` loads the
+  target with its config.
   """
-  @spec list_targets(Scope.t()) :: [DeploymentTarget.t()]
-  def list_targets(%Scope{site: %Site{id: site_id}}) do
-    Repo.all(
+  @spec get_target(Scope.t()) :: DeploymentTarget.t() | nil
+  def get_target(%Scope{site: %Site{id: site_id}}) do
+    Repo.one(
       from t in DeploymentTarget,
         where: t.site_id == ^site_id,
-        order_by: [asc: t.inserted_at],
         select: struct(t, ^metadata_fields())
-    )
-  end
-
-  @doc """
-  Gets a deployment target of the scope's site by public id. Raises if not
-  found.
-  """
-  @spec get_target!(Scope.t(), String.t()) :: DeploymentTarget.t()
-  def get_target!(%Scope{site: %Site{id: site_id}}, public_id) do
-    Repo.one!(
-      from t in DeploymentTarget, where: t.site_id == ^site_id and t.public_id == ^public_id
-    )
-  end
-
-  @doc "Gets a deployment target of the scope's site by public id, or nil."
-  @spec get_target(Scope.t(), String.t()) :: DeploymentTarget.t() | nil
-  def get_target(%Scope{site: %Site{id: site_id}}, public_id) when is_binary(public_id) do
-    Repo.one(
-      from t in DeploymentTarget, where: t.site_id == ^site_id and t.public_id == ^public_id
     )
   end
 
   defp metadata_fields, do: DeploymentTarget.__schema__(:fields) -- [:config]
 
   @doc """
-  Creates a deployment target in the scope's site. Accepts `provider`,
-  `public_hostname` and `config`.
+  Creates the deployment target of the scope's site. Accepts `provider`
+  and `config`; a site that has one already gets an error on `site_id`.
   """
   @spec create_target(Scope.t(), map()) ::
           {:ok, DeploymentTarget.t()} | {:error, Ecto.Changeset.t()}
@@ -67,21 +48,6 @@ defmodule Feather.Publishing do
     %DeploymentTarget{site_id: site_id}
     |> DeploymentTarget.create_changeset(attrs)
     |> Repo.insert()
-  end
-
-  @doc """
-  Updates the host name of a deployment target.
-  """
-  @spec update_target(Scope.t(), DeploymentTarget.t(), map()) ::
-          {:ok, DeploymentTarget.t()} | {:error, Ecto.Changeset.t()}
-  def update_target(
-        %Scope{site: %Site{id: site_id}},
-        %DeploymentTarget{site_id: site_id} = t,
-        attrs
-      ) do
-    t
-    |> DeploymentTarget.update_changeset(attrs)
-    |> Repo.update()
   end
 
   @doc """
@@ -103,12 +69,6 @@ defmodule Feather.Publishing do
   @spec delete_target(Scope.t(), DeploymentTarget.t()) :: {:ok, DeploymentTarget.t()}
   def delete_target(%Scope{site: %Site{id: site_id}}, %DeploymentTarget{site_id: site_id} = t) do
     Repo.delete(t)
-  end
-
-  @doc "Returns a changeset for the deployment target form (hostname)."
-  @spec change_target(DeploymentTarget.t(), map()) :: Ecto.Changeset.t()
-  def change_target(%DeploymentTarget{} = target, attrs \\ %{}) do
-    DeploymentTarget.update_changeset(target, attrs)
   end
 
   ## Deploy lock
@@ -173,9 +133,11 @@ defmodule Feather.Publishing do
   ## Deploying
 
   @doc """
-  Deploys a target of the scope's site in the background: static export,
-  precompression, rclone sync (see `Feather.Publishing.Deploy`). Returns
-  `:ok` at once; the outcome arrives as a notice (`subscribe_notices/1`).
+  Deploys the scope's site to its deployment target in the background:
+  static export, precompression, rclone sync (see
+  `Feather.Publishing.Deploy`). Returns `:ok` at once, the outcome arrives
+  as a notice (`subscribe_notices/1`), or `{:error, :no_target}` when the
+  site has no deployment target.
 
   How the deploy runs is set by `config :feather, :deploy_mode` (or the
   `:mode` option):
@@ -186,22 +148,12 @@ defmodule Feather.Publishing do
 
   Other options are passed to `Feather.Publishing.Deploy.run/2`.
   """
-  @spec deploy(Scope.t(), DeploymentTarget.t(), keyword()) :: :ok
-  def deploy(scope, target, opts \\ [])
-
-  def deploy(%Scope{site: %Site{id: site_id}}, %DeploymentTarget{site_id: site_id} = target, opts) do
-    start_deploy(target, opts)
-  end
-
-  @doc """
-  Deploys every deployment target of the scope's site, like `deploy/3`.
-  Returns `:ok` at once.
-  """
-  @spec deploy_site(Scope.t()) :: :ok
-  def deploy_site(%Scope{site: %Site{id: site_id}}) do
-    from(t in DeploymentTarget, where: t.site_id == ^site_id, order_by: [asc: t.inserted_at])
-    |> Repo.all()
-    |> Enum.each(&start_deploy(&1, []))
+  @spec deploy_site(Scope.t(), keyword()) :: :ok | {:error, :no_target}
+  def deploy_site(%Scope{site: %Site{id: site_id}}, opts \\ []) do
+    case Repo.get_by(DeploymentTarget, site_id: site_id) do
+      %DeploymentTarget{} = target -> start_deploy(target, opts)
+      nil -> {:error, :no_target}
+    end
   end
 
   defp start_deploy(%DeploymentTarget{} = target, opts) do
@@ -224,14 +176,14 @@ defmodule Feather.Publishing do
   ## Scheduled posts
 
   @doc """
-  Deploys every deployment target of a site with a scheduled post (its
-  published version's `publish_at` lies after its `published_at`) that
-  became due in the window after `from` up to `to`, if the target was
-  deployed before that `publish_at`. Targets never deployed are left
-  alone. Without `from` (the first check after boot) every due post not
-  deployed yet counts. Deploys each target once, like `deploy/3`, and
-  returns the targets; a target whose config does not decrypt is logged
-  and skipped.
+  Deploys every site with a scheduled post (its published version's
+  `publish_at` lies after its `published_at`) that became due in the
+  window after `from` up to `to`, if the site's deployment target was
+  deployed before that `publish_at`. Sites never deployed are left alone.
+  Without `from` (the first check after boot) every due post not deployed
+  yet counts. Deploys each target once, like `deploy_site/2`, and returns
+  the targets with their site; a target whose config does not decrypt is
+  logged and skipped.
 
   The scheduler's entry point (`Feather.Publishing.ScheduledDeploys`): it
   works across all sites, so it takes no scope, like `release_stale_locks/0`.
@@ -253,7 +205,8 @@ defmodule Feather.Publishing do
           as: :target,
           where: not is_nil(t.last_deployed_at) and exists(due_posts),
           order_by: [asc: t.inserted_at],
-          select: struct(t, ^metadata_fields())
+          select: struct(t, ^metadata_fields()),
+          preload: :site
       )
 
     for metadata <- due_targets, target = load_config(metadata) do
@@ -263,11 +216,12 @@ defmodule Feather.Publishing do
   end
 
   defp load_config(%DeploymentTarget{} = metadata) do
-    Repo.reload(metadata)
+    with %DeploymentTarget{} = target <- Repo.reload(metadata),
+         do: %{target | site: metadata.site}
   rescue
     ArgumentError ->
       Logger.error(
-        "Not deploying #{metadata.public_hostname} for its scheduled posts: " <>
+        "Not deploying #{metadata.site.domain} for its scheduled posts: " <>
           "its config could not be loaded"
       )
 
@@ -277,12 +231,12 @@ defmodule Feather.Publishing do
   ## Undeployed changes
 
   @doc """
-  The number of changes a deployment target does not show yet: the posts,
-  pages and projects published after the oldest deploy, plus 1 if the
-  site's `updated_at` moved since, for any number of changes without a
+  The number of changes the site's deployment target does not show yet:
+  the posts, pages and projects published after its last deploy, plus 1 if
+  the site's `updated_at` moved since, for any number of changes without a
   version (settings, images, social media links, navigation, books,
   deleting or unpublishing a published record, see `Feather.Sites`).
-  Counts everything published, and the site, if a target was never
+  Counts everything published, and the site, if the target was never
   deployed; 0 without a deployment target.
 
   A post counts by its published version alone, from the later of its
@@ -292,16 +246,13 @@ defmodule Feather.Publishing do
   @spec undeployed_count(Scope.t(), DateTime.t()) :: non_neg_integer()
   def undeployed_count(%Scope{site: %Site{id: site_id}}, now \\ DateTime.utc_now()) do
     deploys =
-      Repo.all(
-        from t in DeploymentTarget, where: t.site_id == ^site_id, select: t.last_deployed_at
-      )
+      from t in DeploymentTarget, where: t.site_id == ^site_id, select: {t.last_deployed_at}
 
-    case deploys do
-      [] ->
+    case Repo.one(deploys) do
+      nil ->
         0
 
-      deploys ->
-        since = if Enum.any?(deploys, &is_nil/1), do: nil, else: Enum.min(deploys, DateTime)
+      {since} ->
         count_published_since(site_id, since, now) + count_site_changed_since(site_id, since)
     end
   end
@@ -347,30 +298,33 @@ defmodule Feather.Publishing do
   defp shown_between(query, _version, since, _now), do: where(query, [v], v.published_at > ^since)
 
   @doc """
-  Whether a published version is on the live site: every deployment
-  target in `targets` deployed since it was published and, for a post,
-  since its `publish_at` (the static export leaves out a post until then).
-  A post whose `publish_at` is in the future is never live. True without a
-  published version, and for a due one without a deployment target, where
-  there is nothing to wait for.
+  Whether a published version is on the live site: the deployment target
+  deployed since it was published and, for a post, since its `publish_at`
+  (the static export leaves out a post until then). A post whose
+  `publish_at` is in the future is never live. True without a published
+  version, and for a due one without a deployment target, where there is
+  nothing to wait for.
   """
-  @spec live?([DeploymentTarget.t()], map() | nil, DateTime.t()) :: boolean()
-  def live?(targets, published_version, now \\ DateTime.utc_now())
+  @spec live?(DeploymentTarget.t() | nil, map() | nil, DateTime.t()) :: boolean()
+  def live?(target, published_version, now \\ DateTime.utc_now())
 
-  def live?(_targets, nil, _now), do: true
+  def live?(_target, nil, _now), do: true
 
-  def live?(targets, %{published_at: %DateTime{} = published_at} = version, now) do
+  def live?(target, %{published_at: %DateTime{} = published_at} = version, now) do
     shown_from =
       case version do
         %{publish_at: %DateTime{} = publish_at} -> Enum.max([published_at, publish_at], DateTime)
         _version -> published_at
       end
 
-    DateTime.compare(shown_from, now) != :gt and
-      Enum.all?(targets, fn target ->
-        target.last_deployed_at && DateTime.compare(shown_from, target.last_deployed_at) != :gt
-      end)
+    DateTime.compare(shown_from, now) != :gt and deployed_since?(target, shown_from)
   end
+
+  defp deployed_since?(nil, _at), do: true
+  defp deployed_since?(%{last_deployed_at: nil}, _at), do: false
+
+  defp deployed_since?(%{last_deployed_at: deployed_at}, at),
+    do: DateTime.compare(at, deployed_at) != :gt
 
   ## Notices
 
@@ -391,7 +345,7 @@ defmodule Feather.Publishing do
   Broadcasts a notice to everyone watching the site: a map with `:message`
   and any of `:kind` (`:info`, `:success`, `:warning`, `:error`), `:title`,
   `:url`, `:link_label`, `:external` (the URL opens the site, shown as a
-  button) and `:retry` (the public id of a target to deploy again).
+  button) and `:retry` (true offers to deploy the site again).
   """
   @spec broadcast_notice(Site.t(), map()) :: :ok | {:error, term()}
   def broadcast_notice(%Site{} = site, %{message: _} = notice),
@@ -462,19 +416,6 @@ defmodule Feather.Publishing do
       [{_pid, progress}] -> progress
       [] -> nil
     end
-  end
-
-  @doc """
-  The progress of the running deploys of `targets` (see
-  `deploy_progress/1`), by target public id.
-  """
-  @spec deploy_progress_by_target([DeploymentTarget.t()]) :: %{String.t() => map()}
-  def deploy_progress_by_target(targets) do
-    for target <- targets,
-        target.deploying,
-        progress = deploy_progress(target),
-        into: %{},
-        do: {target.public_id, progress}
   end
 
   @doc "Removes the progress record of the calling process's deploy."

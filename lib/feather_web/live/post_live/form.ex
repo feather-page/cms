@@ -37,7 +37,7 @@ defmodule FeatherWeb.PostLive.Form do
           :if={@live_action == :edit}
           id="status-badge"
           status={@publication_status}
-          live={Publishing.live?(@site_deploy.targets, @published_version)}
+          live={Publishing.live?(@site_deploy.target, @published_version)}
         />
       </:bar>
       <:bar_actions>

@@ -32,15 +32,15 @@ defmodule FeatherWeb.EncryptionKeyTest do
       assert has_element?(lv, ~s(#site-preview-link-sidebar[href="/preview/#{site.public_id}"]))
     end
 
-    test "targets can be listed, loading one with its config fails", %{
+    test "the target loads without its config, deploying it fails", %{
       scope: scope,
       target: target
     } do
-      assert [%{public_id: public_id}] = Publishing.list_targets(scope)
-      assert public_id == target.public_id
+      assert %{id: id} = Publishing.get_target(scope)
+      assert id == target.id
 
       assert ExUnit.CaptureLog.capture_log(fn ->
-               assert_raise ArgumentError, fn -> Publishing.get_target!(scope, public_id) end
+               assert_raise ArgumentError, fn -> Publishing.deploy_site(scope) end
              end) =~ "CONFIG_ENCRYPTION_KEY"
     end
   end
