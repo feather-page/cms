@@ -157,7 +157,15 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
   describe "the sidebar" do
     setup do
-      build_site(%{title: "Robert Curth", domain: "rocu.de", emoji: "👨🏻‍💻"}, portrait: true)
+      build_site(
+        %{
+          title: "Robert Curth",
+          domain: "rocu.de",
+          emoji: "👨🏻‍💻",
+          bio: "I build web apps. Mostly with Elixir."
+        },
+        portrait: true
+      )
     end
 
     test "is on every page with title, domain, navigation and social links", %{sink: sink} do
@@ -181,23 +189,38 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       end
     end
 
-    test "shows the portrait and the intro at home only, other pages get the slim sidebar",
+    test "shows portrait and bio on every page, inner pages are marked for the phone bar",
          %{sink: sink, scope: scope} do
       portrait = Repo.preload(scope.site, :portrait_image).portrait_image
       [home | others] = Enum.map(@pages, &{&1, doc(sink, &1)})
 
       {_path, home} = home
-      refute present?(home, "header.sidebar--slim")
+      refute present?(home, "header.sidebar--bar")
 
       assert attr(home, "header.sidebar img.portrait", "src") ==
                ["/images/#{portrait.public_id}/mobile_x1.webp"]
 
-      assert text(home, "header.sidebar .intro") == "I build websites since 2001."
+      assert text(home, "header.sidebar .bio") == "I build web apps. Mostly with Elixir."
+      assert text(home, "footer.site-footer .bio") == "I build web apps. Mostly with Elixir."
+      assert attr(home, "footer.site-footer img.footer-portrait", "sizes") == ["48px"]
+      assert attr(home, "footer.site-footer img.footer-portrait", "alt") == [""]
+      refute home |> text("header.sidebar") |> String.contains?("since 2001")
 
       for {path, page} <- others do
-        assert present?(page, "header.sidebar.sidebar--slim"), path
-        refute present?(page, ".portrait"), path
-        refute present?(page, ".intro"), path
+        assert present?(page, "header.sidebar.sidebar--bar"), path
+
+        assert attr(page, "header.sidebar img.portrait", "src") ==
+                 ["/images/#{portrait.public_id}/mobile_x1.webp"],
+               path
+
+        assert attr(page, "footer.site-footer .footer-bio img.footer-portrait", "src") ==
+                 ["/images/#{portrait.public_id}/mobile_x1.webp"],
+               path
+
+        assert text(page, "header.sidebar .bio") == "I build web apps. Mostly with Elixir.", path
+
+        assert text(page, "footer.site-footer .bio") == "I build web apps. Mostly with Elixir.",
+               path
       end
     end
 
@@ -288,62 +311,26 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert attr(home, ".portrait--emoji", "aria-hidden") == ["true"]
       refute present?(home, "header.sidebar img")
       refute present?(home, ".site-domain")
-      refute present?(home, ".intro")
+      refute present?(home, ".bio")
+      refute present?(home, "main > .content")
     end
-  end
 
-  describe "the intro" do
-    test "marks its first sentence, so small screens can show only that one" do
-      %{sink: sink} =
-        build_site(%{title: "Robert"},
-          homepage: [
-            paragraph("I build <b>websites</b>, e.g. blogs. Since 2001!  Mostly Elixir.")
-          ]
-        )
+    test "shows the footer bio without a picture when there is no portrait" do
+      %{sink: sink} = build_site(%{title: "Robert", bio: "Hi."})
 
       home = doc(sink, "index.html")
 
-      assert text(home, ".intro") == "I build websites, e.g. blogs. Since 2001!  Mostly Elixir."
-      assert text(home, ".intro .intro-lead") == "I build websites, e.g. blogs."
-      assert text(home, ".intro .intro-rest") == "Since 2001!  Mostly Elixir."
+      assert text(home, "footer.site-footer .bio") == "Hi."
+      refute present?(home, ".footer-portrait")
     end
 
-    test "a single sentence has no rest" do
-      %{sink: sink} = build_site(%{title: "Robert"}, homepage: [paragraph("Hello there.")])
+    test "has no bio paragraph without a bio, even when the homepage has text" do
+      %{sink: sink} = build_site(%{title: "Robert"})
 
       home = doc(sink, "index.html")
 
-      assert text(home, ".intro .intro-lead") == "Hello there."
-      refute present?(home, ".intro-rest")
-    end
-
-    test "does not end the first sentence after an abbreviation" do
-      for {text, lead, rest} <- [
-            {"Ich baue z. B. Websites für Dr. Müller in St. Pauli. Seit 2001.",
-             "Ich baue z. B. Websites für Dr. Müller in St. Pauli.", "Seit 2001."},
-            {"I build apps, i.e. Phoenix apps, e.g. Feather. Since 2001.",
-             "I build apps, i.e. Phoenix apps, e.g. Feather.", "Since 2001."}
-          ] do
-        %{sink: sink} = build_site(%{title: "Robert"}, homepage: [paragraph(text)])
-        home = doc(sink, "index.html")
-
-        assert text(home, ".intro .intro-lead") == lead
-        assert text(home, ".intro .intro-rest") == rest
-      end
-    end
-
-    test "skips paragraphs without text" do
-      %{sink: sink} =
-        build_site(%{title: "Robert"},
-          homepage: [
-            paragraph(nil),
-            paragraph(""),
-            paragraph("<br>"),
-            paragraph("Hello there.")
-          ]
-        )
-
-      assert text(doc(sink, "index.html"), ".intro") == "Hello there."
+      refute present?(home, ".bio")
+      refute home |> text("header.sidebar") |> String.contains?("since 2001")
     end
   end
 
@@ -352,11 +339,22 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       build_site(%{title: "Robert Curth", domain: "rocu.de", emoji: "👨🏻‍💻"})
     end
 
-    test "starts with the posts, newest first, each with a meta line", %{sink: sink} do
+    test "starts with the homepage content in the reading column", %{sink: sink} do
       home = doc(sink, "index.html")
 
-      refute present?(home, "main .intro")
-      refute home |> text("main") |> String.contains?("A second paragraph.")
+      assert present?(home, "main > .content + #posts")
+      assert texts(home, "main > .content h2") == ["Hello"]
+
+      assert texts(home, "main > .content p") ==
+               ["I build websites since 2001.", "A second paragraph."]
+
+      assert text(home, "main > .content p b") == "websites"
+    end
+
+    test "then the posts, newest first, each with a meta line", %{sink: sink} do
+      home = doc(sink, "index.html")
+
+      refute present?(home, "main .bio")
 
       assert texts(home, "main article.entry .meta .meta-label .kind") ==
                ["Article", "Note", "Book"]
@@ -413,11 +411,29 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     end
   end
 
-  test "the new label is on the first page of the stream only, the intro on every page of it" do
-    scope = site_scope_fixture(%{theme: "simple_sidebar", emoji: "🐭"})
-    homepage = Content.get_homepage(scope)
-    {:ok, homepage} = Content.update_page(scope, homepage, %{content: [paragraph("Hi.")]})
-    {:ok, _} = Content.publish(scope, homepage)
+  test "a homepage holding only empty paragraphs leaves the reading column to the posts" do
+    %{sink: sink} =
+      build_site(%{title: "Robert"}, homepage: [paragraph(""), paragraph(" <br> ")])
+
+    home = doc(sink, "index.html")
+
+    refute present?(home, "main > .content")
+    assert present?(home, "main > #posts")
+  end
+
+  test "a homepage holding only an image still shows its content" do
+    scope = site_scope_fixture(%{theme: "simple_sidebar"})
+    image = image_fixture(scope)
+    publish_homepage(scope, [%{"type" => "image", "image_id" => image.public_id}])
+
+    home = scope |> export() |> doc("index.html")
+
+    assert present?(home, "main > .content img")
+  end
+
+  test "the new label and the homepage content are on the first page of the stream only, the bio on every page of it" do
+    scope = site_scope_fixture(%{theme: "simple_sidebar", emoji: "🐭", bio: "Hi."})
+    publish_homepage(scope, [paragraph("Welcome to my site.")])
 
     for day <- 1..26 do
       post_fixture(scope, %{publish_at: DateTime.add(@day, day, :day)})
@@ -425,15 +441,19 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
     sink = export(scope)
 
-    assert sink |> doc("index.html") |> find(".new") |> Enum.count() == 1
+    home = doc(sink, "index.html")
+    assert home |> find(".new") |> Enum.count() == 1
+    assert text(home, "main > .content") == "Welcome to my site."
+    assert text(home, "header.sidebar .bio") == "Hi."
 
     page_two = doc(sink, "page/2/index.html")
     assert page_two |> find("article.entry") |> Enum.count() == 1
     refute present?(page_two, ".new")
+    refute present?(page_two, "main > .content")
     assert attr(page_two, ~s(nav.pagination [aria-current="page"]), "aria-current") == ["page"]
-    assert text(page_two, "header.sidebar .intro") == "Hi."
+    assert text(page_two, "header.sidebar .bio") == "Hi."
     assert text(page_two, "header.sidebar .portrait--emoji") == "🐭"
-    refute present?(page_two, ".sidebar--slim")
+    refute present?(page_two, ".sidebar--bar")
   end
 
   test "the new label is on the newest post only while it is at most 30 days old" do
@@ -780,8 +800,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
   test "scripts and javascript: links from site data are neither run nor linked" do
     %{scope: scope} =
-      build_site(%{title: "<script>alert(1)</script>"},
-        homepage: [paragraph("<script>alert(2)</script>Hi there.")]
+      build_site(%{title: "<script>alert(1)</script>", bio: "<script>alert(2)</script>Hi there."},
+        homepage: [paragraph("<script>alert(5)</script>Welcome.")]
       )
 
     social_media_link_fixture(scope, %{name: "Evil", url: "javascript:alert(3)"})
@@ -806,7 +826,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     end
 
     home = doc(sink, "index.html")
-    assert text(home, ".intro") == "Hi there."
+    assert text(home, "header.sidebar .bio") == "<script>alert(2)</script>Hi there."
+    assert text(home, "main > .content") == "Welcome."
     assert texts(home, "header.sidebar .social-links a") == ["GitHub"]
     refute "Evil" in texts(doc(sink, "projects/evil/index.html"), "main dl.facts dt")
   end

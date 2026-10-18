@@ -14,7 +14,7 @@
   <body>
     <a class="skip-link" href="#main"><%= gettext("Skip to content") %></a>
     <div class="frame">
-      <header class="<%= if @is_home, do: "sidebar", else: "sidebar sidebar--slim" %>">
+      <header class="<%= if @is_home, do: "sidebar", else: "sidebar sidebar--bar" %>">
         <div class="identity">
           <%= if @is_home do %>
           <h1 class="site-name"><a href="<%= Routes.home_url(@routes) %>"><%= @site.title %></a></h1>
@@ -25,7 +25,6 @@
           <p class="site-domain"><%= @site.domain %></p>
           <% end %>
           <%= cond do %>
-          <% not @is_home -> %>
           <% match?(%Image{}, @site.portrait_image) -> %>
           <%= portrait(@routes, @site.portrait_image) %>
           <% present?(@site.emoji) -> %>
@@ -33,10 +32,8 @@
           <% true -> %>
           <% end %>
         </div>
-        <%= case @is_home && intro(@data) do %>
-        <% {lead, rest} -> %>
-        <p class="intro"><span class="intro-lead"><%= lead %></span><%= if rest do %><span class="intro-rest"> <%= rest %></span><% end %></p>
-        <% _ -> %>
+        <%= if present?(@site.bio) do %>
+        <p class="bio"><%= @site.bio %></p>
         <% end %>
         <%= if @data.navigation != [] do %>
         <%= site_nav(%{data: @data, routes: @routes, nav: assigns}) %>
@@ -59,6 +56,14 @@
         <%= @inner_content %>
       </main>
       <footer class="site-footer">
+        <%= if present?(@site.bio) do %>
+        <div class="footer-bio">
+          <%= if match?(%Image{}, @site.portrait_image) do %>
+          <%= portrait(@routes, @site.portrait_image, "footer-portrait", "48px") %>
+          <% end %>
+          <p class="bio"><%= @site.bio %></p>
+        </div>
+        <% end %>
         <%= if @social_links != [] do %>
         <p class="social-links"><%= social_links(@social_links) %></p>
         <% end %>

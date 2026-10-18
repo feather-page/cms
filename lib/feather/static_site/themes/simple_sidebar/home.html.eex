@@ -1,3 +1,7 @@
+<%= if @current_page == 1 and homepage_content?(@data) do %>
+<div class="content"><%= Blocks.render(@data.homepage.content, @ctx) %></div>
+<% end %>
+
 <div class="stream" id="posts">
   <%= for {post, index} <- Enum.with_index(@posts) do %>
   <%= entry(%{post: post, routes: @routes, ctx: @ctx, new: @current_page == 1 and index == 0 and recent?(@data, post)}) %>

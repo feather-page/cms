@@ -1,12 +1,12 @@
 defmodule Feather.StaticSite.Themes.SimpleSidebar do
   @moduledoc """
   The `simple_sidebar` theme, first made for rocu.de: a panel on the left says
-  who the site belongs to (title, portrait, the first paragraph of the
-  homepage) and lists the navigation; the reading column beside it starts
-  with the posts. Portrait and intro appear on the home pages only, every
-  other page gets the slim panel. Text in Schibsted Grotesk, code in
-  JetBrains Mono. Below 52rem the panel becomes a compact header; on inner
-  pages a one-line bar whose navigation folds into a menu. Templates in
+  who the site belongs to (title, portrait, the site's bio) and lists the
+  navigation; the reading column beside it starts with the homepage content
+  on the first home page, then the posts. Every page gets the same panel.
+  Text in Schibsted Grotesk, code in JetBrains Mono. Below 52rem the panel
+  becomes a compact header without the bio, which moves to the footer; on
+  inner pages a one-line bar whose navigation folds into a menu. Templates in
   `simple_sidebar/*.html.eex`, stylesheet and fonts in
   `priv/static_site/themes/simple_sidebar/`.
   """
@@ -80,52 +80,34 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
       String.downcase(String.trim(site.domain)) != String.downcase(String.trim(site.title || ""))
   end
 
-  defp intro(%SiteData{homepage: %{content: content}}) do
-    content
-    |> ContentBlocks.normalize()
-    |> Enum.find_value("", &paragraph_text/1)
-    |> first_sentence()
-  end
+  # Clearing the editor stores an empty paragraph, which must not open the reading column.
+  defp homepage_content?(%SiteData{homepage: %{content: content}}),
+    do: content |> ContentBlocks.normalize() |> Enum.any?(&visible_block?/1)
 
-  defp intro(_data), do: nil
+  defp homepage_content?(_data), do: false
 
-  defp paragraph_text(%{"type" => "paragraph", "text" => text}) when is_binary(text) do
-    case text |> ContentBlocks.strip_tags() |> String.trim() do
-      "" -> nil
-      text -> text
-    end
-  end
+  defp visible_block?(%{"type" => "paragraph", "text" => text}),
+    do: present?(ContentBlocks.strip_tags(text || ""))
 
-  defp paragraph_text(_block), do: nil
+  defp visible_block?(_block), do: true
 
-  defp first_sentence(""), do: nil
-
-  defp first_sentence(text) do
-    sentence_end =
-      ~r/(?<=[.!?…])\s+(?=\p{Lu})/u
-      |> Regex.scan(text, return: :index)
-      |> Enum.find(fn [{at, _length}] -> not abbreviation?(binary_part(text, 0, at)) end)
-
-    case sentence_end do
-      [{at, length}] ->
-        {binary_part(text, 0, at), binary_part(text, at + length, byte_size(text) - at - length)}
-
-      nil ->
-        {text, nil}
-    end
-  end
-
-  # Heuristic: a word of one or two letters before the period ("z. B.", "Dr.", "e.g.") is an abbreviation.
-  defp abbreviation?(lead), do: Regex.match?(~r/(?<!\p{L})\p{L}{1,2}\.\z/u, lead)
-
-  defp portrait(routes, %Image{} = image) do
+  defp portrait(
+         routes,
+         %Image{} = image,
+         class \\ "portrait",
+         sizes \\ "(max-width: 52rem) 60px, 108px"
+       ) do
     {:safe,
      [
-       ~s(<img class="portrait" src="),
+       ~s(<img class="),
+       class,
+       ~s(" src="),
        escape(Routes.image_url(routes, image, :mobile_x1_webp)),
        ~s(" srcset="),
        escape(Routes.image_srcset(routes, image)),
-       ~s{" sizes="(max-width: 52rem) 60px, 108px" width="96" height="96" alt="">}
+       ~s(" sizes="),
+       sizes,
+       ~s(" width="96" height="96" alt="">)
      ]}
   end
 

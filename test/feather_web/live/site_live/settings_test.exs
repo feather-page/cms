@@ -406,7 +406,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
       assert has_element?(lv, "#portrait-slots #portrait")
-      assert has_element?(lv, "#portrait-hint", "Simple sidebar theme shows it on the home page")
+      assert has_element?(lv, "#portrait-hint", "Simple sidebar theme shows it in its panel")
       refute has_element?(lv, "#portrait-preview img")
       assert has_element?(lv, "#portrait-form label", "Upload")
       assert has_element?(lv, ~s(#portrait-form input[type=file][accept=".jpg,.jpeg,.png,.webp"]))

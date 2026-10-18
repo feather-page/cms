@@ -230,8 +230,8 @@ defmodule FeatherWeb.SiteLive.Settings do
         <section id="portrait-section" aria-labelledby="portrait-heading" class="mt-10">
           <.section_heading id="portrait-heading">Portrait</.section_heading>
           <p id="portrait-hint" class="mb-4 text-sm text-base-content/70">
-            A photo of you. The Simple sidebar theme shows it on the home page; the others leave
-            it out.
+            A photo of you. The Simple sidebar theme shows it in its panel on wide screens; on phones
+            in the home header and beside the bio in the footer. The others leave it out.
           </p>
           <.list id="portrait-slots">
             <.image_slot
