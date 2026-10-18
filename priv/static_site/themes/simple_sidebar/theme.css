@@ -161,7 +161,6 @@ figcaption {
   color: var(--seam);
 }
 
-/* Scale printing: the small tracked capitals of a device label. */
 .site-domain,
 .meta-label,
 .social-links,
@@ -1210,7 +1209,6 @@ main .project-image img {
   }
 }
 
-/* Mobile: the panel becomes a compact header so the first post starts on the first screen. */
 @media (max-width: 51.99rem) {
   .sidebar {
     padding: 1rem;

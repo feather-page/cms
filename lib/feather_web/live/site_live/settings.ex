@@ -357,8 +357,6 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> reset_link_form()}
   end
 
-  ## Site form
-
   @impl true
   def handle_event("validate", %{"site" => params}, socket) do
     changeset = Sites.change_site(socket.assigns.current_scope.site, params)
@@ -374,8 +372,6 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   def handle_event("save_bio", %{"site" => params}, socket),
     do: save_site(socket, :bio_form, params)
-
-  ## Social media links
 
   def handle_event("add_link", _params, socket) do
     {:noreply, assign(socket, :adding_link?, true)}
@@ -446,8 +442,6 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> stream(:social_media_links, links, reset: true)
      |> assign(:links_empty?, links == [])}
   end
-
-  ## Mascots and portrait
 
   def handle_event("validate_upload", _params, socket) do
     socket =

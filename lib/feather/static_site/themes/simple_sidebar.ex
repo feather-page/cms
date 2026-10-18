@@ -133,7 +133,6 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
 
   defp short_date(date), do: date |> format_short_date() |> punctuated()
 
-  # Under a year heading the year is dropped; a format that does not end in it stays whole.
   defp day_and_month(date) do
     date
     |> format_short_date()

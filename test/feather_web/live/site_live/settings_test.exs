@@ -40,7 +40,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
   describe "site form" do
     setup [:register_and_log_in_user, :create_site_for_user]
 
-    # Rails: site_management.feature "Edit a site"
     test "updates the title and the other settings", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
@@ -77,7 +76,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert site.bio == "I build websites."
     end
 
-    # Rails: site_management.feature "Change site emoji"
     test "changes the emoji", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
@@ -156,7 +154,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
                ~s(#social_media_link_url[placeholder="https://mastodon.social/@johndoe"])
              )
 
-      # What was typed into the URL field is kept.
       assert has_element?(lv, ~s(#social_media_link_url[value="https://x.example/me"]))
     end
 
@@ -179,7 +176,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert link.name == "My GitHub"
       assert has_element?(lv, "#social_media_links-#{link.id}", "https://github.com/me")
       refute has_element?(lv, "#no-social-media-links")
-      # The form closes and opens again empty.
       refute has_element?(lv, "#social-media-link-form")
       lv |> element("#add-link") |> render_click()
       refute has_element?(lv, "#service-github[aria-pressed=true]")
