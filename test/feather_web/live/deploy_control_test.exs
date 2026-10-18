@@ -92,13 +92,13 @@ defmodule FeatherWeb.DeployControlTest do
     } do
       page_fixture(scope, title: "First", add_to_navigation: true)
       second = page_fixture(scope, title: "Second")
+      deleted = page_fixture(scope, title: "Deleted")
       target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
-      fresh = page_fixture(scope, title: "Fresh")
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/pages")
-      assert has_element?(lv, @panel, "1 change not live")
-
-      confirm_click(lv, "#delete-page-#{fresh.public_id}-menu-item")
       assert has_element?(lv, @panel, "Live")
+
+      confirm_click(lv, "#delete-page-#{deleted.public_id}-menu-item")
+      assert has_element?(lv, @panel, "1 change not live")
 
       changes = [
         fn -> lv |> element("#add-to-navigation-#{second.public_id}") |> render_click() end,
@@ -115,6 +115,38 @@ defmodule FeatherWeb.DeployControlTest do
         change.()
         assert has_element?(lv, @panel, "1 change not live")
       end
+    end
+
+    test "after deleting a post or project on its list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Deleted")
+      project = project_fixture(scope, title: "Deleted")
+      target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+
+      for {list, button} <- [
+            {"posts", "#delete-post-#{post.public_id}-menu-item"},
+            {"projects", "#delete-project-#{project.public_id}-menu-item"}
+          ] do
+        deployed(target, DateTime.utc_now())
+        {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/#{list}")
+        assert has_element?(lv, @panel, "Live")
+
+        confirm_click(lv, button)
+        assert has_element?(lv, @panel, "1 change not live")
+      end
+    end
+
+    test "after unpublishing in the form", %{conn: conn, site: site, scope: scope} do
+      post = post_fixture(scope, title: "Unpublished")
+      scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+      assert has_element?(lv, @panel, "Live")
+
+      lv |> element("#unpublish-post") |> render_click()
+      assert has_element?(lv, @panel, "1 change not live")
     end
 
     test "after toggling add to navigation in the page form", %{

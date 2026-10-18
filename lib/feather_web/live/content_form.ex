@@ -276,6 +276,7 @@ defmodule FeatherWeb.ContentForm do
     |> put_record(record)
     |> socket.view.assign_form(socket.assigns.params, socket.assigns.form.source.action)
     |> LiveView.put_flash(:info, "#{socket.view.noun()} was unpublished.")
+    |> FeatherWeb.SiteAuth.refresh_deploy_status()
   end
 
   defp init_autosave(socket, record) do

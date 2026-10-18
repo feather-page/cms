@@ -125,7 +125,8 @@ defmodule FeatherWeb.ProjectLive.Index do
     {:noreply,
      socket
      |> assign(:empty?, projects == [])
-     |> stream(:projects, projects, reset: true)}
+     |> stream(:projects, projects, reset: true)
+     |> FeatherWeb.SiteAuth.refresh_deploy_status()}
   end
 
   defp edit_path(site, project),

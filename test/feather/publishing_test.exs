@@ -1,7 +1,7 @@
 defmodule Feather.PublishingTest do
   use Feather.DataCase
 
-  alias Feather.{Content, Publishing, Sites}
+  alias Feather.{Books, Content, Publishing, Sites}
 
   setup do
     %{scope: site_scope_fixture()}
@@ -183,7 +183,7 @@ defmodule Feather.PublishingTest do
     end
   end
 
-  describe "undeployed_count/1 and the site's own changes" do
+  describe "undeployed_count/2 and changes without a version" do
     setup %{scope: scope} do
       target = deployment_target_fixture(scope)
       rewind(target)
@@ -246,9 +246,12 @@ defmodule Feather.PublishingTest do
       end
     end
 
-    test "adding, moving and removing navigation items counts", %{scope: scope, target: target} do
-      about = page_fixture(scope, title: "About", draft: true)
-      contact = page_fixture(scope, title: "Contact", draft: true)
+    test "adding, moving and removing published pages in the navigation counts", %{
+      scope: scope,
+      target: target
+    } do
+      about = page_fixture(scope, title: "About")
+      contact = page_fixture(scope, title: "Contact")
 
       changes = [
         fn -> {:ok, _item} = Sites.add_to_navigation(scope, about) end,
@@ -257,10 +260,7 @@ defmodule Feather.PublishingTest do
           item = Enum.find(Sites.list_navigation_items(scope), &(&1.page_id == contact.id))
           :ok = Sites.move_navigation_item_up(scope, item)
         end,
-        fn -> :ok = Sites.remove_from_navigation(scope, about) end,
-        fn ->
-          {:ok, _page} = Content.delete_page(scope, Content.get_page(scope, contact.public_id))
-        end
+        fn -> :ok = Sites.remove_from_navigation(scope, about) end
       ]
 
       for change <- changes do
@@ -269,8 +269,25 @@ defmodule Feather.PublishingTest do
       end
     end
 
-    test "toggling a page's add_to_navigation counts", %{scope: scope, target: target} do
-      page = page_fixture(scope, title: "About", draft: true)
+    test "adding and removing draft pages in the navigation does not count", %{
+      scope: scope,
+      target: target
+    } do
+      draft = page_fixture(scope, title: "Draft", draft: true)
+      {:ok, unpublished} = Content.unpublish(scope, page_fixture(scope, title: "Unpublished"))
+      rewind(target)
+
+      assert site_changes_count(scope, fn ->
+               {:ok, _item} = Sites.add_to_navigation(scope, draft)
+               {:ok, _item} = Sites.add_to_navigation(scope, unpublished)
+               :ok = Sites.remove_from_navigation(scope, draft)
+               :ok = Sites.remove_from_navigation(scope, unpublished)
+             end) == 0
+    end
+
+    test "toggling a published page's add_to_navigation counts", %{scope: scope, target: target} do
+      page = page_fixture(scope, title: "About")
+      rewind(target)
 
       assert site_changes_count(scope, fn ->
                {:ok, _page} = Content.update_page(scope, page, %{add_to_navigation: true})
@@ -282,6 +299,96 @@ defmodule Feather.PublishingTest do
       assert site_changes_count(scope, fn ->
                {:ok, _page} = Content.update_page(scope, page, %{add_to_navigation: false})
              end) == 1
+    end
+
+    test "deleting or unpublishing a published post, page or project counts", %{
+      scope: scope,
+      target: target
+    } do
+      records = [
+        {post_fixture(scope), &Content.get_post(scope, &1), &Content.delete_post(scope, &1)},
+        {page_fixture(scope), &Content.get_page(scope, &1), &Content.delete_page(scope, &1)},
+        {project_fixture(scope), &Content.get_project(scope, &1),
+         &Content.delete_project(scope, &1)}
+      ]
+
+      for {record, get, delete} <- records do
+        rewind(target)
+        unpublish = fn -> {:ok, _record} = Content.unpublish(scope, record) end
+        assert site_changes_count(scope, unpublish) == 1
+
+        {:ok, _record} = Content.publish(scope, get.(record.public_id))
+        rewind(target)
+
+        assert site_changes_count(scope, fn -> {:ok, _} = delete.(get.(record.public_id)) end) ==
+                 1
+      end
+    end
+
+    test "deleting or unpublishing a draft does not count", %{scope: scope, target: target} do
+      post = post_fixture(scope, draft: true)
+      page = page_fixture(scope, draft: true)
+      project = project_fixture(scope, draft: true)
+      rewind(target)
+
+      assert site_changes_count(scope, fn ->
+               {:ok, _post} = Content.unpublish(scope, post)
+               {:ok, _post} = Content.delete_post(scope, post)
+               {:ok, _page} = Content.delete_page(scope, page)
+               {:ok, _project} = Content.delete_project(scope, project)
+             end) == 0
+    end
+
+    test "deleting a post loaded as a draft and published since counts", %{
+      scope: scope,
+      target: target
+    } do
+      post = post_fixture(scope, draft: true)
+      {:ok, _post} = Content.publish(scope, post)
+      rewind(target)
+
+      assert site_changes_count(scope, fn -> {:ok, _post} = Content.delete_post(scope, post) end) ==
+               1
+    end
+
+    test "adding, changing, covering and deleting a book counts", %{scope: scope, target: target} do
+      book = book_fixture(scope)
+      image = image_fixture(scope)
+
+      changes = [
+        fn -> book_fixture(scope, title: "Another book") end,
+        fn -> {:ok, _book} = Books.update_book(scope, book, %{rating: 4}) end,
+        fn -> {:ok, _book} = Books.update_book(scope, book, %{cover_image_id: image.id}) end,
+        fn -> {:ok, _book} = Books.delete_book(scope, Books.get_book!(scope, book.public_id)) end
+      ]
+
+      for change <- changes do
+        rewind(target)
+        assert site_changes_count(scope, change) == 1
+      end
+    end
+
+    test "deleting a draft review counts only when it clears a rating", %{
+      scope: scope,
+      target: target
+    } do
+      for {rating, count} <- [{4, 1}, {nil, 0}] do
+        book = book_fixture(scope, rating: rating)
+        {:ok, %{book: book}} = Books.create_review(scope, book, %{title: "Review"})
+        rewind(target)
+
+        assert site_changes_count(scope, fn -> {:ok, _book} = Books.delete_review(scope, book) end) ==
+                 count
+      end
+    end
+
+    test "saving a book unchanged does not count", %{scope: scope, target: target} do
+      book = book_fixture(scope)
+      rewind(target)
+
+      assert site_changes_count(scope, fn ->
+               {:ok, _book} = Books.update_book(scope, book, %{title: book.title})
+             end) == 0
     end
 
     test "changes to the navigation that change nothing do not count", %{
@@ -303,7 +410,12 @@ defmodule Feather.PublishingTest do
     defp rewind(target) do
       an_hour_ago = DateTime.add(DateTime.utc_now(), -1, :hour)
       Repo.update_all(Feather.Sites.Site, set: [updated_at: an_hour_ago])
-      Repo.update_all(Feather.Content.PageVersion, set: [published_at: an_hour_ago])
+
+      for {_record, version, _owner} <- Content.versioned_schemas(),
+          do: Repo.update_all(version, set: [published_at: an_hour_ago])
+
+      Repo.update_all(Feather.Content.PostVersion, set: [publish_at: an_hour_ago])
+
       deployed(target, DateTime.add(DateTime.utc_now(), -1, :minute))
     end
   end
@@ -386,7 +498,9 @@ defmodule Feather.PublishingTest do
       post = post_published(scope, at("07:24"), at("08:08"))
       deployed(target, at("07:25"))
       {:ok, _post} = Content.unpublish(scope, Content.get_post(scope, post.public_id))
+      assert Publishing.undeployed_count(scope, at("08:09")) == 1
 
+      Repo.update_all(Feather.Sites.Site, set: [updated_at: at("06:00")])
       assert Publishing.undeployed_count(scope, at("08:09")) == 0
     end
 

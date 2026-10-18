@@ -3,9 +3,14 @@ defmodule Feather.Sites do
   Sites, their members, invitations, social media links and the main
   navigation.
 
-  Changes to the settings, images, social media links and navigation move
-  the site's `updated_at`, so `Feather.Publishing.undeployed_count/1`
-  counts them as not deployed yet.
+  Changes the export shows that have no version of their own move the
+  site's `updated_at` (`touch_site/1`), so
+  `Feather.Publishing.undeployed_count/2` counts them once as not deployed
+  yet: the settings, images, social media links and navigation here, and
+  books and deleting or unpublishing a published record in
+  `Feather.Books` and `Feather.Content`. Adding a page to the navigation or
+  removing it counts only while the page is published, since the export
+  leaves out the others.
 
   Authorisation: a user may access a site if they are a super admin or a
   member of it. Lookups for sites the user may not access behave as if the
@@ -16,6 +21,7 @@ defmodule Feather.Sites do
 
   alias Feather.Accounts
   alias Feather.Accounts.{Scope, User}
+  alias Feather.Content
   alias Feather.Content.Page
   alias Feather.Media.Cleanup
   alias Feather.Repo
@@ -565,21 +571,21 @@ defmodule Feather.Sites do
   @doc "Creates a social media link for the scope's site."
   @spec create_social_media_link(Scope.t(), map()) ::
           {:ok, SocialMediaLink.t()} | {:error, Ecto.Changeset.t()}
-  def create_social_media_link(%Scope{site: %Site{id: site_id}}, attrs) do
+  def create_social_media_link(%Scope{site: %Site{id: site_id}} = scope, attrs) do
     %SocialMediaLink{site_id: site_id}
     |> SocialMediaLink.changeset(attrs)
     |> Repo.insert()
-    |> touch_site_on_success(site_id)
+    |> touch_site_on_success(scope)
   end
 
   @doc "Deletes a social media link."
   @spec delete_social_media_link(Scope.t(), SocialMediaLink.t()) :: {:ok, SocialMediaLink.t()}
-  def delete_social_media_link(%Scope{site: %Site{id: site_id}}, link) do
+  def delete_social_media_link(%Scope{site: %Site{id: site_id}} = scope, link) do
     %SocialMediaLink{site_id: ^site_id} = link
 
     link
     |> Repo.delete()
-    |> touch_site_on_success(site_id)
+    |> touch_site_on_success(scope)
   end
 
   @doc "Returns a changeset for a social media link form."
@@ -620,23 +626,31 @@ defmodule Feather.Sites do
   """
   @spec add_to_navigation(Scope.t(), Page.t()) ::
           {:ok, NavigationItem.t()} | {:error, Ecto.Changeset.t()}
-  def add_to_navigation(%Scope{site: %Site{id: site_id}}, %Page{site_id: site_id} = page) do
+  def add_to_navigation(%Scope{site: %Site{id: site_id}} = scope, %Page{site_id: site_id} = page) do
     Repo.transact(fn ->
       case Repo.get_by(NavigationItem, site_id: site_id, page_id: page.id) do
         %NavigationItem{} = item ->
           {:ok, item}
 
         nil ->
-          max =
-            Repo.one(
-              from n in NavigationItem, where: n.site_id == ^site_id, select: max(n.position)
-            )
-
-          %NavigationItem{site_id: site_id, page_id: page.id, position: (max || 0) + 1}
-          |> Repo.insert()
-          |> touch_site_on_success(site_id)
+          append_to_navigation(scope, page)
       end
     end)
+  end
+
+  defp append_to_navigation(%Scope{site: %Site{id: site_id}} = scope, page) do
+    max =
+      Repo.one(from n in NavigationItem, where: n.site_id == ^site_id, select: max(n.position))
+
+    with {:ok, item} <-
+           Repo.insert(%NavigationItem{
+             site_id: site_id,
+             page_id: page.id,
+             position: (max || 0) + 1
+           }) do
+      if Content.stored_published?(page), do: touch_site(scope)
+      {:ok, item}
+    end
   end
 
   @doc """
@@ -644,7 +658,10 @@ defmodule Feather.Sites do
   gap in the positions.
   """
   @spec remove_from_navigation(Scope.t(), Page.t()) :: :ok
-  def remove_from_navigation(%Scope{site: %Site{id: site_id}}, %Page{site_id: site_id} = page) do
+  def remove_from_navigation(
+        %Scope{site: %Site{id: site_id}} = scope,
+        %Page{site_id: site_id} = page
+      ) do
     {:ok, :ok} =
       Repo.transact(fn ->
         {deleted, _} =
@@ -653,7 +670,7 @@ defmodule Feather.Sites do
           )
 
         renumber_navigation(site_id)
-        if deleted > 0, do: touch_site(site_id)
+        if deleted > 0 and Content.stored_published?(page), do: touch_site(scope)
         {:ok, :ok}
       end)
 
@@ -676,7 +693,11 @@ defmodule Feather.Sites do
   def move_navigation_item_down(%Scope{} = scope, %NavigationItem{} = item),
     do: move_navigation_item(scope, item, 1)
 
-  defp move_navigation_item(%Scope{site: %Site{id: site_id}}, %NavigationItem{} = item, offset) do
+  defp move_navigation_item(
+         %Scope{site: %Site{id: site_id}} = scope,
+         %NavigationItem{} = item,
+         offset
+       ) do
     %NavigationItem{site_id: ^site_id} = item
 
     {:ok, :ok} =
@@ -704,7 +725,7 @@ defmodule Feather.Sites do
           end
 
         write_positions(ids)
-        if moves?, do: touch_site(site_id)
+        if moves?, do: touch_site(scope)
         {:ok, :ok}
       end)
 
@@ -721,17 +742,24 @@ defmodule Feather.Sites do
     |> write_positions()
   end
 
-  defp touch_site_on_success({:ok, _record} = result, site_id) do
-    touch_site(site_id)
+  defp touch_site_on_success({:ok, _record} = result, scope) do
+    touch_site(scope)
     result
   end
 
-  defp touch_site_on_success(error, _site_id), do: error
+  defp touch_site_on_success(error, _scope), do: error
 
-  defp touch_site(site_id) do
+  @doc """
+  Moves the `updated_at` of the scope's site, for a change the export shows
+  that has no version of its own (see the module doc).
+  """
+  @spec touch_site(Scope.t()) :: :ok
+  def touch_site(%Scope{site: %Site{id: site_id}}) do
     Repo.update_all(from(s in Site, where: s.id == ^site_id),
       set: [updated_at: DateTime.utc_now()]
     )
+
+    :ok
   end
 
   defp write_positions(ids) do

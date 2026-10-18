@@ -172,8 +172,11 @@ defmodule FeatherWeb.ReviewLive.Form do
     %{current_scope: scope, book: book} = socket.assigns
 
     case Books.update_book(scope, book, %{rating: params["rating"]}) do
-      {:ok, book} -> {:noreply, assign(socket, :book, book)}
-      {:error, _invalid_rating} -> {:noreply, socket}
+      {:ok, book} ->
+        {:noreply, socket |> assign(:book, book) |> FeatherWeb.SiteAuth.refresh_deploy_status()}
+
+      {:error, _invalid_rating} ->
+        {:noreply, socket}
     end
   end
 

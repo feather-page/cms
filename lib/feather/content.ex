@@ -15,7 +15,9 @@ defmodule Feather.Content do
   (`PostVersion`, `PageVersion`, `ProjectVersion`) and points
   `published_version_id` at it. Versions copy the header and
   thumbnail image ids, not image rows: images stay owned by the record.
-  Deleting a record deletes its versions.
+  Deleting a record deletes its versions. Deleting or unpublishing a
+  published record moves the site's `updated_at`
+  (`Feather.Sites.touch_site/1`): no version records that change.
 
   ## Saving
 
@@ -151,8 +153,8 @@ defmodule Feather.Content do
   loses its review.
   """
   @spec delete_post(Scope.t(), Post.t()) :: {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
-  def delete_post(%Scope{site: %Site{id: site_id}}, %Post{site_id: site_id} = post) do
-    delete_with_images(post, :post_id)
+  def delete_post(%Scope{site: %Site{id: site_id}} = scope, %Post{site_id: site_id} = post) do
+    delete_with_images(scope, post, :post_id)
   end
 
   @doc "Returns a changeset for a post form."
@@ -290,7 +292,7 @@ defmodule Feather.Content do
   def delete_page(%Scope{site: %Site{id: site_id}} = scope, %Page{site_id: site_id} = page) do
     Repo.transact(fn ->
       :ok = Sites.remove_from_navigation(scope, page)
-      delete_with_images(page, :page_id)
+      delete_with_images(scope, page, :page_id)
     end)
   end
 
@@ -371,8 +373,11 @@ defmodule Feather.Content do
   @doc "Deletes a project and the images it owns that nothing else uses."
   @spec delete_project(Scope.t(), Project.t()) ::
           {:ok, Project.t()} | {:error, Ecto.Changeset.t()}
-  def delete_project(%Scope{site: %Site{id: site_id}}, %Project{site_id: site_id} = project) do
-    delete_with_images(project, :project_id)
+  def delete_project(
+        %Scope{site: %Site{id: site_id}} = scope,
+        %Project{site_id: site_id} = project
+      ) do
+    delete_with_images(scope, project, :project_id)
   end
 
   @doc "Returns a changeset for a project form."
@@ -689,21 +694,29 @@ defmodule Feather.Content do
   # and lock_version, as they are.
   defp put_published_version(%schema{id: id}, version) do
     Repo.update_all(from(r in schema, where: r.id == ^id),
-      set: [published_version_id: version && version.id]
+      set: [published_version_id: version.id]
     )
   end
 
   @doc """
   Unpublishes a post, page or project: it becomes a draft and leaves the
   site. Its versions and its unpublished changes stay, so does its
-  `updated_at`.
+  `updated_at`; the site's `updated_at` moves if it was published.
   """
   @spec unpublish(Scope.t(), record) :: {:ok, record}
         when record: Post.t() | Page.t() | Project.t()
-  def unpublish(%Scope{site: %Site{id: site_id}}, %schema{site_id: site_id} = record)
+  def unpublish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
-    put_published_version(record, nil)
-    {:ok, %{record | published_version_id: nil, published_version: nil}}
+    Repo.transact(fn ->
+      {unpublished, _} =
+        Repo.update_all(
+          from(r in schema, where: r.id == ^record.id and not is_nil(r.published_version_id)),
+          set: [published_version_id: nil]
+        )
+
+      :ok = touch_site_if(unpublished > 0, scope)
+      {:ok, %{record | published_version_id: nil, published_version: nil}}
+    end)
   end
 
   @doc """
@@ -712,6 +725,14 @@ defmodule Feather.Content do
   """
   @spec draft?(Post.t() | Page.t() | Project.t()) :: boolean()
   def draft?(%{published_version_id: id}), do: is_nil(id)
+
+  @doc """
+  Returns true if the stored post, page or project is published, whatever
+  the given struct, which may be stale, says.
+  """
+  @spec stored_published?(Post.t() | Page.t() | Project.t()) :: boolean()
+  def stored_published?(%schema{id: id}) when is_map_key(@versions, schema),
+    do: Repo.exists?(from r in schema, where: r.id == ^id and not is_nil(r.published_version_id))
 
   @doc """
   Whether the post, page or project is a `:draft`, `:published` as it is,
@@ -989,12 +1010,15 @@ defmodule Feather.Content do
 
   # The record's images are deleted unless something else still uses them,
   # see Feather.Media.Cleanup.delete_released/1.
-  defp delete_with_images(record, owner_field) do
+  defp delete_with_images(scope, record, owner_field) do
     images = Media.list_images_owned_by(owner_field, record.id)
 
     result =
       Repo.transact(fn ->
-        with {:ok, record} <- Repo.delete(record) do
+        published? = stored_published?(record)
+
+        with {:ok, record} <- Repo.delete(record),
+             :ok <- touch_site_if(published?, scope) do
           {:ok, {record, Cleanup.delete_released(images)}}
         end
       end)
@@ -1004,4 +1028,7 @@ defmodule Feather.Content do
       {:ok, record}
     end
   end
+
+  defp touch_site_if(true, scope), do: Sites.touch_site(scope)
+  defp touch_site_if(false, _scope), do: :ok
 end

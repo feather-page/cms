@@ -133,7 +133,10 @@ defmodule FeatherWeb.PostLive.Index do
         {:error, _reason} -> put_flash(socket, :error, "The post could not be deleted.")
       end
 
-    {:noreply, load_posts(socket, socket.assigns.pagination.page)}
+    {:noreply,
+     socket
+     |> load_posts(socket.assigns.pagination.page)
+     |> FeatherWeb.SiteAuth.refresh_deploy_status()}
   end
 
   defp load_posts(socket, page) do

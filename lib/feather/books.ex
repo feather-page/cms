@@ -5,6 +5,11 @@ defmodule Feather.Books do
   A review is a post linked from the book (`book.post_id`). Deleting a
   review deletes the post and clears the rating; deleting a book deletes
   its review post and its cover image.
+
+  Adding, changing and deleting a book, and a deleted review clearing a
+  rating, move the site's `updated_at` (`Feather.Sites.touch_site/1`):
+  books have no versions, so this is how a change to the bookshelf counts
+  as not deployed.
   """
 
   import Ecto.Query, warn: false
@@ -15,6 +20,7 @@ defmodule Feather.Books do
   alias Feather.Content.Post
   alias Feather.Media
   alias Feather.Repo
+  alias Feather.Sites
   alias Feather.Sites.Site
 
   @doc """
@@ -151,21 +157,34 @@ defmodule Feather.Books do
 
   @doc "Creates a book in the scope's site."
   @spec create_book(Scope.t(), map()) :: {:ok, Book.t()} | {:error, Ecto.Changeset.t()}
-  def create_book(%Scope{site: %Site{id: site_id}}, attrs) do
+  def create_book(%Scope{site: %Site{id: site_id}} = scope, attrs) do
     %Book{site_id: site_id}
     |> Book.create_changeset(attrs)
     |> Media.validate_site_images([:cover_image_id])
-    |> Repo.insert()
+    |> save(scope)
   end
 
   @doc "Updates a book."
   @spec update_book(Scope.t(), Book.t(), map()) :: {:ok, Book.t()} | {:error, Ecto.Changeset.t()}
-  def update_book(%Scope{site: %Site{id: site_id}}, %Book{site_id: site_id} = book, attrs) do
+  def update_book(%Scope{site: %Site{id: site_id}} = scope, %Book{site_id: site_id} = book, attrs) do
     book
     |> Book.changeset(attrs)
     |> Media.validate_site_images([:cover_image_id])
-    |> Repo.update()
+    |> save(scope)
   end
+
+  defp save(changeset, scope) do
+    Repo.transact(fn ->
+      with {:ok, book} <- Repo.insert_or_update(changeset),
+           :ok <- touch_site_if_changed(changeset, scope),
+           do: {:ok, book}
+    end)
+  end
+
+  defp touch_site_if_changed(%Ecto.Changeset{changes: changes}, _scope) when changes == %{},
+    do: :ok
+
+  defp touch_site_if_changed(_changeset, scope), do: Sites.touch_site(scope)
 
   @doc "Deletes a book, its review post and its cover image."
   @spec delete_book(Scope.t(), Book.t()) :: {:ok, Book.t()} | {:error, Ecto.Changeset.t()}
@@ -179,6 +198,7 @@ defmodule Feather.Books do
     with {:ok, deleted} <- Repo.delete(book) do
       if book.post, do: {:ok, _} = Content.delete_post(scope, book.post)
       if book.cover_image, do: {:ok, _} = Media.delete_image(book.cover_image)
+      Sites.touch_site(scope)
       {:ok, deleted}
     end
   end
@@ -265,13 +285,21 @@ defmodule Feather.Books do
         {:error, :no_review}
 
       post ->
-        Repo.transact(fn ->
-          {:ok, _post} = Content.delete_post(scope, post)
-
-          book
-          |> Ecto.Changeset.change(post_id: nil, rating: nil)
-          |> Repo.update()
-        end)
+        Repo.transact(fn -> delete_review_post(scope, book, post) end)
     end
+  end
+
+  defp delete_review_post(scope, book, post) do
+    {:ok, _post} = Content.delete_post(scope, post)
+    changeset = Ecto.Changeset.change(book, post_id: nil, rating: nil)
+
+    with {:ok, book} <- Repo.update(changeset),
+         :ok <- touch_site_if_rating_cleared(changeset, scope),
+         do: {:ok, book}
+  end
+
+  # The bookshelf shows the rating.
+  defp touch_site_if_rating_cleared(changeset, scope) do
+    if Ecto.Changeset.changed?(changeset, :rating), do: Sites.touch_site(scope), else: :ok
   end
 end

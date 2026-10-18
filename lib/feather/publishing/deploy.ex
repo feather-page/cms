@@ -11,8 +11,10 @@ defmodule Feather.Publishing.Deploy do
     4. swap it in as the live directory `<storage_root>/static_site/<target id>/public`
     5. sync the live directory with rclone (`Feather.Publishing.Rclone`)
     6. record the time the export started as the target's `last_deployed_at`
-       (`Feather.Publishing.record_deploy/2`): what was published later is
-       not in this deploy
+       (`Feather.Publishing.record_deploy/2`): what was published or
+       changed later is not in this deploy. The time is taken once running
+       write transactions have committed, so what they stamped earlier is
+       in the export
     7. release the lock (always) and broadcast a notice
 
   A failure before step 4 leaves the live directory untouched.
@@ -157,7 +159,8 @@ defmodule Feather.Publishing.Deploy do
   ## Pipeline
 
   defp build_and_sync(target, started_at, opts) do
-    export_started_at = DateTime.utc_now()
+    # An immediate transaction waits for running writes: what they stamped is in the export.
+    {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
     sink = FileSink.new(build_path(target))
 
     try do

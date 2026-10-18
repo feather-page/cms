@@ -279,14 +279,15 @@ defmodule Feather.Publishing do
   @doc """
   The number of changes a deployment target does not show yet: the posts,
   pages and projects published after the oldest deploy, plus 1 if the
-  site itself (settings, images, social media links, navigation, see
-  `Feather.Sites`) changed since. Counts everything published, and the
-  site, if a target was never deployed; 0 without a deployment target.
+  site's `updated_at` moved since, for any number of changes without a
+  version (settings, images, social media links, navigation, books,
+  deleting or unpublishing a published record, see `Feather.Sites`).
+  Counts everything published, and the site, if a target was never
+  deployed; 0 without a deployment target.
 
   A post counts by its published version alone, from the later of its
   `published_at` and `publish_at` (see `live?/3`), so a scheduled post
-  counts once it is due at `now`. Unpublishing creates no version, so it
-  does not count.
+  counts once it is due at `now`.
   """
   @spec undeployed_count(Scope.t(), DateTime.t()) :: non_neg_integer()
   def undeployed_count(%Scope{site: %Site{id: site_id}}, now \\ DateTime.utc_now()) do
