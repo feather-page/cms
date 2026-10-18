@@ -204,6 +204,17 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     assert Floki.find(doc(sink, "older/index.html"), ".post-nav-seal") == []
   end
 
+  test "the bio is left out of every page" do
+    %{scope: scope, sink: sink} =
+      build_site(%{title: "Coder", bio: "I build websites since 2001."}, [])
+
+    assert scope.site.bio == "I build websites since 2001."
+
+    for path <- @pages do
+      refute RecordingSink.get(sink, path) =~ "since 2001", path
+    end
+  end
+
   test "an untitled note is headed by the site title and titled by its first words" do
     scope = site_scope_fixture(%{title: "Zipfelmaus"})
 

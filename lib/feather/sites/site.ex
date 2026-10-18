@@ -11,6 +11,7 @@ defmodule Feather.Sites.Site do
   @type mascot_slot :: :footer | :post_end | :projects
 
   @mascot_slots [:footer, :post_end, :projects]
+  @bio_max_length 500
 
   schema "sites" do
     field :public_id, :string
@@ -20,6 +21,7 @@ defmodule Feather.Sites.Site do
     field :emoji, :string, default: "🌐"
     field :copyright, :string, default: "© All rights reserved."
     field :theme, :string, default: "feather"
+    field :bio, :string
 
     has_many :site_users, Feather.Sites.SiteUser
     has_many :users, through: [:site_users, :user]
@@ -44,15 +46,17 @@ defmodule Feather.Sites.Site do
   @doc false
   def changeset(site, attrs) do
     site
-    |> cast(attrs, [:title, :domain, :language_code, :emoji, :copyright, :theme])
+    |> cast(attrs, [:title, :domain, :language_code, :emoji, :copyright, :theme, :bio])
     |> update_change(:domain, &normalize_domain/1)
     |> Feather.Validations.trim_to_nil(:emoji)
+    |> Feather.Validations.trim_to_nil(:bio)
     |> validate_required([:title, :domain, :language_code, :copyright, :theme])
     |> validate_format(:domain, ~r/\A[a-zA-Z0-9\-.]+\z/,
       message: "may only contain letters, digits, dots and dashes"
     )
     |> validate_inclusion(:language_code, Languages.codes())
     |> validate_inclusion(:theme, Themes.keys())
+    |> validate_length(:bio, max: @bio_max_length)
     |> Feather.Validations.validate_emoji(:emoji)
     |> unique_constraint(:domain)
     |> unique_constraint(:public_id)

@@ -1,8 +1,8 @@
 defmodule FeatherWeb.SiteLive.Settings do
   @moduledoc """
   The settings of a site: emoji, title, domain, language, theme and
-  copyright notice, the site's social media links, its mascots and its
-  portrait.
+  copyright notice, the site's social media links, its mascots, its
+  portrait and its bio.
 
   Each change counts as not deployed yet in the site shell's deploy
   control (`FeatherWeb.SiteAuth.refresh_deploy_status/1`).
@@ -230,8 +230,8 @@ defmodule FeatherWeb.SiteLive.Settings do
         <section id="portrait-section" aria-labelledby="portrait-heading" class="mt-10">
           <.section_heading id="portrait-heading">Portrait</.section_heading>
           <p id="portrait-hint" class="mb-4 text-sm text-base-content/70">
-            A photo of you. The Simple sidebar theme shows it on the home page; the others leave
-            it out.
+            A photo of you. The Simple sidebar theme shows it in its panel on wide screens; on phones
+            in the home header and beside the bio in the footer. The others leave it out.
           </p>
           <.list id="portrait-slots">
             <.image_slot
@@ -245,6 +245,20 @@ defmodule FeatherWeb.SiteLive.Settings do
               error={@image_errors[:portrait]}
             />
           </.list>
+        </section>
+
+        <section id="bio-section" aria-labelledby="bio-heading" class="mt-10">
+          <.section_heading id="bio-heading">Bio</.section_heading>
+          <p id="bio-hint" class="mb-4 text-sm text-base-content/70">
+            A few sentences about you, as plain text. The Simple sidebar theme shows it on every
+            page; the others leave it out.
+          </p>
+          <.form for={@bio_form} id="bio-form" phx-change="validate_bio" phx-submit="save_bio">
+            <.input field={@bio_form[:bio]} type="textarea" label="Bio" hide_label rows="4" />
+            <.action_bar class="mt-4">
+              <.button type="submit" variant={:primary} phx-disable-with="Saving…">Save</.button>
+            </.action_bar>
+          </.form>
         </section>
       </div>
     </.site_shell>
@@ -328,31 +342,20 @@ defmodule FeatherWeb.SiteLive.Settings do
     scope = Scope.put_site(scope, Sites.preload_images(scope.site))
     links = Sites.list_social_media_links(scope)
 
-    socket =
-      Enum.reduce(@image_slots, socket, fn {slot, info}, socket ->
-        allow_upload(socket, slot_assoc(slot),
-          accept: info.accept,
-          max_entries: 1,
-          max_file_size: Feather.Media.max_byte_size(),
-          auto_upload: true,
-          progress: &handle_image_progress/3
-        )
-      end)
-
     {:ok,
      socket
+     |> allow_image_uploads()
      |> assign(:current_scope, scope)
      |> assign(:image_slots, @image_slots)
      |> assign(:image_errors, %{})
      |> assign(:page_title, "Site settings")
      |> assign(:services, SocialMediaService.all())
      |> assign(:form, to_form(Sites.change_site(scope.site)))
+     |> assign(:bio_form, to_form(Sites.change_site(scope.site)))
      |> assign(:links_empty?, links == [])
      |> stream(:social_media_links, links)
      |> reset_link_form()}
   end
-
-  ## Site form
 
   @impl true
   def handle_event("validate", %{"site" => params}, socket) do
@@ -360,26 +363,15 @@ defmodule FeatherWeb.SiteLive.Settings do
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
-  def handle_event("save", %{"site" => params}, socket) do
-    scope = socket.assigns.current_scope
+  def handle_event("save", %{"site" => params}, socket), do: save_site(socket, :form, params)
 
-    case Sites.update_site(scope, scope.site, params) do
-      {:ok, site} ->
-        scope = Scope.put_site(scope, site)
-
-        {:noreply,
-         socket
-         |> assign(:current_scope, scope)
-         |> SiteAuth.refresh_deploy_status()
-         |> assign(:form, to_form(Sites.change_site(site)))
-         |> put_flash(:info, "Site was successfully updated.")}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, action: :update))}
-    end
+  def handle_event("validate_bio", %{"site" => params}, socket) do
+    changeset = Sites.change_site(socket.assigns.current_scope.site, params)
+    {:noreply, assign(socket, :bio_form, to_form(changeset, action: :validate))}
   end
 
-  ## Social media links
+  def handle_event("save_bio", %{"site" => params}, socket),
+    do: save_site(socket, :bio_form, params)
 
   def handle_event("add_link", _params, socket) do
     {:noreply, assign(socket, :adding_link?, true)}
@@ -451,8 +443,6 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> assign(:links_empty?, links == [])}
   end
 
-  ## Mascots and portrait
-
   def handle_event("validate_upload", _params, socket) do
     socket =
       Enum.reduce(Keyword.keys(@image_slots), socket, fn slot, socket ->
@@ -492,6 +482,18 @@ defmodule FeatherWeb.SiteLive.Settings do
     end
   end
 
+  defp allow_image_uploads(socket) do
+    Enum.reduce(@image_slots, socket, fn {slot, info}, socket ->
+      allow_upload(socket, slot_assoc(slot),
+        accept: info.accept,
+        max_entries: 1,
+        max_file_size: Feather.Media.max_byte_size(),
+        auto_upload: true,
+        progress: &handle_image_progress/3
+      )
+    end)
+  end
+
   defp handle_image_progress(name, entry, socket) do
     slot = Enum.find(Keyword.keys(@image_slots), &(slot_assoc(&1) == name))
 
@@ -518,6 +520,23 @@ defmodule FeatherWeb.SiteLive.Settings do
     else
       {:halt, socket} -> {:noreply, socket}
       false -> {:noreply, socket}
+    end
+  end
+
+  defp save_site(socket, form, params) do
+    scope = socket.assigns.current_scope
+
+    case Sites.update_site(scope, scope.site, params) do
+      {:ok, site} ->
+        {:noreply,
+         socket
+         |> assign(:current_scope, Scope.put_site(scope, site))
+         |> SiteAuth.refresh_deploy_status()
+         |> assign(form, to_form(Sites.change_site(site)))
+         |> put_flash(:info, "Site was successfully updated.")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, form, to_form(changeset, action: :update))}
     end
   end
 

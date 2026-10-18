@@ -41,9 +41,15 @@ same in every theme.
 _Avoid_: Template, Skin, Design
 
 **Portrait**:
-An optional photo of the site owner that the simple_sidebar theme shows in its panel on the home pages; other themes
-leave it out. Like a mascot, it is an image slot on the site.
+An optional photo of the site owner that the simple_sidebar theme shows in its panel on wide screens and, on phones,
+in the home header and beside the bio in the footer; other themes leave it out. Like a mascot, it is an image slot on
+the site.
 _Avoid_: Avatar, Profile Picture, Logo
+
+**Bio**:
+An optional short plain text about the site owner, set in the site settings. The simple_sidebar theme shows it on every
+page, in its panel on wide screens and in the footer on phones; other themes leave it out.
+_Avoid_: Intro, About, Description, Tagline
 
 **Project**:
 A portfolio entry describing work by the site owner — not the software project in this repo.

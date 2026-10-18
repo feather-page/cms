@@ -40,7 +40,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
   describe "site form" do
     setup [:register_and_log_in_user, :create_site_for_user]
 
-    # Rails: site_management.feature "Edit a site"
     test "updates the title and the other settings", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
@@ -66,7 +65,17 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert site.copyright == "© {{CurrentYear}} Updated"
     end
 
-    # Rails: site_management.feature "Change site emoji"
+    test "keeps the bio", %{conn: conn, site: site, scope: scope} do
+      {:ok, _site} = Sites.update_site(scope, site, %{bio: "I build websites."})
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      lv |> form("#site-form", site: %{title: "Renamed"}) |> render_submit()
+
+      site = Sites.get_site!(scope, site.public_id)
+      assert site.title == "Renamed"
+      assert site.bio == "I build websites."
+    end
+
     test "changes the emoji", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
@@ -145,7 +154,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
                ~s(#social_media_link_url[placeholder="https://mastodon.social/@johndoe"])
              )
 
-      # What was typed into the URL field is kept.
       assert has_element?(lv, ~s(#social_media_link_url[value="https://x.example/me"]))
     end
 
@@ -168,7 +176,6 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       assert link.name == "My GitHub"
       assert has_element?(lv, "#social_media_links-#{link.id}", "https://github.com/me")
       refute has_element?(lv, "#no-social-media-links")
-      # The form closes and opens again empty.
       refute has_element?(lv, "#social-media-link-form")
       lv |> element("#add-link") |> render_click()
       refute has_element?(lv, "#service-github[aria-pressed=true]")
@@ -395,7 +402,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
       assert has_element?(lv, "#portrait-slots #portrait")
-      assert has_element?(lv, "#portrait-hint", "Simple sidebar theme shows it on the home page")
+      assert has_element?(lv, "#portrait-hint", "Simple sidebar theme shows it in its panel")
       refute has_element?(lv, "#portrait-preview img")
       assert has_element?(lv, "#portrait-form label", "Upload")
       assert has_element?(lv, ~s(#portrait-form input[type=file][accept=".jpg,.jpeg,.png,.webp"]))
@@ -460,6 +467,58 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
 
       assert has_element?(lv, "#portrait-error", "Only JPEG, PNG and WebP files can be uploaded.")
       assert portrait(scope) == nil
+    end
+  end
+
+  describe "bio" do
+    setup [:register_and_log_in_user, :create_site_for_user]
+
+    test "shows an empty bio with a hint on the themes", %{conn: conn, site: site} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      assert has_element?(lv, "#bio-hint", "Simple sidebar theme shows it on every page")
+      assert has_element?(lv, "#bio-form textarea#site_bio")
+      refute has_element?(lv, "#site-form textarea")
+    end
+
+    test "saves, trims and clears the bio", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      html =
+        lv
+        |> form("#bio-form", site: %{bio: "  I build websites. Since 2001.  "})
+        |> render_submit()
+
+      assert html =~ "Site was successfully updated."
+      assert has_element?(lv, "#site_bio", "I build websites. Since 2001.")
+      assert Sites.get_site!(scope, site.public_id).bio == "I build websites. Since 2001."
+
+      lv |> form("#bio-form", site: %{bio: " "}) |> render_submit()
+
+      assert Sites.get_site!(scope, site.public_id).bio == nil
+    end
+
+    test "rejects a bio that is too long", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+      bio = String.duplicate("a", 501)
+
+      assert lv |> form("#bio-form", site: %{bio: bio}) |> render_change() =~
+               "Should be at most 500 character(s)"
+
+      lv |> form("#bio-form", site: %{bio: bio}) |> render_submit()
+
+      assert Sites.get_site!(scope, site.public_id).bio == nil
+    end
+
+    test "saving the bio keeps the other settings", %{conn: conn, site: site, scope: scope} do
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
+
+      lv |> form("#bio-form", site: %{bio: "Hello."}) |> render_submit()
+
+      saved = Sites.get_site!(scope, site.public_id)
+      assert saved.bio == "Hello."
+      assert saved.title == site.title
+      assert saved.domain == site.domain
     end
   end
 end
