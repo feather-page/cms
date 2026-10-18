@@ -203,6 +203,13 @@ renderer for preview and export that the consequences anticipated now exists
 (`test/feather/static_site/export_test.exs`), the `FileSink` has its own small test
 (`sinks_and_precompress_test.exs`), and the deploy tests cover the wiring.
 
+### Update (2026-10-18)
+
+No live directory persists between deploys any more
+([0019](#0019-a-site-has-one-deployment-target-addressed-by-its-domain)): the `FileSink` directory
+is created in `<storage_root>/static_site/`, synced from and discarded after the sync, and the boot
+removes what a crashed deploy left there.
+
 ## 0007. Port to Phoenix and SQLite
 
 Accepted, 2026-10-06 (issue #378)
@@ -416,6 +423,13 @@ Accepted, 2026-10-17
 - **Decision:** Sites are delivered only to external hosts by FTPS (`hetzner_ftps`; SFTP will follow as another provider). Staging and backup targets, the target `type`, the `internal` and `fastmail` providers and the internal Caddy hosting are removed; a migration deletes those targets and drops the column. The preview is addressed by site (`/preview/<site public id>/`), renders live for everyone who may access the site and needs no target. A change to the site itself (settings, images, social media links, navigation) moves the site's `updated_at` and counts once as not deployed in `Feather.Publishing.undeployed_count/1` instead of redeploying staging. Precompression stays: the `.br` and `.gz` files are uploaded with the site for external Caddy servers.
 - **Consequences:** A new site has no deployment target until one is created on the console, and nothing shows it on a public address before its first deploy; the production server drops the Caddy container, its volumes and the staging environment variables (`BASE_HOSTNAME_AND_PORT`, `STAGING_SITES_PATH`).
 
+### Update (2026-10-18)
+
+A site has one deployment target, addressed by the site's domain, and the provider `hetzner_ftps`
+is called `ftps` ([0019](#0019-a-site-has-one-deployment-target-addressed-by-its-domain)). Besides
+the site's own changes, books and deleting or unpublishing a published record now move the site's
+`updated_at`.
+
 ## 0018. Scheduled posts deploy themselves when they become due
 
 Accepted, 2026-10-18
@@ -423,3 +437,11 @@ Accepted, 2026-10-18
 - **Context:** A post with a future `publish_at` is left out of the export until it is due, and nothing deploys at that moment; after a deploy the deploy panel showed no pending change, so a scheduled post stayed off the live site until someone happened to deploy again.
 - **Decision:** A scheduler checks every minute for scheduled posts (`publish_at` after the version's `published_at`) that became due since its last check, or since the last deploy after a restart, and deploys each target last deployed before that `publish_at` and deployed at least once, with one attempt per due post. `Feather.Publishing.undeployed_count/1` counts a post from the later of `published_at` and `publish_at`, once that has passed. Rejected: a timer per post, which every publish, unpublish and restart would have to reset.
 - **Consequences:** The CMS deploys without a click for the first time, taking any other published but undeployed change along. A failed scheduled deploy is not retried; it stays visible as a pending change with the Deploy button, and a post goes live up to a minute after its `publish_at`.
+
+## 0019. A site has one deployment target, addressed by its domain
+
+Accepted, 2026-10-18 (issue #435)
+
+- **Context:** Since [0017](#0017-sites-are-delivered-only-to-external-hosts-by-ftps) every target of a site exports the same published versions, so a second target only mirrored the first, and its `public_hostname` duplicated the site's `domain`, which the preview already uses as canonical address. Books, deletions and unpublishing changed the export without a version, so the deploy control kept saying live.
+- **Decision:** A site has at most one deployment target (unique on `site_id`), holding only its provider (`hetzner_ftps` renamed to `ftps`, nothing in it is specific to Hetzner) and credentials; its address is the site's `domain`. Changes without a version (books, deleting or unpublishing a published record) move the site's `updated_at`, and a deploy exports into a fresh directory that it syncs and removes.
+- **Consequences:** Delivering a site to two hosts at once, e.g. while moving, needs a second site; several book edits count as one pending change; uploading only the changed files would need a manifest of the last deploy, since no export persists.
