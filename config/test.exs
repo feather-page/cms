@@ -56,8 +56,9 @@ config :phoenix,
 config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
 config :feather, :image_fetch_resolver, {Feather.FakeResolver, :resolve}
 
-# The daily image cleanup does not run in tests.
+# The daily image cleanup and the scheduled deploys do not run in tests.
 config :feather, Feather.Media.CleanupScheduler, enabled: false
+config :feather, Feather.Publishing.ScheduledDeploys, enabled: false
 
 # Unsplash and OpenLibrary requests go through Req.Test stubs as well.
 config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}

@@ -1,16 +1,21 @@
 defmodule Feather.Publishing do
   @moduledoc """
   Deployment targets, the deploy lock, deploying (static export,
-  precompression and rclone sync, see `Feather.Publishing.Deploy`) and the
-  notices a deploy broadcasts.
+  precompression and rclone sync, see `Feather.Publishing.Deploy`), the
+  deploys of scheduled posts as they become due (see
+  `Feather.Publishing.ScheduledDeploys`) and the notices a deploy
+  broadcasts.
   """
 
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
+  alias Feather.Content.{Post, PostVersion}
   alias Feather.Publishing.{Deploy, DeploymentTarget}
   alias Feather.Repo
   alias Feather.Sites.Site
+
+  require Logger
 
   @registry Feather.Publishing.Registry
 
@@ -216,6 +221,59 @@ defmodule Feather.Publishing do
     end
   end
 
+  ## Scheduled posts
+
+  @doc """
+  Deploys every deployment target of a site with a scheduled post (its
+  published version's `publish_at` lies after its `published_at`) that
+  became due in the window after `from` up to `to`, if the target was
+  deployed before that `publish_at`. Targets never deployed are left
+  alone. Without `from` (the first check after boot) every due post not
+  deployed yet counts. Deploys each target once, like `deploy/3`, and
+  returns the targets; a target whose config does not decrypt is logged
+  and skipped.
+
+  The scheduler's entry point (`Feather.Publishing.ScheduledDeploys`): it
+  works across all sites, so it takes no scope, like `release_stale_locks/0`.
+  """
+  @spec deploy_due_posts(DateTime.t() | nil, DateTime.t()) :: [DeploymentTarget.t()]
+  def deploy_due_posts(from, %DateTime{} = to) do
+    due_posts =
+      from p in Post,
+        join: v in assoc(p, :published_version),
+        where: p.site_id == parent_as(:target).site_id,
+        where: v.publish_at > v.published_at and v.publish_at <= ^to,
+        where: v.publish_at > parent_as(:target).last_deployed_at
+
+    due_posts = if from, do: where(due_posts, [_p, v], v.publish_at > ^from), else: due_posts
+
+    due_targets =
+      Repo.all(
+        from t in DeploymentTarget,
+          as: :target,
+          where: not is_nil(t.last_deployed_at) and exists(due_posts),
+          order_by: [asc: t.inserted_at],
+          select: struct(t, ^metadata_fields())
+      )
+
+    for metadata <- due_targets, target = load_config(metadata) do
+      start_deploy(target, [])
+      target
+    end
+  end
+
+  defp load_config(%DeploymentTarget{} = metadata) do
+    Repo.reload(metadata)
+  rescue
+    ArgumentError ->
+      Logger.error(
+        "Not deploying #{metadata.public_hostname} for its scheduled posts: " <>
+          "its config could not be loaded"
+      )
+
+      nil
+  end
+
   ## Undeployed changes
 
   @doc """
@@ -225,10 +283,13 @@ defmodule Feather.Publishing do
   `Feather.Sites`) changed since. Counts everything published, and the
   site, if a target was never deployed; 0 without a deployment target.
 
-  Unpublishing creates no version, so it does not count.
+  A post counts by its published version alone, from the later of its
+  `published_at` and `publish_at` (see `live?/3`), so a scheduled post
+  counts once it is due at `now`. Unpublishing creates no version, so it
+  does not count.
   """
-  @spec undeployed_count(Scope.t()) :: non_neg_integer()
-  def undeployed_count(%Scope{site: %Site{id: site_id}}) do
+  @spec undeployed_count(Scope.t(), DateTime.t()) :: non_neg_integer()
+  def undeployed_count(%Scope{site: %Site{id: site_id}}, now \\ DateTime.utc_now()) do
     deploys =
       Repo.all(
         from t in DeploymentTarget, where: t.site_id == ^site_id, select: t.last_deployed_at
@@ -240,7 +301,7 @@ defmodule Feather.Publishing do
 
       deploys ->
         since = if Enum.any?(deploys, &is_nil/1), do: nil, else: Enum.min(deploys, DateTime)
-        count_published_since(site_id, since) + count_site_changed_since(site_id, since)
+        count_published_since(site_id, since, now) + count_site_changed_since(site_id, since)
     end
   end
 
@@ -252,21 +313,37 @@ defmodule Feather.Publishing do
       else: 0
   end
 
-  defp count_published_since(site_id, since) do
+  defp count_published_since(site_id, since, now) do
     Feather.Content.versioned_schemas()
     |> Enum.map(fn {record, version, foreign_key} ->
-      query =
-        from v in version,
-          join: r in ^record,
-          on: r.id == field(v, ^foreign_key),
-          where: r.site_id == ^site_id,
-          select: count(field(v, ^foreign_key), :distinct)
-
-      query = if since, do: where(query, [v], v.published_at > ^since), else: query
-      Repo.one(query)
+      from(v in version,
+        join: r in ^record,
+        on: r.id == field(v, ^foreign_key),
+        where: r.site_id == ^site_id,
+        select: count(field(v, ^foreign_key), :distinct)
+      )
+      |> shown_between(version, since, now)
+      |> Repo.one()
     end)
     |> Enum.sum()
   end
+
+  defp shown_between(query, PostVersion, since, now) do
+    query =
+      where(
+        query,
+        [v, p],
+        v.id == p.published_version_id and v.published_at <= ^now and
+          (is_nil(v.publish_at) or v.publish_at <= ^now)
+      )
+
+    if since,
+      do: where(query, [v], v.published_at > ^since or v.publish_at > ^since),
+      else: query
+  end
+
+  defp shown_between(query, _version, nil, _now), do: query
+  defp shown_between(query, _version, since, _now), do: where(query, [v], v.published_at > ^since)
 
   @doc """
   Whether a published version is on the live site: every deployment

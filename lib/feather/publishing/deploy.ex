@@ -163,7 +163,7 @@ defmodule Feather.Publishing.Deploy do
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
 
-      Export.run(target.site, Routes.for(target), sink)
+      Export.run(target.site, Routes.for(target), sink, now: export_started_at)
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
