@@ -19,6 +19,7 @@ Gates, all must pass before you are done (check the exit codes, not piped output
 
     mix compile --warnings-as-errors
     mix format --check-formatted
+    mix credo --strict
     mix test
 
 `mix precommit` runs them in one go; it formats instead of only checking and also unlocks unused

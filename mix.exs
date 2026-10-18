@@ -71,7 +71,8 @@ defmodule Feather.MixProject do
       {:jason, "~> 1.2"},
       {:bandit, "~> 1.5"},
       {:floki, "~> 0.38"},
-      {:vix, "~> 0.35"}
+      {:vix, "~> 0.35"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -100,7 +101,13 @@ defmodule Feather.MixProject do
         "esbuild feather --minify",
         "phx.digest"
       ],
-      precommit: ["compile --warnings-as-errors", "deps.unlock --unused", "format", "test"]
+      precommit: [
+        "compile --warnings-as-errors",
+        "deps.unlock --unused",
+        "format",
+        "credo --strict",
+        "test"
+      ]
     ]
   end
 end
