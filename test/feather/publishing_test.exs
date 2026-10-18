@@ -93,7 +93,7 @@ defmodule Feather.PublishingTest do
     end
   end
 
-  describe "undeployed_count/1" do
+  describe "undeployed_count/2" do
     defp deployed(target, at) do
       target |> Ecto.Changeset.change(last_deployed_at: at) |> Repo.update!()
     end
