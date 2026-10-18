@@ -136,27 +136,25 @@ defmodule Feather.Media do
     attrs =
       Map.merge(attrs, %{"filename" => sanitize_filename(filename), "byte_size" => byte_size})
 
-    cond do
-      byte_size > @max_byte_size ->
-        file_error(site, attrs, "is too big (at most 25 MB)")
+    if byte_size > @max_byte_size do
+      file_error(site, attrs, "is too big (at most 25 MB)")
+    else
+      case Processor.inspect_file(path) do
+        {:ok, info} ->
+          attrs =
+            Map.merge(attrs, %{
+              "content_type" => info.content_type,
+              "width" => info.width,
+              "height" => info.height
+            })
 
-      true ->
-        case Processor.inspect_file(path) do
-          {:ok, info} ->
-            attrs =
-              Map.merge(attrs, %{
-                "content_type" => info.content_type,
-                "width" => info.width,
-                "height" => info.height
-              })
+          %Image{site_id: site.id}
+          |> Image.create_changeset(attrs)
+          |> insert_with_files(path, info.extension)
 
-            %Image{site_id: site.id}
-            |> Image.create_changeset(attrs)
-            |> insert_with_files(path, info.extension)
-
-          {:error, :not_an_image} ->
-            file_error(site, attrs, "must be an image")
-        end
+        {:error, :not_an_image} ->
+          file_error(site, attrs, "must be an image")
+      end
     end
   end
 

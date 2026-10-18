@@ -1,4 +1,9 @@
 defmodule Feather.Accounts.UserNotifier do
+  @moduledoc """
+  Emails to users about their account: log-in links, account confirmation
+  and email change instructions.
+  """
+
   import Swoosh.Email
 
   alias Feather.Accounts.User

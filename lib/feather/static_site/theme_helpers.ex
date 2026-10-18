@@ -87,14 +87,14 @@ defmodule Feather.StaticSite.ThemeHelpers do
     |> Enum.reverse()
   end
 
-  @doc "A date in the long format of the current language: `\"May 6, 2025\"`, `\"6. Mai 2025\"`."
+  @doc ~s(A date in the long format of the current language: `"May 6, 2025"`, `"6. Mai 2025"`.)
   @spec format_date(DateTime.t() | Date.t() | nil) :: String.t()
   def format_date(date) do
     gettext_comment("Calendar.strftime format of a long date")
     strftime(date, gettext("%B %-d, %Y"))
   end
 
-  @doc "A date in the short format of the current language: `\"Aug 12, 2026\"`, `\"12.08.2026\"`."
+  @doc ~s(A date in the short format of the current language: `"Aug 12, 2026"`, `"12.08.2026"`.)
   @spec format_short_date(DateTime.t() | Date.t() | nil) :: String.t()
   def format_short_date(date) do
     gettext_comment("Calendar.strftime format of a short date, unambiguous in the language")
@@ -264,7 +264,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
     )
   end
 
-  @doc "` width=\"…\" height=\"…\"` for an `<img>` of the image, if its size is known."
+  @doc ~s(` width="…" height="…"` for an `<img>` of the image, if its size is known.)
   @spec dimensions(Image.t() | nil) :: Phoenix.HTML.safe()
   def dimensions(%Image{width: width, height: height})
       when is_integer(width) and is_integer(height),
@@ -403,7 +403,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @spec escape(term()) :: iodata()
   def escape(value), do: value |> to_string() |> Phoenix.HTML.html_escape() |> elem(1)
 
-  @doc "`\"open_source\"` as `\"Open Source\"`."
+  @doc ~s(`"open_source"` as `"Open Source"`.)
   @spec titleize(String.t() | nil) :: String.t()
   def titleize(nil), do: ""
 

@@ -1,4 +1,10 @@
 defmodule FeatherWeb.UserAuth do
+  @moduledoc """
+  Session handling for users: plugs and LiveView `on_mount` hooks that log
+  users in and out, load the current scope from the session token or the
+  remember-me cookie, and require authentication or sudo mode.
+  """
+
   use FeatherWeb, :verified_routes
 
   import Plug.Conn
