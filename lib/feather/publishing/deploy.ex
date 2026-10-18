@@ -74,18 +74,24 @@ defmodule Feather.Publishing.Deploy do
         try do
           build_and_sync(target, started_at, opts)
         rescue
-          exception -> {:error, Exception.message(exception)}
+          exception -> {{:error, Exception.message(exception)}, target.site}
         end
       end)
 
-    {result, step} =
+    {result, site, step} =
       case result do
-        {:error, :lock_timeout} -> {{:error, "another deploy is still running"}, :waiting}
-        result -> {result, own_step(target)}
+        {:error, :lock_timeout} ->
+          {{:error, "another deploy is still running"}, target.site, :waiting}
+
+        {:ok, :coalesced} ->
+          {{:ok, :coalesced}, target.site, nil}
+
+        {result, site} ->
+          {result, site, own_step(target)}
       end
 
     Publishing.clear_deploy_progress(target)
-    notify(target, result, started_at, step)
+    notify(site, result, started_at, step)
     result
   end
 
@@ -168,6 +174,12 @@ defmodule Feather.Publishing.Deploy do
   defp build_and_sync(target, started_at, opts) do
     # An immediate transaction waits for running writes: what they stamped is in the export.
     {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
+    # The request may have waited for the lock: settings changed meanwhile belong in this deploy.
+    target = Repo.preload(target, :site, force: true)
+    {export_and_sync(target, export_started_at, started_at, opts), target.site}
+  end
+
+  defp export_and_sync(target, export_started_at, started_at, opts) do
     sink = FileSink.new(exports_dir())
 
     try do
@@ -186,6 +198,8 @@ defmodule Feather.Publishing.Deploy do
         Publishing.record_deploy(target, export_started_at)
         {:ok, :deployed}
       end
+    rescue
+      exception -> {:error, Exception.message(exception)}
     after
       FileSink.discard(sink)
     end
@@ -193,25 +207,25 @@ defmodule Feather.Publishing.Deploy do
 
   ## Notices
 
-  defp notify(target, {:ok, :deployed}, started_at, _step) do
-    Publishing.broadcast_notice(target.site, %{
+  defp notify(site, {:ok, :deployed}, started_at, _step) do
+    Publishing.broadcast_notice(site, %{
       kind: :success,
-      title: "#{target.site.title} is live",
-      message: "#{target.site.domain} · deployed #{duration(started_at)}",
-      url: "https://#{target.site.domain}",
+      title: "#{site.title} is live",
+      message: "#{site.domain} · deployed #{duration(started_at)}",
+      url: "https://#{site.domain}",
       link_label: "Open site",
       external: true
     })
   end
 
-  defp notify(_target, {:ok, :coalesced}, _started_at, _step), do: :ok
+  defp notify(_site, {:ok, :coalesced}, _started_at, _step), do: :ok
 
-  defp notify(target, {:error, message}, _started_at, step) do
-    Logger.error("Deploying #{target.site.domain} failed: #{message}")
+  defp notify(site, {:error, message}, _started_at, step) do
+    Logger.error("Deploying #{site.domain} failed: #{message}")
 
-    Publishing.broadcast_notice(target.site, %{
+    Publishing.broadcast_notice(site, %{
       kind: :error,
-      title: "Deploy to #{target.site.domain} failed",
+      title: "Deploy to #{site.domain} failed",
       message: failure_message(step, Blocks.truncate(message, 300)),
       retry: true
     })

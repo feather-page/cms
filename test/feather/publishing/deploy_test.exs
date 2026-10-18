@@ -211,6 +211,24 @@ defmodule Feather.Publishing.DeployTest do
     refute Publishing.deploying?(c.target)
   end
 
+  test "a waiting deploy exports the site settings changed while it waited", c do
+    assert Publishing.acquire_deploy_lock(c.target)
+    opts = c.opts ++ [lock_retries: 10_000, lock_retry_interval: 5]
+
+    waiting = Task.async(fn -> Deploy.run(c.target, opts) end)
+
+    wait_until(fn ->
+      Registry.lookup(Feather.Publishing.Registry, {:waiting, c.target.id}) != []
+    end)
+
+    {:ok, _site} = Feather.Sites.update_site(c.scope, c.scope.site, %{title: "Renamed Site"})
+    Publishing.release_deploy_lock(c.target)
+    assert {:ok, :deployed} = Task.await(waiting, 10_000)
+
+    assert File.read!(Path.join(c.synced, "index.html")) =~ "Renamed Site"
+    assert_received {:site_notice, %{kind: :success, title: "Renamed Site is live"}}
+  end
+
   defp wait_until(fun, attempts \\ 500) do
     cond do
       fun.() ->
