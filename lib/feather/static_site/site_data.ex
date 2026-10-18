@@ -1,15 +1,16 @@
 defmodule Feather.StaticSite.SiteData do
   @moduledoc """
   Everything a static export or the preview renders, loaded once up front
-  with the associations the templates use, and its diagrams rendered up
-  front (`render_diagrams/2`). Rendering then works on this data alone,
-  without touching the database or running d2, so it can run in parallel.
+  with the associations the templates use, and its diagrams rendered and
+  code highlighted up front (`prerender/2`). Rendering then works on this
+  data alone, without touching the database or running d2 or chroma, so it
+  can run in parallel.
   """
 
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Content, Diagrams, Media, Sites}
+  alias Feather.{Books, Content, Diagrams, Highlighting, Media, Sites}
   alias Feather.Books.Book
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Media.Image
@@ -29,7 +30,8 @@ defmodule Feather.StaticSite.SiteData do
     social_links: [],
     images: %{},
     books_by_public_id: %{},
-    diagrams: %{}
+    diagrams: %{},
+    highlights: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -44,7 +46,8 @@ defmodule Feather.StaticSite.SiteData do
           social_links: [SocialMediaLink.t()],
           images: %{String.t() => Image.t()},
           books_by_public_id: %{String.t() => Book.t()},
-          diagrams: %{String.t() => String.t()}
+          diagrams: %{String.t() => String.t()},
+          highlights: %{{String.t(), term()} => String.t()}
         }
 
   @post_preloads [:header_image, :thumbnail_image, book: [:cover_image, :post]]
@@ -153,19 +156,22 @@ defmodule Feather.StaticSite.SiteData do
   end
 
   @doc """
-  Renders the diagrams in the content of the posts, pages and projects and
-  of `records` (`Feather.Diagrams.render_all/2`) into `diagrams`, the SVG
-  file names by source. Diagrams that fail are left out and render as
-  their source.
+  Renders the diagrams and highlights the code blocks in the content of the
+  posts, pages and projects and of `records`: `diagrams` gets the SVG file
+  names by source (`Feather.Diagrams.render_all/2`), `highlights` the
+  highlighted HTML by code and language
+  (`Feather.Highlighting.highlight_all/2`). Diagrams that fail render as
+  their source, code that is not highlighted as plain text.
   """
-  @spec render_diagrams(t(), [Post.t() | Page.t() | Project.t()]) :: t()
-  def render_diagrams(%__MODULE__{} = data, records \\ []) do
-    codes =
-      Enum.flat_map(data.posts ++ data.pages ++ data.projects ++ records, fn record ->
-        Blocks.diagram_codes(record.content)
-      end)
+  @spec prerender(t(), [Post.t() | Page.t() | Project.t()]) :: t()
+  def prerender(%__MODULE__{} = data, records \\ []) do
+    contents = Enum.map(data.posts ++ data.pages ++ data.projects ++ records, & &1.content)
 
-    %{data | diagrams: Diagrams.render_all(codes)}
+    %{
+      data
+      | diagrams: Diagrams.render_all(Enum.flat_map(contents, &Blocks.diagram_codes/1)),
+        highlights: Highlighting.highlight_all(Enum.flat_map(contents, &Blocks.code_blocks/1))
+    }
   end
 
   @doc "Preloads what the templates need on a post, page or project."

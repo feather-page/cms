@@ -4,10 +4,10 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   who the site belongs to (title, portrait, the first paragraph of the
   homepage) and lists the navigation; the reading column beside it starts
   with the posts. Portrait and intro appear on the home pages only, every
-  other page gets the slim panel. One typeface, Schibsted Grotesk. Below
-  52rem the panel becomes a compact header; on inner pages a one-line bar
-  whose navigation folds into a menu. Templates in
-  `simple_sidebar/*.html.eex`, stylesheet and font in
+  other page gets the slim panel. Text in Schibsted Grotesk, code in
+  JetBrains Mono. Below 52rem the panel becomes a compact header; on inner
+  pages a one-line bar whose navigation folds into a menu. Templates in
+  `simple_sidebar/*.html.eex`, stylesheet and fonts in
   `priv/static_site/themes/simple_sidebar/`.
   """
 
@@ -48,12 +48,17 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   def css, do: @css
 
   @impl true
-  def font_faces(%Routes{} = routes),
-    do: {:safe, font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file)}
+  def font_faces(%Routes{} = routes) do
+    {:safe,
+     [
+       font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file),
+       jetbrains_mono_faces(routes)
+     ]}
+  end
 
   # Schibsted Grotesk, variable weight axis, Latin subset, SIL Open Font License.
   @impl true
-  def fonts, do: @fonts
+  def fonts, do: Map.merge(@fonts, jetbrains_mono_fonts())
 
   @impl true
   def font_path(name),

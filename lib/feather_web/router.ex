@@ -149,6 +149,7 @@ defmodule FeatherWeb.Router do
     get "/images/:id", ImageController, :show
     get "/books/lookup", BookLookupController, :index
     post "/diagrams/preview", DiagramPreviewController, :create
+    post "/code/highlight", CodeHighlightController, :create
   end
 
   scope "/", FeatherWeb do

@@ -106,6 +106,23 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert get(fresh(user), missing).status == 404
   end
 
+  test "highlights code blocks, also of a scheduled post", %{
+    conn: conn,
+    scope: scope,
+    root: root
+  } do
+    Feather.FakeChroma.install()
+
+    post_fixture(scope, %{
+      slug: "/code",
+      publish_at: DateTime.add(DateTime.utc_now(), 1, :day),
+      content: [%{"type" => "code", "code" => "puts 1", "language" => "ruby"}]
+    })
+
+    assert html_response(get(conn, root <> "/code/"), 200) =~
+             ~s(<code class="language-ruby">#{Feather.FakeChroma.html("puts 1")}</code>)
+  end
+
   test "renders diagrams only for what shows content", %{
     conn: conn,
     scope: scope,

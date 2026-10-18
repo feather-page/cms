@@ -32,7 +32,11 @@ defmodule Feather.StaticSite.BlocksTest do
 
     %{
       context:
-        Blocks.context(routes, %{@image.public_id => @image}, books, %{"a -> b" => @diagram})
+        Blocks.context(routes,
+          images: %{@image.public_id => @image},
+          books: books,
+          diagrams: %{"a -> b" => @diagram}
+        )
     }
   end
 
@@ -99,6 +103,17 @@ defmodule Feather.StaticSite.BlocksTest do
              ~s(<pre data-language="d2"><code class="language-d2">a -&gt; &lt;b&gt;</code></pre>)
 
     assert html(%{"type" => "diagram", "code" => " \n", "caption" => "Flow"}, c) == ""
+  end
+
+  test "highlighted code keeps its pre, code and language label", %{context: c} do
+    spans = ~s(<span class="hl-k">puts</span> <span class="hl-s">&#34;x&#34;</span>)
+    c = %{c | highlights: %{{~s(puts "x"), "ruby"} => spans}}
+
+    assert html(%{"type" => "code", "code" => ~s(puts "x"), "language" => "ruby"}, c) ==
+             ~s(<pre data-language="ruby"><code class="language-ruby">#{spans}</code></pre>)
+
+    assert html(%{"type" => "code", "code" => "puts 2", "language" => "ruby"}, c) ==
+             ~s(<pre data-language="ruby"><code class="language-ruby">puts 2</code></pre>)
   end
 
   test "code without a meaningful language has no label", %{context: c} do

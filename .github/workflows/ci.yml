@@ -30,6 +30,15 @@ jobs:
           sudo install -m 755 "$RUNNER_TEMP/d2-$version/bin/d2" /usr/local/bin/d2
           d2 --version
 
+      - name: Install chroma (the version of the Dockerfile)
+        run: |
+          version=$(sed -n 's|^ARG CHROMA_VERSION=\([0-9.]*\)$|\1|p' Dockerfile)
+          test -n "$version"
+          curl -fsSL "https://github.com/alecthomas/chroma/releases/download/v$version/chroma-$version-linux-amd64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP" chroma
+          sudo install -m 755 "$RUNNER_TEMP/chroma" /usr/local/bin/chroma
+          chroma --version
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: "28"

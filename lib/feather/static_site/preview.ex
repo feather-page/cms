@@ -60,13 +60,13 @@ defmodule Feather.StaticSite.Preview do
 
   defp load(site, route) do
     data = SiteData.load(site, content: :current)
-    if diagrams?(route), do: SiteData.render_diagrams(data, routed_records(route)), else: data
+    if prerender?(route), do: SiteData.prerender(data, routed_records(route)), else: data
   end
 
-  defp diagrams?({:artifact, name}), do: name == "feed.xml"
-  defp diagrams?(_route), do: true
+  defp prerender?({:artifact, name}), do: name == "feed.xml"
+  defp prerender?(_route), do: true
 
-  # A scheduled post is not among the data's posts, but its diagrams render too.
+  # A scheduled post is not among the data's posts, but its diagrams and code render too.
   defp routed_records({kind, record}) when kind in [:post, :page, :project], do: [record]
   defp routed_records(_route), do: []
 

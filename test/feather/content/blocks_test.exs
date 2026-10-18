@@ -180,6 +180,16 @@ defmodule Feather.Content.BlocksTest do
       assert Blocks.diagram_codes(blocks) == ["a -> b: <hi>\n"]
     end
 
+    test "code_blocks/1 lists the code and language of code blocks" do
+      blocks = [
+        %{"type" => "code", "code" => "puts 1", "language" => "ruby"},
+        %{"type" => "paragraph", "text" => "puts 1"},
+        %{"type" => "code", "code" => "x"}
+      ]
+
+      assert Blocks.code_blocks(blocks) == [{"puts 1", "ruby"}, {"x", "plaintext"}]
+    end
+
     test "excerpt/2 joins text blocks without HTML" do
       assert Blocks.excerpt(@blocks) == "Some bold text. A section Simplicity."
     end

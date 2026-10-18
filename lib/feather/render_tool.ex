@@ -1,9 +1,9 @@
 defmodule Feather.RenderTool do
   @moduledoc """
-  What a renderer that runs an external binary and caches its output under
-  the storage root needs (`Feather.Diagrams` with d2): runners, the
-  binary's version, a temporary working directory, cache names and atomic
-  cache writes.
+  What the renderers that run an external binary and cache its output under
+  the storage root share (`Feather.Diagrams` with d2, `Feather.Highlighting`
+  with chroma): runners, the binary's version, a temporary working
+  directory, cache names and atomic cache writes.
 
   A runner is a module with `run/2` or a function taking the argument list
   and the options. It returns the command's output, the binary's message

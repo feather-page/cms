@@ -30,7 +30,7 @@ defmodule Feather.StaticSite.Export do
   """
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
-    data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.render_diagrams()
+    data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
     jobs = [:not_found | document_jobs(data)] ++ asset_jobs(data, Themes.module(site))
     run_jobs(jobs, data, routes, sink, opts)
   end

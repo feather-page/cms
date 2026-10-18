@@ -182,6 +182,15 @@ defmodule Feather.Content.Blocks do
     |> Enum.uniq()
   end
 
+  @doc "The code and language of all code blocks, as `{code, language}`."
+  @spec code_blocks([block()] | nil) :: [{String.t(), String.t()}]
+  def code_blocks(blocks) do
+    blocks
+    |> normalize()
+    |> Enum.filter(&(&1["type"] == "code"))
+    |> Enum.map(&{&1["code"], &1["language"]})
+  end
+
   @doc """
   The plain text of all text blocks (paragraphs, headers, quotes), with
   HTML tags removed, truncated to `length` characters including a trailing
