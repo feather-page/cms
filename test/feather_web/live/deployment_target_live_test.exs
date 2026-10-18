@@ -59,6 +59,25 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
       assert has_element?(lv, "#deploy-target[disabled]")
     end
 
+    test "a deploy started after the page loaded disables the button", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      target = deployment_target_fixture(scope)
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
+
+      Phoenix.PubSub.broadcast(
+        Feather.PubSub,
+        Publishing.notices_topic(site),
+        {:deploy_progress,
+         %{target_id: target.public_id, step: :build, started_at: DateTime.utc_now()}}
+      )
+
+      assert has_element?(lv, "#target-deploying")
+      assert has_element?(lv, "#deploy-target[disabled]")
+    end
+
     test "deploys the site", %{conn: conn, site: site, scope: scope} do
       target = deployment_target_fixture(scope)
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")

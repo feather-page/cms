@@ -29,7 +29,7 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
             id="deploy-target"
             icon="rocket"
             phx-click="deploy_site"
-            disabled={@site_deploy.target.deploying}
+            disabled={deploying?(@site_deploy)}
           >
             Deploy
           </.button>
@@ -106,7 +106,7 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
         </:item>
         <:item label="Last deploy">
           <span id="target-deployed" class="inline-flex items-center gap-2">
-            <.badge :if={@site_deploy.target.deploying} id="target-deploying">
+            <.badge :if={deploying?(@site_deploy)} id="target-deploying">
               <span class="loading loading-spinner loading-xs"></span> Deploying
             </.badge>
             {deployed_label(@site_deploy.target.last_deployed_at)}
@@ -121,6 +121,8 @@ defmodule FeatherWeb.DeploymentTargetLive.Index do
   def mount(_params, _session, socket) do
     {:ok, assign(socket, :page_title, "Deployments")}
   end
+
+  defp deploying?(%{target: target, progress: progress}), do: target.deploying or progress != nil
 
   defp steps(current) do
     shown =
