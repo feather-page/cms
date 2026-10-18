@@ -1,19 +1,18 @@
 defmodule Feather.StaticSite.Themes.FeatherPage do
   @moduledoc """
-  The `feather` theme, ported from the Rails ERB views: a narrow column
-  with a masthead on the home page, a breadcrumb elsewhere and the site's
-  mascots, headings in Nunito, code in JetBrains Mono. Templates in
-  `feather_page/*.html.eex`, stylesheet and fonts in
-  `priv/static_site/themes/feather_page/`.
+  The `feather` theme: a narrow column with a masthead on the home page,
+  a breadcrumb elsewhere and the site's mascots, headings in Nunito, code
+  in JetBrains Mono. Templates in `feather_page/*.html.eex`, stylesheet
+  and fonts in `priv/static_site/themes/feather_page/`.
   """
 
   use Feather.StaticSite.Theme
 
   alias Feather.Content
-  alias Feather.Content.HTML
   alias Feather.Media.Image
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Blocks, Routes}
+  alias Feather.StaticSite.Themes.FeatherPage.Hue
 
   @priv_dir Path.expand("../../../../priv/static_site/themes/feather_page", __DIR__)
   @css_path Path.join(@priv_dir, "theme.css")
@@ -69,14 +68,38 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   def font_path(name),
     do: Application.app_dir(:feather, "priv/static_site/themes/feather_page/fonts/#{name}")
 
+  # The text column: 35rem, or the viewport less two clamp(1rem, 4vw, 1.5rem) gutters.
+  @impl true
+  def content_image_sizes,
+    do: "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
+
   @impl true
   def site_image_fields, do: Site.mascot_fields()
 
+  defp hue(site), do: Hue.for_emoji(site.emoji)
+
+  defp rating(rating, class) do
+    stars = rating |> max(0) |> min(5)
+
+    {:safe,
+     [
+       ~s(<span class="),
+       class,
+       ~s(" role="img" aria-label="),
+       rating_label(rating),
+       ~s("><span aria-hidden="true">),
+       String.duplicate("★", stars),
+       String.duplicate("☆", 5 - stars),
+       "</span></span>"
+     ]}
+  end
+
+  defp seal(emoji),
+    do: {:safe, [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]}
+
   defp chip(href, emoji, title, current? \\ false) do
-    {class, seal} =
-      if present?(emoji),
-        do: {"chip", [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]},
-        else: {"chip chip--plain", []}
+    {class, {:safe, seal}} =
+      if present?(emoji), do: {"chip", seal(emoji)}, else: {"chip chip--plain", {:safe, []}}
 
     {:safe,
      [

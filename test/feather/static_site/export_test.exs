@@ -209,7 +209,7 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<html lang="en")
     assert html =~ "<title>Everything · My &lt;Site&gt;</title>"
     assert html =~ "<style>"
-    # Literal like the Rails export, only the emoji is interpolated (escaped).
+    # Only the emoji is interpolated (escaped); the rest is a fixed literal.
     assert html =~
              ~s(<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">)
 
@@ -437,7 +437,7 @@ end
 defmodule Feather.StaticSite.ExportPaginationTest do
   use Feather.DataCase
 
-  alias Feather.StaticSite.{Export, RecordingSink, Routes, ThemeHelpers}
+  alias Feather.StaticSite.{Export, RecordingSink, Routes}
 
   test "paginates the post list by 25 with links between the pages" do
     scope = site_scope_fixture()
@@ -466,17 +466,5 @@ defmodule Feather.StaticSite.ExportPaginationTest do
              ~s(<a href="/" class="pagination-link" aria-label="Previous page">&larr;</a>)
 
     refute RecordingSink.exists?(sink, "page/3/index.html")
-  end
-
-  test "pagination page numbers with gaps" do
-    assert ThemeHelpers.pagination_page_numbers(1, 5) == [1, 2, 3, 4, 5]
-    assert ThemeHelpers.pagination_page_numbers(1, 10) == [1, 2, 3, 4, :gap, 10]
-    assert ThemeHelpers.pagination_page_numbers(5, 10) == [1, :gap, 4, 5, 6, :gap, 10]
-    assert ThemeHelpers.pagination_page_numbers(9, 10) == [1, :gap, 7, 8, 9, 10]
-  end
-
-  test "a rating is announced as a label instead of glyph by glyph" do
-    assert ThemeHelpers.rating_label(4) == "4 of 5 stars"
-    assert ThemeHelpers.rating_label(9) == "5 of 5 stars"
   end
 end

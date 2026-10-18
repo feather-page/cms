@@ -1,10 +1,8 @@
 defmodule Feather.StaticSite.ThemeHelpers do
   @moduledoc """
-  What every theme's templates share: formatting of dates, ratings,
-  projects and copyright notices, the `<head>` meta tags and the rules
-  for `@font-face`. Imported into each theme by
-  `use Feather.StaticSite.Theme`; every function runs in the site's
-  language (`Feather.StaticSite.Gettext`).
+  What every theme shares, by the rule in `Feather.StaticSite.Theme`.
+  Imported into each theme by `use Feather.StaticSite.Theme`; every
+  function runs in the site's language (`Feather.StaticSite.Gettext`).
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -17,7 +15,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Content.{HTML, Project}
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
-  alias Feather.StaticSite.{Hue, Routes, SiteData}
+  alias Feather.StaticSite.{Routes, SiteData}
 
   require EEx
 
@@ -165,18 +163,21 @@ defmodule Feather.StaticSite.ThemeHelpers do
     )
   end
 
-  @doc "A date as a `<time>` element, formatted by `format` (`:long` or `:short`)."
-  @spec time_tag(DateTime.t() | Date.t() | nil, :long | :short) :: Phoenix.HTML.safe()
-  def time_tag(date, format \\ :long)
-  def time_tag(nil, _format), do: {:safe, ""}
+  @doc """
+  A date as a `<time>` element, its text by `formatter`: a string (escaped)
+  or safe HTML. Nothing for nil.
+  """
+  @spec time_tag(DateTime.t() | Date.t() | nil, (Date.t() -> String.t() | Phoenix.HTML.safe())) ::
+          Phoenix.HTML.safe()
+  def time_tag(date, formatter \\ &format_date/1)
+  def time_tag(nil, _formatter), do: {:safe, ""}
 
-  def time_tag(%DateTime{} = datetime, format),
-    do: datetime |> DateTime.to_date() |> time_tag(format)
+  def time_tag(%DateTime{} = datetime, formatter),
+    do: datetime |> DateTime.to_date() |> time_tag(formatter)
 
-  def time_tag(%Date{} = date, format) do
-    text = if format == :short, do: format_short_date(date), else: format_date(date)
-
-    {:safe, [~s(<time datetime="), Date.to_iso8601(date), ~s(">), escape(text), "</time>"]}
+  def time_tag(%Date{} = date, formatter) do
+    {:safe, text} = date |> formatter.() |> Phoenix.HTML.html_escape()
+    {:safe, [~s(<time datetime="), Date.to_iso8601(date), ~s(">), text, "</time>"]}
   end
 
   defp month_name(1), do: pgettext("month", "January")
@@ -205,34 +206,10 @@ defmodule Feather.StaticSite.ThemeHelpers do
   defp abbreviated_month_name(11), do: pgettext("abbreviated month", "Nov")
   defp abbreviated_month_name(12), do: pgettext("abbreviated month", "Dec")
 
-  @doc "A rating of 1 to 5 as stars: `\"★★★☆☆\"`."
-  @spec rating_stars(integer() | nil) :: String.t() | nil
-  def rating_stars(nil), do: nil
-
-  def rating_stars(rating) when is_integer(rating) do
-    rating = rating |> max(0) |> min(5)
-    String.duplicate("★", rating) <> String.duplicate("☆", 5 - rating)
-  end
-
-  @doc "A rating for screen readers: `\"4 of 5 stars\"`."
+  @doc "A rating for screen readers, clamped to 0 to 5: `\"4 of 5 stars\"`."
   @spec rating_label(integer()) :: String.t()
   def rating_label(rating) when is_integer(rating),
     do: gettext("%{rating} of 5 stars", rating: rating |> max(0) |> min(5))
-
-  @doc "A rating as stars with a label for screen readers, in a span of `class`."
-  @spec rating(integer(), String.t()) :: Phoenix.HTML.safe()
-  def rating(rating, class) do
-    {:safe,
-     [
-       ~s(<span class="),
-       class,
-       ~s(" role="img" aria-label="),
-       rating_label(rating),
-       ~s("><span aria-hidden="true">),
-       rating_stars(rating),
-       "</span></span>"
-     ]}
-  end
 
   @doc "The inline SVG of a social media icon, hidden from screen readers."
   @spec social_icon(String.t()) :: Phoenix.HTML.safe() | String.t()
@@ -252,7 +229,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   The copyright notice with `{{CurrentYear}}` replaced. Inline HTML is
-  allowed (sanitized like content; Rails inserted it unsanitized).
+  allowed, sanitized like content.
   """
   @spec copyright(String.t() | nil, integer()) :: Phoenix.HTML.safe()
   def copyright(text, year \\ Date.utc_today().year) do
@@ -263,9 +240,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
   end
 
   @doc """
-  Text as HTML paragraphs like Rails' `simple_format`: blank lines separate
-  paragraphs, single line breaks become `<br />`. Inline HTML is
-  sanitized like content.
+  Text as HTML paragraphs: blank lines separate paragraphs, single line
+  breaks become `<br />`. Inline HTML is sanitized like content.
   """
   @spec simple_format(String.t() | nil) :: Phoenix.HTML.safe()
   def simple_format(text) do
@@ -330,10 +306,6 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @doc "The Open Graph locale of a language, or nil."
   @spec og_locale(String.t() | nil) :: String.t() | nil
   def og_locale(language_code), do: Map.get(@og_locale_by_language, language_code)
-
-  @doc "The hue of the site's colours, derived from its emoji (`Feather.StaticSite.Hue`)."
-  @spec hue(Feather.Sites.Site.t()) :: integer()
-  def hue(site), do: Hue.for_emoji(site.emoji)
 
   @doc "The book a post reviews, or nil."
   @spec book(Content.Post.t() | map()) :: Book.t() | nil
@@ -400,12 +372,12 @@ defmodule Feather.StaticSite.ThemeHelpers do
     end
   end
 
-  @doc "Link text with an optional emoji in front, hidden from screen readers."
-  @spec emoji_label(String.t() | nil, String.t()) :: Phoenix.HTML.safe()
-  def emoji_label(emoji, text) do
+  @doc "Text with an optional emoji in front, hidden from screen readers, in a span of `class`."
+  @spec emoji_label(String.t() | nil, String.t(), String.t()) :: Phoenix.HTML.safe()
+  def emoji_label(emoji, text, class \\ "link-emoji") do
     mark =
       if present?(emoji),
-        do: [~s(<span class="link-emoji" aria-hidden="true">), escape(emoji), "</span>"],
+        do: [~s(<span class="), class, ~s(" aria-hidden="true">), escape(emoji), "</span>"],
         else: []
 
     {:safe, [mark, escape(text)]}

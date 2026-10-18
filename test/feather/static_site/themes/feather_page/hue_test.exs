@@ -1,7 +1,7 @@
-defmodule Feather.StaticSite.HueTest do
+defmodule Feather.StaticSite.Themes.FeatherPage.HueTest do
   use ExUnit.Case, async: true
 
-  alias Feather.StaticSite.Hue
+  alias Feather.StaticSite.Themes.FeatherPage.Hue
 
   test "known emoji have a curated hue" do
     assert Hue.for_emoji("🐭") == 350

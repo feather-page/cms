@@ -35,7 +35,8 @@ defmodule Feather.StaticSite.BlocksTest do
         Blocks.context(routes,
           images: %{@image.public_id => @image},
           books: books,
-          diagrams: %{"a -> b" => @diagram}
+          diagrams: %{"a -> b" => @diagram},
+          content_image_sizes: "(min-width: 40rem) 30rem, 100vw"
         )
     }
   end
@@ -129,7 +130,7 @@ defmodule Feather.StaticSite.BlocksTest do
     assert html(block, c) ==
              ~s(<figure><picture><source srcset="/images/img000000001/mobile_x1.webp 430w, ) <>
                ~s(/images/img000000001/mobile_x2.webp 800w" ) <>
-               ~s|sizes="(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)" | <>
+               ~s|sizes="(min-width: 40rem) 30rem, 100vw" | <>
                ~s(type="image/webp">) <>
                ~s(<img loading="lazy" height="600" width="800" ) <>
                ~s(src="/images/img000000001/desktop_x1.jpg" alt="A nice view" /></picture>) <>

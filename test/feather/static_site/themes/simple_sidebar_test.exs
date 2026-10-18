@@ -215,6 +215,13 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       assert text(home, "h1.site-name") == "Robert Curth"
       assert texts(doc(sink, "about/index.html"), "h1") == ["👋About me"]
+      assert texts(doc(sink, "about/index.html"), "main h1 .title-emoji") == ["👋"]
+
+      assert attr(doc(sink, "about/index.html"), "main h1 .title-emoji", "aria-hidden") == [
+               "true"
+             ]
+
+      refute present?(doc(sink, "imprint/index.html"), "main h1 .title-emoji")
       refute present?(doc(sink, "about/index.html"), "h1.site-name")
     end
 
@@ -454,6 +461,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       assert text(post, "main .meta .kind") == "Note"
       assert attr(post, "main .meta time", "datetime") == ["2026-02-09"]
+      assert texts(post, "main .meta time .punct") == [","]
       assert text(post, "main h1.visually-hidden") == "Riding my bike in the cold. Empty…"
       assert texts(post, "main .content p") == ["Riding my bike in the cold.", "Empty trails."]
 
@@ -619,6 +627,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert texts(projects, "main ul.projects li.project h2 a") ==
                ["🪶feather.page", "☀️ZiWoAS", "Zipfelkasse", "🖼️TRMNL plugins"]
 
+      assert texts(projects, "main li.project h2 a .title-emoji") == ["🪶", "☀️", "🖼️"]
+
       assert attr(projects, "main ul.projects li.project h2 a", "href") ==
                [
                  "/projects/feather-page/",
@@ -662,6 +672,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       assert texts(projects, "main h2.projects-heading") == ["Work"]
       assert texts(projects, "main ul.work li h3 a") == ["Cooperative", "🏢Client portal"]
+      assert texts(projects, "main ul.work li h3 a .title-emoji") == ["🏢"]
 
       assert attr(projects, "main ul.work li h3 a", "href") ==
                ["/projects/cooperative/", "/projects/client-portal/"]
@@ -686,6 +697,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
                ~w(h1 p div figure div dl p)
 
       assert text(project, "main h1") == "☀️ZiWoAS"
+      assert texts(project, "main h1 .title-emoji") == ["☀️"]
+      assert attr(project, "main h1 .title-emoji", "aria-hidden") == ["true"]
       assert text(project, "main .lead") == "My own home automation."
 
       assert attr(project, "main figure.project-image img", "src") ==
@@ -755,6 +768,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     assert texts(doc(sink, "work/index.html"), "main h2.projects-heading") == ["Arbeit"]
     assert text(doc(sink, "work/index.html"), "details.nav-menu > summary") == "Menü"
     assert text(doc(sink, "books/index.html"), "main .book .book-date") == "01.02."
+    assert texts(doc(sink, "books/index.html"), "main .book .book-date .punct") == [".", "."]
 
     assert text(doc(sink, "books/index.html"), "main .books-year h2 .visually-hidden") ==
              ", 1 Buch"
@@ -795,6 +809,31 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     assert text(home, ".intro") == "Hi there."
     assert texts(home, "header.sidebar .social-links a") == ["GitHub"]
     refute "Evil" in texts(doc(sink, "projects/evil/index.html"), "main dl.facts dt")
+  end
+
+  test "content images declare the width of the reading column beside the panel" do
+    scope = site_scope_fixture(%{theme: "simple_sidebar"})
+    image = image_fixture(scope, width: 800, height: 600)
+    page_fixture(scope, %{title: "Photos", slug: "/photos", content: [image_block(image)]})
+
+    post_fixture(scope, %{
+      title: "Shot",
+      slug: "/shot",
+      content: [image_block(image)],
+      publish_at: @day
+    })
+
+    sink = export(scope)
+
+    sizes =
+      "(min-width: 58rem) 36rem, (min-width: 55.56rem) 62.1vw, " <>
+        "(min-width: 52rem) calc(89.1vw - 15rem), calc(100vw - 2rem)"
+
+    for path <- ~w(photos/index.html shot/index.html) do
+      assert attr(doc(sink, path), "figure picture source", "sizes") == [sizes], path
+    end
+
+    assert RecordingSink.get(sink, "feed.xml") =~ "sizes=&quot;#{sizes}&quot;"
   end
 
   describe "fonts" do

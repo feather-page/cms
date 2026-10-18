@@ -5,6 +5,15 @@ defmodule Feather.StaticSite.Theme do
   `Feather.StaticSite.Themes`; block rendering, routes, Gettext, meta
   tags, feed, sitemap and image variants are shared.
 
+  What does not depend on the look is shared in
+  `Feather.StaticSite.ThemeHelpers`: localised text, domain data and its
+  order, safety filters, labels for screen readers and semantic HTML
+  without classes. Anything with class names or a visual choice (glyphs,
+  extra spans, colours) belongs to the theme module, even if only one
+  theme needs it so far; a shared helper that renders markup takes its
+  class names from the theme. Each concept is rendered one way per theme;
+  two themes may render it differently.
+
   `use Feather.StaticSite.Theme` declares the behaviour and imports
   `Feather.StaticSite.ThemeHelpers`, `Phoenix.HTML.raw/1` and the static
   site's Gettext. Templates are EEx with `Phoenix.HTML.Engine` (output is
@@ -19,7 +28,7 @@ defmodule Feather.StaticSite.Theme do
 
     * `data` (`Feather.StaticSite.SiteData`), `site` (its mascots and
       portrait preloaded), `routes`, `ctx` (for `Feather.StaticSite.Blocks`),
-      `social_links`
+      `social_links` (only those with a safe URL)
     * `page_title` (the visible heading), `meta_title` (the name in
       `<title>` and `og:title`; an untitled post's label where `page_title`
       is the site title), `document_title`, `page_emoji`, `is_home`,
@@ -63,6 +72,12 @@ defmodule Feather.StaticSite.Theme do
 
   @doc "The path of one of `c:fonts/0` in the app."
   @callback font_path(String.t()) :: Path.t()
+
+  @doc """
+  The `sizes` attribute of content images: how wide the theme's text
+  column is at which viewport width.
+  """
+  @callback content_image_sizes() :: String.t()
 
   @doc """
   The site's image fields (of `Feather.Sites.Site.image_fields/0`) the
