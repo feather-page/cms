@@ -28,12 +28,6 @@ typography:
     fontWeight: 700
     lineHeight: 0.95
     letterSpacing: "-0.035em"
-  display-slim:
-    fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.375rem, 2.4vw, 2.125rem)"
-    fontWeight: 700
-    lineHeight: 1
-    letterSpacing: "-0.03em"
   headline:
     fontFamily: "Schibsted Grotesk, ui-sans-serif, system-ui, sans-serif"
     fontSize: "clamp(1.875rem, 1.4rem + 1.4vw, 2.625rem)"
@@ -139,7 +133,7 @@ components:
 
 Dieter Rams' industrial design, taken only where it does a job. A housing-grey panel carries the person's name as a bold type designation and lists the pages; the reading column is calm grotesque type on off-white; every piece of metadata is printed like the scale on a device, small tracked capitals with a hairline running out after it. One signal orange appears, and only as a function: where you are, what is new, what is under the pointer or has focus.
 
-The theme is a reader's surface for a personal log. Density is moderate and quiet: one reading column of about 36rem, generous gaps between entries, no boxes around them. On inner pages the panel slims and the content leads. It works without JavaScript; the only interactive element is a native `<details>` menu on phones.
+The theme is a reader's surface for a personal log. Density is moderate and quiet: one reading column of about 36rem, generous gaps between entries, no boxes around them. Every desktop page carries the same panel; on inner pages the article heading outranks the site name. On phones inner pages get a one-line bar and the bio moves to the footer. It works without JavaScript; the only interactive element is a native `<details>` menu on phones.
 
 Rejected in the build's history and not to return: decorative device fronts (grilles, dials, keys, rails), shelving-system grids, poster planes, LCD dates.
 
@@ -182,12 +176,12 @@ A near-neutral warm grey world with one hot signal; dark mode keeps the same rol
 **Character:** One grotesque does everything, from the 54px bold name to the 11px tracked scale labels; hierarchy comes from weight, size and tracking, never from a second family.
 
 ### Hierarchy
-- **Display** (700, up to 3.375rem, 0.95, -0.035em): the site name on the home panel; `display-slim` on inner pages.
+- **Display** (700, up to 3.375rem, 0.95, -0.035em): the site name in the panel on the home page. On inner pages the name is capped at `min(Display, 0.85 × Headline)` so the page `h1` stays the largest type.
 - **Headline** (700, fluid 1.875 to 2.625rem, 1.1): page and post `h1`.
 - **Title** (700, 1.6875rem, 1.16): stream entry titles, content `h2`, the "Work" heading.
 - **Title Small** (700, 1.375rem, 1.2): own project titles, content `h3`, the project lead at 400.
 - **Body** (400, 1.0625rem/1.6 on phones, 1.09375rem/1.62 from 52rem): reading text, column max 36rem; at 700 also content `h4`, work-list titles, project titles on phones and the name in the phone menu bar.
-- **Body Small** (400, 0.9375rem): the panel intro and nav, descriptions, facts, tables, captions, quote citations, book authors, "Continue reading" and back links at 600.
+- **Body Small** (400, 0.9375rem): the panel bio and nav, descriptions, facts, tables, captions, quote citations, book authors, "Continue reading" and back links at 600.
 - **Label** (600, 0.6875rem, 0.15em tracking, uppercase, tabular lining numerals): the scale printing.
 - **Mono** (400, 0.8125rem): code blocks.
 
@@ -200,9 +194,9 @@ Kept exceptions, each deliberate: the home name on phones is a fixed 2.125rem (t
 
 ## Layout
 
-From 52rem the frame is a two-column grid: a sticky, full-height panel of `clamp(15rem, 27vw, 25rem)` and a reading column of `36rem + inset`, separated by the fluid `gap`. The panel stacks identity, intro, nav and, pushed to the foot, social links and copyright. Main is padded `4rem inset 5rem 0`.
+From 52rem the frame is a two-column grid: a sticky, full-height panel of `clamp(15rem, 27vw, 25rem)` and a reading column of `36rem + inset`, separated by the fluid `gap`. On the first home page the reading column opens with the homepage content, 3.5rem above the stream; later pages start with the posts. The panel stacks identity, bio, nav and, pushed to the foot, social links and copyright. The whole panel needs about 650px of height, so below 42rem of viewport height it is no longer sticky: it scrolls with the page at full content height, the foot directly after the nav, with no inner scroll region. Main is padded `4rem inset 5rem 0`.
 
-Below 52rem the panel becomes a header. Home keeps a compact identity (name 2.125rem beside a 60px portrait), only the intro's first sentence, and the nav as wrapping running text. Inner pages collapse to one 3.25rem bar: the name small as the home link at left, a native "Menu" disclosure at right holding the nav as a hairline list with 2.75rem rows. Social links and copyright move to a footer under a rule. Main is padded `1.375rem 1rem 2.5rem`.
+Below 52rem the panel becomes a header. Home keeps a compact identity (name 2.125rem beside a 60px portrait) and the nav as wrapping running text; the bio moves to the footer. Inner pages collapse to one 3.25rem bar: the name small as the home link at left, a native "Menu" disclosure at right holding the nav as a hairline list with 2.75rem rows. On every page the bio (beside a 48px cut-out portrait when there is one), social links and copyright sit in a footer under a rule, the bio with 1.25rem above and below it. Main is padded `1.375rem 1rem 2.5rem`.
 
 Below 30rem the facts list stacks term over value.
 
@@ -223,7 +217,7 @@ Square by default. Radius appears only on three small things: the focus outline 
 ## Components
 
 ### Panel and Identity
-The name in Display beside the cut-out portrait (108px, bottom-aligned with the name) on home; under them the domain as a scale label on a seam-coloured rule, then the intro paragraph in Body Small. Inner pages drop portrait and intro and use `display-slim`; they keep the domain on desktop, phones hide it. An emoji stands in when no portrait exists.
+The name (Display on the home page, capped below the Headline on inner pages) beside the cut-out portrait (108px, bottom-aligned with the name); under them the domain as a scale label on a seam-coloured rule, then the bio in Body Small. Every page gets the same panel on desktop; the phone bar of inner pages hides portrait, bio and domain. An emoji stands in when no portrait exists.
 
 ### Navigation List
 A list of page titles in Body Small at weight 500, separated by hairlines top and bottom, rows at least 2.5rem tall. The current page (and the ancestor of the current page) gets weight 600 and the orange 7px square, which hangs in the panel gutter 15px left of the label so the label never shifts. Hover follows the link grammar.

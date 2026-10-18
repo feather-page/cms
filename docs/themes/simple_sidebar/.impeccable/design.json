@@ -353,11 +353,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Site name on the home panel."
-      },
-      "display-slim": {
-        "displayName": "Display Slim",
-        "purpose": "Site name on inner pages."
+        "purpose": "Site name in the panel on the home page; on inner pages capped at min(Display, 0.85 × Headline)."
       },
       "headline": {
         "displayName": "Headline",
@@ -479,7 +475,7 @@
   ],
   "narrative": {
     "northStar": "The Useful Device",
-    "overview": "Dieter Rams' industrial design, taken only where it does a job. A housing-grey panel carries the person's name as a bold type designation and lists the pages; the reading column is calm grotesque type on off-white; every piece of metadata is printed like the scale on a device, small tracked capitals with a hairline running out after it. One signal orange appears, and only as a function: where you are, what is new, what has focus, what is a link.\n\nThe theme is a reader's surface for a personal log. Density is moderate and quiet: one reading column of about 36rem, generous gaps between entries, no boxes around them. On inner pages the panel slims and the content leads. It works without JavaScript; the only interactive element is a native `<details>` menu on phones.\n\nRejected in the build's history and not to return: decorative device fronts (grilles, dials, keys, rails), shelving-system grids, poster planes, LCD dates.",
+    "overview": "Dieter Rams' industrial design, taken only where it does a job. A housing-grey panel carries the person's name as a bold type designation and lists the pages; the reading column is calm grotesque type on off-white; every piece of metadata is printed like the scale on a device, small tracked capitals with a hairline running out after it. One signal orange appears, and only as a function: where you are, what is new, what has focus, what is a link.\n\nThe theme is a reader's surface for a personal log. Density is moderate and quiet: one reading column of about 36rem, generous gaps between entries, no boxes around them. Every desktop page carries the same panel; on inner pages the article heading outranks the site name. On phones inner pages get a one-line bar and the bio moves to the footer. It works without JavaScript; the only interactive element is a native `<details>` menu on phones.\n\nRejected in the build's history and not to return: decorative device fronts (grilles, dials, keys, rails), shelving-system grids, poster planes, LCD dates.",
     "keyCharacteristics": [
       "Two planes only: housing-grey panel and off-white ground, joined by a 1px seam.",
       "Scale printing for every label, date and count.",
