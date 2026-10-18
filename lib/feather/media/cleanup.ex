@@ -131,25 +131,27 @@ defmodule Feather.Media.Cleanup do
     featured = featured_image_ids()
     embedded = embedded_by(images)
 
-    Enum.flat_map(images, fn image ->
-      case Map.get(embedded, key(image)) do
-        [{owner_field, owner_id} | _] ->
-          Media.assign_images(image.site_id, owner_field, owner_id, [image.public_id])
+    Enum.flat_map(images, &release(&1, featured, embedded))
+  end
+
+  defp release(image, featured, embedded) do
+    case Map.get(embedded, key(image)) do
+      [{owner_field, owner_id} | _] ->
+        Media.assign_images(image.site_id, owner_field, owner_id, [image.public_id])
+        []
+
+      nil ->
+        if MapSet.member?(featured, image.id) do
+          Repo.update_all(from(i in Image, where: i.id == ^image.id),
+            set: [post_id: nil, page_id: nil, project_id: nil]
+          )
+
           []
-
-        nil ->
-          if MapSet.member?(featured, image.id) do
-            Repo.update_all(from(i in Image, where: i.id == ^image.id),
-              set: [post_id: nil, page_id: nil, project_id: nil]
-            )
-
-            []
-          else
-            Repo.delete_all(from i in Image, where: i.id == ^image.id)
-            [image]
-          end
-      end
-    end)
+        else
+          Repo.delete_all(from i in Image, where: i.id == ^image.id)
+          [image]
+        end
+    end
   end
 
   defp key(%Image{site_id: site_id, public_id: public_id}), do: {site_id, public_id}
@@ -165,11 +167,11 @@ defmodule Feather.Media.Cleanup do
         public_id <- Blocks.image_ids(content),
         reduce: %{} do
       acc ->
-        Map.update(acc, {site_id, public_id}, [{field, id}], fn owners ->
-          if {field, id} in owners, do: owners, else: owners ++ [{field, id}]
-        end)
+        Map.update(acc, {site_id, public_id}, [{field, id}], &add_owner(&1, {field, id}))
     end
   end
+
+  defp add_owner(owners, owner), do: if(owner in owners, do: owners, else: owners ++ [owner])
 
   # {site_id, record id, content} of the records, then of their versions.
   defp contents(schema, version_schema, field, site_ids) do

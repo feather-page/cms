@@ -56,18 +56,22 @@ defmodule Feather.Media.Fetcher do
 
     with {:ok, ip} <- UrlChecker.resolve(uri.host, timeout),
          {:ok, response} <- request(uri, ip, deadline, max_bytes) do
-      case response.status do
-        status when status in 200..299 ->
-          if byte_size(response.body) > max_bytes,
-            do: {:error, :too_large},
-            else: {:ok, response.body}
+      handle_response(response, uri, deadline, max_bytes, redirects_left)
+    end
+  end
 
-        status when status in @redirect_statuses ->
-          redirect(uri, response, deadline, max_bytes, redirects_left)
+  defp handle_response(response, uri, deadline, max_bytes, redirects_left) do
+    case response.status do
+      status when status in 200..299 ->
+        if byte_size(response.body) > max_bytes,
+          do: {:error, :too_large},
+          else: {:ok, response.body}
 
-        status ->
-          {:error, {:status, status}}
-      end
+      status when status in @redirect_statuses ->
+        redirect(uri, response, deadline, max_bytes, redirects_left)
+
+      status ->
+        {:error, {:status, status}}
     end
   end
 

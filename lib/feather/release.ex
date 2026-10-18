@@ -10,6 +10,7 @@ defmodule Feather.Release do
   """
 
   alias Feather.Accounts.Scope
+  alias Feather.Publishing
 
   @app :feather
 
@@ -46,13 +47,15 @@ defmodule Feather.Release do
   admin flag.
   """
   def create_user(email, super_admin? \\ false) do
-    with_app(fn ->
-      with {:ok, user} <- Feather.Accounts.get_or_create_user_by_email(email),
-           {:ok, user} <- Feather.Accounts.set_super_admin(user, super_admin?) do
-        IO.puts("User #{user.email} ready#{if super_admin?, do: " (super admin)", else: ""}.")
-        {:ok, user}
-      end
-    end)
+    with_app(fn -> ensure_user(email, super_admin?) end)
+  end
+
+  defp ensure_user(email, super_admin?) do
+    with {:ok, user} <- Feather.Accounts.get_or_create_user_by_email(email),
+         {:ok, user} <- Feather.Accounts.set_super_admin(user, super_admin?) do
+      IO.puts("User #{user.email} ready#{if super_admin?, do: " (super admin)", else: ""}.")
+      {:ok, user}
+    end
   end
 
   @doc """
@@ -83,8 +86,6 @@ defmodule Feather.Release do
   """
   def set_target_config(target_public_id, %{} = config) do
     with_app(fn ->
-      alias Feather.Publishing
-
       import Ecto.Query, only: [from: 2]
 
       # Without the old config: it is replaced, and it may not decrypt.
@@ -101,15 +102,19 @@ defmodule Feather.Release do
           {:error, :not_found}
 
         target ->
-          target = Feather.Repo.preload(target, :site)
-          scope = Scope.for_site(target.site)
-
-          with {:ok, target} <- Publishing.update_target_config(scope, target, config) do
-            IO.puts("Config of #{target.public_id} (#{target.provider}) set.")
-            {:ok, target}
-          end
+          update_target_config(target, config)
       end
     end)
+  end
+
+  defp update_target_config(target, config) do
+    target = Feather.Repo.preload(target, :site)
+    scope = Scope.for_site(target.site)
+
+    with {:ok, target} <- Publishing.update_target_config(scope, target, config) do
+      IO.puts("Config of #{target.public_id} (#{target.provider}) set.")
+      {:ok, target}
+    end
   end
 
   defp with_app(fun) do

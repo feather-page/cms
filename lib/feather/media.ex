@@ -99,14 +99,16 @@ defmodule Feather.Media do
     site_id = Ecto.Changeset.get_field(changeset, :site_id)
 
     Enum.reduce(fields, changeset, fn field, changeset ->
-      Ecto.Changeset.validate_change(changeset, field, fn ^field, image_id ->
-        if Repo.exists?(from i in Image, where: i.id == ^image_id and i.site_id == ^site_id) do
-          []
-        else
-          [{field, "is not an image of this site"}]
-        end
-      end)
+      Ecto.Changeset.validate_change(changeset, field, &site_image_errors(&1, &2, site_id))
     end)
+  end
+
+  defp site_image_errors(field, image_id, site_id) do
+    if Repo.exists?(from i in Image, where: i.id == ^image_id and i.site_id == ^site_id) do
+      []
+    else
+      [{field, "is not an image of this site"}]
+    end
   end
 
   ## Creating

@@ -516,26 +516,30 @@ defmodule Feather.Sites do
         {:error, :email_mismatch}
 
       true ->
-        invitation = Repo.preload(invitation, [:site, :inviting_user])
-
-        result =
-          Repo.transact(fn ->
-            with {:ok, user} <- Accounts.get_or_create_user_by_email(invitation.email),
-                 {:ok, _site_user} <- add_member(invitation.site, user),
-                 {:ok, invitation} <-
-                   invitation
-                   |> Ecto.Changeset.change(accepted_at: DateTime.utc_now())
-                   |> Repo.update() do
-              {:ok, %{user: user, site: invitation.site, invitation: invitation}}
-            end
-          end)
-
-        with {:ok, %{invitation: invitation}} <- result do
-          InvitationNotifier.deliver_invitation_accepted(invitation)
-        end
-
-        result
+        accept_pending_invitation(invitation)
     end
+  end
+
+  defp accept_pending_invitation(invitation) do
+    invitation = Repo.preload(invitation, [:site, :inviting_user])
+
+    result =
+      Repo.transact(fn ->
+        with {:ok, user} <- Accounts.get_or_create_user_by_email(invitation.email),
+             {:ok, _site_user} <- add_member(invitation.site, user),
+             {:ok, invitation} <-
+               invitation
+               |> Ecto.Changeset.change(accepted_at: DateTime.utc_now())
+               |> Repo.update() do
+          {:ok, %{user: user, site: invitation.site, invitation: invitation}}
+        end
+      end)
+
+    with {:ok, %{invitation: invitation}} <- result do
+      InvitationNotifier.deliver_invitation_accepted(invitation)
+    end
+
+    result
   end
 
   ## Social media links

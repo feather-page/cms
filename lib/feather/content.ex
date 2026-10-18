@@ -266,20 +266,19 @@ defmodule Feather.Content do
 
     Repo.transact(fn ->
       with {:ok, page} <- save_with_images(changeset, scope, :page_id, opts) do
-        if navigation_given? do
-          sync_navigation(scope, page)
-        end
-
+        sync_navigation(navigation_given?, scope, page)
         {:ok, put_navigation_flag(page)}
       end
     end)
   end
 
-  defp sync_navigation(scope, %Page{add_to_navigation: true} = page) do
+  defp sync_navigation(false, _scope, _page), do: :ok
+
+  defp sync_navigation(true, scope, %Page{add_to_navigation: true} = page) do
     {:ok, _item} = Sites.add_to_navigation(scope, page)
   end
 
-  defp sync_navigation(scope, %Page{} = page) do
+  defp sync_navigation(true, scope, %Page{} = page) do
     :ok = Sites.remove_from_navigation(scope, page)
   end
 
@@ -631,17 +630,19 @@ defmodule Feather.Content do
         when record: Post.t() | Page.t() | Project.t()
   def publish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
-    Repo.transact(fn ->
-      with {:ok, current} <- stored(record) do
-        current = Repo.preload(current, :published_version)
+    Repo.transact(fn -> publish_stored(scope, record) end)
+  end
 
-        cond do
-          publication_status(current) == :published -> {:ok, current}
-          published_slug_taken?(current) -> {:error, :slug_taken}
-          true -> insert_version(scope, current)
-        end
+  defp publish_stored(scope, record) do
+    with {:ok, current} <- stored(record) do
+      current = Repo.preload(current, :published_version)
+
+      cond do
+        publication_status(current) == :published -> {:ok, current}
+        published_slug_taken?(current) -> {:error, :slug_taken}
+        true -> insert_version(scope, current)
       end
-    end)
+    end
   end
 
   # The record as stored, while it has the given one's lock_version.
@@ -957,13 +958,17 @@ defmodule Feather.Content do
           Blocks.image_ids(record.content)
         )
 
-        case Keyword.fetch(opts, :draft) do
-          {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
-          {:ok, true} -> unpublish(scope, record)
-          :error -> {:ok, record}
-        end
+        apply_draft_option(scope, record, changeset, opts)
       end
     end)
+  end
+
+  defp apply_draft_option(scope, record, changeset, opts) do
+    case Keyword.fetch(opts, :draft) do
+      {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
+      {:ok, true} -> unpublish(scope, record)
+      :error -> {:ok, record}
+    end
   end
 
   defp slug_taken_error({:error, :slug_taken}, changeset) do
