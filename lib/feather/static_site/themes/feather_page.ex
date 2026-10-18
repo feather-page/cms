@@ -71,11 +71,12 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   @impl true
   def site_image_fields, do: Site.mascot_fields()
 
+  defp seal(emoji),
+    do: {:safe, [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]}
+
   defp chip(href, emoji, title, current? \\ false) do
-    {class, seal} =
-      if present?(emoji),
-        do: {"chip", [~s(<span class="seal" aria-hidden="true">), escape(emoji), "</span>"]},
-        else: {"chip chip--plain", []}
+    {class, {:safe, seal}} =
+      if present?(emoji), do: {"chip", seal(emoji)}, else: {"chip chip--plain", {:safe, []}}
 
     {:safe,
      [

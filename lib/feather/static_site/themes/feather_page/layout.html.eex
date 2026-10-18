@@ -16,7 +16,7 @@
     <%= masthead(%{site: @site, routes: @routes, image: @masthead_image, navigation: @data.navigation}) %>
     <% else %>
     <nav class="breadcrumb" aria-label="<%= gettext("Breadcrumb") %>">
-      <a class="breadcrumb-home" href="<%= Routes.home_url(@routes) %>"><%= if present?(@site.emoji) do %><span class="seal" aria-hidden="true"><%= @site.emoji %></span><% end %><span class="breadcrumb-site"><%= @site.title %></span></a><%= for crumb <- @trail do %><span class="divider" aria-hidden="true">›</span><a href="<%= crumb.url %>"><%= emoji_label(crumb.emoji, crumb.title) %></a><% end %><span class="divider" aria-hidden="true">›</span><span aria-current="page"><%= @page_title %></span>
+      <a class="breadcrumb-home" href="<%= Routes.home_url(@routes) %>"><%= if present?(@site.emoji) do %><%= seal(@site.emoji) %><% end %><span class="breadcrumb-site"><%= @site.title %></span></a><%= for crumb <- @trail do %><span class="divider" aria-hidden="true">›</span><a href="<%= crumb.url %>"><%= emoji_label(crumb.emoji, crumb.title) %></a><% end %><span class="divider" aria-hidden="true">›</span><span aria-current="page"><%= @page_title %></span>
     </nav>
     <% end %>
     <main id="main">
