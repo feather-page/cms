@@ -273,19 +273,7 @@ defmodule Feather.StaticSite.Renderer do
   defp description(text) do
     text = text |> String.replace(~r/\s+/u, " ") |> String.trim()
 
-    cond do
-      text == "" ->
-        nil
-
-      String.length(text) <= @description_length ->
-        text
-
-      true ->
-        text
-        |> String.slice(0, @description_length - 1)
-        |> String.replace(~r/\s+\S*\z/u, "")
-        |> Kernel.<>("…")
-    end
+    if text == "", do: nil, else: ContentBlocks.truncate(text, @description_length)
   end
 
   defp first_image(data, content),

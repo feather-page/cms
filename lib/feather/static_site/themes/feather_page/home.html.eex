@@ -37,7 +37,6 @@
     <%= tags(%{tags: Content.tag_list(post)}) %>
     <% end %>
   </article>
-  <hr />
   <% end %>
 </div>
 

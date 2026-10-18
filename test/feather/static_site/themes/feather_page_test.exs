@@ -230,6 +230,24 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     assert text(post, "title") == "Short note. · Zipfelmaus"
   end
 
+  test "posts and projects are listed without hr elements between them" do
+    %{scope: scope} = build_site(%{title: "Lists"}, [])
+    project_fixture(scope, %{title: "Other", slug: "/other"})
+
+    sink = RecordingSink.new(start_supervised!(RecordingSink, id: make_ref()))
+    :ok = Export.run(Repo.reload!(scope.site), Routes.new(scope.site), sink)
+
+    assert sink |> doc("index.html") |> Floki.find(".page-list article") |> length() == 2
+    assert sink |> doc("index.html") |> Floki.find(".page-list hr") == []
+
+    assert sink
+           |> doc("work/index.html")
+           |> Floki.find(".projects-list .project-item")
+           |> length() == 2
+
+    assert sink |> doc("work/index.html") |> Floki.find(".projects-list hr") == []
+  end
+
   describe "fonts" do
     @mono_faces [
       {"jetbrains-mono-latin-400-normal.woff2", 400, "normal"},

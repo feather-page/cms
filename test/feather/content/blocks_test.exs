@@ -194,12 +194,39 @@ defmodule Feather.Content.BlocksTest do
       assert Blocks.excerpt(@blocks) == "Some bold text. A section Simplicity."
     end
 
-    test "excerpt/2 truncates with an ellipsis" do
-      long = [%{"type" => "paragraph", "text" => String.duplicate("a", 400)}]
-      excerpt = Blocks.excerpt(long)
-      assert String.length(excerpt) == 300
-      assert String.ends_with?(excerpt, "...")
-      assert Blocks.excerpt(long, 10) == "aaaaaaa..."
+    test "excerpt/2 ends at a whole word with an ellipsis" do
+      long = [%{"type" => "paragraph", "text" => String.duplicate("word ", 80)}]
+      assert Blocks.excerpt(long) == Enum.map_join(1..60, " ", fn _ -> "word" end) <> "…"
+    end
+
+    test "excerpt/2 ignores whitespace before the first word" do
+      blocks = [
+        %{"type" => "paragraph", "text" => ""},
+        %{"type" => "paragraph", "text" => "<br>Supercalifragilistic"}
+      ]
+
+      assert Blocks.excerpt(blocks, 10) == "Supercali…"
+    end
+
+    test "truncate/2 cuts at the last whole word and ends in an ellipsis" do
+      assert Blocks.truncate("Most posts are about microcontrollers", 20) == "Most posts are…"
+      assert Blocks.truncate("Most posts are about", 15) == "Most posts are…"
+      assert Blocks.truncate("Most posts, mostly", 16) == "Most posts…"
+      assert Blocks.truncate("one\ntwo three", 10) == "one\ntwo…"
+      assert Blocks.truncate("Hello, world. Again", 13) == "Hello, world…"
+    end
+
+    test "truncate/2 cuts text with too few spaces at the length" do
+      assert Blocks.truncate("日本語 の長い文章はスペースがありません", 10) == "日本語 の長い文章…"
+    end
+
+    test "truncate/2 cuts a single overlong word at the length" do
+      assert Blocks.truncate(String.duplicate("a", 20), 10) == "aaaaaaaaa…"
+    end
+
+    test "truncate/2 leaves short text unchanged" do
+      assert Blocks.truncate("Short text.", 11) == "Short text."
+      assert Blocks.truncate("", 5) == ""
     end
 
     test "strip_tags/1 keeps whitespace between tags" do

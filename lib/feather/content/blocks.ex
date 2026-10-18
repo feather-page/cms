@@ -193,8 +193,7 @@ defmodule Feather.Content.Blocks do
 
   @doc """
   The plain text of all text blocks (paragraphs, headers, quotes), with
-  HTML tags removed, truncated to `length` characters including a trailing
-  "..." (like Rails' `String#truncate`).
+  HTML tags removed, truncated to `length` characters (see `truncate/2`).
   """
   @spec excerpt([block()] | nil, pos_integer()) :: String.t()
   def excerpt(blocks, length \\ 300) do
@@ -203,6 +202,7 @@ defmodule Feather.Content.Blocks do
     |> Enum.filter(&(&1["type"] in @text_types))
     |> Enum.map_join(" ", &(&1["text"] || ""))
     |> strip_tags()
+    |> String.trim()
     |> truncate(length)
   end
 
@@ -293,15 +293,34 @@ defmodule Feather.Content.Blocks do
   defp text_of_tokens([_token | rest], nil, acc), do: text_of_tokens(rest, nil, acc)
 
   @doc """
-  Truncates a string to `length` characters, ending in "..." when cut.
+  Truncates a string to at most `length` characters. A cut text ends at its
+  last whole word, without trailing punctuation, and in "…"; text with too
+  few spaces for that (one long word, CJK) is cut at the length.
   """
   @spec truncate(String.t(), pos_integer()) :: String.t()
   def truncate(text, length) do
-    if String.length(text) > length do
-      String.slice(text, 0, max(length - 3, 0)) <> "..."
-    else
-      text
+    cond do
+      String.length(text) <= length ->
+        text
+
+      String.length(words = whole_words(String.slice(text, 0, length + 1), length)) >=
+          div(length, 2) ->
+        words <> "…"
+
+      true ->
+        String.trim_trailing(String.slice(text, 0, length - 1)) <> "…"
     end
+  end
+
+  defp whole_words(head, length) do
+    words =
+      head
+      |> String.replace(~r/\S*\z/u, "")
+      |> String.replace(~r/[[:punct:]\s]+\z/u, "")
+
+    if String.length(words) < length,
+      do: words,
+      else: whole_words(String.slice(words, 0..-2//1), length)
   end
 
   defp header_level(level) when level in @header_levels, do: level
@@ -340,7 +359,6 @@ defmodule Feather.Content.Blocks do
 
   defp list_items(_items), do: []
 
-  # Inline HTML of stored content and of the admin editor: sanitized.
   defp inline(nil), do: nil
   defp inline(html) when is_binary(html), do: HTML.sanitize(html, :editor)
   defp inline(value) when is_number(value) or is_boolean(value), do: to_string(value)

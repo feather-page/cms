@@ -237,7 +237,7 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(src="/images/#{c.image.public_id}/desktop_x1.jpg" alt="An image")
     assert compact(html) =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
     assert html =~ "youtube-nocookie.com/embed/abc"
-    assert html =~ ~s(<div class="book-title">Dune</div>)
+    assert html =~ ~s(<cite class="book-title">Dune</cite>)
     assert html |> Floki.parse_document!() |> Floki.attribute("img.header-image", "alt") == [""]
 
     assert html =~
@@ -274,7 +274,10 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<h3 class="post-title"><a href="/everything/">Everything</a></h3>)
     assert html =~ ~s(<div class="post-excerpt">)
     # The untitled review shows the book card with cover and rating.
-    assert html =~ ~s(<img src="/images/#{c.cover.public_id}/mobile_x1.webp" alt="")
+    [cover] = html |> Floki.parse_document!() |> Floki.find("figure.book-card img.book-cover")
+    assert attr(cover, "src") == "/images/#{c.cover.public_id}/mobile_x1.webp"
+    assert {attr(cover, "width"), attr(cover, "height")} == {"64", "48"}
+    assert attr(cover, "loading") == "lazy"
 
     assert html =~
              ~s(<span class="book-rating" role="img" aria-label="4 of 5 stars"><span aria-hidden="true">★★★★☆</span></span>)

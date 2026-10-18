@@ -362,8 +362,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert texts(home, "main article.entry .meta > .meta-emoji:first-child") ==
                ["🚗", "🚲", "🧿"]
 
-      assert attr(home, "main article.entry .meta > .meta-label + .rule", "aria-hidden") ==
-               ["true", "true", "true"]
+      refute present?(home, "main article.entry .meta .rule")
 
       assert attr(home, "main article.entry .meta time", "datetime") ==
                ["2026-02-10", "2026-02-09", "2026-02-08"]
@@ -403,7 +402,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     } do
       home = doc(sink, "index.html")
 
-      assert [label] = home |> find("article.entry .meta > .rule + .new") |> Enum.to_list()
+      assert [label] = home |> find("article.entry .meta > .meta-label + .new") |> Enum.to_list()
       assert label |> LazyHTML.text() |> String.trim() == "New"
       assert LazyHTML.attribute(label, "aria-label") == ["Newest post"]
       assert LazyHTML.attribute(label, "role") == ["img"]
@@ -668,8 +667,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert texts(projects, "main li.project .meta .meta-label") ==
                ["Ongoing·elixir, phoenix·Code", "Ongoing", "Ongoing", "Ongoing"]
 
-      assert projects |> find("main li.project .meta > .meta-label + .rule") |> Enum.count() ==
-               4
+      refute present?(projects, "main li.project .meta .rule")
 
       assert attr(projects, "main li.project .meta a", "href") ==
                ["https://www.example.com/code/"]
@@ -742,7 +740,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       own = doc(sink, "projects/feather-page/index.html")
 
       assert text(own, "main .meta .meta-label") == "Ongoing·elixir, phoenix"
-      assert present?(own, "main article.project-page > .meta > .meta-label + .rule")
+      assert present?(own, "main article.project-page > .meta > .meta-label")
       assert texts(own, "main dl.facts dt") == ["Stack", "Status", "Period", "Code", "Website"]
 
       assert texts(own, "main dl.facts dd") ==
