@@ -811,6 +811,31 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     refute "Evil" in texts(doc(sink, "projects/evil/index.html"), "main dl.facts dt")
   end
 
+  test "content images declare the width of the reading column beside the panel" do
+    scope = site_scope_fixture(%{theme: "simple_sidebar"})
+    image = image_fixture(scope, width: 800, height: 600)
+    page_fixture(scope, %{title: "Photos", slug: "/photos", content: [image_block(image)]})
+
+    post_fixture(scope, %{
+      title: "Shot",
+      slug: "/shot",
+      content: [image_block(image)],
+      publish_at: @day
+    })
+
+    sink = export(scope)
+
+    sizes =
+      "(min-width: 58rem) 36rem, (min-width: 55.56rem) 62.1vw, " <>
+        "(min-width: 52rem) calc(89.1vw - 15rem), calc(100vw - 2rem)"
+
+    for path <- ~w(photos/index.html shot/index.html) do
+      assert attr(doc(sink, path), "figure picture source", "sizes") == [sizes], path
+    end
+
+    assert RecordingSink.get(sink, "feed.xml") =~ "sizes=&quot;#{sizes}&quot;"
+  end
+
   describe "fonts" do
     @mono_faces [
       {"jetbrains-mono-latin-400-normal.woff2", 400, "normal"},

@@ -74,6 +74,12 @@ defmodule Feather.StaticSite.Theme do
   @callback font_path(String.t()) :: Path.t()
 
   @doc """
+  The `sizes` attribute of content images: how wide the theme's text
+  column is at which viewport width.
+  """
+  @callback content_image_sizes() :: String.t()
+
+  @doc """
   The site's image fields (of `Feather.Sites.Site.image_fields/0`) the
   theme renders; the export copies only their images.
   """

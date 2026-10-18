@@ -186,14 +186,15 @@ defmodule Feather.StaticSite.Renderer do
 
   @doc "The context for rendering blocks of the site."
   @spec block_context(SiteData.t(), Routes.t()) :: Blocks.context()
-  def block_context(%SiteData{} = data, %Routes{} = routes),
-    do:
-      Blocks.context(routes,
-        images: data.images,
-        books: data.books_by_public_id,
-        diagrams: data.diagrams,
-        highlights: data.highlights
-      )
+  def block_context(%SiteData{} = data, %Routes{} = routes) do
+    Blocks.context(routes,
+      content_image_sizes: Themes.module(data.site).content_image_sizes(),
+      images: data.images,
+      books: data.books_by_public_id,
+      diagrams: data.diagrams,
+      highlights: data.highlights
+    )
+  end
 
   defp base_assigns(data, routes, page_title, page_emoji, is_home, meta_title \\ nil) do
     meta_title = meta_title || page_title

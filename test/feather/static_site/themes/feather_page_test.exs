@@ -259,6 +259,23 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     end
   end
 
+  test "content images in pages and the feed declare the width of the text column" do
+    scope = site_scope_fixture()
+    image = image_fixture(scope, width: 800, height: 600)
+    page_fixture(scope, %{title: "Photos", slug: "/photos", content: [image_block(image)]})
+    post_fixture(scope, %{title: "Shot", slug: "/shot", content: [image_block(image)]})
+
+    sink = RecordingSink.new(start_supervised!(RecordingSink, id: make_ref()))
+    :ok = Export.run(Repo.reload!(scope.site), Routes.new(scope.site), sink)
+    sizes = "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
+
+    for path <- ~w(photos/index.html shot/index.html) do
+      assert attr(doc(sink, path), "figure picture source", "sizes") == [sizes], path
+    end
+
+    assert RecordingSink.get(sink, "feed.xml") =~ "sizes=&quot;#{sizes}&quot;"
+  end
+
   test "font URLs follow the preview root" do
     scope = site_scope_fixture()
     routes = Routes.new(scope.site, site_root: "/preview/abc/")

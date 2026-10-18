@@ -63,6 +63,13 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   def font_path(name),
     do: Application.app_dir(:feather, "priv/static_site/themes/simple_sidebar/fonts/#{name}")
 
+  # The text column beside the panel; panel, gap and --inset clamp in vw, so it is solved per range.
+  @impl true
+  def content_image_sizes,
+    do:
+      "(min-width: 58rem) 36rem, (min-width: 55.56rem) 62.1vw, " <>
+        "(min-width: 52rem) calc(89.1vw - 15rem), calc(100vw - 2rem)"
+
   @impl true
   def site_image_fields, do: [:portrait_image_id]
 

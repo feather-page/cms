@@ -68,6 +68,11 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   def font_path(name),
     do: Application.app_dir(:feather, "priv/static_site/themes/feather_page/fonts/#{name}")
 
+  # The text column: 35rem, or the viewport less two clamp(1rem, 4vw, 1.5rem) gutters.
+  @impl true
+  def content_image_sizes,
+    do: "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
+
   @impl true
   def site_image_fields, do: Site.mascot_fields()
 
