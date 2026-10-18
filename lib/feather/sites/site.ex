@@ -31,7 +31,7 @@ defmodule Feather.Sites.Site do
     has_many :projects, Feather.Content.Project
     has_many :books, Feather.Books.Book
     has_many :images, Feather.Media.Image
-    has_many :deployment_targets, Feather.Publishing.DeploymentTarget
+    has_one :deployment_target, Feather.Publishing.DeploymentTarget
 
     belongs_to :footer_mascot_image, Feather.Media.Image
     belongs_to :post_end_mascot_image, Feather.Media.Image

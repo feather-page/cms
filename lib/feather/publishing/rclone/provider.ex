@@ -13,7 +13,7 @@ defmodule Feather.Publishing.Rclone.Provider do
   @doc "The content of the rclone config file."
   @callback config(DeploymentTarget.t(), obscure()) :: {:ok, iodata()} | {:error, String.t()}
 
-  @doc "The rclone remote path, e.g. `\"hetzner-ftps:/site\"`."
+  @doc "The rclone remote path, e.g. `\"ftps:/site\"`."
   @callback remote(DeploymentTarget.t()) :: {:ok, String.t()} | {:error, String.t()}
 
   @doc """

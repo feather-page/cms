@@ -1,5 +1,4 @@
 defmodule FeatherWeb.DeployControlTest do
-  # The deploy control at the bottom of the site sidebar.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest
@@ -34,7 +33,7 @@ defmodule FeatherWeb.DeployControlTest do
     lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
 
     assert has_element?(lv, @panel, "1 change not live")
-    assert has_element?(lv, "#deploy-site-sidebar", "Deploy to production")
+    assert has_element?(lv, "#deploy-site-sidebar", ~r/^\s*Deploy\s*$/)
   end
 
   test "live when deployed after the newest publish", %{
@@ -48,6 +47,7 @@ defmodule FeatherWeb.DeployControlTest do
     {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts")
 
     assert has_element?(lv, @panel, "Live · just now")
+    assert has_element?(lv, ~s(#{@panel} a[href="https://#{site.domain}"]), site.domain)
     refute has_element?(lv, "#deploy-site-sidebar")
   end
 
@@ -92,13 +92,13 @@ defmodule FeatherWeb.DeployControlTest do
     } do
       page_fixture(scope, title: "First", add_to_navigation: true)
       second = page_fixture(scope, title: "Second")
+      deleted = page_fixture(scope, title: "Deleted")
       target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
-      fresh = page_fixture(scope, title: "Fresh")
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/pages")
-      assert has_element?(lv, @panel, "1 change not live")
-
-      confirm_click(lv, "#delete-page-#{fresh.public_id}-menu-item")
       assert has_element?(lv, @panel, "Live")
+
+      confirm_click(lv, "#delete-page-#{deleted.public_id}-menu-item")
+      assert has_element?(lv, @panel, "1 change not live")
 
       changes = [
         fn -> lv |> element("#add-to-navigation-#{second.public_id}") |> render_click() end,
@@ -115,6 +115,39 @@ defmodule FeatherWeb.DeployControlTest do
         change.()
         assert has_element?(lv, @panel, "1 change not live")
       end
+    end
+
+    test "after deleting a post or project on its list", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post = post_fixture(scope, title: "Deleted")
+      project = project_fixture(scope, title: "Deleted")
+      target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+
+      for {list, button} <- [
+            {~p"/sites/#{site.public_id}/posts", "#delete-post-#{post.public_id}-menu-item"},
+            {~p"/sites/#{site.public_id}/projects",
+             "#delete-project-#{project.public_id}-menu-item"}
+          ] do
+        deployed(target, DateTime.utc_now())
+        {:ok, lv, _html} = live(conn, list)
+        assert has_element?(lv, @panel, "Live")
+
+        confirm_click(lv, button)
+        assert has_element?(lv, @panel, "1 change not live")
+      end
+    end
+
+    test "after unpublishing in the form", %{conn: conn, site: site, scope: scope} do
+      post = post_fixture(scope, title: "Unpublished")
+      scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
+      {:ok, lv, _html} = live(conn, edit_path(site, post))
+      assert has_element?(lv, @panel, "Live")
+
+      lv |> element("#unpublish-post") |> render_click()
+      assert has_element?(lv, @panel, "1 change not live")
     end
 
     test "after toggling add to navigation in the page form", %{
@@ -192,7 +225,7 @@ defmodule FeatherWeb.DeployControlTest do
     assert has_element?(lv, @panel, "Live")
   end
 
-  test "deploys every target and shows the step", %{
+  test "deploys the site and shows the step", %{
     conn: conn,
     site: site,
     scope: scope
@@ -213,7 +246,7 @@ defmodule FeatherWeb.DeployControlTest do
        %{target_id: target.public_id, step: :upload, started_at: DateTime.utc_now()}}
     )
 
-    assert has_element?(lv, @panel, "Deploying to #{target.public_hostname}")
+    assert has_element?(lv, @panel, "Deploying to #{site.domain}")
     assert has_element?(lv, @panel, "Uploading")
   end
 end

@@ -4,12 +4,7 @@ defmodule FeatherWeb.Router do
   import FeatherWeb.UserAuth
   import FeatherWeb.SiteAuth, only: [fetch_current_site: 2]
 
-  # Content-Security-Policy of the admin (and the preview, which renders on
-  # the same origin): scripts only from our own origin, so markup that slips
-  # into a page (inline handlers, inline scripts) does not run. Styles and
-  # fonts are our own; the block editor sets inline styles. Images
-  # (Unsplash, Open Library covers) and the embeds of the editor may come
-  # from any https origin.
+  # Own scripts only, so injected markup cannot run; the block editor needs inline styles.
   @csp_directives [
     "default-src 'self'",
     "script-src 'self'",
@@ -40,9 +35,6 @@ defmodule FeatherWeb.Router do
     plug :accepts, ["json"]
   end
 
-  # Session-authenticated JSON and file endpoints of the admin (editor
-  # image uploads, the book block lookup, the diagram preview, admin image
-  # files).
   pipeline :browser_json do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -56,15 +48,11 @@ defmodule FeatherWeb.Router do
     plug FeatherWeb.Plugs.ApiAuth
   end
 
-  # The container health check (Dockerfile). No pipeline: no
-  # session, no CSRF; excluded from force_ssl in config/prod.exs.
+  # No pipeline: no session, no CSRF; excluded from force_ssl in config/prod.exs.
   scope "/", FeatherWeb do
     get "/up", HealthController, :show
   end
 
-  # The content API, see docs/api/openapi.yml. Authenticated with bearer
-  # API tokens (`mix feather.api_token`); the token's user must have access
-  # to the site.
   scope "/api/v1/sites/:site_id", FeatherWeb.Api.V1 do
     pipe_through [:api, :api_token]
 
@@ -73,13 +61,7 @@ defmodule FeatherWeb.Router do
     resources "/images", ImageController, only: [:show, :create]
   end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:feather, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     # The dashboard and the mailbox preview use inline scripts: no CSP here.
@@ -109,8 +91,7 @@ defmodule FeatherWeb.Router do
     end
   end
 
-  # Invitation acceptance works logged out: the invitee may not have an
-  # account yet. Accepting logs them in.
+  # Logged out: the invitee may not have an account yet.
   scope "/", FeatherWeb do
     pipe_through [:browser]
 
@@ -118,8 +99,7 @@ defmodule FeatherWeb.Router do
     post "/invitations/:token/accept", InvitationController, :accept
   end
 
-  # The preview of a site's static pages: logged-in users with access to
-  # the site (checked in the controller).
+  # Site access is checked in the controller.
   scope "/preview", FeatherWeb do
     pipe_through [:browser, :require_authenticated_user]
 
@@ -128,11 +108,6 @@ defmodule FeatherWeb.Router do
   end
 
   ## Site content admin
-  #
-  # Everything under /sites/:site_id (content, settings, users,
-  # deployments) requires a logged-in user and access to the site:
-  # FeatherWeb.SiteAuth loads it with Sites.get_site!/2 (404 otherwise) and
-  # puts it into current_scope.
 
   scope "/sites/:site_id", FeatherWeb do
     pipe_through [:browser, :require_authenticated_user]
@@ -163,7 +138,6 @@ defmodule FeatherWeb.Router do
       live "/settings", SiteLive.Settings, :edit
       live "/users", MemberLive.Index, :index
       live "/deployments", DeploymentTargetLive.Index, :index
-      live "/deployments/:id/edit", DeploymentTargetLive.Form, :edit
     end
   end
 

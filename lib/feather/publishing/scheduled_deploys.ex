@@ -67,8 +67,8 @@ defmodule Feather.Publishing.ScheduledDeploys do
   defp check(deploy, from, to) do
     case deploy.(from, to) do
       [_ | _] = targets ->
-        hosts = Enum.map_join(targets, ", ", & &1.public_hostname)
-        Logger.info("Scheduled posts became due, deploying #{hosts}")
+        domains = Enum.map_join(targets, ", ", & &1.site.domain)
+        Logger.info("Scheduled posts became due, deploying #{domains}")
 
       _none ->
         :ok

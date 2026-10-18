@@ -8,7 +8,6 @@ defmodule FeatherWeb.SiteAuthTest do
 
   setup [:register_and_log_in_user, :create_site_for_user]
 
-  # Another member removes the logged in user from the site.
   defp remove_user(site, user) do
     other = user_fixture()
     {:ok, _} = Sites.add_member(site, other)
@@ -30,6 +29,34 @@ defmodule FeatherWeb.SiteAuthTest do
       assert %{"error" => message} = assert_redirect(view, "/")
       assert message =~ "no longer have access"
       assert Repo.get(Content.Post, post.id)
+    end
+
+    test "cannot deploy the site", %{conn: conn, site: site, scope: scope, user: user} do
+      deployment_target_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
+      :erlang.trace(view.pid, true, [:receive])
+
+      remove_user(site, user)
+
+      assert {:error, {:redirect, %{to: "/"}}} =
+               view |> element("#deploy-target") |> render_click()
+
+      refute_receive {:trace, _pid, :receive, {:deploy_requested, _target}}
+    end
+
+    test "cannot retry a deploy", %{conn: conn, site: site, scope: scope, user: user} do
+      deployment_target_fixture(scope)
+      {:ok, view, _html} = live(conn, ~p"/sites/#{site.public_id}/deployments")
+      Feather.Publishing.broadcast_notice(site, %{kind: :error, message: "Nope.", retry: true})
+      assert has_element?(view, "#site-notices button", "Retry")
+      :erlang.trace(view.pid, true, [:receive])
+
+      remove_user(site, user)
+
+      assert {:error, {:redirect, %{to: "/"}}} =
+               view |> element("#site-notices button", "Retry") |> render_click()
+
+      refute_receive {:trace, _pid, :receive, {:deploy_requested, _target}}
     end
 
     test "is redirected on patches", %{conn: conn, site: site, user: user} do

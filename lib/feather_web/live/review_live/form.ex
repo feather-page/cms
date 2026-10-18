@@ -42,7 +42,7 @@ defmodule FeatherWeb.ReviewLive.Form do
           :if={@live_action == :edit}
           id="status-badge"
           status={@publication_status}
-          live={Publishing.live?(@site_deploy.targets, @published_version)}
+          live={Publishing.live?(@site_deploy.target, @published_version)}
         />
       </:bar>
       <:bar_actions>
@@ -172,8 +172,11 @@ defmodule FeatherWeb.ReviewLive.Form do
     %{current_scope: scope, book: book} = socket.assigns
 
     case Books.update_book(scope, book, %{rating: params["rating"]}) do
-      {:ok, book} -> {:noreply, assign(socket, :book, book)}
-      {:error, _invalid_rating} -> {:noreply, socket}
+      {:ok, book} ->
+        {:noreply, socket |> assign(:book, book) |> FeatherWeb.SiteAuth.refresh_deploy_status()}
+
+      {:error, _invalid_rating} ->
+        {:noreply, socket}
     end
   end
 
@@ -222,8 +225,6 @@ defmodule FeatherWeb.ReviewLive.Form do
 
     form = build_form(scope, post, params, action)
 
-    # Like the Rails post_form controller: when title and slug appear and the
-    # title is empty, suggest "Review: <book title>".
     {params, form} =
       if ContentForm.show_title_and_slug?(form, length) and
            not ContentForm.present?(form[:title].value) do

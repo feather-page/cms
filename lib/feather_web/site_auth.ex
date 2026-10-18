@@ -33,19 +33,14 @@ defmodule FeatherWeb.SiteAuth do
       pipeline) in `site_notices`, which `FeatherWeb.SiteComponents.site_shell/1`
       shows as alerts above the page content. The event
       `"dismiss_site_notice"` removes one, `"retry_deploy"` deploys the
-      notice's target again and removes it,
-    * assigns `site_deploy` for the deploy control of the shell: the
-      deployment targets, how many changes they do not show yet
-      (`Feather.Publishing.undeployed_count/1`) and the progress of their
-      running deploys. It is loaded on mount, again with every notice
-      (a deploy ends with one), updated with every `{:deploy_progress, _}`
-      and reloaded when a LiveView calls `refresh_deploy_status/1` after
-      publishing in place or changing the site. The event `"deploy_site"`
-      deploys every target. A LiveView that assigns
-      `forward_site_notices: true` receives the notices in its own
-      `handle_info/2` too, and the deploy pipeline's
-      `{:deploy_progress, progress}` messages, which other LiveViews never
-      see,
+      site again and removes it,
+    * assigns `site_deploy` for the deploy control of the shell: the site's
+      deployment `target` (or nil), how many changes it does not show yet
+      (`pending`, `Feather.Publishing.undeployed_count/2`) and the
+      `progress` of its running deploy (or nil). It follows the deploy's
+      notices and progress; a LiveView calls `refresh_deploy_status/1`
+      after changing the site in place. The event `"deploy_site"` deploys
+      the site,
     * swallows `{:deploy_requested, target}`, which `Feather.Publishing`
       sends to the caller instead of deploying when `:deploy_mode` is
       `:manual` (tests), so LiveViews that publish do not crash on it.
@@ -138,32 +133,28 @@ defmodule FeatherWeb.SiteAuth do
       |> Phoenix.Component.assign(:site_notices, notices)
       |> refresh_deploy_status()
 
-    # A LiveView that wants to react to notices itself (e.g. refresh a
-    # list) assigns `forward_site_notices: true` and gets them in its
-    # handle_info/2 as well.
-    if socket.assigns[:forward_site_notices], do: {:cont, socket}, else: {:halt, socket}
+    {:halt, socket}
   end
 
   defp handle_message({:deploy_progress, %{target_id: id} = progress}, socket) do
     socket =
-      Phoenix.Component.update(socket, :site_deploy, fn deploy ->
-        if Enum.any?(deploy.targets, &(&1.public_id == id)),
-          do: put_in(deploy, [:progress, id], progress),
-          else: deploy
+      Phoenix.Component.update(socket, :site_deploy, fn
+        %{target: %{public_id: ^id}} = deploy -> %{deploy | progress: progress}
+        deploy -> deploy
       end)
 
-    if socket.assigns[:forward_site_notices], do: {:cont, socket}, else: {:halt, socket}
+    {:halt, socket}
   end
 
   defp handle_message({:deploy_requested, _target}, socket), do: {:halt, socket}
 
-  # The picker's events are checked in the component; this also covers its
-  # upload progress and any other way a change gets here.
+  # Also covers the picker's upload progress; its events are checked in the component.
   defp handle_message({FeatherWeb.HeaderImagePicker, _change}, socket), do: check_access(socket)
   defp handle_message(_message, socket), do: {:cont, socket}
 
   @doc """
-  Loads the deploy status again, e.g. after publishing in place.
+  Loads the deploy status again, e.g. after publishing or deleting in
+  place.
   """
   @spec refresh_deploy_status(LiveView.Socket.t()) :: LiveView.Socket.t()
   def refresh_deploy_status(socket) do
@@ -171,12 +162,12 @@ defmodule FeatherWeb.SiteAuth do
   end
 
   defp deploy_status(scope) do
-    targets = Publishing.list_targets(scope)
+    target = Publishing.get_target(scope)
 
     %{
-      targets: targets,
+      target: target,
       pending: Publishing.undeployed_count(scope),
-      progress: Publishing.deploy_progress_by_target(targets)
+      progress: if(target && target.deploying, do: Publishing.deploy_progress(target))
     }
   end
 
@@ -184,31 +175,22 @@ defmodule FeatherWeb.SiteAuth do
     do: {:halt, drop_notice(socket, id)}
 
   defp handle_notice_event("retry_deploy", params, socket) do
-    scope = socket.assigns.current_scope
-
-    target =
-      case params do
-        %{"target" => id} when is_binary(id) -> Publishing.get_target(scope, id)
-        _params -> nil
-      end
-
-    socket =
-      if target do
-        :ok = Publishing.deploy(scope, target)
-        socket
-      else
-        LiveView.put_flash(socket, :error, "This deployment target no longer exists.")
-      end
-
-    {:halt, drop_notice(socket, params["id"])}
+    {:halt, socket |> deploy_site() |> drop_notice(params["id"])}
   end
 
-  defp handle_notice_event("deploy_site", _params, socket) do
-    :ok = Publishing.deploy_site(socket.assigns.current_scope)
-    {:halt, refresh_deploy_status(socket)}
-  end
+  defp handle_notice_event("deploy_site", _params, socket), do: {:halt, deploy_site(socket)}
 
   defp handle_notice_event(_event, _params, socket), do: {:cont, socket}
+
+  defp deploy_site(socket) do
+    case Publishing.deploy_site(socket.assigns.current_scope) do
+      :ok ->
+        refresh_deploy_status(socket)
+
+      {:error, :no_target} ->
+        LiveView.put_flash(socket, :error, "This site has no deployment target.")
+    end
+  end
 
   defp drop_notice(socket, id) do
     notices = Enum.reject(socket.assigns.site_notices, &(to_string(&1.id) == to_string(id)))

@@ -1,27 +1,29 @@
 defmodule Feather.Publishing.DeployTest do
   use Feather.DataCase
 
-  alias Feather.Publishing
+  alias Feather.{Media, Publishing}
   alias Feather.Publishing.Deploy
 
   @moduletag :tmp_dir
   @moduletag :capture_log
 
-  setup do
+  setup %{tmp_dir: tmp_dir} do
     scope = site_scope_fixture()
     post_fixture(scope, %{title: "Hello", slug: "/hello"})
     target = deployment_target_fixture(scope)
     :ok = Publishing.subscribe_notices(scope.site)
-    on_exit(fn -> File.rm_rf!(Deploy.build_path(target)) end)
+    synced = Path.join(tmp_dir, "synced")
 
     %{
       scope: scope,
       target: target,
-      opts: [runner: runner(), brotli: false]
+      synced: synced,
+      runner: &runner(synced, &1),
+      opts: [runner: runner(synced), brotli: false]
     }
   end
 
-  defp runner(sync_result \\ {:ok, ""}) do
+  defp runner(synced, sync_result \\ {:ok, ""}) do
     test = self()
 
     fn
@@ -29,23 +31,28 @@ defmodule Feather.Publishing.DeployTest do
         {:ok, "obscured-#{String.trim_trailing(opts[:input], "\n")}"}
 
       ["sync", "--config", _config, source, remote], _opts ->
-        send(test, {:synced, source, remote, File.ls!(source)})
+        File.rm_rf!(synced)
+        File.cp_r!(source, synced)
+        send(test, {:synced, source, remote})
         sync_result
     end
   end
 
-  test "exports, precompresses, publishes the live directory and syncs it", c do
+  defp exports_left, do: Path.wildcard(Path.join([Media.storage_root(), "static_site", "*"]))
+
+  test "exports and precompresses into a fresh directory, syncs and removes it", c do
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
-    live = Deploy.live_dir(c.target)
-    assert File.read!(Path.join(live, "hello/index.html")) =~ "<h1>Hello</h1>"
-    assert File.exists?(Path.join(live, "index.html.gz"))
-    assert File.ls!(Deploy.build_path(c.target)) == ["public"]
+    assert_received {:synced, source, "ftps:/site"}
+    assert String.ends_with?(source, "/")
+    refute File.exists?(source)
+    assert exports_left() == []
 
-    host = c.target.public_hostname
-    assert_received {:synced, source, "hetzner-ftps:/site", files}
-    assert source == live <> "/"
-    assert "index.html" in files
+    assert File.read!(Path.join(c.synced, "hello/index.html")) =~ "<h1>Hello</h1>"
+    assert File.exists?(Path.join(c.synced, "index.html.gz"))
+
+    host = c.scope.site.domain
+    assert File.read!(Path.join(c.synced, "feed.xml")) =~ "https://#{host}/hello/"
 
     refute Publishing.deploying?(c.target)
     url = "https://" <> host
@@ -80,13 +87,13 @@ defmodule Feather.Publishing.DeployTest do
   end
 
   test "a failed deploy records nothing", c do
-    opts = Keyword.put(c.opts, :runner, runner({:error, "rclone sync failed (exit 1): nope"}))
+    opts = Keyword.put(c.opts, :runner, c.runner.({:error, "rclone sync failed (exit 1): nope"}))
 
     assert {:error, _} = Deploy.run(c.target, opts)
     assert Repo.reload!(c.target).last_deployed_at == nil
   end
 
-  test "a second deploy replaces the live directory", c do
+  test "a second deploy exports the site afresh", c do
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
     post = Feather.Content.get_post_by_slug(c.scope, "/hello")
@@ -95,10 +102,9 @@ defmodule Feather.Publishing.DeployTest do
 
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
-    live = Deploy.live_dir(c.target)
-    assert File.exists?(Path.join(live, "moved/index.html"))
-    refute File.exists?(Path.join(live, "hello/index.html"))
-    assert File.ls!(Deploy.build_path(c.target)) == ["public"]
+    assert File.exists?(Path.join(c.synced, "moved/index.html"))
+    refute File.exists?(Path.join(c.synced, "hello/index.html"))
+    assert exports_left() == []
   end
 
   test "exports the published versions, not the unpublished changes", c do
@@ -108,38 +114,34 @@ defmodule Feather.Publishing.DeployTest do
     |> Repo.update!()
 
     assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
-    html = File.read!(Path.join(Deploy.live_dir(c.target), "hello/index.html"))
+    html = File.read!(Path.join(c.synced, "hello/index.html"))
     assert html =~ "<h1>Hello</h1>"
     refute html =~ "Unpublished"
   end
 
   test "a failing rclone sync releases the lock and broadcasts the failure", c do
-    opts = Keyword.put(c.opts, :runner, runner({:error, "rclone sync failed (exit 1): nope"}))
+    opts = Keyword.put(c.opts, :runner, c.runner.({:error, "rclone sync failed (exit 1): nope"}))
 
     assert {:error, "rclone sync failed (exit 1): nope"} = Deploy.run(c.target, opts)
     refute Publishing.deploying?(c.target)
+    assert exports_left() == []
 
     assert_received {:site_notice, %{kind: :error, title: title, message: message, retry: retry}}
 
-    assert title == "Deploy to #{c.target.public_hostname} failed"
-    # The live directory was already swapped in: no claim the site is unchanged.
+    assert title == "Deploy to #{c.scope.site.domain} failed"
     assert message == "Uploading: rclone sync failed (exit 1): nope."
-    assert retry == c.target.public_id
+    assert retry == true
   end
 
-  test "a failing export or precompression leaves the live directory alone", c do
-    assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
-    live_index = Path.join(Deploy.live_dir(c.target), "index.html")
-    before = File.read!(live_index)
-
+  test "a failing export or precompression syncs nothing and removes the export", c do
     failing = Path.join(c.tmp_dir, "failing-brotli")
     File.write!(failing, "#!/bin/sh\nexit 1\n")
     File.chmod!(failing, 0o755)
 
     assert {:error, message} = Deploy.run(c.target, Keyword.put(c.opts, :brotli, failing))
     assert message =~ "brotli failed"
-    assert File.read!(live_index) == before
-    assert File.ls!(Deploy.build_path(c.target)) == ["public"]
+    refute_received {:synced, _, _}
+    assert exports_left() == []
     refute Publishing.deploying?(c.target)
     assert_received {:site_notice, %{kind: :error, message: "Compressing: " <> message}}
     assert message =~ ~r/brotli failed.*\. The site online is unchanged\.$/s
@@ -150,7 +152,7 @@ defmodule Feather.Publishing.DeployTest do
     opts = c.opts ++ [lock_retries: 2, lock_retry_interval: 1]
 
     assert {:error, "another deploy is still running"} = Deploy.run(c.target, opts)
-    refute_received {:synced, _, _, _}
+    refute_received {:synced, _, _}
     assert_received {:deploy_progress, %{step: :waiting}}
 
     assert_received {:site_notice,
@@ -205,8 +207,26 @@ defmodule Feather.Publishing.DeployTest do
 
     Publishing.release_deploy_lock(c.target)
     assert {:ok, :deployed} = Task.await(waiting, 10_000)
-    assert_received {:synced, _, _, _}
+    assert_received {:synced, _, _}
     refute Publishing.deploying?(c.target)
+  end
+
+  test "a waiting deploy exports the site settings changed while it waited", c do
+    assert Publishing.acquire_deploy_lock(c.target)
+    opts = c.opts ++ [lock_retries: 10_000, lock_retry_interval: 5]
+
+    waiting = Task.async(fn -> Deploy.run(c.target, opts) end)
+
+    wait_until(fn ->
+      Registry.lookup(Feather.Publishing.Registry, {:waiting, c.target.id}) != []
+    end)
+
+    {:ok, _site} = Feather.Sites.update_site(c.scope, c.scope.site, %{title: "Renamed Site"})
+    Publishing.release_deploy_lock(c.target)
+    assert {:ok, :deployed} = Task.await(waiting, 10_000)
+
+    assert File.read!(Path.join(c.synced, "index.html")) =~ "Renamed Site"
+    assert_received {:site_notice, %{kind: :success, title: "Renamed Site is live"}}
   end
 
   defp wait_until(fun, attempts \\ 500) do
@@ -225,41 +245,35 @@ defmodule Feather.Publishing.DeployTest do
     end
   end
 
+  test "remove_stale_exports/0 removes what interrupted deploys left" do
+    leftover = Path.join([Media.storage_root(), "static_site", "export-leftover"])
+    File.mkdir_p!(Path.join(leftover, "hello"))
+
+    assert Deploy.remove_stale_exports() == :ok
+    assert exports_left() == []
+  end
+
   describe "Feather.Publishing entry points" do
-    test "deploy/3 runs under the task supervisor and reports through a notice", c do
-      assert :ok = Publishing.deploy(c.scope, c.target, Keyword.put(c.opts, :mode, :async))
-      host = c.target.public_hostname
-      url = "https://" <> host
+    test "deploy_site/2 runs under the task supervisor and reports through a notice", c do
+      assert :ok = Publishing.deploy_site(c.scope, Keyword.put(c.opts, :mode, :async))
+      url = "https://" <> c.scope.site.domain
       assert_receive {:site_notice, %{kind: :success, url: ^url}}, 10_000
       wait_until(fn -> not Publishing.deploying?(c.target) end)
     end
 
-    test "in tests deploys are only requested", c do
-      assert :ok = Publishing.deploy(c.scope, c.target)
-      assert_received {:deploy_requested, %{id: id}}
+    test "in tests deploys are only requested, with the target's config", c do
+      assert :ok = Publishing.deploy_site(c.scope)
+      assert_received {:deploy_requested, %{id: id, config: %{"host" => "ftp.example.com"}}}
       assert id == c.target.id
-      refute_received {:synced, _, _, _}
+      refute_received {:synced, _, _}
     end
 
-    test "deploy/3 refuses targets of other sites", c do
-      other = deployment_target_fixture(site_scope_fixture())
-      assert_raise FunctionClauseError, fn -> Publishing.deploy(c.scope, other) end
-    end
+    test "deploy_site/2 deploys only the site's own target", c do
+      deployment_target_fixture(site_scope_fixture())
+      {:ok, _target} = Publishing.delete_target(c.scope, c.target)
 
-    test "deploy_site/1 deploys every target of the site", c do
-      %{id: first} = c.target
-      %{id: second} = deployment_target_fixture(c.scope)
-      %{id: other} = deployment_target_fixture(site_scope_fixture())
-
-      assert :ok = Publishing.deploy_site(c.scope)
-      assert_received {:deploy_requested, %{id: ^first}}
-      assert_received {:deploy_requested, %{id: ^second}}
-      refute_received {:deploy_requested, %{id: ^other}}
-    end
-
-    test "deploy_site/1 deploys targets with their config", c do
-      assert :ok = Publishing.deploy_site(c.scope)
-      assert_received {:deploy_requested, %{config: %{"host" => "ftp.example.com"}}}
+      assert Publishing.deploy_site(c.scope) == {:error, :no_target}
+      refute_received {:deploy_requested, _target}
     end
 
     test "notices go to the site's topic", c do

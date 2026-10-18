@@ -1,21 +1,23 @@
 defmodule Feather.Publishing.Deploy do
   @moduledoc """
-  The deploy pipeline of one deployment target, run synchronously (the
+  The deploy pipeline of a site's deployment target, run synchronously (the
   public entry points in `Feather.Publishing` run it under
   `Feather.TaskSupervisor`):
 
     1. take the target's deploy lock (see "Concurrent deploys")
-    2. export the site's published versions into a fresh directory next
-       to the live one (`Feather.StaticSite.Export` into a `FileSink`)
+    2. export the site's published versions, canonically at
+       `https://<site domain>/`, into a fresh directory in
+       `<storage_root>/static_site/` (`Feather.StaticSite.Export` into a
+       `FileSink`)
     3. precompress it (`Feather.StaticSite.Precompress`)
-    4. swap it in as the live directory `<storage_root>/static_site/<target id>/public`
-    5. sync the live directory with rclone (`Feather.Publishing.Rclone`)
-    6. record the time the export started as the target's `last_deployed_at`
-       (`Feather.Publishing.record_deploy/2`): what was published later is
-       not in this deploy
-    7. release the lock (always) and broadcast a notice
+    4. sync it with rclone (`Feather.Publishing.Rclone`)
+    5. record the time the export started as the target's `last_deployed_at`
+       (`Feather.Publishing.record_deploy/2`): what was published or
+       changed later is not in this deploy
+    6. remove the directory and release the lock (both always), broadcast
+       a notice
 
-  A failure before step 4 leaves the live directory untouched.
+  A failure before step 4 leaves the site online untouched.
 
   Each step is reported with `Feather.Publishing.put_deploy_progress/3`
   (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
@@ -68,23 +70,28 @@ defmodule Feather.Publishing.Deploy do
         try do
           build_and_sync(target, started_at, opts)
         rescue
-          exception -> {:error, Exception.message(exception)}
+          exception -> {{:error, Exception.message(exception)}, target.site}
         end
       end)
 
-    {result, step} =
+    {result, site, step} =
       case result do
-        {:error, :lock_timeout} -> {{:error, "another deploy is still running"}, :waiting}
-        result -> {result, own_step(target)}
+        {:error, :lock_timeout} ->
+          {{:error, "another deploy is still running"}, target.site, :waiting}
+
+        {:ok, :coalesced} ->
+          {{:ok, :coalesced}, target.site, nil}
+
+        {result, site} ->
+          {result, site, own_step(target)}
       end
 
     Publishing.clear_deploy_progress(target)
-    notify(target, result, started_at, step)
+    notify(site, result, started_at, step)
     result
   end
 
-  # The step this process recorded; the record may belong to another deploy
-  # of the target.
+  # The progress record may belong to another deploy of the target.
   defp own_step(target) do
     case Registry.lookup(@registry, {:progress, target.id}) do
       [{pid, %{step: step}}] when pid == self() -> step
@@ -92,14 +99,17 @@ defmodule Feather.Publishing.Deploy do
     end
   end
 
-  @doc "The directory holding a target's builds."
-  @spec build_path(DeploymentTarget.t()) :: Path.t()
-  def build_path(%DeploymentTarget{id: id}),
-    do: Path.join([Media.storage_root(), "static_site", id])
+  @doc """
+  Removes everything in `<storage_root>/static_site/`. Meant to run on
+  boot: no deploy survives a restart, so any export there is stale.
+  """
+  @spec remove_stale_exports() :: :ok
+  def remove_stale_exports do
+    File.rm_rf!(exports_dir())
+    :ok
+  end
 
-  @doc "The live directory of a target: the last successful export."
-  @spec live_dir(DeploymentTarget.t()) :: Path.t()
-  def live_dir(%DeploymentTarget{} = target), do: Path.join(build_path(target), "public")
+  defp exports_dir, do: Path.join(Media.storage_root(), "static_site")
 
   ## Lock
 
@@ -157,86 +167,66 @@ defmodule Feather.Publishing.Deploy do
   ## Pipeline
 
   defp build_and_sync(target, started_at, opts) do
-    export_started_at = DateTime.utc_now()
-    sink = FileSink.new(build_path(target))
+    # Immediate: waits until running write transactions have committed.
+    {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
+    # The request may have waited for the lock.
+    target = Repo.preload(target, :site, force: true)
+    {export_and_sync(target, export_started_at, started_at, opts), target.site}
+  end
+
+  defp export_and_sync(target, export_started_at, started_at, opts) do
+    sink = FileSink.new(exports_dir())
 
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
 
-      Export.run(target.site, Routes.for(target), sink, now: export_started_at)
+      routes = Routes.new(target.site, canonical_url: "https://#{target.site.domain}/")
+      Export.run(target.site, routes, sink, now: export_started_at)
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
-      replace_live_dir(FileSink.dir(sink), live_dir(target))
+
+      Publishing.put_deploy_progress(target, :upload, started_at)
+
+      with {:ok, _output} <-
+             Rclone.deploy(target, FileSink.dir(sink) <> "/", Keyword.take(opts, [:runner])) do
+        Publishing.record_deploy(target, export_started_at)
+        {:ok, :deployed}
+      end
+    rescue
+      exception -> {:error, Exception.message(exception)}
     after
       FileSink.discard(sink)
     end
-
-    Publishing.put_deploy_progress(target, :upload, started_at)
-
-    with {:ok, _output} <-
-           Rclone.deploy(
-             target,
-             live_dir(target) <> "/",
-             Keyword.take(opts, [:runner])
-           ) do
-      Publishing.record_deploy(target, export_started_at)
-      {:ok, :deployed}
-    end
-  end
-
-  # Two renames: the live directory is missing only between them, and an
-  # export that failed earlier never gets here.
-  defp replace_live_dir(new_dir, live_dir) do
-    old_dir = "#{live_dir}.old-#{Feather.PublicId.generate()}"
-
-    case File.rename(live_dir, old_dir) do
-      :ok ->
-        :ok
-
-      {:error, :enoent} ->
-        :ok
-
-      {:error, reason} ->
-        raise File.RenameError,
-          source: live_dir,
-          destination: old_dir,
-          reason: reason,
-          action: "move aside the live directory"
-    end
-
-    File.rename!(new_dir, live_dir)
-    File.rm_rf!(old_dir)
   end
 
   ## Notices
 
-  defp notify(target, {:ok, :deployed}, started_at, _step) do
-    Publishing.broadcast_notice(target.site, %{
+  defp notify(site, {:ok, :deployed}, started_at, _step) do
+    Publishing.broadcast_notice(site, %{
       kind: :success,
-      title: "#{target.site.title} is live",
-      message: "#{target.public_hostname} · deployed #{duration(started_at)}",
-      url: "https://#{target.public_hostname}",
+      title: "#{site.title} is live",
+      message: "#{site.domain} · deployed #{duration(started_at)}",
+      url: "https://#{site.domain}",
       link_label: "Open site",
       external: true
     })
   end
 
-  defp notify(_target, {:ok, :coalesced}, _started_at, _step), do: :ok
+  defp notify(_site, {:ok, :coalesced}, _started_at, _step), do: :ok
 
-  defp notify(target, {:error, message}, _started_at, step) do
-    Logger.error("Deploying target #{target.id} (#{target.public_hostname}) failed: #{message}")
+  defp notify(site, {:error, message}, _started_at, step) do
+    Logger.error("Deploying #{site.domain} failed: #{message}")
 
-    Publishing.broadcast_notice(target.site, %{
+    Publishing.broadcast_notice(site, %{
       kind: :error,
-      title: "Deploy to #{target.public_hostname} failed",
+      title: "Deploy to #{site.domain} failed",
       message: failure_message(step, Blocks.truncate(message, 300)),
-      retry: target.public_id
+      retry: true
     })
   end
 
-  # Until the live directory is swapped in (before :upload), the site
-  # online is untouched; a failed upload may have changed part of it.
+  # A failed upload may have changed part of the site online.
   defp failure_message(nil, message), do: "#{message}. The site online is unchanged."
 
   defp failure_message(:upload, message), do: "#{step_label(:upload)}: #{message}."

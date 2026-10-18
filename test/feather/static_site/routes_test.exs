@@ -3,7 +3,6 @@ defmodule Feather.StaticSite.RoutesTest do
 
   alias Feather.Content.{Page, Post, Project}
   alias Feather.Media.Image
-  alias Feather.Publishing.DeploymentTarget
   alias Feather.StaticSite.Routes
 
   setup do
@@ -82,16 +81,7 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.canonical(plain) == plain
     end
 
-    test "for/1 a deployment target, preview/1 the preview of a site", %{scope: scope} do
-      target = %DeploymentTarget{
-        site: scope.site,
-        public_id: "dt0123456789",
-        public_hostname: "example.com"
-      }
-
-      deployed = Routes.for(target)
-      assert {deployed.site_root, deployed.canonical_url} == {"/", "https://example.com/"}
-
+    test "preview/1 the preview of a site", %{scope: scope} do
       preview = Routes.preview(scope.site)
       assert preview.site_root == "/preview/#{scope.site.public_id}/"
       assert preview.canonical_url == "https://#{scope.site.domain}/"

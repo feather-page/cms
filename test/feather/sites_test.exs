@@ -30,7 +30,7 @@ defmodule Feather.SitesTest do
       assert homepage.slug == "/"
       assert Content.publication_status(homepage) == :published
 
-      assert Publishing.list_targets(site_scope) == []
+      assert Publishing.get_target(site_scope) == nil
     end
 
     test "validates the site and creates nothing on error" do
@@ -374,7 +374,6 @@ defmodule Feather.SitesTest do
 
     test "add, move and remove keep positions contiguous", %{scope: scope, pages: [a, b, c]} do
       for page <- [a, b, c], do: {:ok, _} = Sites.add_to_navigation(scope, page)
-      # Adding twice does not duplicate.
       {:ok, _} = Sites.add_to_navigation(scope, a)
 
       assert titles(scope) == ~w(a b c)
@@ -386,7 +385,6 @@ defmodule Feather.SitesTest do
       :ok = Sites.move_navigation_item_up(scope, item(scope, "c"))
       assert titles(scope) == ~w(b c a)
 
-      # Moving beyond the ends is a no-op.
       :ok = Sites.move_navigation_item_up(scope, item(scope, "b"))
       :ok = Sites.move_navigation_item_down(scope, item(scope, "a"))
       assert titles(scope) == ~w(b c a)

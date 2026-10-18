@@ -1,7 +1,7 @@
-defmodule Feather.Publishing.Rclone.HetznerFtps do
+defmodule Feather.Publishing.Rclone.Ftps do
   @moduledoc """
-  The `hetzner_ftps` provider: FTP with explicit TLS on port 21 (Hetzner
-  web hosting). Config: `host`, `user`, `password` and `path`.
+  The `ftps` provider: FTP with explicit TLS on port 21. Config: `host`,
+  `user`, `password` and `path`.
   """
 
   @behaviour Feather.Publishing.Rclone.Provider
@@ -16,7 +16,7 @@ defmodule Feather.Publishing.Rclone.HetznerFtps do
          {:ok, pass} <- obscure.(password) do
       {:ok,
        """
-       [hetzner-ftps]
+       [ftps]
        type = ftp
        host = #{host}
        user = #{user}
@@ -30,7 +30,7 @@ defmodule Feather.Publishing.Rclone.HetznerFtps do
   @impl true
   def remote(%DeploymentTarget{} = target) do
     with {:ok, [path]} <- Provider.fetch_config(target, ["path"]) do
-      {:ok, "hetzner-ftps:#{path}"}
+      {:ok, "ftps:#{path}"}
     end
   end
 end

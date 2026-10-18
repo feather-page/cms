@@ -20,9 +20,9 @@ defmodule Feather.Publishing.Rclone do
   """
 
   alias Feather.Publishing.DeploymentTarget
-  alias Feather.Publishing.Rclone.{HetznerFtps, SystemRunner}
+  alias Feather.Publishing.Rclone.{Ftps, SystemRunner}
 
-  @providers %{"hetzner_ftps" => HetznerFtps}
+  @providers %{"ftps" => Ftps}
 
   @default_sync_timeout :timer.minutes(30)
   @obscure_timeout :timer.seconds(30)
@@ -95,8 +95,7 @@ defmodule Feather.Publishing.Rclone do
     end
   end
 
-  # The config holds credentials: it is created empty and private before
-  # anything is written to it, and removed whatever happens.
+  # The config holds credentials: made private before anything is written to it.
   defp with_config_file(config, fun) do
     dir = Path.join(System.tmp_dir!(), "feather-rclone")
     File.mkdir_p!(dir)

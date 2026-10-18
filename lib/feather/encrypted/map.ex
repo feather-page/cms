@@ -10,7 +10,7 @@ defmodule Feather.Encrypted.Map do
   saved back over credentials that the right key still decrypts, and a
   deploy with it would fail in confusing ways. Code that only needs a
   target's metadata does not select the column (see
-  `Feather.Publishing.list_targets/1`), so a wrong key only breaks editing
+  `Feather.Publishing.get_target/1`), so a wrong key only breaks editing
   and deploying a target.
   """
 
