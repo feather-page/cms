@@ -5,19 +5,23 @@ defmodule Feather.Publishing.Deploy do
   `Feather.TaskSupervisor`):
 
     1. take the target's deploy lock (see "Concurrent deploys")
-    2. export the site's published versions into a fresh directory next
-       to the live one (`Feather.StaticSite.Export` into a `FileSink`)
+    2. export the site's published versions, canonically at
+       `https://<site domain>/`, into a fresh directory in
+       `<storage_root>/static_site/` (`Feather.StaticSite.Export` into a
+       `FileSink`)
     3. precompress it (`Feather.StaticSite.Precompress`)
-    4. swap it in as the live directory `<storage_root>/static_site/<target id>/public`
-    5. sync the live directory with rclone (`Feather.Publishing.Rclone`)
-    6. record the time the export started as the target's `last_deployed_at`
+    4. sync it with rclone (`Feather.Publishing.Rclone`)
+    5. record the time the export started as the target's `last_deployed_at`
        (`Feather.Publishing.record_deploy/2`): what was published or
        changed later is not in this deploy. The time is taken once running
        write transactions have committed, so what they stamped earlier is
        in the export
-    7. release the lock (always) and broadcast a notice
+    6. remove the directory and release the lock (both always), broadcast
+       a notice
 
-  A failure before step 4 leaves the live directory untouched.
+  A failure before step 4 leaves the site online untouched. No export
+  persists between deploys; `remove_stale_exports/0` clears what a deploy
+  interrupted by a restart left behind.
 
   Each step is reported with `Feather.Publishing.put_deploy_progress/3`
   (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
@@ -94,14 +98,17 @@ defmodule Feather.Publishing.Deploy do
     end
   end
 
-  @doc "The directory holding a target's builds."
-  @spec build_path(DeploymentTarget.t()) :: Path.t()
-  def build_path(%DeploymentTarget{id: id}),
-    do: Path.join([Media.storage_root(), "static_site", id])
+  @doc """
+  Removes everything in `<storage_root>/static_site/`. Meant to run on
+  boot: no deploy survives a restart, so any export there is stale.
+  """
+  @spec remove_stale_exports() :: :ok
+  def remove_stale_exports do
+    File.rm_rf!(exports_dir())
+    :ok
+  end
 
-  @doc "The live directory of a target: the last successful export."
-  @spec live_dir(DeploymentTarget.t()) :: Path.t()
-  def live_dir(%DeploymentTarget{} = target), do: Path.join(build_path(target), "public")
+  defp exports_dir, do: Path.join(Media.storage_root(), "static_site")
 
   ## Lock
 
@@ -161,7 +168,7 @@ defmodule Feather.Publishing.Deploy do
   defp build_and_sync(target, started_at, opts) do
     # An immediate transaction waits for running writes: what they stamped is in the export.
     {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
-    sink = FileSink.new(build_path(target))
+    sink = FileSink.new(exports_dir())
 
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
@@ -171,46 +178,17 @@ defmodule Feather.Publishing.Deploy do
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
-      replace_live_dir(FileSink.dir(sink), live_dir(target))
+
+      Publishing.put_deploy_progress(target, :upload, started_at)
+
+      with {:ok, _output} <-
+             Rclone.deploy(target, FileSink.dir(sink) <> "/", Keyword.take(opts, [:runner])) do
+        Publishing.record_deploy(target, export_started_at)
+        {:ok, :deployed}
+      end
     after
       FileSink.discard(sink)
     end
-
-    Publishing.put_deploy_progress(target, :upload, started_at)
-
-    with {:ok, _output} <-
-           Rclone.deploy(
-             target,
-             live_dir(target) <> "/",
-             Keyword.take(opts, [:runner])
-           ) do
-      Publishing.record_deploy(target, export_started_at)
-      {:ok, :deployed}
-    end
-  end
-
-  # Two renames: the live directory is missing only between them, and an
-  # export that failed earlier never gets here.
-  defp replace_live_dir(new_dir, live_dir) do
-    old_dir = "#{live_dir}.old-#{Feather.PublicId.generate()}"
-
-    case File.rename(live_dir, old_dir) do
-      :ok ->
-        :ok
-
-      {:error, :enoent} ->
-        :ok
-
-      {:error, reason} ->
-        raise File.RenameError,
-          source: live_dir,
-          destination: old_dir,
-          reason: reason,
-          action: "move aside the live directory"
-    end
-
-    File.rename!(new_dir, live_dir)
-    File.rm_rf!(old_dir)
   end
 
   ## Notices
@@ -239,8 +217,7 @@ defmodule Feather.Publishing.Deploy do
     })
   end
 
-  # Until the live directory is swapped in (before :upload), the site
-  # online is untouched; a failed upload may have changed part of it.
+  # A failed upload may have changed part of the site online.
   defp failure_message(nil, message), do: "#{message}. The site online is unchanged."
 
   defp failure_message(:upload, message), do: "#{step_label(:upload)}: #{message}."

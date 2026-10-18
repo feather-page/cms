@@ -5,6 +5,8 @@ defmodule Feather.Application do
 
   use Application
 
+  alias Feather.Publishing.Deploy
+
   require Logger
 
   @impl true
@@ -29,6 +31,7 @@ defmodule Feather.Application do
     # See https://elixir.hexdocs.pm/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Feather.Supervisor]
+    remove_stale_exports()
 
     with {:ok, pid} <- Supervisor.start_link(children, opts) do
       release_stale_deploy_locks()
@@ -36,12 +39,19 @@ defmodule Feather.Application do
     end
   end
 
-  # No deploy survives a restart, so deploy locks still held are stale.
+  # No deploy survives a restart.
   defp release_stale_deploy_locks do
     Feather.Publishing.release_stale_locks()
   rescue
     exception ->
       Logger.warning("Could not release stale deploy locks: #{Exception.message(exception)}")
+  end
+
+  defp remove_stale_exports do
+    Deploy.remove_stale_exports()
+  rescue
+    exception ->
+      Logger.warning("Could not remove stale exports: #{Exception.message(exception)}")
   end
 
   # Tell Phoenix to update the endpoint configuration

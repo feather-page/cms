@@ -1,9 +1,8 @@
 defmodule Feather.StaticSite.FileSink do
   @moduledoc """
-  A sink backed by a fresh temporary directory inside a parent directory,
-  so that it shares a filesystem with the export's destination and can be
-  moved there cheaply. `dir/1` and `discard/1` are specific to this sink
-  and not part of the `Feather.StaticSite.Sink` contract.
+  A sink backed by a fresh temporary directory inside a parent directory.
+  `dir/1` and `discard/1` are specific to this sink and not part of the
+  `Feather.StaticSite.Sink` contract.
   """
 
   @behaviour Feather.StaticSite.Sink
