@@ -881,20 +881,24 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       end
     end
 
-    test "every page declares the variable font against the site root", %{sink: sink} do
-      html = RecordingSink.get(sink, "about/index.html")
+    test "the stylesheet declares the variable font against the site root", %{sink: sink} do
+      css = RecordingSink.get(sink, "style.css")
 
-      assert html =~ ~s[font-family: "Schibsted Grotesk"]
-      assert html =~ "font-weight: 400 700"
-      assert html =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
+      assert css =~ ~s[font-family: "Schibsted Grotesk"]
+      assert css =~ "font-weight: 400 700"
+      assert css =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
 
       for {file, weight, style} <- @mono_faces do
-        assert html =~
+        assert css =~
                  ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
                    ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
       end
 
-      assert html =~ ~s[--mono: "JetBrains Mono", ui-monospace]
+      assert css =~ ~s[--mono: "JetBrains Mono", ui-monospace]
+    end
+
+    test "every page preloads the variable font", %{sink: sink} do
+      html = RecordingSink.get(sink, "about/index.html")
 
       assert attr(LazyHTML.from_document(html), ~s(link[rel="preload"][as="font"]), "href") ==
                ["/fonts/schibsted-grotesk-latin-wght.woff2"]

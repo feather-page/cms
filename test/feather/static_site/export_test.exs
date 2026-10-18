@@ -188,7 +188,9 @@ defmodule Feather.StaticSite.ExportTest do
           "feed.xml",
           "robots.txt",
           "sitemap.xml",
-          "404.html"
+          "style.css",
+          "404.html",
+          ".htaccess"
         ] do
       assert path in paths, "#{path} missing from #{inspect(paths)}"
     end
@@ -208,7 +210,7 @@ defmodule Feather.StaticSite.ExportTest do
 
     assert html =~ ~s(<html lang="en")
     assert html =~ "<title>Everything · My &lt;Site&gt;</title>"
-    assert html =~ "<style>"
+    assert html =~ ~s(<link rel="stylesheet" href="/style.css?v=)
     # Only the emoji is interpolated (escaped); the rest is a fixed literal.
     assert html =~
              ~s(<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">)

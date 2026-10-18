@@ -48,11 +48,10 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
 
   @impl true
   def font_faces(%Routes{} = routes) do
-    {:safe,
-     [
-       font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file),
-       jetbrains_mono_faces(routes)
-     ]}
+    [
+      font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file),
+      jetbrains_mono_faces(routes)
+    ]
   end
 
   # Schibsted Grotesk, variable weight axis, Latin subset, SIL Open Font License.

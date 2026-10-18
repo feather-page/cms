@@ -4,19 +4,20 @@ defmodule Feather.StaticSite.Routes do
   URL and output path of the export and resolves a requested path back to
   a record (for the preview).
 
-  | Record            | URL                          | Output path                         |
-  |-------------------|------------------------------|-------------------------------------|
-  | home, page 1      | `/`                          | `index.html`                        |
-  | home, page n > 1  | `/page/n/`                   | `page/n/index.html`                 |
-  | post with slug    | `/<slug>/`                   | `<slug>/index.html`                 |
-  | post without slug | `/posts/<public id, lower>/` | `posts/<public id, lower>/index.html` |
-  | page              | `/<slug>/` (homepage: `/`)   | `<slug>/index.html`                 |
-  | project           | `/projects/<slug>/`          | `projects/<slug>/index.html`        |
-  | image variant     | `/images/<public id>/<file>` | `images/<public id>/<file>`         |
-  | theme font        | `/fonts/<file>`              | `fonts/<file>`                      |
-  | diagram           | `/diagrams/<hash>.svg`       | `diagrams/<hash>.svg`               |
-  | artifact          | `/feed.xml`, ...             | `feed.xml`, ...                     |
-  | not found page    | (any missing path)           | `404.html`                          |
+  | Record            | URL                            | Output path                           |
+  |-------------------|--------------------------------|---------------------------------------|
+  | home, page 1      | `/`                            | `index.html`                          |
+  | home, page n > 1  | `/page/n/`                     | `page/n/index.html`                   |
+  | post with slug    | `/<slug>/`                     | `<slug>/index.html`                   |
+  | post without slug | `/posts/<public id, lower>/`   | `posts/<public id, lower>/index.html` |
+  | page              | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
+  | project           | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
+  | image variant     | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
+  | theme font        | `/fonts/<file>`                | `fonts/<file>`                        |
+  | diagram           | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
+  | artifact          | `/feed.xml`, `/style.css`, ... | `feed.xml`, `style.css`, ...          |
+  | not found page    | (any missing path)             | `404.html`                            |
+  | Apache rules      | (not served)                   | `.htaccess`                           |
 
   URLs are relative to `site_root`: `/` for a deployed site,
   `/preview/<site public id>/` for the preview. `canonical/1` returns the
@@ -135,10 +136,14 @@ defmodule Feather.StaticSite.Routes do
 
   @doc """
   The URL of a generated file at the site root (`feed.xml`, `robots.txt`,
-  `sitemap.xml`). Raises for anything else.
+  `sitemap.xml`, `style.css`). Raises for anything else.
   """
   @spec artifact_url(t(), String.t()) :: String.t()
   def artifact_url(%__MODULE__{site_root: root}, name), do: root <> artifact(name)
+
+  @doc "The URL of the page web servers show for missing paths."
+  @spec not_found_url(t()) :: String.t()
+  def not_found_url(%__MODULE__{site_root: root} = routes), do: root <> not_found_path(routes)
 
   ## Output paths
 
@@ -182,6 +187,10 @@ defmodule Feather.StaticSite.Routes do
   @doc "The output path of the page web servers show for missing paths."
   @spec not_found_path(t()) :: String.t()
   def not_found_path(%__MODULE__{}), do: "404.html"
+
+  @doc "The output path of the rules for Apache hosts (see `Feather.StaticSite.Htaccess`)."
+  @spec htaccess_path(t()) :: String.t()
+  def htaccess_path(%__MODULE__{}), do: ".htaccess"
 
   defp artifact(name) do
     name = to_string(name)

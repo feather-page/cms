@@ -252,21 +252,21 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       refute RecordingSink.exists?(sink, "fonts/schibsted-grotesk-latin-wght.woff2")
     end
 
-    test "every page declares the font faces against the site root", %{sink: sink} do
-      html = RecordingSink.get(sink, "about/index.html")
+    test "the stylesheet declares the font faces against the site root", %{sink: sink} do
+      css = RecordingSink.get(sink, "style.css")
 
-      assert html =~ ~s[url("/fonts/nunito-latin-700.woff2") format("woff2")]
-      assert html =~ ~s[url("/fonts/nunito-latin-800.woff2") format("woff2")]
-      assert html =~ "font-display: swap"
+      assert css =~ ~s[url("/fonts/nunito-latin-700.woff2") format("woff2")]
+      assert css =~ ~s[url("/fonts/nunito-latin-800.woff2") format("woff2")]
+      assert css =~ "font-display: swap"
 
       for {file, weight, style} <- @mono_faces do
-        assert html =~
+        assert css =~
                  ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
                    ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
       end
 
-      assert html =~ ~s[--mono: "JetBrains Mono", ui-monospace]
-      refute html =~ "fonts.googleapis"
+      assert css =~ ~s[--mono: "JetBrains Mono", ui-monospace]
+      refute css =~ "fonts.googleapis"
     end
   end
 

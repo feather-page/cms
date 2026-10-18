@@ -36,8 +36,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   An `@font-face` rule for a font file of the theme, addressed from the
-  site root (stylesheets are inlined, so relative URLs would depend on the
-  page's depth). `weight` is a number, or a range like `"400 600"` for a
+  site root. `weight` is a number, or a range like `"400 600"` for a
   variable font.
   """
   @spec font_face(
@@ -92,8 +91,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   defp jetbrains_mono_file(weight, style), do: "jetbrains-mono-latin-#{weight}-#{style}.woff2"
 
-  # HTML escaping does not apply inside <style>; a CSS escape keeps the URL inside its string.
-  defp css_string(text), do: String.replace(text, ~r/["\\<>\n]/, &"\\#{Base.encode16(&1)} ")
+  defp css_string(text), do: String.replace(text, ~r/["\\\n]/, &"\\#{Base.encode16(&1)} ")
 
   @doc """
   The page numbers of the pagination: all pages up to 7, otherwise the

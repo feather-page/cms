@@ -160,8 +160,8 @@ defmodule Feather.StaticSite.Renderer do
   end
 
   @doc """
-  A generated file at the site root: `feed.xml`, `sitemap.xml` or
-  `robots.txt`.
+  A generated file at the site root: `feed.xml`, `sitemap.xml`,
+  `robots.txt` or `style.css` (the theme's font faces and stylesheet).
   """
   @spec render_artifact(SiteData.t(), Routes.t(), String.t()) :: iodata()
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "feed.xml"),
@@ -178,11 +178,15 @@ defmodule Feather.StaticSite.Renderer do
     "User-agent: *\nAllow: /\n\nSitemap: #{sitemap}\n"
   end
 
+  def render_artifact(%SiteData{} = data, %Routes{} = routes, "style.css"),
+    do: stylesheet(data.site, routes)
+
   @doc "The content type of a generated file at the site root."
   @spec artifact_content_type(String.t()) :: String.t()
   def artifact_content_type("feed.xml"), do: "application/rss+xml"
   def artifact_content_type("sitemap.xml"), do: "application/xml"
   def artifact_content_type("robots.txt"), do: "text/plain"
+  def artifact_content_type("style.css"), do: "text/css"
 
   @doc "The context for rendering blocks of the site."
   @spec block_context(SiteData.t(), Routes.t()) :: Blocks.context()
@@ -208,6 +212,7 @@ defmodule Feather.StaticSite.Renderer do
       page_title: page_title,
       meta_title: meta_title,
       document_title: document_title(data.site.title, meta_title, is_home),
+      stylesheet_url: stylesheet_url(data.site, routes),
       description: nil,
       canonical_url: nil,
       og_type: "website",
@@ -223,6 +228,17 @@ defmodule Feather.StaticSite.Renderer do
       rss_url: nil,
       __changed__: nil
     }
+  end
+
+  defp stylesheet(site, routes) do
+    theme = Themes.module(site)
+    [theme.font_faces(routes), theme.css()]
+  end
+
+  # The hash of the content makes browsers fetch a changed stylesheet despite the year-long cache.
+  defp stylesheet_url(site, routes) do
+    hash = Base.encode16(:crypto.hash(:sha256, stylesheet(site, routes)), case: :lower)
+    Routes.artifact_url(routes, "style.css") <> "?v=" <> binary_part(hash, 0, 12)
   end
 
   defp document_title(site_title, meta_title, is_home) do
