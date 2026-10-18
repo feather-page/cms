@@ -80,7 +80,7 @@ _Avoid_: Save, Release
 
 **Scheduled Post**:
 A published post whose publish date (`publish_at`) lies after the moment it was published. The static export leaves it
-out until it is due; when it becomes due, the CMS deploys the site to every deployment target deployed before that.
+out until it is due; when it becomes due, the CMS deploys the site if its deployment target was deployed before that.
 _Avoid_: Future Post, Planned Post
 
 **Due**:
@@ -91,10 +91,13 @@ A post, page or project without a published version, because it was never publis
 _Avoid_: using it for unpublished changes of a published record
 
 **Deployment Target**:
-An external host a site is deployed to by FTPS, backed by an rclone provider (`hetzner_ftps`). A deploy shows the
-published versions; changes to the site itself (settings, images, social media links, navigation) count as not
-deployed until the next deploy.
+The FTPS account a site is deployed to, through an rclone provider (`ftps`). A site has at most one; its address is
+the site's domain.
 _Avoid_: Host, Server, Environment, Staging
+
+**Deploy**:
+A static export synced to the site's deployment target. What changed since the last deploy (published versions, the
+site's own changes, books, deleting or unpublishing a published record) counts as not deployed until the next one.
 
 **Static Export**:
 Rendering a site to static files through a sink. Syncing them to a deployment target is a separate step; both
