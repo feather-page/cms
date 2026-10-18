@@ -21,10 +21,19 @@ defmodule Feather.RenderTool do
   def runner(opts, key, default),
     do: Keyword.get_lazy(opts, :runner, fn -> Application.get_env(:feather, key, default) end)
 
-  @doc "Runs the runner with the arguments and options."
+  @doc """
+  Runs the runner with the arguments and options. A runner that raises
+  (`Port.open` on a binary it may not execute) aborts.
+  """
   @spec run(runner(), [String.t()], keyword()) :: result()
-  def run(runner, args, opts) when is_function(runner, 2), do: runner.(args, opts)
-  def run(runner, args, opts) when is_atom(runner), do: runner.run(args, opts)
+  def run(runner, args, opts) do
+    call(runner, args, opts)
+  rescue
+    exception -> {:aborted, Exception.message(exception)}
+  end
+
+  defp call(runner, args, opts) when is_function(runner, 2), do: runner.(args, opts)
+  defp call(runner, args, opts) when is_atom(runner), do: runner.run(args, opts)
 
   @doc "The binary's `--version`, asked once per runner module."
   @spec version(runner(), timeout()) :: {:ok, String.t()} | {:error, String.t()}
