@@ -3,6 +3,7 @@ import {Decoration, DecorationSet} from "prosemirror-view"
 import {schema} from "./schema"
 import {element, ignoreMutation} from "./dom"
 import {registerSlashItem} from "./slash_items"
+import {arrowIntoHiddenSource} from "./hidden_source"
 
 const DEBOUNCE_MS = 500
 const CACHE_SIZE = 50
@@ -175,6 +176,7 @@ export const diagramEditing = () =>
         if (!edited) return null
         const {pos, node} = edited
         return DecorationSet.create(state.doc, [Decoration.node(pos, pos + node.nodeSize, {class: "is-editing"})])
-      }
+      },
+      handleKeyDown: arrowIntoHiddenSource("diagram_code")
     }
   })
