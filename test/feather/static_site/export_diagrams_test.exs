@@ -39,8 +39,8 @@ defmodule Feather.StaticSite.ExportDiagramsTest do
 
     html = RecordingSink.get(sink, "flows/index.html")
 
-    assert html =~
-             ~s(<figure class="diagram"><img loading="lazy" src="/diagrams/#{name}" alt="A flow">)
+    assert html =~ ~s(<figure class="diagram">)
+    assert html =~ ~s(<img loading="lazy" src="/diagrams/#{name}" alt="A flow">)
 
     assert html =~ ~s(<pre data-language="d2"><code class="language-d2">broken -&gt;</code></pre>)
   end

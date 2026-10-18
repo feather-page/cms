@@ -11,7 +11,18 @@ defmodule Feather.StaticSite.Renderer do
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Page, Post, Project}
   alias Feather.Media.Image
-  alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, ThemeHelpers, Themes}
+
+  alias Feather.StaticSite.{
+    Blocks,
+    Feed,
+    HTMLFormatter,
+    Routes,
+    SiteData,
+    Sitemap,
+    ThemeHelpers,
+    Themes
+  }
+
   alias Phoenix.HTML.Safe
 
   @posts_per_page 25
@@ -288,6 +299,7 @@ defmodule Feather.StaticSite.Renderer do
       |> Map.put(:inner_content, apply(theme, view, [assigns]))
       |> theme.layout()
       |> Safe.to_iodata()
+      |> HTMLFormatter.format()
     end)
   end
 

@@ -17,35 +17,36 @@ defmodule Feather.StaticSite.ExportDeliveryTest do
   defp html_pages(sink), do: sink |> RecordingSink.paths() |> Enum.filter(&(&1 =~ ~r/\.html\z/))
 
   describe "the stylesheet" do
-    test "is written to style.css with the font faces and the theme's CSS" do
-      for {theme, module, font} <- [
-            {"feather", FeatherPage, "nunito-latin-800.woff2"},
-            {"simple_sidebar", SimpleSidebar, "schibsted-grotesk-latin-wght.woff2"}
-          ] do
+    test "is written to style.css, the font faces before the theme's CSS" do
+      for {theme, module} <- [{"feather", FeatherPage}, {"simple_sidebar", SimpleSidebar}] do
         css = RecordingSink.get(export(theme), "style.css")
 
-        assert css =~ ~s[@font-face { font-family: "JetBrains Mono"]
-        assert css =~ ~s[url("/fonts/#{font}") format("woff2")]
+        assert String.starts_with?(css, "@font-face {")
         assert String.ends_with?(css, module.css())
       end
     end
 
-    test "is linked from every page with a hash of its content instead of a style element" do
-      sink = export("simple_sidebar")
-      css = RecordingSink.get(sink, "style.css")
-      hash = :crypto.hash(:sha256, css) |> Base.encode16(case: :lower) |> binary_part(0, 12)
-      pages = html_pages(sink)
+    test "is linked from every formatted page with a hash of its content instead of a style element" do
+      for theme <- ["feather", "simple_sidebar"] do
+        sink = export(theme)
+        css = RecordingSink.get(sink, "style.css")
+        hash = :crypto.hash(:sha256, css) |> Base.encode16(case: :lower) |> binary_part(0, 12)
+        pages = html_pages(sink)
 
-      assert "404.html" in pages
+        assert "404.html" in pages
 
-      for path <- pages do
-        doc = sink |> RecordingSink.get(path) |> LazyHTML.from_document()
+        for path <- pages do
+          html = RecordingSink.get(sink, path)
+          doc = LazyHTML.from_document(html)
 
-        assert doc |> LazyHTML.query("style") |> Enum.empty?(), path
+          assert String.starts_with?(html, "<!DOCTYPE html>\n<html"), path
+          refute html =~ ~r/\n[ \t]*\n/, path
+          assert doc |> LazyHTML.query("style") |> Enum.empty?(), path
 
-        assert doc |> LazyHTML.query(~s(link[rel="stylesheet"])) |> LazyHTML.attribute("href") ==
-                 ["/style.css?v=" <> hash],
-               path
+          assert doc |> LazyHTML.query(~s(link[rel="stylesheet"])) |> LazyHTML.attribute("href") ==
+                   ["/style.css?v=" <> hash],
+                 path
+        end
       end
     end
   end

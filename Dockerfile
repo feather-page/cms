@@ -66,7 +66,7 @@ RUN mix release
 
 FROM ${RUNNER_IMAGE}
 
-# libstdc++6: needed by vix's libvips. rclone: deployments. brotli:
+# libstdc++6: needed by vix's libvips and lazy_html. rclone: deployments. brotli:
 # precompressed static output. sqlite3: for ops (inspecting and backing up
 # /data/feather.db). curl: the health check. d2 and chroma (static
 # binaries): diagrams and code highlighting.

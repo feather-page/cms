@@ -47,7 +47,8 @@ defmodule Feather.MixProject do
       {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2.0"},
-      {:lazy_html, ">= 0.1.0", only: :test},
+      # Formats the static site's pages (DECISIONS.md, 0022)
+      {:lazy_html, "~> 0.1.13"},
       # Reads docs/api/openapi.yml in the content API tests (schema sync, response checks)
       {:yaml_elixir, "~> 2.12", only: :test},
       {:phoenix_live_dashboard, "~> 0.9.1"},
