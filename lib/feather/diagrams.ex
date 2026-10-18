@@ -21,15 +21,14 @@ defmodule Feather.Diagrams do
   diagram is cached as `<hash>.error`; timeouts and a missing d2 are not.
   Old files stay.
 
-  Commands go through a runner (`Feather.Diagrams.Runner`): a module or a
-  function taking the argument list and the options. Tests pass a fake
-  one; the default is `config :feather, :d2_runner` or
-  `Feather.Diagrams.SystemRunner`. The d2 version is asked once per runner
-  module.
+  Commands go through a runner (`Feather.Diagrams.Runner`, see
+  `Feather.RenderTool`). Tests pass a fake one; the default is
+  `config :feather, :d2_runner` or `Feather.Diagrams.SystemRunner`. The d2
+  version is asked once per runner module.
   """
 
   alias Feather.Diagrams.SystemRunner
-  alias Feather.Media
+  alias Feather.{Media, RenderTool}
 
   require Logger
 
@@ -51,11 +50,6 @@ defmodule Feather.Diagrams do
   @import_error "Diagrams cannot import files"
   @embed_error "Diagrams cannot use icons or links"
 
-  @type runner ::
-          module()
-          | ([String.t()], keyword() ->
-               {:ok, String.t()} | {:error, String.t()} | {:aborted, String.t()})
-
   @doc """
   Renders a diagram. Returns the name of its SVG file (see `path/1`) or
   d2's error message.
@@ -64,11 +58,11 @@ defmodule Feather.Diagrams do
   """
   @spec render(String.t(), keyword()) :: {:ok, String.t()} | {:error, String.t()}
   def render(code, opts \\ []) when is_binary(code) do
-    runner = Keyword.get_lazy(opts, :runner, &default_runner/0)
+    runner = RenderTool.runner(opts, :d2_runner, SystemRunner)
     args = args(code)
 
     with :ok <- reject_imports(code),
-         {:ok, version} <- version(runner) do
+         {:ok, version} <- RenderTool.version(runner, @version_timeout) do
       name = file_name(version, args, code)
 
       cond do
@@ -122,28 +116,19 @@ defmodule Feather.Diagrams do
     layout ++ ["--theme=#{@light_theme}", "--dark-theme=#{@dark_theme}" | @options]
   end
 
-  defp file_name(version, args, code) do
-    input = Enum.intersperse([version | args] ++ [@transparent_background, code], 0)
-    Base.encode16(:crypto.hash(:sha256, input), case: :lower) <> ".svg"
-  end
+  defp file_name(version, args, code),
+    do: RenderTool.hash([version | args] ++ [@transparent_background, code]) <> ".svg"
 
   defp render_file(runner, args, code, name) do
-    dir = Path.join(System.tmp_dir!(), "feather-d2-#{Feather.PublicId.generate()}")
-
-    try do
-      File.mkdir_p!(dir)
+    RenderTool.in_tmp_dir("feather-d2", fn dir ->
       File.write!(Path.join(dir, @input), code <> @transparent_background)
 
-      case run(runner, args ++ [@input, @output], cd: dir, timeout: @timeout) do
+      case RenderTool.run(runner, args ++ [@input, @output], cd: dir, timeout: @timeout) do
         {:ok, _output} -> store(Path.join(dir, @output), name)
         {:error, message} -> cache_error(name, d2_error(message))
         {:aborted, message} -> {:error, message}
       end
-    rescue
-      exception in File.Error -> {:error, Exception.message(exception)}
-    after
-      File.rm_rf(dir)
-    end
+    end)
   end
 
   # d2 names the files it failed to read in its messages.
@@ -180,46 +165,9 @@ defmodule Feather.Diagrams do
   defp error_path(name), do: path(Path.rootname(name) <> ".error")
 
   defp write(target, content, result) do
-    partial = "#{target}.#{Feather.PublicId.generate()}.partial"
-
-    with :ok <- File.mkdir_p(Path.dirname(target)),
-         :ok <- File.write(partial, content),
-         :ok <- File.chmod(partial, 0o644),
-         :ok <- File.rename(partial, target) do
-      result
-    else
-      {:error, reason} ->
-        File.rm(partial)
-        {:error, "could not store the diagram: #{:file.format_error(reason)}"}
+    case RenderTool.write(target, content) do
+      :ok -> result
+      {:error, reason} -> {:error, "could not store the diagram: #{:file.format_error(reason)}"}
     end
   end
-
-  defp version(runner) when is_atom(runner) do
-    key = {__MODULE__, :version, runner}
-
-    case :persistent_term.get(key, nil) do
-      nil ->
-        with {:ok, version} <- ask_version(runner) do
-          :persistent_term.put(key, version)
-          {:ok, version}
-        end
-
-      version ->
-        {:ok, version}
-    end
-  end
-
-  defp version(runner), do: ask_version(runner)
-
-  defp ask_version(runner) do
-    case run(runner, ["--version"], timeout: @version_timeout) do
-      {:ok, output} -> {:ok, String.trim(output)}
-      {_error, message} -> {:error, message}
-    end
-  end
-
-  defp run(runner, args, opts) when is_function(runner, 2), do: runner.(args, opts)
-  defp run(runner, args, opts) when is_atom(runner), do: runner.run(args, opts)
-
-  defp default_runner, do: Application.get_env(:feather, :d2_runner, SystemRunner)
 end
