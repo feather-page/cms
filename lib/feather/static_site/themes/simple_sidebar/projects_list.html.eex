@@ -8,7 +8,7 @@
     <a class="project-shot" href="<%= url %>" tabindex="-1" aria-hidden="true"><img src="<%= Routes.image_url(@routes, image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, image) %>" sizes="(min-width: 52rem) 200px, 112px"<%= dimensions(image) %> alt="" loading="lazy"></a>
     <% end %>
     <div class="project-text">
-      <h2 class="project-title"><a href="<%= url %>"><%= title_with_emoji(project) %></a></h2>
+      <h2 class="project-title"><a href="<%= url %>"><%= emoji_label(project.emoji, project.title, "title-emoji") %></a></h2>
       <%= meta_line([project_status_label(project.status), project_stack(project), first_link(project)]) %>
       <%= if present?(project.short_description) do %>
       <p class="project-description"><%= project.short_description %></p>
@@ -23,7 +23,7 @@
 <ul class="projects work">
   <%= for project <- work do %>
   <li>
-    <h3 class="project-title"><a href="<%= Routes.project_url(@routes, project) %>"><%= title_with_emoji(project) %></a></h3>
+    <h3 class="project-title"><a href="<%= Routes.project_url(@routes, project) %>"><%= emoji_label(project.emoji, project.title, "title-emoji") %></a></h3>
     <%= meta_line([project.role, project.company, project_period(project)]) %>
     <%= if present?(project.short_description) do %>
     <p class="project-description"><%= project.short_description %></p>

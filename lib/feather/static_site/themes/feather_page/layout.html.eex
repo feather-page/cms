@@ -74,9 +74,9 @@
         </ul>
       </nav>
       <% end %>
-      <%= if Enum.any?(@social_links, &HTML.safe_url?(&1.url)) do %>
+      <%= if @social_links != [] do %>
       <p class="social-links">
-        <%= for link <- @social_links, HTML.safe_url?(link.url) do %>
+        <%= for link <- @social_links do %>
         <a href="<%= link.url %>" title="<%= link.name %>" aria-label="<%= link.name %>" class="socialLink">
           <%= social_icon(link.icon) %>
         </a>

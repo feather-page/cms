@@ -9,7 +9,7 @@ defmodule Feather.StaticSite.Renderer do
   use Gettext, backend: Feather.StaticSite.Gettext
 
   alias Feather.Content.Blocks, as: ContentBlocks
-  alias Feather.Content.{Page, Post, Project}
+  alias Feather.Content.{HTML, Page, Post, Project}
   alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, ThemeHelpers, Themes}
   alias Phoenix.HTML.Safe
@@ -203,7 +203,7 @@ defmodule Feather.StaticSite.Renderer do
       site: data.site,
       routes: routes,
       ctx: block_context(data, routes),
-      social_links: data.social_links,
+      social_links: Enum.filter(data.social_links, &HTML.safe_url?(&1.url)),
       page_title: page_title,
       meta_title: meta_title,
       document_title: document_title(data.site.title, meta_title, is_home),

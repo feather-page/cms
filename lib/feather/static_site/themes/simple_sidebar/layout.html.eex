@@ -49,8 +49,8 @@
         <% end %>
         <% end %>
         <div class="sidebar-foot">
-          <%= if safe_links(@social_links) != [] do %>
-          <p class="social-links"><%= for {link, index} <- Enum.with_index(safe_links(@social_links)) do %><%= if index > 0 do %><span class="sep" aria-hidden="true"> · </span><% end %><a href="<%= link.url %>"><%= link.name %></a><% end %></p>
+          <%= if @social_links != [] do %>
+          <p class="social-links"><%= social_links(@social_links) %></p>
           <% end %>
           <p class="copyright"><%= copyright(@site.copyright) %></p>
         </div>
@@ -59,8 +59,8 @@
         <%= @inner_content %>
       </main>
       <footer class="site-footer">
-        <%= if safe_links(@social_links) != [] do %>
-        <p class="social-links"><%= for {link, index} <- Enum.with_index(safe_links(@social_links)) do %><%= if index > 0 do %><span class="sep" aria-hidden="true"> · </span><% end %><a href="<%= link.url %>"><%= link.name %></a><% end %></p>
+        <%= if @social_links != [] do %>
+        <p class="social-links"><%= social_links(@social_links) %></p>
         <% end %>
         <p class="copyright"><%= copyright(@site.copyright) %></p>
       </footer>

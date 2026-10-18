@@ -21,7 +21,7 @@
       <%= rating(book.rating, "book-rating") %>
       <% end %>
       <%= if book.read_at do %>
-      <span class="book-date"><%= time_tag(book.read_at, :short) %></span>
+      <span class="book-date"><%= time_tag(book.read_at, &format_short_date/1) %></span>
       <% end %>
     </div>
   </div>

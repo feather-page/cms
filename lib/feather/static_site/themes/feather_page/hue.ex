@@ -1,6 +1,6 @@
-defmodule Feather.StaticSite.Hue do
+defmodule Feather.StaticSite.Themes.FeatherPage.Hue do
   @moduledoc """
-  The accent hue of a site's theme (an OKLCH hue angle, 0–359), taken from
+  The accent hue of the feather theme (an OKLCH hue angle, 0–359), taken from
   the site's emoji: a curated hue for common emoji, otherwise a stable hash
   of the emoji, and a warm neutral for a site without one. Skin tones and
   variation selectors are ignored, so 👨🏻‍💻 and 👨🏿‍💻 share a hue.

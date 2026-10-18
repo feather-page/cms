@@ -2,8 +2,9 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
   use Feather.DataCase
 
   alias Feather.{Content, Sites}
-  alias Feather.StaticSite.{Export, Hue, RecordingSink, Routes}
+  alias Feather.StaticSite.{Export, RecordingSink, Routes}
   alias Feather.StaticSite.Themes.FeatherPage
+  alias Feather.StaticSite.Themes.FeatherPage.Hue
 
   @day ~U[2025-01-01 10:00:00.000000Z]
 

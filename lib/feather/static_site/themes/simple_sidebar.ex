@@ -15,7 +15,6 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
 
   alias Feather.Content
   alias Feather.Content.Blocks, as: ContentBlocks
-  alias Feather.Content.HTML
   alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Routes, SiteData}
   alias Phoenix.HTML.Safe
@@ -143,32 +142,35 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
     {:safe, [~s(<a href="), escape(url), open, escape(page.title), "</a>"]}
   end
 
-  defp date_tag(nil), do: {:safe, ""}
-  defp date_tag(%DateTime{} = datetime), do: datetime |> DateTime.to_date() |> date_tag()
-
-  defp date_tag(%Date{} = date), do: time_element(date, format_short_date(date))
+  defp short_date(date), do: date |> format_short_date() |> punctuated()
 
   # Under a year heading the year is dropped; a format that does not end in it stays whole.
-  defp day_tag(%Date{} = date),
-    do: time_element(date, String.replace(format_short_date(date), ~r/[\s,]*#{date.year}\z/, ""))
+  defp day_and_month(date) do
+    date
+    |> format_short_date()
+    |> String.replace(~r/[\s,]*#{date.year}\z/, "")
+    |> punctuated()
+  end
 
   # Tabular figures widen punctuation too, so the separators keep proportional widths.
-  defp time_element(date, text) do
-    text =
-      text
-      |> escape()
-      |> IO.iodata_to_binary()
-      |> String.replace(~r/[,.]/, ~s(<span class="punct">\\0</span>))
+  defp punctuated(text) do
+    {:safe,
+     text
+     |> escape()
+     |> IO.iodata_to_binary()
+     |> String.replace(~r/[,.]/, ~s(<span class="punct">\\0</span>))}
+  end
 
-    {:safe, [~s(<time datetime="), Date.to_iso8601(date), ~s(">), text, "</time>"]}
+  defp social_links(links) do
+    links
+    |> Enum.map(&{:safe, [~s(<a href="), escape(&1.url), ~s(">), escape(&1.name), "</a>"]})
+    |> separated()
   end
 
   @new_for_days 30
 
   defp recent?(%SiteData{now: now}, post),
     do: Date.diff(DateTime.to_date(now), DateTime.to_date(post.publish_at)) <= @new_for_days
-
-  defp safe_links(links), do: Enum.filter(links, &HTML.safe_url?(&1.url))
 
   defp kind(post) do
     cond do
@@ -229,15 +231,6 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   defp page_picture(%{thumbnail_image: %Image{} = image}), do: image
   defp page_picture(_project), do: nil
 
-  defp title_with_emoji(project) do
-    emoji =
-      if present?(project.emoji),
-        do: [~s(<span class="title-emoji" aria-hidden="true">), escape(project.emoji), "</span>"],
-        else: []
-
-    {:safe, [emoji, escape(project.title)]}
-  end
-
   defp project_stack(project), do: project |> Content.tag_list() |> Enum.join(", ")
 
   defp first_link(project) do
@@ -257,12 +250,16 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
     do:
       url |> String.replace(~r{\A[a-z][a-z0-9+.-]*://(www\.)?}i, "") |> String.trim_trailing("/")
 
+  @sep ~s(<span class="sep" aria-hidden="true">·</span>)
+
+  defp sep, do: {:safe, @sep}
+
   defp separated(items) do
     {:safe,
      items
      |> Enum.filter(&(match?({:safe, _}, &1) or present?(&1)))
      |> Enum.map(&Safe.to_iodata/1)
-     |> Enum.intersperse(~s(<span class="sep" aria-hidden="true">·</span>))}
+     |> Enum.intersperse(@sep)}
   end
 
   defp meta_line(items) do

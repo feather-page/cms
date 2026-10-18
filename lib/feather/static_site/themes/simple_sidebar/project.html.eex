@@ -1,5 +1,5 @@
 <article class="project-page">
-  <h1><%= if @page_emoji do %><span class="title-emoji" aria-hidden="true"><%= @page_emoji %></span><% end %><%= @page_title %></h1>
+  <h1><%= emoji_label(@page_emoji, @page_title, "title-emoji") %></h1>
   <%= meta_line([project_status_label(@project.status), project_stack(@project)]) %>
   <%= if present?(@project.short_description) do %>
   <div class="lead"><%= simple_format(@project.short_description) %></div>
