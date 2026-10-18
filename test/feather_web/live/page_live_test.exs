@@ -333,7 +333,7 @@ defmodule FeatherWeb.PageLiveTest do
       html = lv |> form("#page-form", page: %{title: "No slug", slug: ""}) |> render_change()
       assert html =~ "Can&#39;t be blank"
       assert has_element?(lv, ~s(#page-content-editor[data-form-status="invalid"]))
-      assert Content.list_pages(scope) |> Enum.map(& &1.title) == ["Home"]
+      assert Enum.map(Content.list_pages(scope), & &1.title) == ["Home"]
 
       page = page_fixture(scope, title: "Services", slug: "/services")
       {:ok, lv, _html} = live(conn, pages_path(site) <> "/#{page.public_id}/edit")
@@ -380,7 +380,7 @@ defmodule FeatherWeb.PageLiveTest do
       assert has_element?(lv, "#publication-badge", "Changes not published")
 
       {:ok, _lv, _html} =
-        confirm_click(lv, "#discard-page") |> follow_redirect(conn, edit_path)
+        lv |> confirm_click("#discard-page") |> follow_redirect(conn, edit_path)
 
       assert Content.get_page!(scope, page.public_id).title == "Our services"
     end
@@ -393,7 +393,7 @@ defmodule FeatherWeb.PageLiveTest do
       {:ok, lv, _html} = live(conn, edit_path)
 
       {:ok, lv, _html} =
-        confirm_click(lv, "#restore-version-1") |> follow_redirect(conn, edit_path)
+        lv |> confirm_click("#restore-version-1") |> follow_redirect(conn, edit_path)
 
       assert has_element?(lv, "#page_title", "Services")
       assert has_element?(lv, "#version-2", "Published")
@@ -422,8 +422,7 @@ defmodule FeatherWeb.PageLiveTest do
                "Removes the page from Feather. It stays on the live site until the next deploy."
 
       {:ok, _lv, html} =
-        confirm_click(lv, "#delete-page")
-        |> follow_redirect(conn, pages_path(site))
+        lv |> confirm_click("#delete-page") |> follow_redirect(conn, pages_path(site))
 
       assert html =~ "Page was successfully deleted."
       assert_raise Ecto.NoResultsError, fn -> Content.get_page!(scope, page.public_id) end
@@ -440,8 +439,7 @@ defmodule FeatherWeb.PageLiveTest do
       {:ok, _} = Content.delete_page(scope, page)
 
       {:ok, _lv, html} =
-        confirm_click(lv, "#delete-page")
-        |> follow_redirect(conn, pages_path(site))
+        lv |> confirm_click("#delete-page") |> follow_redirect(conn, pages_path(site))
 
       assert html =~ "This page no longer exists."
     end

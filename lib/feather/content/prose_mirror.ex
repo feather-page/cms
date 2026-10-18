@@ -372,38 +372,25 @@ defmodule Feather.Content.ProseMirror do
   defp text_of(%{"type" => "text", "text" => text}) when is_binary(text), do: text
   defp text_of(_node), do: ""
 
-  # Text nodes with marks to inline HTML. Marks are opened in their order,
-  # and those shared with the previous node stay open; Blocks.normalize/1
-  # sanitizes the result.
+  # Marks shared with the previous text node stay open; Blocks.normalize/1 sanitizes the result.
   defp inline_html(node) do
-    {html, open} =
-      node
-      |> children()
-      |> Enum.reduce({[], []}, fn child, {html, open} ->
-        case child do
-          %{"type" => "hard_break"} ->
-            {[html, close_marks(open), "<br>"], []}
-
-          %{"type" => "text"} ->
-            marks = child |> Map.get("marks") |> known_marks()
-            shared = shared_prefix(open, marks)
-            closing = Enum.drop(open, length(shared))
-            opening = Enum.drop(marks, length(shared))
-
-            {[
-               html,
-               close_marks(closing),
-               Enum.map(opening, &open_mark/1),
-               escape(text_of(child))
-             ], marks}
-
-          _other ->
-            {html, open}
-        end
-      end)
-
+    {html, open} = node |> children() |> Enum.reduce({[], []}, &append_inline/2)
     IO.iodata_to_binary([html, close_marks(open)])
   end
+
+  defp append_inline(%{"type" => "hard_break"}, {html, open}),
+    do: {[html, close_marks(open), "<br>"], []}
+
+  defp append_inline(%{"type" => "text"} = child, {html, open}) do
+    marks = child |> Map.get("marks") |> known_marks()
+    shared = shared_prefix(open, marks)
+    closing = Enum.drop(open, length(shared))
+    opening = Enum.drop(marks, length(shared))
+
+    {[html, close_marks(closing), Enum.map(opening, &open_mark/1), escape(text_of(child))], marks}
+  end
+
+  defp append_inline(_other, acc), do: acc
 
   defp known_marks(marks) when is_list(marks) do
     marks

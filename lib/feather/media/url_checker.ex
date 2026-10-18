@@ -187,10 +187,14 @@ defmodule Feather.Media.UrlChecker do
         {:error, "Forbidden IP"}
 
       true ->
-        case ip_literal(host) do
-          {:ok, ip} -> if public_address?(ip), do: :ok, else: {:error, "Forbidden IP"}
-          :error -> :ok
-        end
+        check_ip_literal(host)
+    end
+  end
+
+  defp check_ip_literal(host) do
+    case ip_literal(host) do
+      {:ok, ip} -> if public_address?(ip), do: :ok, else: {:error, "Forbidden IP"}
+      :error -> :ok
     end
   end
 

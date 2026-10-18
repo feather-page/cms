@@ -49,5 +49,5 @@ defmodule Feather.Repo.DropDraftFromPostsMigrationTest do
              [["draft-post", 1], ["published-post", 0]]
   end
 
-  defp post_columns, do: rows("SELECT name FROM pragma_table_info('posts')") |> List.flatten()
+  defp post_columns, do: List.flatten(rows("SELECT name FROM pragma_table_info('posts')"))
 end

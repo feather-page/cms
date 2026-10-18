@@ -3,6 +3,7 @@ defmodule Feather.MediaTest do
 
   alias Feather.Media
   alias Feather.Media.{Image, Variants}
+  alias Vix.Vips.Operation
 
   setup do
     %{scope: site_scope_fixture()}
@@ -57,9 +58,9 @@ defmodule Feather.MediaTest do
 
         if format == :webp do
           assert Vix.Vips.Image.has_alpha?(variant), "#{name} has no alpha channel"
-          {:ok, alpha} = Vix.Vips.Operation.extract_band(variant, 3)
-          assert {:ok, {+0.0, _}} = Vix.Vips.Operation.min(alpha)
-          assert {:ok, {opaque, _}} = Vix.Vips.Operation.max(alpha)
+          {:ok, alpha} = Operation.extract_band(variant, 3)
+          assert {:ok, {+0.0, _}} = Operation.min(alpha)
+          assert {:ok, {opaque, _}} = Operation.max(alpha)
           assert opaque >= 250
         else
           refute Vix.Vips.Image.has_alpha?(variant)

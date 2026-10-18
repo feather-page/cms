@@ -9,12 +9,12 @@ defmodule Feather.Books do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Post
   alias Feather.Media
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @doc """
@@ -133,8 +133,8 @@ defmodule Feather.Books do
   """
   @spec books_by_public_id(Scope.t(), [String.t()]) :: %{String.t() => Book.t()}
   def books_by_public_id(%Scope{site: %Site{id: site_id}}, public_ids) do
-    Repo.all(from b in Book, where: b.site_id == ^site_id and b.public_id in ^public_ids)
-    |> Map.new(&{&1.public_id, &1})
+    query = from b in Book, where: b.site_id == ^site_id and b.public_id in ^public_ids
+    Map.new(Repo.all(query), &{&1.public_id, &1})
   end
 
   @doc "Preloads the cover image of a book."
@@ -172,13 +172,15 @@ defmodule Feather.Books do
   def delete_book(%Scope{site: %Site{id: site_id}} = scope, %Book{site_id: site_id} = book) do
     book = Repo.preload(book, [:post, :cover_image])
 
-    Repo.transact(fn ->
-      with {:ok, deleted} <- Repo.delete(book) do
-        if book.post, do: {:ok, _} = Content.delete_post(scope, book.post)
-        if book.cover_image, do: {:ok, _} = Media.delete_image(book.cover_image)
-        {:ok, deleted}
-      end
-    end)
+    Repo.transact(fn -> delete_book_and_dependents(scope, book) end)
+  end
+
+  defp delete_book_and_dependents(scope, book) do
+    with {:ok, deleted} <- Repo.delete(book) do
+      if book.post, do: {:ok, _} = Content.delete_post(scope, book.post)
+      if book.cover_image, do: {:ok, _} = Media.delete_image(book.cover_image)
+      {:ok, deleted}
+    end
   end
 
   @doc "Returns a changeset for a book form."
@@ -203,12 +205,14 @@ defmodule Feather.Books do
     if Book.review?(book) do
       {:error, :already_reviewed}
     else
-      Repo.transact(fn ->
-        with {:ok, post} <- Content.create_post(scope, attrs),
-             {:ok, book} <- book |> Ecto.Changeset.change(post_id: post.id) |> Repo.update() do
-          {:ok, %{book: book, post: post}}
-        end
-      end)
+      Repo.transact(fn -> insert_review(scope, book, attrs) end)
+    end
+  end
+
+  defp insert_review(scope, book, attrs) do
+    with {:ok, post} <- Content.create_post(scope, attrs),
+         {:ok, book} <- book |> Ecto.Changeset.change(post_id: post.id) |> Repo.update() do
+      {:ok, %{book: book, post: post}}
     end
   end
 
@@ -226,12 +230,7 @@ defmodule Feather.Books do
     if Book.review?(book) do
       {:error, :already_reviewed}
     else
-      Repo.transact(fn ->
-        with {:ok, post} <- Content.autosave(scope, post, attrs, opts),
-             {:ok, book} <- book |> Ecto.Changeset.change(post_id: post.id) |> Repo.update() do
-          {:ok, %{book: book, post: post}}
-        end
-      end)
+      Repo.transact(fn -> autosave_new_review(scope, book, post, attrs, opts) end)
     end
   end
 
@@ -243,6 +242,13 @@ defmodule Feather.Books do
         opts
       ) do
     with {:ok, post} <- Content.autosave(scope, post, attrs, opts) do
+      {:ok, %{book: book, post: post}}
+    end
+  end
+
+  defp autosave_new_review(scope, book, post, attrs, opts) do
+    with {:ok, post} <- Content.autosave(scope, post, attrs, opts),
+         {:ok, book} <- book |> Ecto.Changeset.change(post_id: post.id) |> Repo.update() do
       {:ok, %{book: book, post: post}}
     end
   end

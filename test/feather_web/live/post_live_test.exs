@@ -62,7 +62,7 @@ defmodule FeatherWeb.PostLiveTest do
       assert has_element?(lv, "#delete-post-#{old.public_id}-menu-item")
 
       [first, second, third] =
-        Regex.scan(~r/<li[^>]* id="post-([^"]+)"/, html) |> Enum.map(&List.last/1)
+        Enum.map(Regex.scan(~r/<li[^>]* id="post-([^"]+)"/, html), &List.last/1)
 
       assert [first, second, third] == [new.public_id, short.public_id, old.public_id]
     end
@@ -509,8 +509,7 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, posts_path(site) <> "/#{post.public_id}/edit")
 
       {:ok, _lv, html} =
-        confirm_click(lv, "#delete-post")
-        |> follow_redirect(conn, posts_path(site))
+        lv |> confirm_click("#delete-post") |> follow_redirect(conn, posts_path(site))
 
       assert html =~ "Post was successfully deleted."
       assert_raise Ecto.NoResultsError, fn -> Content.get_post!(scope, post.public_id) end
@@ -526,8 +525,7 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, _} = Content.delete_post(scope, post)
 
       {:ok, _lv, html} =
-        confirm_click(lv, "#delete-post")
-        |> follow_redirect(conn, posts_path(site))
+        lv |> confirm_click("#delete-post") |> follow_redirect(conn, posts_path(site))
 
       assert html =~ "This post no longer exists."
     end
@@ -733,8 +731,7 @@ defmodule FeatherWeb.PostLiveTest do
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
       {:ok, lv, html} =
-        confirm_click(lv, "#discard-post")
-        |> follow_redirect(conn, edit_path(site, post))
+        lv |> confirm_click("#discard-post") |> follow_redirect(conn, edit_path(site, post))
 
       assert html =~ "Changes were discarded."
       assert has_element?(lv, "#status-badge", "Published")
@@ -752,8 +749,7 @@ defmodule FeatherWeb.PostLiveTest do
       refute has_element?(lv, "#restore-version-3")
 
       {:ok, lv, html} =
-        confirm_click(lv, "#restore-version-2")
-        |> follow_redirect(conn, edit_path(site, post))
+        lv |> confirm_click("#restore-version-2") |> follow_redirect(conn, edit_path(site, post))
 
       assert html =~ "Version 2 was restored."
       assert has_element?(lv, "#post_title", "Version 2")

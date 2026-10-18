@@ -1,8 +1,9 @@
 defmodule FeatherWeb.UserLive.SettingsTest do
   use FeatherWeb.ConnCase
 
-  alias Feather.Accounts
   import Phoenix.LiveViewTest
+
+  alias Feather.Accounts
 
   describe "Settings page" do
     test "renders settings page", %{conn: conn} do

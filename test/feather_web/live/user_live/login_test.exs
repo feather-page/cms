@@ -30,8 +30,7 @@ defmodule FeatherWeb.UserLive.LoginTest do
       {:ok, lv, _html} = live(conn, ~p"/users/log-in")
 
       html =
-        form(lv, "#login_form_magic", user: %{email: user.email})
-        |> render_submit()
+        lv |> form("#login_form_magic", user: %{email: user.email}) |> render_submit()
 
       assert html =~ "Check your email"
       assert has_element?(lv, "#login-sent", user.email)
@@ -44,7 +43,8 @@ defmodule FeatherWeb.UserLive.LoginTest do
     test "does not disclose if user is registered", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/log-in")
 
-      form(lv, "#login_form_magic", user: %{email: "idonotexist@example.com"})
+      lv
+      |> form("#login_form_magic", user: %{email: "idonotexist@example.com"})
       |> render_submit()
 
       # The same answer as for a known address.

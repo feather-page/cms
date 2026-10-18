@@ -34,29 +34,28 @@ defmodule Feather.StaticSite.Preview do
   @spec render(Site.t(), String.t() | [String.t()]) :: result()
   def render(%Site{} = site, path) do
     routes = Routes.preview(site)
+    routes |> Routes.resolve(path) |> serve(site, routes)
+  end
 
-    case Routes.resolve(routes, path) do
-      nil ->
-        not_found(site, routes)
+  defp serve(nil, site, routes), do: not_found(site, routes)
 
-      {:image, image, variant} ->
-        file = Media.variant_path(image, variant.name)
+  defp serve({:image, image, variant}, site, routes) do
+    file = Media.variant_path(image, variant.name)
+    existing_file(file, Variants.content_type(variant), site, routes)
+  end
 
-        if File.regular?(file),
-          do: {:file, file, Variants.content_type(variant)},
-          else: not_found(site, routes)
+  defp serve({:font, name}, site, _routes) do
+    theme = Themes.module(site)
+    {:file, theme.font_path(name), Map.fetch!(theme.fonts(), name)}
+  end
 
-      {:font, name} ->
-        theme = Themes.module(site)
-        {:file, theme.font_path(name), Map.fetch!(theme.fonts(), name)}
+  defp serve({:diagram, name}, site, routes),
+    do: existing_file(Diagrams.path(name), "image/svg+xml", site, routes)
 
-      {:diagram, name} ->
-        file = Diagrams.path(name)
-        if File.regular?(file), do: {:file, file, "image/svg+xml"}, else: not_found(site, routes)
+  defp serve(route, site, routes), do: render_route(route, load(site, route), routes)
 
-      route ->
-        render_route(route, load(site, route), routes)
-    end
+  defp existing_file(file, content_type, site, routes) do
+    if File.regular?(file), do: {:file, file, content_type}, else: not_found(site, routes)
   end
 
   defp load(site, route) do

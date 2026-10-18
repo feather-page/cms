@@ -9,12 +9,12 @@ defmodule Feather.StaticSite.SiteData do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
+  alias Feather.{Books, Content, Diagrams, Media, Sites}
   alias Feather.Books.Book
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Media.Image
   alias Feather.Repo
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
-  alias Feather.{Books, Content, Diagrams, Media, Sites}
   alias Feather.StaticSite.Themes
 
   defstruct [
@@ -72,29 +72,9 @@ defmodule Feather.StaticSite.SiteData do
     content = Keyword.get(opts, :content, :published)
     now = Keyword.get(opts, :now, DateTime.utc_now())
     scope = Scope.for_site(site)
-
-    posts =
-      scope
-      |> Content.list_posts()
-      |> in_state(content)
-      |> Enum.filter(&due?(&1, now))
-      |> Enum.sort_by(& &1.publish_at, {:desc, DateTime})
-      |> Repo.preload(@post_preloads)
-
-    pages = scope |> Content.list_pages() |> in_state(content) |> Repo.preload(@page_preloads)
-
-    projects =
-      scope
-      |> Content.list_projects()
-      |> in_state(content)
-      |> Enum.sort_by(&project_order/1)
-      |> Repo.preload(@project_preloads)
-
-    books =
-      scope
-      |> Books.list_books()
-      |> Repo.preload(@book_preloads)
-      |> Enum.map(&put_review(&1, posts))
+    posts = load_posts(scope, content, now)
+    pages = load_pages(scope, content)
+    books = load_books(scope, posts)
 
     %__MODULE__{
       site: Sites.preload_images(site),
@@ -102,14 +82,46 @@ defmodule Feather.StaticSite.SiteData do
       homepage: Enum.find(pages, &Page.homepage?/1),
       posts: posts,
       pages: pages,
-      projects: projects,
+      projects: load_projects(scope, content),
       books: books,
-      navigation: scope |> Sites.list_navigation_items() |> put_pages(pages),
+      navigation: load_navigation(scope, pages),
       social_links: Sites.list_social_media_links(scope),
-      images: scope |> Media.list_images() |> Map.new(&{&1.public_id, &1}),
+      images: load_images(scope),
       books_by_public_id: Map.new(books, &{&1.public_id, &1})
     }
   end
+
+  defp load_posts(scope, content, now) do
+    scope
+    |> Content.list_posts()
+    |> in_state(content)
+    |> Enum.filter(&due?(&1, now))
+    |> Enum.sort_by(& &1.publish_at, {:desc, DateTime})
+    |> Repo.preload(@post_preloads)
+  end
+
+  defp load_pages(scope, content),
+    do: scope |> Content.list_pages() |> in_state(content) |> Repo.preload(@page_preloads)
+
+  defp load_projects(scope, content) do
+    scope
+    |> Content.list_projects()
+    |> in_state(content)
+    |> Enum.sort_by(&project_order/1)
+    |> Repo.preload(@project_preloads)
+  end
+
+  defp load_books(scope, posts) do
+    scope
+    |> Books.list_books()
+    |> Repo.preload(@book_preloads)
+    |> Enum.map(&put_review(&1, posts))
+  end
+
+  defp load_navigation(scope, pages),
+    do: scope |> Sites.list_navigation_items() |> put_pages(pages)
+
+  defp load_images(scope), do: scope |> Media.list_images() |> Map.new(&{&1.public_id, &1})
 
   defp in_state(records, :current), do: records
   defp in_state(records, :published), do: Content.as_published(records)

@@ -11,20 +11,31 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
   defp build_site(attrs, opts \\ []) do
     scope = site_scope_fixture(Map.merge(%{theme: "simple_sidebar"}, attrs))
 
-    homepage = Content.get_homepage(scope)
+    publish_homepage(scope, Keyword.get(opts, :homepage, default_homepage()))
+    create_pages(scope)
+    create_book_review(scope)
+    create_posts(scope)
+    create_projects(scope)
+    social_media_link_fixture(scope)
 
-    {:ok, homepage} =
-      Content.update_page(scope, homepage, %{
-        content:
-          Keyword.get(opts, :homepage, [
-            %{"type" => "header", "level" => 2, "text" => "Hello"},
-            paragraph("I build <b>websites</b> since 2001."),
-            paragraph("A second paragraph.")
-          ])
-      })
+    scope = if opts[:portrait], do: put_portrait(scope), else: scope
+    %{scope: scope, sink: export(scope)}
+  end
 
+  defp default_homepage do
+    [
+      %{"type" => "header", "level" => 2, "text" => "Hello"},
+      paragraph("I build <b>websites</b> since 2001."),
+      paragraph("A second paragraph.")
+    ]
+  end
+
+  defp publish_homepage(scope, content) do
+    {:ok, homepage} = Content.update_page(scope, Content.get_homepage(scope), %{content: content})
     {:ok, _} = Content.publish(scope, homepage)
+  end
 
+  defp create_pages(scope) do
     page_fixture(scope, %{title: "About me", slug: "/about", emoji: "👋", add_to_navigation: true})
     page_fixture(scope, %{title: "Imprint", slug: "/imprint", add_to_navigation: true})
 
@@ -43,7 +54,9 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       page_type: "projects",
       add_to_navigation: true
     })
+  end
 
+  defp create_book_review(scope) do
     book =
       book_fixture(scope, %{
         title: "Virtua",
@@ -62,7 +75,9 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       })
 
     {:ok, _} = Content.publish(scope, review)
+  end
 
+  defp create_posts(scope) do
     post_fixture(scope, %{
       title: nil,
       slug: "/winter-ride",
@@ -79,7 +94,9 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       content: [paragraph("I have to admit: I'm impressed.")],
       publish_at: DateTime.add(@day, 2, :day)
     })
+  end
 
+  defp create_projects(scope) do
     project_fixture(scope, %{
       title: "Client portal",
       slug: "/client-portal",
@@ -107,20 +124,13 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
         %{label: "Website", url: "https://feather.example"}
       ]
     })
+  end
 
-    social_media_link_fixture(scope)
-
-    scope =
-      if opts[:portrait] do
-        path = test_image_path(120, 120)
-        {:ok, _} = Sites.put_portrait(scope, path, "me.png")
-        File.rm(path)
-        %{scope | site: Repo.reload!(scope.site)}
-      else
-        scope
-      end
-
-    %{scope: scope, sink: export(scope)}
+  defp put_portrait(scope) do
+    path = test_image_path(120, 120)
+    {:ok, _} = Sites.put_portrait(scope, path, "me.png")
+    File.rm(path)
+    %{scope | site: Repo.reload!(scope.site)}
   end
 
   defp export(scope, now \\ @now) do
@@ -751,7 +761,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
     project = doc(sink, "projects/feather-page/index.html")
     assert text(project, "main .project-back a") == "Alle Projekte"
-    assert texts(project, "main dl.facts dt") |> Enum.take(2) == ["Technik", "Status"]
+    assert Enum.take(texts(project, "main dl.facts dt"), 2) == ["Technik", "Status"]
   end
 
   test "scripts and javascript: links from site data are neither run nor linked" do

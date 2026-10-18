@@ -19,20 +19,22 @@ defmodule Mix.Tasks.Feather.CreateUser do
   def run(args) do
     case OptionParser.parse(args, strict: [super_admin: :boolean]) do
       {opts, [email], []} ->
-        super_admin? = Keyword.get(opts, :super_admin, false)
-
-        with {:ok, user} <- Feather.Accounts.get_or_create_user_by_email(email),
-             {:ok, user} <- Feather.Accounts.set_super_admin(user, super_admin?) do
-          Mix.shell().info(
-            "User #{user.email} ready#{if user.super_admin, do: " (super admin)", else: ""}."
-          )
-        else
-          {:error, %Ecto.Changeset{} = changeset} ->
-            Mix.raise("Could not create user: #{inspect(changeset.errors)}")
-        end
+        ensure_user(email, Keyword.get(opts, :super_admin, false))
 
       _ ->
         Mix.raise("Usage: mix feather.create_user EMAIL [--super-admin]")
+    end
+  end
+
+  defp ensure_user(email, super_admin?) do
+    with {:ok, user} <- Feather.Accounts.get_or_create_user_by_email(email),
+         {:ok, user} <- Feather.Accounts.set_super_admin(user, super_admin?) do
+      Mix.shell().info(
+        "User #{user.email} ready#{if user.super_admin, do: " (super admin)", else: ""}."
+      )
+    else
+      {:error, %Ecto.Changeset{} = changeset} ->
+        Mix.raise("Could not create user: #{inspect(changeset.errors)}")
     end
   end
 end

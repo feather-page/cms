@@ -101,7 +101,7 @@ defmodule Feather.AccountsTest do
       assert token =~ ~r/\A[0-9a-f]{64}\z/
       assert api_token.name == "laptop"
       assert api_token.token_prefix == binary_part(token, 0, 8)
-      assert api_token.token_digest == :crypto.hash(:sha256, token) |> Base.encode16(case: :lower)
+      assert api_token.token_digest == Base.encode16(:crypto.hash(:sha256, token), case: :lower)
       refute api_token.token_digest == token
     end
 
@@ -118,7 +118,7 @@ defmodule Feather.AccountsTest do
     test "a digest imported from Rails keeps working" do
       user = user_fixture()
       plain = String.duplicate("ab", 32)
-      digest = :crypto.hash(:sha256, plain) |> Base.encode16(case: :lower)
+      digest = Base.encode16(:crypto.hash(:sha256, plain), case: :lower)
 
       Repo.insert!(%Accounts.ApiToken{
         user_id: user.id,

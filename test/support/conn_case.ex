@@ -15,6 +15,8 @@ defmodule FeatherWeb.ConnCase do
 
   use ExUnit.CaseTemplate
 
+  alias Feather.Accounts.Scope
+
   using opts do
     if opts[:async] do
       raise ArgumentError,
@@ -56,7 +58,7 @@ defmodule FeatherWeb.ConnCase do
   """
   def register_and_log_in_user(%{conn: conn} = context) do
     user = Feather.AccountsFixtures.user_fixture()
-    scope = Feather.Accounts.Scope.for_user(user)
+    scope = Scope.for_user(user)
 
     opts =
       context
@@ -73,9 +75,9 @@ defmodule FeatherWeb.ConnCase do
       setup [:register_and_log_in_user, :create_site_for_user]
   """
   def create_site_for_user(%{user: user} = context) do
-    scope = context[:scope] || Feather.Accounts.Scope.for_user(user)
+    scope = context[:scope] || Scope.for_user(user)
     site = Feather.SitesFixtures.site_fixture(scope)
-    %{site: site, scope: Feather.Accounts.Scope.put_site(scope, site)}
+    %{site: site, scope: Scope.put_site(scope, site)}
   end
 
   @doc """

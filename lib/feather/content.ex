@@ -38,14 +38,14 @@ defmodule Feather.Content do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
+  alias Feather.Books
   alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
   alias Feather.Content.{BlocksType, ProseMirror, Slug, Tags}
-  alias Feather.Books
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
+  alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
 
@@ -100,12 +100,13 @@ defmodule Feather.Content do
   """
   @spec paginate_posts(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
   def paginate_posts(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Post,
-      where: p.site_id == ^site_id,
-      order_by: [desc: p.publish_at, asc: p.id],
-      preload: [:header_image, :thumbnail_image]
-    )
-    |> Pagination.paginate(page, out_of_range: :empty)
+    query =
+      from p in Post,
+        where: p.site_id == ^site_id,
+        order_by: [desc: p.publish_at, asc: p.id],
+        preload: [:header_image, :thumbnail_image]
+
+    Pagination.paginate(query, page, out_of_range: :empty)
   end
 
   @doc """
@@ -266,20 +267,19 @@ defmodule Feather.Content do
 
     Repo.transact(fn ->
       with {:ok, page} <- save_with_images(changeset, scope, :page_id, opts) do
-        if navigation_given? do
-          sync_navigation(scope, page)
-        end
-
+        sync_navigation(navigation_given?, scope, page)
         {:ok, put_navigation_flag(page)}
       end
     end)
   end
 
-  defp sync_navigation(scope, %Page{add_to_navigation: true} = page) do
+  defp sync_navigation(false, _scope, _page), do: :ok
+
+  defp sync_navigation(true, scope, %Page{add_to_navigation: true} = page) do
     {:ok, _item} = Sites.add_to_navigation(scope, page)
   end
 
-  defp sync_navigation(scope, %Page{} = page) do
+  defp sync_navigation(true, scope, %Page{} = page) do
     :ok = Sites.remove_from_navigation(scope, page)
   end
 
@@ -309,11 +309,8 @@ defmodule Feather.Content do
   defp put_navigation_flags(pages) do
     ids = Enum.map(pages, & &1.id)
 
-    in_navigation =
-      Repo.all(
-        from n in Feather.Sites.NavigationItem, where: n.page_id in ^ids, select: n.page_id
-      )
-      |> MapSet.new()
+    query = from n in Feather.Sites.NavigationItem, where: n.page_id in ^ids, select: n.page_id
+    in_navigation = MapSet.new(Repo.all(query))
 
     Enum.map(pages, &%{&1 | add_to_navigation: MapSet.member?(in_navigation, &1.id)})
   end
@@ -538,23 +535,24 @@ defmodule Feather.Content do
     content = merge_blocks(current.content, synced_blocks(scope, nodes), order)
 
     cond do
-      (lock_version || 0) not in base..record.lock_version//1 or
-          current.lock_version != record.lock_version ->
-        {:error, :stale}
+      stale?(current, record, lock_version, base) -> {:error, :stale}
+      content == current.content -> {:ok, put_navigation_flag(current)}
+      true -> save_synced_content(scope, current, content)
+    end
+  end
 
-      content == current.content ->
-        {:ok, put_navigation_flag(current)}
+  defp stale?(current, record, lock_version, base) do
+    (lock_version || 0) not in base..record.lock_version//1 or
+      current.lock_version != record.lock_version
+  end
 
-      true ->
-        {_version_schema, owner_field} = Map.fetch!(@versions, schema)
+  defp save_synced_content(scope, %schema{} = current, content) do
+    {_version_schema, owner_field} = Map.fetch!(@versions, schema)
+    changeset = Ecto.Changeset.change(current, content: content)
 
-        current
-        |> Ecto.Changeset.change(content: content)
-        |> save_with_images(scope, owner_field, [])
-        |> case do
-          {:ok, saved} -> {:ok, put_navigation_flag(saved)}
-          error -> stale_error(error)
-        end
+    case save_with_images(changeset, scope, owner_field, []) do
+      {:ok, saved} -> {:ok, put_navigation_flag(saved)}
+      error -> stale_error(error)
     end
   end
 
@@ -631,17 +629,19 @@ defmodule Feather.Content do
         when record: Post.t() | Page.t() | Project.t()
   def publish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
-    Repo.transact(fn ->
-      with {:ok, current} <- stored(record) do
-        current = Repo.preload(current, :published_version)
+    Repo.transact(fn -> publish_stored(scope, record) end)
+  end
 
-        cond do
-          publication_status(current) == :published -> {:ok, current}
-          published_slug_taken?(current) -> {:error, :slug_taken}
-          true -> insert_version(scope, current)
-        end
+  defp publish_stored(scope, record) do
+    with {:ok, current} <- stored(record) do
+      current = Repo.preload(current, :published_version)
+
+      cond do
+        publication_status(current) == :published -> {:ok, current}
+        published_slug_taken?(current) -> {:error, :slug_taken}
+        true -> insert_version(scope, current)
       end
-    end)
+    end
   end
 
   # The record as stored, while it has the given one's lock_version.
@@ -853,12 +853,13 @@ defmodule Feather.Content do
   @spec paginate_admin_posts(Scope.t(), pos_integer() | String.t() | nil) ::
           Pagination.t()
   def paginate_admin_posts(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Post,
-      where: p.site_id == ^site_id,
-      order_by: [desc: p.publish_at, desc: p.inserted_at],
-      preload: [:thumbnail_image, :book, :published_version]
-    )
-    |> Pagination.paginate(page)
+    query =
+      from p in Post,
+        where: p.site_id == ^site_id,
+        order_by: [desc: p.publish_at, desc: p.inserted_at],
+        preload: [:thumbnail_image, :book, :published_version]
+
+    Pagination.paginate(query, page)
   end
 
   @doc """
@@ -869,14 +870,15 @@ defmodule Feather.Content do
   @spec paginate_pages_outside_navigation(Scope.t(), pos_integer() | String.t() | nil) ::
           Pagination.t()
   def paginate_pages_outside_navigation(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Page,
-      left_join: n in Feather.Sites.NavigationItem,
-      on: n.page_id == p.id,
-      where: p.site_id == ^site_id and is_nil(n.id),
-      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
-      preload: [:thumbnail_image, :published_version]
-    )
-    |> Pagination.paginate(page)
+    query =
+      from p in Page,
+        left_join: n in Feather.Sites.NavigationItem,
+        on: n.page_id == p.id,
+        where: p.site_id == ^site_id and is_nil(n.id),
+        order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
+        preload: [:thumbnail_image, :published_version]
+
+    Pagination.paginate(query, page)
   end
 
   ## Shared
@@ -957,13 +959,17 @@ defmodule Feather.Content do
           Blocks.image_ids(record.content)
         )
 
-        case Keyword.fetch(opts, :draft) do
-          {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
-          {:ok, true} -> unpublish(scope, record)
-          :error -> {:ok, record}
-        end
+        apply_draft_option(scope, record, changeset, opts)
       end
     end)
+  end
+
+  defp apply_draft_option(scope, record, changeset, opts) do
+    case Keyword.fetch(opts, :draft) do
+      {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
+      {:ok, true} -> unpublish(scope, record)
+      :error -> {:ok, record}
+    end
   end
 
   defp slug_taken_error({:error, :slug_taken}, changeset) do

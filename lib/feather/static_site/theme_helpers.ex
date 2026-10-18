@@ -9,17 +9,17 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   use Gettext, backend: Feather.StaticSite.Gettext
 
-  require EEx
-
   import Phoenix.HTML, only: [raw: 1]
 
   alias Feather.Books.Book
   alias Feather.Content
-  alias Feather.Content.{HTML, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Content.{HTML, Project}
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
   alias Feather.StaticSite.{Hue, Routes, SiteData}
+
+  require EEx
 
   @doc """
   The meta tags of a page (title, robots, description, canonical URL,
@@ -66,17 +66,22 @@ defmodule Feather.StaticSite.ThemeHelpers do
   def pagination_page_numbers(_current, total) when total <= 7, do: Enum.to_list(1..total)
 
   def pagination_page_numbers(current, total) do
-    near_end =
-      cond do
-        current <= 3 -> Enum.to_list(1..4)
-        current >= total - 2 -> Enum.to_list((total - 3)..total)
-        true -> []
-      end
-
-    ([1, total, current, current - 1, current + 1] ++ near_end)
+    ([1, total, current, current - 1, current + 1] ++ pages_near_end(current, total))
     |> Enum.filter(&(&1 >= 1 and &1 <= total))
     |> Enum.uniq()
     |> Enum.sort()
+    |> insert_gaps()
+  end
+
+  defp pages_near_end(current, _total) when current <= 3, do: Enum.to_list(1..4)
+
+  defp pages_near_end(current, total) when current >= total - 2,
+    do: Enum.to_list((total - 3)..total)
+
+  defp pages_near_end(_current, _total), do: []
+
+  defp insert_gaps(pages) do
+    pages
     |> Enum.reduce([], fn
       page, [previous | _] = acc when is_integer(previous) and page > previous + 1 ->
         [page, :gap | acc]
@@ -87,14 +92,14 @@ defmodule Feather.StaticSite.ThemeHelpers do
     |> Enum.reverse()
   end
 
-  @doc "A date in the long format of the current language: `\"May 6, 2025\"`, `\"6. Mai 2025\"`."
+  @doc ~s(A date in the long format of the current language: `"May 6, 2025"`, `"6. Mai 2025"`.)
   @spec format_date(DateTime.t() | Date.t() | nil) :: String.t()
   def format_date(date) do
     gettext_comment("Calendar.strftime format of a long date")
     strftime(date, gettext("%B %-d, %Y"))
   end
 
-  @doc "A date in the short format of the current language: `\"Aug 12, 2026\"`, `\"12.08.2026\"`."
+  @doc ~s(A date in the short format of the current language: `"Aug 12, 2026"`, `"12.08.2026"`.)
   @spec format_short_date(DateTime.t() | Date.t() | nil) :: String.t()
   def format_short_date(date) do
     gettext_comment("Calendar.strftime format of a short date, unambiguous in the language")
@@ -251,8 +256,13 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @spec photo_credit(Image.t()) :: Phoenix.HTML.safe()
   def photo_credit(%Image{} = image) do
     link = fn url, text ->
-      [~s(<a href="), escape(url), ~s(" target="_blank" rel="noopener">), escape(text), "</a>"]
-      |> IO.iodata_to_binary()
+      IO.iodata_to_binary([
+        ~s(<a href="),
+        escape(url),
+        ~s(" target="_blank" rel="noopener">),
+        escape(text),
+        "</a>"
+      ])
     end
 
     raw(
@@ -264,7 +274,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
     )
   end
 
-  @doc "` width=\"…\" height=\"…\"` for an `<img>` of the image, if its size is known."
+  @doc ~s(` width="…" height="…"` for an `<img>` of the image, if its size is known.)
   @spec dimensions(Image.t() | nil) :: Phoenix.HTML.safe()
   def dimensions(%Image{width: width, height: height})
       when is_integer(width) and is_integer(height),
@@ -275,11 +285,11 @@ defmodule Feather.StaticSite.ThemeHelpers do
   # Open Graph wants language_TERRITORY; languages not listed here go without.
   @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP
                  ko_KR nl_NL pl_PL pt_PT ru_RU sv_SE tr_TR uk_UA zh_CN)
-              |> Map.new(&{binary_part(&1, 0, 2), &1})
+  @og_locale_by_language Map.new(@og_locales, &{binary_part(&1, 0, 2), &1})
 
   @doc "The Open Graph locale of a language, or nil."
   @spec og_locale(String.t() | nil) :: String.t() | nil
-  def og_locale(language_code), do: Map.get(@og_locales, language_code)
+  def og_locale(language_code), do: Map.get(@og_locale_by_language, language_code)
 
   @doc "The hue of the site's colours, derived from its emoji (`Feather.StaticSite.Hue`)."
   @spec hue(Feather.Sites.Site.t()) :: integer()
@@ -403,7 +413,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @spec escape(term()) :: iodata()
   def escape(value), do: value |> to_string() |> Phoenix.HTML.html_escape() |> elem(1)
 
-  @doc "`\"open_source\"` as `\"Open Source\"`."
+  @doc ~s(`"open_source"` as `"Open Source"`.)
   @spec titleize(String.t() | nil) :: String.t()
   def titleize(nil), do: ""
 

@@ -52,7 +52,7 @@ Uploaded images are stored in `storage/` (git-ignored).
 | `mix feather.create_user EMAIL [--super-admin]` | Create (or update) a user who can log in by magic link |
 | `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
 | `mix test` | Run the test suite |
-| `mix precommit` | Compile with warnings as errors, unlock unused deps, format, run the tests |
+| `mix precommit` | Compile with warnings as errors, unlock unused deps, format, run Credo, run the tests |
 | `mix ecto.reset` | Drop, migrate and seed the development database |
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`

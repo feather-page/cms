@@ -8,10 +8,11 @@ defmodule Feather.StaticSite.Renderer do
 
   use Gettext, backend: Feather.StaticSite.Gettext
 
-  alias Feather.Content.{Page, Post, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Content.{Page, Post, Project}
   alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, ThemeHelpers, Themes}
+  alias Phoenix.HTML.Safe
 
   @posts_per_page 25
   @description_length 155
@@ -29,23 +30,16 @@ defmodule Feather.StaticSite.Renderer do
   """
   @spec render_home(SiteData.t(), Routes.t(), pos_integer()) :: iodata()
   def render_home(%SiteData{} = data, %Routes{} = routes, page_number \\ 1) do
-    posts = Enum.slice(data.posts, (page_number - 1) * @posts_per_page, @posts_per_page)
     homepage = data.homepage || %Page{content: [], header_image: nil}
 
     assigns =
-      base_assigns(data, routes, data.site.title, data.site.emoji, true)
-      |> Map.merge(
-        sharing(
-          routes,
-          &Routes.home_url(&1, page_number),
-          ContentBlocks.excerpt(homepage.content),
-          homepage.header_image || first_image(data, homepage.content)
-        )
-      )
+      data
+      |> base_assigns(routes, data.site.title, data.site.emoji, true)
+      |> Map.merge(home_sharing(data, routes, homepage, page_number))
       |> Map.merge(%{
         masthead_image: homepage.header_image,
         rss_url: Routes.artifact_url(routes, "feed.xml"),
-        posts: posts,
+        posts: posts_on_page(data, page_number),
         current_page: page_number,
         total_pages: total_pages(data)
       })
@@ -53,25 +47,28 @@ defmodule Feather.StaticSite.Renderer do
     render(:home, assigns)
   end
 
+  defp posts_on_page(data, page_number),
+    do: Enum.slice(data.posts, (page_number - 1) * @posts_per_page, @posts_per_page)
+
+  defp home_sharing(data, routes, homepage, page_number) do
+    sharing(
+      routes,
+      &Routes.home_url(&1, page_number),
+      ContentBlocks.excerpt(homepage.content),
+      homepage.header_image || first_image(data, homepage.content)
+    )
+  end
+
   @doc "A post (its book, header and thumbnail image preloaded)."
   @spec render_post(SiteData.t(), Routes.t(), Post.t()) :: iodata()
   def render_post(%SiteData{} = data, %Routes{} = routes, %Post{} = post) do
-    heading = if blank?(post.title), do: data.site.title, else: post.title
     label = in_site_language(data, fn -> ThemeHelpers.post_label(post) end)
     {newer, older} = SiteData.neighbours(data, post)
 
     assigns =
       data
-      |> base_assigns(routes, heading, post.emoji, false, label)
-      |> Map.merge(
-        sharing(
-          routes,
-          &Routes.post_url(&1, post),
-          ContentBlocks.excerpt(post.content),
-          post.header_image || post.thumbnail_image || first_image(data, post.content),
-          "article"
-        )
-      )
+      |> base_assigns(routes, post_heading(data, post), post.emoji, false, label)
+      |> Map.merge(post_sharing(data, routes, post))
       |> Map.merge(%{
         post: post,
         published_at: post.publish_at,
@@ -81,6 +78,18 @@ defmodule Feather.StaticSite.Renderer do
       })
 
     render(:post, assigns)
+  end
+
+  defp post_heading(data, post), do: if(blank?(post.title), do: data.site.title, else: post.title)
+
+  defp post_sharing(data, routes, post) do
+    sharing(
+      routes,
+      &Routes.post_url(&1, post),
+      ContentBlocks.excerpt(post.content),
+      post.header_image || post.thumbnail_image || first_image(data, post.content),
+      "article"
+    )
   end
 
   @doc "A page (its header image preloaded)."
@@ -112,18 +121,7 @@ defmodule Feather.StaticSite.Renderer do
     assigns =
       data
       |> base_assigns(routes, project.title, project.emoji, false)
-      |> Map.merge(
-        sharing(
-          routes,
-          &Routes.project_url(&1, project),
-          if(blank?(project.short_description),
-            do: ContentBlocks.excerpt(project.content),
-            else: ContentBlocks.strip_tags(project.short_description)
-          ),
-          project.header_image || project.thumbnail_image ||
-            first_image(data, project.content)
-        )
-      )
+      |> Map.merge(project_sharing(data, routes, project))
       |> Map.merge(%{
         project: project,
         header_image: project.header_image,
@@ -131,6 +129,21 @@ defmodule Feather.StaticSite.Renderer do
       })
 
     render(:project, assigns)
+  end
+
+  defp project_sharing(data, routes, project) do
+    sharing(
+      routes,
+      &Routes.project_url(&1, project),
+      project_summary(project),
+      project.header_image || project.thumbnail_image || first_image(data, project.content)
+    )
+  end
+
+  defp project_summary(project) do
+    if blank?(project.short_description),
+      do: ContentBlocks.excerpt(project.content),
+      else: ContentBlocks.strip_tags(project.short_description)
   end
 
   @doc "The page shown for paths that do not exist."
@@ -251,7 +264,7 @@ defmodule Feather.StaticSite.Renderer do
       assigns
       |> Map.put(:inner_content, apply(theme, view, [assigns]))
       |> theme.layout()
-      |> Phoenix.HTML.Safe.to_iodata()
+      |> Safe.to_iodata()
     end)
   end
 

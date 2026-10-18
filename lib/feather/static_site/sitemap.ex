@@ -11,28 +11,28 @@ defmodule Feather.StaticSite.Sitemap do
   @doc "Renders the sitemap."
   @spec render(SiteData.t(), Routes.t()) :: iodata()
   def render(%SiteData{} = data, %Routes{} = routes) do
-    routes = Routes.canonical(routes)
-
-    entries =
-      [{Routes.home_url(routes), home_lastmod(data)}] ++
-        Enum.map(data.posts, &{Routes.post_url(routes, &1), &1.updated_at}) ++
-        (data.pages
-         |> Enum.reject(&Page.homepage?/1)
-         |> Enum.map(&{Routes.page_url(routes, &1), &1.updated_at})) ++
-        Enum.map(data.projects, &{Routes.project_url(routes, &1), &1.updated_at})
-
-    urls =
-      Enum.map(entries, fn {loc, lastmod} ->
-        Xml.element(1, "url", [], [
-          Xml.element(2, "loc", loc),
-          Xml.element(2, "lastmod", iso8601(lastmod))
-        ])
-      end)
+    urls = data |> entries(Routes.canonical(routes)) |> Enum.map(&url_element/1)
 
     [
       Xml.declaration(),
       Xml.element(0, "urlset", [{"xmlns", "http://www.sitemaps.org/schemas/sitemap/0.9"}], urls)
     ]
+  end
+
+  defp entries(data, routes) do
+    [{Routes.home_url(routes), home_lastmod(data)}] ++
+      Enum.map(data.posts, &{Routes.post_url(routes, &1), &1.updated_at}) ++
+      (data.pages
+       |> Enum.reject(&Page.homepage?/1)
+       |> Enum.map(&{Routes.page_url(routes, &1), &1.updated_at})) ++
+      Enum.map(data.projects, &{Routes.project_url(routes, &1), &1.updated_at})
+  end
+
+  defp url_element({loc, lastmod}) do
+    Xml.element(1, "url", [], [
+      Xml.element(2, "loc", loc),
+      Xml.element(2, "lastmod", iso8601(lastmod))
+    ])
   end
 
   # The home page lists the published posts, so it changes with the most

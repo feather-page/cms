@@ -33,13 +33,14 @@ defmodule Feather.Publishing.Deploy do
   one node, which is all a SQLite app has.)
   """
 
-  require Logger
-
+  alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Publishing
   alias Feather.Publishing.{DeploymentTarget, Rclone}
   alias Feather.Repo
   alias Feather.StaticSite.{Export, FileSink, Precompress, Routes}
+
+  require Logger
 
   @registry Feather.Publishing.Registry
   @lock_retries 60
@@ -229,7 +230,7 @@ defmodule Feather.Publishing.Deploy do
     Publishing.broadcast_notice(target.site, %{
       kind: :error,
       title: "Deploy to #{target.public_hostname} failed",
-      message: failure_message(step, Feather.Content.Blocks.truncate(message, 300)),
+      message: failure_message(step, Blocks.truncate(message, 300)),
       retry: target.public_id
     })
   end

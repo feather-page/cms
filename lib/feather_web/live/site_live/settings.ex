@@ -11,9 +11,9 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   alias Feather.Accounts.Scope
   alias Feather.Sites
-  alias FeatherWeb.SiteAuth
   alias Feather.Sites.{Languages, Site, SocialMediaLink, SocialMediaService}
   alias Feather.StaticSite.Themes
+  alias FeatherWeb.SiteAuth
 
   @mascot_accept ~w(.png .webp)
   @mascot_fallback "The image is deleted. The feather.page theme shows your site's emoji instead."
@@ -512,12 +512,7 @@ defmodule FeatherWeb.SiteLive.Settings do
            |> put_flash(:info, "#{slot_label(slot)} was successfully updated.")}
 
         {:error, %Ecto.Changeset{errors: errors}} ->
-          message =
-            case Keyword.get(errors, :file) do
-              {message, _opts} -> "The file #{message}."
-              nil -> "The image could not be saved."
-            end
-
+          message = image_error_message(Keyword.get(errors, :file))
           {:noreply, put_image_error(socket, slot, message)}
       end
     else
@@ -525,6 +520,9 @@ defmodule FeatherWeb.SiteLive.Settings do
       false -> {:noreply, socket}
     end
   end
+
+  defp image_error_message({message, _opts}), do: "The file #{message}."
+  defp image_error_message(nil), do: "The image could not be saved."
 
   defp slot_assoc(:portrait), do: :portrait_image
   defp slot_assoc(slot), do: Site.mascot_assoc(slot)

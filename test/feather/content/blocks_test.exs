@@ -176,7 +176,7 @@ defmodule Feather.Content.BlocksTest do
     end
 
     test "diagram_codes/1 lists the sources of diagram blocks once" do
-      blocks = @blocks ++ [%{"type" => "diagram", "code" => "a -> b: <hi>\n"}]
+      blocks = [%{"type" => "diagram", "code" => "a -> b: <hi>\n"} | @blocks]
       assert Blocks.diagram_codes(blocks) == ["a -> b: <hi>\n"]
     end
 

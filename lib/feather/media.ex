@@ -16,12 +16,12 @@ defmodule Feather.Media do
 
   import Ecto.Query, warn: false
 
-  require Logger
-
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Media.{Cleanup, Fetcher, Image, Processor, Variants}
+  alias Feather.Repo
   alias Feather.Sites.Site
+
+  require Logger
 
   @max_byte_size 25 * 1024 * 1024
 
@@ -99,14 +99,16 @@ defmodule Feather.Media do
     site_id = Ecto.Changeset.get_field(changeset, :site_id)
 
     Enum.reduce(fields, changeset, fn field, changeset ->
-      Ecto.Changeset.validate_change(changeset, field, fn ^field, image_id ->
-        if Repo.exists?(from i in Image, where: i.id == ^image_id and i.site_id == ^site_id) do
-          []
-        else
-          [{field, "is not an image of this site"}]
-        end
-      end)
+      Ecto.Changeset.validate_change(changeset, field, &site_image_errors(&1, &2, site_id))
     end)
+  end
+
+  defp site_image_errors(field, image_id, site_id) do
+    if Repo.exists?(from i in Image, where: i.id == ^image_id and i.site_id == ^site_id) do
+      []
+    else
+      [{field, "is not an image of this site"}]
+    end
   end
 
   ## Creating
@@ -128,33 +130,36 @@ defmodule Feather.Media do
     do: create_image_from_upload(site, path, filename, attrs)
 
   def create_image_from_upload(%Site{} = site, path, filename, attrs) do
-    attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
     %File.Stat{size: byte_size} = File.stat!(path)
 
     attrs =
-      Map.merge(attrs, %{"filename" => sanitize_filename(filename), "byte_size" => byte_size})
+      attrs
+      |> Map.new(fn {key, value} -> {to_string(key), value} end)
+      |> Map.merge(%{"filename" => sanitize_filename(filename), "byte_size" => byte_size})
 
-    cond do
-      byte_size > @max_byte_size ->
-        file_error(site, attrs, "is too big (at most 25 MB)")
+    if byte_size > @max_byte_size do
+      file_error(site, attrs, "is too big (at most 25 MB)")
+    else
+      create_image_from_file(site, path, attrs)
+    end
+  end
 
-      true ->
-        case Processor.inspect_file(path) do
-          {:ok, info} ->
-            attrs =
-              Map.merge(attrs, %{
-                "content_type" => info.content_type,
-                "width" => info.width,
-                "height" => info.height
-              })
+  defp create_image_from_file(site, path, attrs) do
+    case Processor.inspect_file(path) do
+      {:ok, info} ->
+        attrs =
+          Map.merge(attrs, %{
+            "content_type" => info.content_type,
+            "width" => info.width,
+            "height" => info.height
+          })
 
-            %Image{site_id: site.id}
-            |> Image.create_changeset(attrs)
-            |> insert_with_files(path, info.extension)
+        %Image{site_id: site.id}
+        |> Image.create_changeset(attrs)
+        |> insert_with_files(path, info.extension)
 
-          {:error, :not_an_image} ->
-            file_error(site, attrs, "must be an image")
-        end
+      {:error, :not_an_image} ->
+        file_error(site, attrs, "must be an image")
     end
   end
 

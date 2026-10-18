@@ -15,6 +15,8 @@ defmodule FeatherWeb.CoreComponents do
   import Setzkasten.Components.Icons, only: [icon: 1]
   import Setzkasten.Components.Feedback, only: [badge: 1]
 
+  alias Feather.Sites.SocialMediaService
+
   @doc """
   Renders a social media brand icon (`priv/icons`, see
   `Feather.Sites.SocialMediaService`) as inline SVG in `currentColor`,
@@ -28,7 +30,7 @@ defmodule FeatherWeb.CoreComponents do
   attr :class, :any, default: nil
 
   def brand_icon(assigns) do
-    svg = Feather.Sites.SocialMediaService.svg(assigns.name) || raise_unknown(assigns.name)
+    svg = SocialMediaService.svg(assigns.name) || raise_unknown(assigns.name)
 
     # The brand SVGs are trusted files from priv/icons; only the class is
     # replaced (escaped) and the icon hidden from screen readers.
@@ -129,13 +131,13 @@ defmodule FeatherWeb.CoreComponents do
     |> String.split("@")
     |> hd()
     |> String.split(~r/[^[:alnum:]]+/u, trim: true)
-    |> case do
-      [] -> "?"
-      [word] -> String.first(word)
-      [first, second | _] -> String.first(first) <> String.first(second)
-    end
+    |> initials_of_words()
     |> String.upcase()
   end
+
+  defp initials_of_words([]), do: "?"
+  defp initials_of_words([word]), do: String.first(word)
+  defp initials_of_words([first, second | _]), do: String.first(first) <> String.first(second)
 
   @doc """
   Translates an error message using gettext.

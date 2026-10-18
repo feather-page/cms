@@ -127,8 +127,9 @@ defmodule Feather.StaticSite.Routes do
   """
   @spec image_srcset(t(), Image.t()) :: String.t()
   def image_srcset(%__MODULE__{} = routes, %Image{} = image) do
-    Variants.srcset_widths(image.width, image.height)
-    |> Enum.map_join(", ", fn {filename, width} ->
+    widths = Variants.srcset_widths(image.width, image.height)
+
+    Enum.map_join(widths, ", ", fn {filename, width} ->
       "#{image_url(routes, image, filename)} #{width}w"
     end)
   end
@@ -250,21 +251,21 @@ defmodule Feather.StaticSite.Routes do
 
   def resolve(%__MODULE__{site: %Site{id: site_id} = site}, path) when is_binary(path) do
     path = normalize_request_path(path)
+    Enum.find_value(resolvers(site), fn resolver -> resolver.(path, site_id) end)
+  end
 
-    Enum.find_value(
-      [
-        &resolve_home/2,
-        &resolve_artifact/2,
-        &resolve_image/2,
-        fn path, _site_id -> resolve_font(path, site) end,
-        &resolve_diagram/2,
-        &resolve_project/2,
-        &resolve_post_by_public_id/2,
-        &resolve_page/2,
-        &resolve_post_by_slug/2
-      ],
-      fn resolver -> resolver.(path, site_id) end
-    )
+  defp resolvers(site) do
+    [
+      &resolve_home/2,
+      &resolve_artifact/2,
+      &resolve_image/2,
+      fn path, _site_id -> resolve_font(path, site) end,
+      &resolve_diagram/2,
+      &resolve_project/2,
+      &resolve_post_by_public_id/2,
+      &resolve_page/2,
+      &resolve_post_by_slug/2
+    ]
   end
 
   defp normalize_request_path(path) do

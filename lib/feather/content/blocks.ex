@@ -192,8 +192,7 @@ defmodule Feather.Content.Blocks do
     blocks
     |> normalize()
     |> Enum.filter(&(&1["type"] in @text_types))
-    |> Enum.map(&(&1["text"] || ""))
-    |> Enum.join(" ")
+    |> Enum.map_join(" ", &(&1["text"] || ""))
     |> strip_tags()
     |> truncate(length)
   end

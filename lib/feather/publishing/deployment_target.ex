@@ -6,6 +6,8 @@ defmodule Feather.Publishing.DeploymentTarget do
   """
   use Feather.Schema
 
+  alias Feather.Publishing.Rclone
+
   @type t :: %__MODULE__{}
 
   schema "deployment_targets" do
@@ -41,8 +43,7 @@ defmodule Feather.Publishing.DeploymentTarget do
 
   @doc "Changeset replacing the provider config."
   def config_changeset(target, config) do
-    target
-    |> cast(%{config: config}, [:config])
+    cast(target, %{config: config}, [:config])
   end
 
   defp validate(changeset) do
@@ -52,7 +53,7 @@ defmodule Feather.Publishing.DeploymentTarget do
       nil -> nil
     end)
     |> validate_required([:provider, :public_hostname])
-    |> validate_inclusion(:provider, Feather.Publishing.Rclone.provider_names())
+    |> validate_inclusion(:provider, Rclone.provider_names())
     |> unsafe_validate_unique(:public_hostname, Feather.Repo)
     |> unique_constraint(:public_hostname)
   end

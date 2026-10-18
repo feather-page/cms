@@ -4,6 +4,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
   import Phoenix.LiveViewTest
   import Swoosh.TestAssertions
 
+  alias Feather.Accounts.Scope
   alias Feather.Sites
   alias Feather.Sites.Invitation
 
@@ -96,7 +97,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
 
     test "a super admin can remove members of any site", %{conn: conn} do
       site = site_fixture()
-      [member] = Sites.list_members(Feather.Accounts.Scope.for_site(site))
+      [member] = Sites.list_members(Scope.for_site(site))
       conn = log_in_user(conn, super_admin_fixture())
 
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/users")
@@ -176,7 +177,7 @@ defmodule FeatherWeb.MemberLive.IndexTest do
 
       invitation =
         invitation_fixture(
-          Feather.Accounts.Scope.put_site(Feather.Accounts.Scope.for_user(other_member), site),
+          Scope.put_site(Scope.for_user(other_member), site),
           email: "pending@example.com"
         )
 

@@ -2,7 +2,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
   use Feather.DataCase
 
   alias Feather.{Content, Sites}
-  alias Feather.StaticSite.{Export, RecordingSink, Routes}
+  alias Feather.StaticSite.{Export, Hue, RecordingSink, Routes}
   alias Feather.StaticSite.Themes.FeatherPage
 
   @day ~U[2025-01-01 10:00:00.000000Z]
@@ -193,7 +193,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
 
     for path <- @pages do
       page = doc(sink, path)
-      assert attr(page, "html", "style") == ["--h: #{Feather.StaticSite.Hue.default()}"], path
+      assert attr(page, "html", "style") == ["--h: #{Hue.default()}"], path
       assert Floki.find(page, "footer .footer-emoji") == []
     end
 

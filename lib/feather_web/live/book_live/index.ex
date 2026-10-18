@@ -133,22 +133,23 @@ defmodule FeatherWeb.BookLive.Index do
   def mount(_params, _session, socket) do
     books = Books.list_books(socket.assigns.current_scope, preload: [:cover_image])
     by_status = Enum.group_by(books, & &1.reading_status)
-    newest_first = &Enum.sort_by(&1, fn book -> book.inserted_at end, {:desc, DateTime})
-
-    finished_by_year =
-      by_status
-      |> Map.get("finished", [])
-      |> Enum.group_by(&(&1.read_at && &1.read_at.year))
-      |> Enum.sort_by(fn {year, _books} -> -(year || 0) end)
 
     {:ok,
      socket
      |> assign(:site, socket.assigns.current_scope.site)
      |> assign(:page_title, "Books")
      |> assign(:books, books)
-     |> assign(:reading, newest_first.(Map.get(by_status, "reading", [])))
-     |> assign(:want_to_read, newest_first.(Map.get(by_status, "want_to_read", [])))
-     |> assign(:finished_by_year, finished_by_year)}
+     |> assign(:reading, newest_first(Map.get(by_status, "reading", [])))
+     |> assign(:want_to_read, newest_first(Map.get(by_status, "want_to_read", [])))
+     |> assign(:finished_by_year, by_year_read(Map.get(by_status, "finished", [])))}
+  end
+
+  defp newest_first(books), do: Enum.sort_by(books, & &1.inserted_at, {:desc, DateTime})
+
+  defp by_year_read(books) do
+    books
+    |> Enum.group_by(&(&1.read_at && &1.read_at.year))
+    |> Enum.sort_by(fn {year, _books} -> -(year || 0) end)
   end
 
   defp count([_book]), do: "1 book"

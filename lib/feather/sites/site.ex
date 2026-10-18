@@ -74,7 +74,9 @@ defmodule Feather.Sites.Site do
 
   @doc "The foreign key of a mascot slot, e.g. `:footer_mascot_image_id`."
   @spec mascot_field(mascot_slot()) :: atom()
-  def mascot_field(slot), do: :"#{mascot_assoc(slot)}_id"
+  def mascot_field(:footer), do: :footer_mascot_image_id
+  def mascot_field(:post_end), do: :post_end_mascot_image_id
+  def mascot_field(:projects), do: :projects_mascot_image_id
 
   @doc "The foreign keys of all mascot slots."
   @spec mascot_fields() :: [atom()]
@@ -82,11 +84,11 @@ defmodule Feather.Sites.Site do
 
   @doc "The associations of all images of the site, its mascots and its portrait."
   @spec image_assocs() :: [atom()]
-  def image_assocs, do: mascot_assocs() ++ [:portrait_image]
+  def image_assocs, do: [:portrait_image | mascot_assocs()]
 
   @doc "The foreign keys of all images of the site, its mascots and its portrait."
   @spec image_fields() :: [atom()]
-  def image_fields, do: mascot_fields() ++ [:portrait_image_id]
+  def image_fields, do: [:portrait_image_id | mascot_fields()]
 
   @doc """
   Normalizes what users type as a domain: trims and downcases it and drops

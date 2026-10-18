@@ -9,6 +9,8 @@ defmodule Feather.DataCase do
 
   use ExUnit.CaseTemplate
 
+  alias Ecto.Adapters.SQL.Sandbox
+
   using opts do
     if opts[:async] do
       raise ArgumentError,
@@ -45,8 +47,8 @@ defmodule Feather.DataCase do
       raise ArgumentError, "database tests must not be async: SQLite has a single writer"
     end
 
-    pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Feather.Repo, shared: true)
-    on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    pid = Sandbox.start_owner!(Feather.Repo, shared: true)
+    on_exit(fn -> Sandbox.stop_owner(pid) end)
   end
 
   @doc """

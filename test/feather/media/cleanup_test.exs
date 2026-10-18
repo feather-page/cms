@@ -3,6 +3,7 @@ defmodule Feather.Media.CleanupTest do
 
   alias Feather.{Content, Media}
   alias Feather.Media.{CleanupScheduler, Image}
+  alias Feather.Sites.Site
 
   setup do
     %{scope: site_scope_fixture()}
@@ -61,7 +62,7 @@ defmodule Feather.Media.CleanupTest do
         for slot <- Feather.Sites.mascot_slots() do
           path = test_image_path()
           {:ok, site} = Feather.Sites.put_mascot(scope, slot, path, "mascot.png")
-          Map.fetch!(site, :"#{slot}_mascot_image")
+          Map.fetch!(site, Site.mascot_assoc(slot))
         end
 
       orphan = image_fixture(scope)

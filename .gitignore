@@ -48,7 +48,9 @@ npm-debug.log
 .env.*
 
 # Agent and editor state; other agents' git worktrees live in .claude/worktrees/.
-/.claude/
+/.claude/*
+!/.claude/settings.json
+!/.claude/hooks/
 /.worktrees/
 /.superpowers/
 .DS_Store

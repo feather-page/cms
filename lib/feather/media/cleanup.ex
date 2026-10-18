@@ -28,12 +28,12 @@ defmodule Feather.Media.Cleanup do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Media.Image
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @grace_period_days 2
@@ -105,7 +105,7 @@ defmodule Feather.Media.Cleanup do
         from s in Site, where: not is_nil(field(s, ^field)), select: field(s, ^field)
       end
 
-    (queries ++ [covers | site_images])
+    [covers | queries ++ site_images]
     |> Enum.flat_map(&Repo.all/1)
     |> MapSet.new()
   end
@@ -131,32 +131,32 @@ defmodule Feather.Media.Cleanup do
     featured = featured_image_ids()
     embedded = embedded_by(images)
 
-    Enum.flat_map(images, fn image ->
-      case Map.get(embedded, key(image)) do
-        [{owner_field, owner_id} | _] ->
-          Media.assign_images(image.site_id, owner_field, owner_id, [image.public_id])
+    Enum.flat_map(images, &release(&1, featured, embedded))
+  end
+
+  defp release(image, featured, embedded) do
+    case Map.get(embedded, key(image)) do
+      {owner_field, owner_id} ->
+        Media.assign_images(image.site_id, owner_field, owner_id, [image.public_id])
+        []
+
+      nil ->
+        if MapSet.member?(featured, image.id) do
+          Repo.update_all(from(i in Image, where: i.id == ^image.id),
+            set: [post_id: nil, page_id: nil, project_id: nil]
+          )
+
           []
-
-        nil ->
-          if MapSet.member?(featured, image.id) do
-            Repo.update_all(from(i in Image, where: i.id == ^image.id),
-              set: [post_id: nil, page_id: nil, project_id: nil]
-            )
-
-            []
-          else
-            Repo.delete_all(from i in Image, where: i.id == ^image.id)
-            [image]
-          end
-      end
-    end)
+        else
+          Repo.delete_all(from i in Image, where: i.id == ^image.id)
+          [image]
+        end
+    end
   end
 
   defp key(%Image{site_id: site_id, public_id: public_id}), do: {site_id, public_id}
 
-  # {site_id, image public id} => [{owner field, record id}] of every post,
-  # page and project of the images' sites whose content or one of whose
-  # versions' content embeds the image.
+  # {site_id, image public id} => {owner field, record id} of the first record whose content or versions embed it.
   defp embedded_by(images) do
     site_ids = images |> Enum.map(& &1.site_id) |> Enum.uniq()
 
@@ -164,10 +164,7 @@ defmodule Feather.Media.Cleanup do
         {site_id, id, content} <- contents(schema, version_schema, field, site_ids),
         public_id <- Blocks.image_ids(content),
         reduce: %{} do
-      acc ->
-        Map.update(acc, {site_id, public_id}, [{field, id}], fn owners ->
-          if {field, id} in owners, do: owners, else: owners ++ [{field, id}]
-        end)
+      acc -> Map.put_new(acc, {site_id, public_id}, {field, id})
     end
   end
 

@@ -129,23 +129,12 @@ defmodule Feather.Content.HTML do
 
   defp walk([{:start_tag, tag, attributes, self_closing?} | rest], mode, open, nil, acc) do
     tag = String.downcase(tag)
-    allowed? = tag in Map.fetch!(@allowed_tags, mode)
 
-    cond do
-      allowed? and tag in @void_tags ->
-        walk(rest, mode, open, nil, [["<", tag, ">"] | acc])
-
-      allowed? and self_closing? ->
-        walk(rest, mode, open, nil, [[open_tag(tag, attributes, mode), close(tag)] | acc])
-
-      allowed? ->
-        walk(rest, mode, [tag | open], nil, [open_tag(tag, attributes, mode) | acc])
-
-      tag in @dropped_content_tags and not self_closing? ->
-        walk(rest, mode, open, tag, acc)
-
-      true ->
-        walk(rest, mode, open, nil, acc)
+    if tag in Map.fetch!(@allowed_tags, mode) do
+      {open, html} = keep_start_tag(tag, attributes, self_closing?, mode, open)
+      walk(rest, mode, open, nil, [html | acc])
+    else
+      walk(rest, mode, open, dropping(tag, self_closing?), acc)
     end
   end
 
@@ -156,7 +145,7 @@ defmodule Feather.Content.HTML do
 
     case Enum.split_while(open, &(&1 != tag)) do
       {inner, [^tag | outer]} ->
-        walk(rest, mode, outer, nil, [Enum.map(inner ++ [tag], &close/1) | acc])
+        walk(rest, mode, outer, nil, [[Enum.map(inner, &close/1), close(tag)] | acc])
 
       {_inner, []} ->
         walk(rest, mode, open, nil, acc)
@@ -166,15 +155,28 @@ defmodule Feather.Content.HTML do
   # Comments, processing instructions, doctypes.
   defp walk([_token | rest], mode, open, nil, acc), do: walk(rest, mode, open, nil, acc)
 
+  defp keep_start_tag(tag, _attributes, _self_closing?, _mode, open) when tag in @void_tags,
+    do: {open, ["<", tag, ">"]}
+
+  defp keep_start_tag(tag, attributes, true, mode, open),
+    do: {open, [open_tag(tag, attributes, mode), close(tag)]}
+
+  defp keep_start_tag(tag, attributes, false, mode, open),
+    do: {[tag | open], open_tag(tag, attributes, mode)}
+
+  defp dropping(tag, false) when tag in @dropped_content_tags, do: tag
+  defp dropping(_tag, _self_closing?), do: nil
+
   defp open_tag(tag, attributes, mode) do
     attributes =
       Map.new(attributes, fn {name, value} ->
         {name |> to_string() |> String.downcase(), IO.iodata_to_binary(value)}
       end)
 
+    candidates = [{"href", attributes["href"]} | editor_attributes(tag, attributes, mode)]
+
     kept =
-      [{"href", attributes["href"]} | editor_attributes(tag, attributes, mode)]
-      |> Enum.flat_map(fn {name, value} ->
+      Enum.flat_map(candidates, fn {name, value} ->
         case keep_attribute(tag, name, value) do
           nil -> []
           kept_value -> [[" ", name, ~s(="), escape_attribute(kept_value), ~s(")]]

@@ -12,8 +12,9 @@ defmodule FeatherWeb.PageLive.Form do
   The form has no "created at" field: the creation date of a page is not
   shown anywhere on the generated site.
   """
-  use FeatherWeb, :live_view
   @behaviour FeatherWeb.ContentForm
+
+  use FeatherWeb, :live_view
 
   import FeatherWeb.ContentFormComponents
 

@@ -1,6 +1,8 @@
 defmodule FeatherWeb.PreviewControllerTest do
   use FeatherWeb.ConnCase
 
+  alias Feather.StaticSite.Themes.{FeatherPage, SimpleSidebar}
+
   setup [:register_and_log_in_user, :create_site_for_user]
 
   setup %{site: site} do
@@ -129,7 +131,7 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert get_resp_header(conn, "content-type") == ["font/woff2"]
 
     assert conn.resp_body ==
-             File.read!(Feather.StaticSite.Themes.FeatherPage.font_path("nunito-latin-800.woff2"))
+             File.read!(FeatherPage.font_path("nunito-latin-800.woff2"))
   end
 
   test "serves only the fonts of the site's theme", %{conn: conn, scope: scope, root: root} do
@@ -141,11 +143,7 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert get_resp_header(conn, "content-type") == ["font/woff2"]
 
     assert conn.resp_body ==
-             File.read!(
-               Feather.StaticSite.Themes.SimpleSidebar.font_path(
-                 "schibsted-grotesk-latin-wght.woff2"
-               )
-             )
+             File.read!(SimpleSidebar.font_path("schibsted-grotesk-latin-wght.woff2"))
 
     assert html_response(get(recycle(conn), root <> "/fonts/nunito-latin-800.woff2"), 404) =~
              "Page not found"

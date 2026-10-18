@@ -9,13 +9,13 @@ defmodule Feather.Publishing do
 
   import Ecto.Query, warn: false
 
-  require Logger
-
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Content.{Post, PostVersion}
   alias Feather.Publishing.{Deploy, DeploymentTarget}
+  alias Feather.Repo
   alias Feather.Sites.Site
+
+  require Logger
 
   @registry Feather.Publishing.Registry
 

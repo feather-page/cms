@@ -21,13 +21,13 @@ defmodule FeatherWeb.Api.V1.ContentApiTest do
     end
 
     test "rejecting requests without authentication", %{site: site} do
-      conn = build_conn() |> put_req_header("accept", "application/json")
+      conn = put_req_header(build_conn(), "accept", "application/json")
 
       assert conn |> get(posts_path(site)) |> json_response(401) == %{"error" => "Unauthorized"}
     end
 
     test "rejecting requests with an invalid token", %{site: site} do
-      conn = build_conn() |> authenticate("invalid-token-value")
+      conn = authenticate(build_conn(), "invalid-token-value")
 
       assert conn |> get(posts_path(site)) |> json_response(401)
     end

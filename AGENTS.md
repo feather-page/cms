@@ -19,10 +19,12 @@ Gates, all must pass before you are done (check the exit codes, not piped output
 
     mix compile --warnings-as-errors
     mix format --check-formatted
+    mix credo --strict
     mix test
 
 `mix precommit` runs them in one go; it formats instead of only checking and also unlocks unused
-dependencies, which CI checks with `mix deps.unlock --check-unused`.
+dependencies, which CI checks with `mix deps.unlock --check-unused`. In Claude Code a stop hook
+(`.claude/hooks/credo.sh`) runs `mix credo --strict` and blocks finishing while it reports findings.
 
 ## Conventions
 

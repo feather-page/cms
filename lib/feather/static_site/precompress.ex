@@ -33,8 +33,7 @@ defmodule Feather.StaticSite.Precompress do
 
     files = text_files(dir)
 
-    # Errors are returned from the tasks and raised here: a crashing task
-    # would take the (linked) caller down without a chance to clean up.
+    # A crashing (linked) task would take the caller down without a chance to clean up.
     files
     |> Task.async_stream(&compress(&1, brotli),
       max_concurrency: Keyword.get(opts, :max_concurrency, System.schedulers_online()),
@@ -45,11 +44,13 @@ defmodule Feather.StaticSite.Precompress do
       {:ok, :ok} -> nil
       {:ok, {:error, message}} -> message
     end)
-    |> case do
-      nil -> files
-      message -> raise RuntimeError, message
-    end
+    |> raise_if_failed()
+
+    files
   end
+
+  defp raise_if_failed(nil), do: :ok
+  defp raise_if_failed(message), do: raise(RuntimeError, message)
 
   @doc "The files below `dir` that get precompressed."
   @spec text_files(Path.t()) :: [Path.t()]

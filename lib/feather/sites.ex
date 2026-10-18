@@ -14,10 +14,11 @@ defmodule Feather.Sites do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts
   alias Feather.Accounts.{Scope, User}
   alias Feather.Content.Page
+  alias Feather.Media.Cleanup
+  alias Feather.Repo
 
   alias Feather.Sites.{
     Invitation,
@@ -169,7 +170,7 @@ defmodule Feather.Sites do
   @doc """
   Makes an uploaded file the mascot of a slot of the scope's site. The
   image it replaces is deleted unless something else still uses it (see
-  `Feather.Media.Cleanup.delete_released/1`). Returns the site with its
+  `Cleanup.delete_released/1`). Returns the site with its
   images preloaded, or `{:error, changeset}` if the file is not a valid
   image.
   """
@@ -234,7 +235,7 @@ defmodule Feather.Sites do
         with {:ok, site} <-
                site |> Ecto.Changeset.change(%{field => image && image.id}) |> Repo.update() do
           previous = previous_id && Repo.get(Feather.Media.Image, previous_id)
-          {:ok, {site, Feather.Media.Cleanup.delete_released(List.wrap(previous))}}
+          {:ok, {site, Cleanup.delete_released(List.wrap(previous))}}
         end
       end)
 
@@ -515,26 +516,30 @@ defmodule Feather.Sites do
         {:error, :email_mismatch}
 
       true ->
-        invitation = Repo.preload(invitation, [:site, :inviting_user])
-
-        result =
-          Repo.transact(fn ->
-            with {:ok, user} <- Accounts.get_or_create_user_by_email(invitation.email),
-                 {:ok, _site_user} <- add_member(invitation.site, user),
-                 {:ok, invitation} <-
-                   invitation
-                   |> Ecto.Changeset.change(accepted_at: DateTime.utc_now())
-                   |> Repo.update() do
-              {:ok, %{user: user, site: invitation.site, invitation: invitation}}
-            end
-          end)
-
-        with {:ok, %{invitation: invitation}} <- result do
-          InvitationNotifier.deliver_invitation_accepted(invitation)
-        end
-
-        result
+        accept_pending_invitation(invitation)
     end
+  end
+
+  defp accept_pending_invitation(invitation) do
+    invitation = Repo.preload(invitation, [:site, :inviting_user])
+
+    result =
+      Repo.transact(fn ->
+        with {:ok, user} <- Accounts.get_or_create_user_by_email(invitation.email),
+             {:ok, _site_user} <- add_member(invitation.site, user),
+             {:ok, invitation} <-
+               invitation
+               |> Ecto.Changeset.change(accepted_at: DateTime.utc_now())
+               |> Repo.update() do
+          {:ok, %{user: user, site: invitation.site, invitation: invitation}}
+        end
+      end)
+
+    with {:ok, %{invitation: invitation}} <- result do
+      InvitationNotifier.deliver_invitation_accepted(invitation)
+    end
+
+    result
   end
 
   ## Social media links
