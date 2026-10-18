@@ -8,7 +8,6 @@ defmodule FeatherWeb.SiteAuthTest do
 
   setup [:register_and_log_in_user, :create_site_for_user]
 
-  # Another member removes the logged in user from the site.
   defp remove_user(site, user) do
     other = user_fixture()
     {:ok, _} = Sites.add_member(site, other)

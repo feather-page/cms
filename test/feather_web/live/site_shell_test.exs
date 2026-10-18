@@ -1,5 +1,4 @@
 defmodule FeatherWeb.SiteShellTest do
-  # Every page under /sites/:site_id renders in the site shell.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest

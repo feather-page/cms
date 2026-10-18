@@ -13,15 +13,11 @@ defmodule Feather.Publishing.Deploy do
     4. sync it with rclone (`Feather.Publishing.Rclone`)
     5. record the time the export started as the target's `last_deployed_at`
        (`Feather.Publishing.record_deploy/2`): what was published or
-       changed later is not in this deploy. The time is taken once running
-       write transactions have committed, so what they stamped earlier is
-       in the export
+       changed later is not in this deploy
     6. remove the directory and release the lock (both always), broadcast
        a notice
 
-  A failure before step 4 leaves the site online untouched. No export
-  persists between deploys; `remove_stale_exports/0` clears what a deploy
-  interrupted by a restart left behind.
+  A failure before step 4 leaves the site online untouched.
 
   Each step is reported with `Feather.Publishing.put_deploy_progress/3`
   (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
@@ -95,8 +91,7 @@ defmodule Feather.Publishing.Deploy do
     result
   end
 
-  # The step this process recorded; the record may belong to another deploy
-  # of the target.
+  # The progress record may belong to another deploy of the target.
   defp own_step(target) do
     case Registry.lookup(@registry, {:progress, target.id}) do
       [{pid, %{step: step}}] when pid == self() -> step
@@ -172,9 +167,9 @@ defmodule Feather.Publishing.Deploy do
   ## Pipeline
 
   defp build_and_sync(target, started_at, opts) do
-    # An immediate transaction waits for running writes: what they stamped is in the export.
+    # Immediate: waits until running write transactions have committed.
     {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
-    # The request may have waited for the lock: settings changed meanwhile belong in this deploy.
+    # The request may have waited for the lock.
     target = Repo.preload(target, :site, force: true)
     {export_and_sync(target, export_started_at, started_at, opts), target.site}
   end

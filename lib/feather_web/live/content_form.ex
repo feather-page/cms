@@ -125,8 +125,7 @@ defmodule FeatherWeb.ContentForm do
     |> socket.view.assign_form(%{}, nil)
   end
 
-  # The published version only changes on publish (and on discard and
-  # restore, which mount again), so it is not loaded again for every save.
+  # Not reloaded per save: only publish changes it, discard and restore mount again.
   defp put_record(socket, record, opts \\ []) do
     record =
       case socket.assigns[:published_version] do
@@ -179,8 +178,7 @@ defmodule FeatherWeb.ContentForm do
   def handle_event("publish", params, socket), do: {:noreply, publish(socket, params)}
 
   def handle_event(event, params, socket) when event in ~w(discard restore unpublish) do
-    # A new record has nothing to discard, restore or unpublish yet; only
-    # a crafted event gets here.
+    # Only a crafted event gets here for a new record.
     case {event, socket.view.record(socket)} do
       {_event, %{id: nil}} -> {:noreply, socket}
       {"discard", _record} -> {:noreply, discard_changes(socket)}
@@ -207,10 +205,6 @@ defmodule FeatherWeb.ContentForm do
      |> autosave(params)}
   end
 
-  # Discards the record's unpublished changes, then navigates to the edit
-  # path so the editor shows the published version. On failure (e.g.
-  # another record has taken the published slug) it stays and flashes the
-  # reason.
   defp discard_changes(socket) do
     socket.assigns.current_scope
     |> Content.discard_changes(socket.view.record(socket))
@@ -221,8 +215,6 @@ defmodule FeatherWeb.ContentForm do
     )
   end
 
-  # Restores version `number` into the unpublished changes, then navigates
-  # to the edit path so the editor shows the restored content.
   defp restore_version(socket, number) do
     scope = socket.assigns.current_scope
     record = socket.view.record(socket)
@@ -268,7 +260,6 @@ defmodule FeatherWeb.ContentForm do
     |> Enum.map_join(", ", fn {field, messages} -> "#{field} #{Enum.join(messages, ", ")}" end)
   end
 
-  # Takes the record off the site; the unsaved form params stay.
   defp unpublish(socket) do
     {:ok, record} = Content.unpublish(socket.assigns.current_scope, socket.view.record(socket))
 
@@ -319,10 +310,7 @@ defmodule FeatherWeb.ContentForm do
     |> patch_when_created(record)
   end
 
-  # The editor builds its syncs on the newest counter it knows: the one it
-  # loaded with, then the ones the replies to its syncs and these events
-  # name, never the one a later render shows (that may come from a mount
-  # after a reconnect, see "Autosave").
+  # Pushed, not rendered: a render after a reconnect may show another view's counter.
   defp push_lock_version(socket, %{id: id, lock_version: same}, %{lock_version: same})
        when is_binary(id),
        do: socket
@@ -423,10 +411,6 @@ defmodule FeatherWeb.ContentForm do
   defp invalid?(%Phoenix.HTML.Form{source: changeset}),
     do: changeset.action != nil and not changeset.valid?
 
-  # The Publish button: the editor hook pushes `publish` once its pending
-  # edits are saved, with its status ("editor"); the record is published
-  # unless a field is invalid, the content is not saved or the record
-  # changed elsewhere.
   defp publish(socket, params) do
     record = socket.view.record(socket)
 
@@ -463,8 +447,6 @@ defmodule FeatherWeb.ContentForm do
     end
   end
 
-  # The records whose published slug a record cannot take, see
-  # Feather.Content.Slug.url_space/1.
   defp slug_rivals(%Project{}), do: "project"
   defp slug_rivals(_post_or_page), do: "post or page"
 

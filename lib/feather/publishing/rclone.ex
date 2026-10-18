@@ -95,8 +95,7 @@ defmodule Feather.Publishing.Rclone do
     end
   end
 
-  # The config holds credentials: it is created empty and private before
-  # anything is written to it, and removed whatever happens.
+  # The config holds credentials: made private before anything is written to it.
   defp with_config_file(config, fun) do
     dir = Path.join(System.tmp_dir!(), "feather-rclone")
     File.mkdir_p!(dir)

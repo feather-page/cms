@@ -473,8 +473,7 @@ defmodule Feather.Sites do
 
   defp token_version(%DateTime{} = updated_at), do: DateTime.to_unix(updated_at, :microsecond)
 
-  # An existing invitation sent again gets a new updated_at, which is part
-  # of its token, also when nothing else changes.
+  # updated_at is part of the token, so sending again renews it even without other changes.
   defp renew_token(%Ecto.Changeset{data: %Invitation{id: nil}} = changeset), do: changeset
 
   defp renew_token(changeset),

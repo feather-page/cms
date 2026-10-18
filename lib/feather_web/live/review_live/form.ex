@@ -225,8 +225,6 @@ defmodule FeatherWeb.ReviewLive.Form do
 
     form = build_form(scope, post, params, action)
 
-    # Like the Rails post_form controller: when title and slug appear and the
-    # title is empty, suggest "Review: <book title>".
     {params, form} =
       if ContentForm.show_title_and_slug?(form, length) and
            not ContentForm.present?(form[:title].value) do

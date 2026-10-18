@@ -401,7 +401,6 @@ defmodule FeatherWeb.SiteComponents do
     """
   end
 
-  # The page numbers to link, with :gap where pages are left out.
   defp page_items(%{total_pages: total}) when total <= 7, do: Enum.to_list(1..total//1)
 
   defp page_items(%{page: page, total_pages: total}) do

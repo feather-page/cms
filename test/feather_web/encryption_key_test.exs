@@ -1,6 +1,5 @@
 defmodule FeatherWeb.EncryptionKeyTest do
-  # A changed CONFIG_ENCRYPTION_KEY makes stored target credentials
-  # unreadable; only editing and deploying a target may fail because of it.
+  # A changed CONFIG_ENCRYPTION_KEY may only break editing and deploying a target.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest

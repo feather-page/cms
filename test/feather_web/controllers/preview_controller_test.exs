@@ -194,6 +194,5 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert redirected_to(conn) == ~p"/users/log-in"
   end
 
-  # A new request of the logged-in user.
   defp fresh(user), do: log_in_user(build_conn(), user)
 end

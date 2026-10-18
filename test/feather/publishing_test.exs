@@ -385,7 +385,6 @@ defmodule Feather.PublishingTest do
              end) == 0
     end
 
-    # The site and its records last changed before the deploy, which was before now.
     defp rewind(target) do
       an_hour_ago = DateTime.add(DateTime.utc_now(), -1, :hour)
       Repo.update_all(Feather.Sites.Site, set: [updated_at: an_hour_ago])

@@ -4,8 +4,7 @@ defmodule Feather.Publishing.RcloneTest do
   alias Feather.Publishing.DeploymentTarget
   alias Feather.Publishing.Rclone
 
-  # Answers like rclone and reports every call (with the config file's
-  # content, which is gone once deploy/3 returns) to the test process.
+  # Sends the config file's content along: the file is gone once deploy/3 returns.
   defp runner(sync_result \\ {:ok, "done"}) do
     test = self()
 

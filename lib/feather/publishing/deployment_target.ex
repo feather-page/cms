@@ -13,8 +13,7 @@ defmodule Feather.Publishing.DeploymentTarget do
   schema "deployment_targets" do
     field :public_id, :string
     field :provider, :string
-    # The default is not dumped at compile time: that would need the key,
-    # which a release only reads at runtime.
+    # No default dump at compile time: that needs the key, which a release reads at runtime.
     field :config, Feather.Encrypted.Map, default: %{}, skip_default_validation: true
     field :deploying, :boolean, default: false
     # When the export of the last successful deploy started.

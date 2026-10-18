@@ -1,6 +1,4 @@
 defmodule Feather.Application do
-  # See https://elixir.hexdocs.pm/Application.html
-  # for more information on OTP Applications
   @moduledoc false
 
   use Application
@@ -11,25 +9,19 @@ defmodule Feather.Application do
 
   @impl true
   def start(_type, _args) do
-    # Fail fast on a malformed CONFIG_ENCRYPTION_KEY.
     :ok = Feather.Encryption.validate_key!()
 
     children = [
       FeatherWeb.Telemetry,
       Feather.Repo,
       {Phoenix.PubSub, name: Feather.PubSub},
-      # Deletes orphaned images daily (ignored when disabled, as in tests)
       Feather.Media.CleanupScheduler,
-      # Deploys run as tasks; the registry coalesces waiting deploys.
       {Task.Supervisor, name: Feather.TaskSupervisor},
       {Registry, keys: :unique, name: Feather.Publishing.Registry},
       Feather.Publishing.ScheduledDeploys,
-      # Start to serve requests, typically the last entry
       FeatherWeb.Endpoint
     ]
 
-    # See https://elixir.hexdocs.pm/Supervisor.html
-    # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Feather.Supervisor]
     remove_stale_exports()
 
@@ -54,8 +46,6 @@ defmodule Feather.Application do
       Logger.warning("Could not remove stale exports: #{Exception.message(exception)}")
   end
 
-  # Tell Phoenix to update the endpoint configuration
-  # whenever the application is updated.
   @impl true
   def config_change(changed, _new, removed) do
     FeatherWeb.Endpoint.config_change(changed, removed)

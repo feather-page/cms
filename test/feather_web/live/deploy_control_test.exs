@@ -1,5 +1,4 @@
 defmodule FeatherWeb.DeployControlTest do
-  # The deploy control at the bottom of the site sidebar.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest

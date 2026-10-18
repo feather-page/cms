@@ -37,11 +37,10 @@ defmodule FeatherWeb.SiteAuth do
     * assigns `site_deploy` for the deploy control of the shell: the site's
       deployment `target` (or nil), how many changes it does not show yet
       (`pending`, `Feather.Publishing.undeployed_count/2`) and the
-      `progress` of its running deploy (or nil). It is loaded on mount,
-      again with every notice (a deploy ends with one), updated with every
-      `{:deploy_progress, _}` and reloaded when a LiveView calls
-      `refresh_deploy_status/1` after changing the site in place. The
-      event `"deploy_site"` deploys the site,
+      `progress` of its running deploy (or nil). It follows the deploy's
+      notices and progress; a LiveView calls `refresh_deploy_status/1`
+      after changing the site in place. The event `"deploy_site"` deploys
+      the site,
     * swallows `{:deploy_requested, target}`, which `Feather.Publishing`
       sends to the caller instead of deploying when `:deploy_mode` is
       `:manual` (tests), so LiveViews that publish do not crash on it.
@@ -149,8 +148,7 @@ defmodule FeatherWeb.SiteAuth do
 
   defp handle_message({:deploy_requested, _target}, socket), do: {:halt, socket}
 
-  # The picker's events are checked in the component; this also covers its
-  # upload progress and any other way a change gets here.
+  # Also covers the picker's upload progress; its events are checked in the component.
   defp handle_message({FeatherWeb.HeaderImagePicker, _change}, socket), do: check_access(socket)
   defp handle_message(_message, socket), do: {:cont, socket}
 

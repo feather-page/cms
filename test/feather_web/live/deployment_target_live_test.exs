@@ -256,8 +256,7 @@ defmodule FeatherWeb.DeploymentTargetLiveTest do
     end
   end
 
-  # In tests, deploys are requested by sending {:deploy_requested, target}
-  # to the LiveView process (deploy_mode :manual), which swallows it.
+  # deploy_mode :manual sends {:deploy_requested, target} to the LiveView, which swallows it.
   defp trace_messages(lv), do: :erlang.trace(lv.pid, true, [:receive])
 
   defp assert_deploy_requested(target) do

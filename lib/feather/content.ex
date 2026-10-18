@@ -434,9 +434,7 @@ defmodule Feather.Content do
     end
   end
 
-  # The editor hands in image and book ids the browser had: an image or book
-  # of another site (or none at all) is left out, like a block without one.
-  # A book block takes its details from the bookshelf.
+  # The ids come from the browser: blocks of another site's images or books are dropped.
   defp keep_site_references(%{"content" => content} = attrs, scope) do
     case BlocksType.cast(content) do
       {:ok, blocks} -> Map.put(attrs, "content", site_references_only(blocks, scope))
@@ -649,7 +647,6 @@ defmodule Feather.Content do
     end
   end
 
-  # The record as stored, while it has the given one's lock_version.
   defp stored(%schema{id: id, lock_version: lock_version}) do
     case Repo.get(schema, id) do
       %{lock_version: ^lock_version} = current -> {:ok, put_navigation_flag(current)}
@@ -690,8 +687,7 @@ defmodule Feather.Content do
     {:ok, %{record | published_version_id: version.id, published_version: version}}
   end
 
-  # Publishing leaves the record's unpublished changes, so its updated_at
-  # and lock_version, as they are.
+  # update_all keeps the record's updated_at and lock_version.
   defp put_published_version(%schema{id: id}, version) do
     Repo.update_all(from(r in schema, where: r.id == ^id),
       set: [published_version_id: version.id]
@@ -819,8 +815,7 @@ defmodule Feather.Content do
       message: "has already been taken"
     )
     |> lock()
-    # Forced, so a stale record that already looks like the version is
-    # rejected instead of leaving the newer state untouched.
+    # Forced, so a stale record that already matches the version is still rejected.
     |> Repo.update([force: true] ++ @lock_opts)
     |> stale_error()
   end
@@ -1001,15 +996,11 @@ defmodule Feather.Content do
 
   defp slug_taken_error(result, _changeset), do: result
 
-  # Updates of a stored record increment `lock_version` and only apply
-  # while it still has the value the changeset's data was loaded with.
   defp lock(%Ecto.Changeset{data: %{__meta__: %{state: :loaded}}} = changeset),
     do: Ecto.Changeset.optimistic_lock(changeset, :lock_version)
 
   defp lock(changeset), do: changeset
 
-  # The record's images are deleted unless something else still uses them,
-  # see Feather.Media.Cleanup.delete_released/1.
   defp delete_with_images(scope, record, owner_field) do
     images = Media.list_images_owned_by(owner_field, record.id)
 

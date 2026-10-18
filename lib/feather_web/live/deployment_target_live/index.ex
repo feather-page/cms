@@ -1,11 +1,8 @@
 defmodule FeatherWeb.DeploymentTargetLive.Index do
   @moduledoc """
-  The deployment target of a site, with a button to deploy the site.
-
-  While the site deploys, a section above the target shows the steps
-  (`Feather.Publishing.deploy_steps/0`) and how long the deploy has been
-  running. Target and progress come from the shell's `site_deploy` (see
-  `FeatherWeb.SiteAuth`), which follows the pipeline's broadcasts.
+  The deployment target of a site, with a button to deploy the site and
+  the steps of a running deploy. Target and progress come from the shell's
+  `site_deploy` (see `FeatherWeb.SiteAuth`).
   """
   use FeatherWeb, :live_view
 

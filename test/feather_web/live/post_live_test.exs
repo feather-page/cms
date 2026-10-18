@@ -1,5 +1,4 @@
 defmodule FeatherWeb.PostLiveTest do
-  # Ports features/posts.feature and the post parts of book_reviews.feature.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest
@@ -51,7 +50,6 @@ defmodule FeatherWeb.PostLiveTest do
       refute has_element?(lv, "#post-#{old.public_id} .badge")
       assert has_element?(lv, "#post-#{short.public_id}", "Just a short thought")
 
-      # The whole row links to the editor; Delete sits in the row's menu.
       assert has_element?(
                lv,
                ~s(#post-#{old.public_id} .list-col-grow a[href="#{posts_path(site)}/#{old.public_id}/edit"])
@@ -672,7 +670,6 @@ defmodule FeatherWeb.PostLiveTest do
       assert post.published_version_id == id
     end
 
-    # Scenario: Publishing is blocked by an invalid field
     test "an invalid field is not saved and blocks publishing until it is valid", %{
       conn: conn,
       site: site,
@@ -1092,8 +1089,7 @@ defmodule FeatherWeb.PostLiveTest do
       assert Content.get_post!(scope, post.public_id).title == "Changed elsewhere"
     end
 
-    # A no-op sync on a stale counter must not let the view build on the
-    # other tab's counter.
+    # A no-op sync on a stale counter must not adopt the other tab's counter.
     test "a sync after the post changed elsewhere is rejected even when it changes nothing", %{
       conn: conn,
       site: site,
@@ -1150,8 +1146,7 @@ defmodule FeatherWeb.PostLiveTest do
       assert texts(scope, post) == ["One!", "Two"]
     end
 
-    # LiveView sends the form's values from before a reconnect to the new
-    # mount as "recover", with the counter the earlier view rendered.
+    # After a reconnect LiveView sends the old form values as "recover", with the old counter.
     test "recovers the form after a reconnect unless the post changed elsewhere", %{
       conn: conn,
       site: site,

@@ -6,10 +6,9 @@ defmodule Feather.Books do
   review deletes the post and clears the rating; deleting a book deletes
   its review post and its cover image.
 
-  Adding, changing and deleting a book, and a deleted review clearing a
-  rating, move the site's `updated_at` (`Feather.Sites.touch_site/1`):
-  books have no versions, so this is how a change to the bookshelf counts
-  as not deployed.
+  Books have no versions: adding, changing and deleting one, and a deleted
+  review clearing a rating, move the site's `updated_at`
+  (`Feather.Sites.touch_site/1`), so they count as not deployed.
   """
 
   import Ecto.Query, warn: false
