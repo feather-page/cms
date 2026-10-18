@@ -328,19 +328,9 @@ defmodule FeatherWeb.SiteLive.Settings do
     scope = Scope.put_site(scope, Sites.preload_images(scope.site))
     links = Sites.list_social_media_links(scope)
 
-    socket =
-      Enum.reduce(@image_slots, socket, fn {slot, info}, socket ->
-        allow_upload(socket, slot_assoc(slot),
-          accept: info.accept,
-          max_entries: 1,
-          max_file_size: Feather.Media.max_byte_size(),
-          auto_upload: true,
-          progress: &handle_image_progress/3
-        )
-      end)
-
     {:ok,
      socket
+     |> allow_image_uploads()
      |> assign(:current_scope, scope)
      |> assign(:image_slots, @image_slots)
      |> assign(:image_errors, %{})
@@ -360,24 +350,7 @@ defmodule FeatherWeb.SiteLive.Settings do
     {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
   end
 
-  def handle_event("save", %{"site" => params}, socket) do
-    scope = socket.assigns.current_scope
-
-    case Sites.update_site(scope, scope.site, params) do
-      {:ok, site} ->
-        scope = Scope.put_site(scope, site)
-
-        {:noreply,
-         socket
-         |> assign(:current_scope, scope)
-         |> SiteAuth.refresh_deploy_status()
-         |> assign(:form, to_form(Sites.change_site(site)))
-         |> put_flash(:info, "Site was successfully updated.")}
-
-      {:error, changeset} ->
-        {:noreply, assign(socket, :form, to_form(changeset, action: :update))}
-    end
-  end
+  def handle_event("save", %{"site" => params}, socket), do: save_site(socket, :form, params)
 
   ## Social media links
 
@@ -492,6 +465,18 @@ defmodule FeatherWeb.SiteLive.Settings do
     end
   end
 
+  defp allow_image_uploads(socket) do
+    Enum.reduce(@image_slots, socket, fn {slot, info}, socket ->
+      allow_upload(socket, slot_assoc(slot),
+        accept: info.accept,
+        max_entries: 1,
+        max_file_size: Feather.Media.max_byte_size(),
+        auto_upload: true,
+        progress: &handle_image_progress/3
+      )
+    end)
+  end
+
   defp handle_image_progress(name, entry, socket) do
     slot = Enum.find(Keyword.keys(@image_slots), &(slot_assoc(&1) == name))
 
@@ -518,6 +503,23 @@ defmodule FeatherWeb.SiteLive.Settings do
     else
       {:halt, socket} -> {:noreply, socket}
       false -> {:noreply, socket}
+    end
+  end
+
+  defp save_site(socket, form, params) do
+    scope = socket.assigns.current_scope
+
+    case Sites.update_site(scope, scope.site, params) do
+      {:ok, site} ->
+        {:noreply,
+         socket
+         |> assign(:current_scope, Scope.put_site(scope, site))
+         |> SiteAuth.refresh_deploy_status()
+         |> assign(form, to_form(Sites.change_site(site)))
+         |> put_flash(:info, "Site was successfully updated.")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, form, to_form(changeset, action: :update))}
     end
   end
 
