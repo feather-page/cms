@@ -139,6 +139,27 @@ defmodule Feather.SitesTest do
       assert site.emoji == "🪶"
     end
 
+    test "update_site/3 trims the bio, clears a blank one and limits its length", %{
+      owner: owner,
+      site: site
+    } do
+      scope = Scope.for_user(owner)
+      assert site.bio == nil
+
+      assert {:ok, site} = Sites.update_site(scope, site, %{bio: "  I build websites.\n"})
+      assert site.bio == "I build websites."
+
+      assert {:ok, site} = Sites.update_site(scope, site, %{bio: " \n "})
+      assert site.bio == nil
+
+      assert {:ok, _site} = Sites.update_site(scope, site, %{bio: String.duplicate("a", 500)})
+
+      assert {:error, changeset} =
+               Sites.update_site(scope, site, %{bio: String.duplicate("a", 501)})
+
+      assert %{bio: ["should be at most 500 character(s)"]} = errors_on(changeset)
+    end
+
     test "delete_site/2 deletes the site with its content", %{owner: owner, site: site} do
       scope = Scope.for_user(owner)
       image = image_fixture(Scope.put_site(scope, site))
