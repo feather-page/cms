@@ -9,7 +9,7 @@ import {fixTables, tableEditing} from "prosemirror-tables"
 import {schema} from "./schema"
 import {assignBlockIds, blockIds} from "./block_ids"
 import {baseKeys, editorKeymap} from "./keymap"
-import {codeBlockView} from "./code_block"
+import {CodeHighlights, codeBlockView, codeEditing} from "./code_block"
 import {ImageUploads, imageDrops, imageView} from "./images"
 import {embedPaste, embedView} from "./embeds"
 import {BookLookup, bookView} from "./books"
@@ -56,7 +56,8 @@ export function createState(json, {uploads = new ImageUploads()} = {}) {
       tableFormat(),
       blockIds(),
       placeholder(),
-      diagramEditing()
+      diagramEditing(),
+      codeEditing()
     ]
   })
 
@@ -70,13 +71,14 @@ export function createState(json, {uploads = new ImageUploads()} = {}) {
 // change of the document. `images` names the image endpoints and the CSRF
 // token (see ImageUploads in images.js), `books` the book lookup (see
 // BookLookup in books.js), `diagrams` the diagram preview and the CSRF token
-// (see DiagramPreviews in diagrams.js).
-export function createEditor(mount, json, {label, onChange, images = {}, books = {}, diagrams = {}}) {
+// (see DiagramPreviews in diagrams.js), `code` the code highlighting and the
+// CSRF token (see CodeHighlights in code_block.js).
+export function createEditor(mount, json, {label, onChange, images = {}, books = {}, diagrams = {}, code = {}}) {
   const uploads = new ImageUploads(images)
   const view = new EditorView(mount, {
     state: createState(json, {uploads}),
     nodeViews: {
-      code_block: codeBlockView,
+      code_block: codeBlockView(new CodeHighlights(code)),
       image: imageView(uploads),
       embed: embedView,
       table: tableView,

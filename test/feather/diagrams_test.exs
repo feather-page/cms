@@ -157,6 +157,27 @@ defmodule Feather.DiagramsTest do
 
       assert Diagrams.render("a -> b", runner: silent) == {:error, "d2 wrote no SVG"}
     end
+
+    test "fails without caching when the runner raises", %{version: version} do
+      test = self()
+
+      runner = fn
+        ["--version"], _opts ->
+          {:ok, version}
+
+        _args, _opts ->
+          send(test, :d2_ran)
+          raise ErlangError, original: :eacces
+      end
+
+      for _attempt <- 1..2 do
+        assert {:error, "Erlang error: :eacces"} = Diagrams.render("a -> b", runner: runner)
+        assert_received :d2_ran
+      end
+
+      assert Diagrams.render("a -> b", runner: fn _args, _opts -> raise "no d2" end) ==
+               {:error, "no d2"}
+    end
   end
 
   describe "render/2 confinement" do
@@ -256,6 +277,17 @@ defmodule Feather.DiagramsTest do
         end)
 
       assert log =~ "Diagram not rendered: bad"
+    end
+
+    test "leaves out diagrams whose runner raises", %{version: version} do
+      runner = fn
+        ["--version"], _opts -> {:ok, version}
+        _args, _opts -> raise ErlangError, original: :eacces
+      end
+
+      log = capture_log(fn -> assert Diagrams.render_all(["a -> b"], runner: runner) == %{} end)
+
+      assert log =~ "Diagram not rendered: Erlang error: :eacces"
     end
 
     defp source(opts), do: File.read!(Path.join(opts[:cd], "diagram.d2"))

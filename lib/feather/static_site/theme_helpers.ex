@@ -21,6 +21,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   require EEx
 
+  @jetbrains_mono_faces [{400, "normal"}, {700, "normal"}, {400, "italic"}]
+
   @doc """
   The meta tags of a page (title, robots, description, canonical URL,
   Open Graph), from the assigns `Feather.StaticSite.Renderer` builds.
@@ -40,19 +42,57 @@ defmodule Feather.StaticSite.ThemeHelpers do
   page's depth). `weight` is a number, or a range like `"400 600"` for a
   variable font.
   """
-  @spec font_face(Routes.t(), String.t(), pos_integer() | String.t(), [String.t()], String.t()) ::
-          iodata()
-  def font_face(%Routes{} = routes, family, weight, local_names, file) do
+  @spec font_face(
+          Routes.t(),
+          String.t(),
+          pos_integer() | String.t(),
+          [String.t()],
+          String.t(),
+          String.t()
+        ) :: iodata()
+  def font_face(%Routes{} = routes, family, weight, local_names, file, style \\ "normal") do
     locals = Enum.map(local_names, &~s[local("#{&1}"), ])
     url = routes |> Routes.font_url(file) |> css_string()
 
     [
-      ~s[@font-face { font-family: "#{family}"; font-style: normal; font-weight: #{weight}; ],
+      ~s[@font-face { font-family: "#{family}"; font-style: #{style}; font-weight: #{weight}; ],
       ~s[font-display: swap; src: ],
       locals,
       ~s[url("#{url}") format("woff2"); }\n]
     ]
   end
+
+  @doc """
+  The `@font-face` rules of JetBrains Mono, the code font every theme
+  ships (see `jetbrains_mono_fonts/0`).
+  """
+  @spec jetbrains_mono_faces(Routes.t()) :: iodata()
+  def jetbrains_mono_faces(%Routes{} = routes) do
+    for {weight, style} <- @jetbrains_mono_faces,
+        do:
+          font_face(
+            routes,
+            "JetBrains Mono",
+            weight,
+            [],
+            jetbrains_mono_file(weight, style),
+            style
+          )
+  end
+
+  @doc """
+  The files of JetBrains Mono with their content types, for a theme's
+  `fonts/0`: regular, bold and italic, Latin subset of
+  @fontsource/jetbrains-mono 5.3.0, SIL Open Font License.
+  """
+  @spec jetbrains_mono_fonts() :: %{String.t() => String.t()}
+  def jetbrains_mono_fonts do
+    @jetbrains_mono_faces
+    |> Map.new(fn {weight, style} -> {jetbrains_mono_file(weight, style), "font/woff2"} end)
+    |> Map.put("OFL-JetBrains-Mono.txt", "text/plain")
+  end
+
+  defp jetbrains_mono_file(weight, style), do: "jetbrains-mono-latin-#{weight}-#{style}.woff2"
 
   # HTML escaping does not apply inside <style>; a CSS escape keeps the URL inside its string.
   defp css_string(text), do: String.replace(text, ~r/["\\<>\n]/, &"\\#{Base.encode16(&1)} ")

@@ -219,12 +219,19 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
   end
 
   describe "fonts" do
+    @mono_faces [
+      {"jetbrains-mono-latin-400-normal.woff2", 400, "normal"},
+      {"jetbrains-mono-latin-700-normal.woff2", 700, "normal"},
+      {"jetbrains-mono-latin-400-italic.woff2", 400, "italic"}
+    ]
+    @mono_files ["OFL-JetBrains-Mono.txt" | Enum.map(@mono_faces, &elem(&1, 0))]
+
     setup do
       build_site(%{title: "Mice", emoji: "🐭"}, [])
     end
 
-    test "the export writes the heading fonts and their licence into the site", %{sink: sink} do
-      for name <- ~w(nunito-latin-700.woff2 nunito-latin-800.woff2 OFL.txt) do
+    test "the export writes the fonts and their licences into the site", %{sink: sink} do
+      for name <- ~w(nunito-latin-700.woff2 nunito-latin-800.woff2 OFL.txt) ++ @mono_files do
         assert {:copy, source} = RecordingSink.get(sink, "fonts/" <> name)
         assert File.regular?(source)
         assert source == FeatherPage.font_path(name)
@@ -239,6 +246,14 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       assert html =~ ~s[url("/fonts/nunito-latin-700.woff2") format("woff2")]
       assert html =~ ~s[url("/fonts/nunito-latin-800.woff2") format("woff2")]
       assert html =~ "font-display: swap"
+
+      for {file, weight, style} <- @mono_faces do
+        assert html =~
+                 ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
+                   ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
+      end
+
+      assert html =~ ~s[--mono: "JetBrains Mono", ui-monospace]
       refute html =~ "fonts.googleapis"
     end
   end

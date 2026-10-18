@@ -24,6 +24,8 @@ to the site owner's own hosting.
 *   `rclone` for deployments (FTPS)
 *   `d2` (at least v0.9.0; the `Dockerfile` pins the exact version) to render diagram blocks;
     without it diagrams show their D2 source
+*   `chroma` (v2; the `Dockerfile` pins the exact version) to highlight code blocks; without it
+    code blocks stay plain
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
 *   `inotify-tools` (optional, Linux) for live reload in development

@@ -17,6 +17,16 @@ ARG RUNNER_IMAGE="docker.io/debian:${DEBIAN_VERSION}"
 # installs the same version for the tests.
 FROM docker.io/d2lang/d2:v0.9.0@sha256:0f9237e0213338415de5ef7436c92450ddd04e0e6e7df2db3f41387322df97b9 AS d2
 
+# chroma highlights the code blocks. Dependabot cannot update it: bump the
+# version and the checksum (from chroma-<version>-checksums.txt of the
+# release) by hand. CI installs the same version for the tests.
+FROM ${RUNNER_IMAGE} AS chroma
+ARG CHROMA_VERSION=2.27.0
+ADD --checksum=sha256:91e1cd175006ff8a19cdd45ad12f9dd8c4eeeca4ec85703ebcc09cd31122f802 \
+  https://github.com/alecthomas/chroma/releases/download/v${CHROMA_VERSION}/chroma-${CHROMA_VERSION}-linux-amd64.tar.gz \
+  /tmp/chroma.tar.gz
+RUN tar -xzf /tmp/chroma.tar.gz -C /usr/local/bin chroma
+
 FROM ${BUILDER_IMAGE} AS builder
 
 # nodejs and npm: the asset build installs the ProseMirror packages with npm ci.
@@ -58,7 +68,8 @@ FROM ${RUNNER_IMAGE}
 
 # libstdc++6: needed by vix's libvips. rclone: deployments. brotli:
 # precompressed static output. sqlite3: for ops (inspecting and backing up
-# /data/feather.db). curl: the health check. d2 (a static binary): diagrams.
+# /data/feather.db). curl: the health check. d2 and chroma (static
+# binaries): diagrams and code highlighting.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 locales ca-certificates \
@@ -68,6 +79,7 @@ RUN apt-get update \
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
 COPY --from=d2 /usr/local/bin/d2 /usr/local/bin/d2
+COPY --from=chroma /usr/local/bin/chroma /usr/local/bin/chroma
 
 ENV LANG=en_US.UTF-8 \
     LANGUAGE=en_US:en \

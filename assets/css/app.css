@@ -24,6 +24,8 @@
 @import "prosemirror-view/style/prosemirror.css";
 @import "prosemirror-gapcursor/style/gapcursor.css";
 
+@import "./code_highlight.css";
+
 /* App tokens on top of the theme's, for the styles below */
 :root {
   --fp-muted: color-mix(in oklab, var(--color-base-content) 70%, transparent);
@@ -240,6 +242,23 @@
 .block-editor__document .pm-code > pre {
   margin: 0;
   padding-top: 0.25rem;
+}
+
+/* The highlighted copy of a code block, shown instead of its source while
+   the cursor is outside the block (or the editor unfocused) */
+.block-editor__document .pm-code__highlight {
+  display: none;
+  cursor: text;
+}
+
+.block-editor__document:not(.ProseMirror-focused) .pm-code.has-highlight > .pm-code__source,
+.block-editor__document .pm-code.has-highlight:not(.is-editing) > .pm-code__source {
+  display: none;
+}
+
+.block-editor__document:not(.ProseMirror-focused) .pm-code.has-highlight > .pm-code__highlight,
+.block-editor__document .pm-code.has-highlight:not(.is-editing) > .pm-code__highlight {
+  display: block;
 }
 
 @media (pointer: coarse) {

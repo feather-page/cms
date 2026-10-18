@@ -8,7 +8,8 @@
 //        data-image-upload-url="/sites/…/images"
 //        data-image-from-url-url="/sites/…/images/from-url" data-csrf-token="…"
 //        data-book-lookup-url="/sites/…/books/lookup"
-//        data-diagram-preview-url="/sites/…/diagrams/preview">
+//        data-diagram-preview-url="/sites/…/diagrams/preview"
+//        data-code-highlight-url="/sites/…/code/highlight">
 //     <div id="...-document" phx-update="ignore" data-doc="<ProseMirror JSON>">
 //       <div data-editor-mount></div>
 //     </div>
@@ -74,7 +75,8 @@ export default {
           csrfToken: this.el.dataset.csrfToken
         },
         books: {lookupUrl: this.el.dataset.bookLookupUrl},
-        diagrams: {previewUrl: this.el.dataset.diagramPreviewUrl, csrfToken: this.el.dataset.csrfToken}
+        diagrams: {previewUrl: this.el.dataset.diagramPreviewUrl, csrfToken: this.el.dataset.csrfToken},
+        code: {highlightUrl: this.el.dataset.codeHighlightUrl, csrfToken: this.el.dataset.csrfToken}
       })
     } catch (error) {
       // Nothing is synced, so the stored content stays as it is.

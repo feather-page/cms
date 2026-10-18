@@ -798,12 +798,19 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
   end
 
   describe "fonts" do
+    @mono_faces [
+      {"jetbrains-mono-latin-400-normal.woff2", 400, "normal"},
+      {"jetbrains-mono-latin-700-normal.woff2", 700, "normal"},
+      {"jetbrains-mono-latin-400-italic.woff2", 400, "italic"}
+    ]
+    @mono_files ["OFL-JetBrains-Mono.txt" | Enum.map(@mono_faces, &elem(&1, 0))]
+
     setup do
       build_site(%{title: "Robert"})
     end
 
-    test "the export writes the font and its licence into the site", %{sink: sink} do
-      for name <- ~w(schibsted-grotesk-latin-wght.woff2 OFL.txt) do
+    test "the export writes the fonts and their licences into the site", %{sink: sink} do
+      for name <- ~w(schibsted-grotesk-latin-wght.woff2 OFL.txt) ++ @mono_files do
         assert {:copy, source} = RecordingSink.get(sink, "fonts/" <> name)
         assert File.regular?(source)
         assert source == SimpleSidebar.font_path(name)
@@ -820,6 +827,14 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert html =~ ~s[font-family: "Schibsted Grotesk"]
       assert html =~ "font-weight: 400 700"
       assert html =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
+
+      for {file, weight, style} <- @mono_faces do
+        assert html =~
+                 ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
+                   ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
+      end
+
+      assert html =~ ~s[--mono: "JetBrains Mono", ui-monospace]
 
       assert attr(LazyHTML.from_document(html), ~s(link[rel="preload"][as="font"]), "href") ==
                ["/fonts/schibsted-grotesk-latin-wght.woff2"]

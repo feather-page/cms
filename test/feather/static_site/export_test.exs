@@ -7,6 +7,8 @@ defmodule Feather.StaticSite.ExportTest do
   @published_at ~U[2024-03-05 10:00:00.000000Z]
 
   setup do
+    Feather.FakeChroma.install()
+
     scope =
       site_scope_fixture(%{title: "My <Site>", emoji: "🦉", copyright: "© {{CurrentYear}} Me"})
 
@@ -224,7 +226,10 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ "<h3>A section</h3>"
     assert html =~ "<ol><li>One<ol><li>Nested</li></ol></li></ol>"
     assert html =~ "<blockquote><p>Simplicity.</p><cite>Dijkstra</cite></blockquote>"
-    assert html =~ ~s(<pre data-language="html"><code class="language-html">&lt;b&gt;x&lt;/b&gt;)
+
+    assert html =~
+             ~s(<pre data-language="html"><code class="language-html"><span class="hl-fake">&lt;b&gt;x&lt;/b&gt;)
+
     assert html =~ ~s(src="/images/#{c.image.public_id}/desktop_x1.jpg" alt="An image")
     assert html =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
     assert html =~ "youtube-nocookie.com/embed/abc"

@@ -9,7 +9,9 @@ defmodule Feather.StaticSite.Blocks do
   in the context (by public id) and render nothing when the record is
   missing. Diagram blocks look their SVG file up by their source (see
   `Feather.Diagrams.render_all/2`) and show the source as d2 code when
-  the diagram was not rendered.
+  the diagram was not rendered. Code blocks look their highlighted HTML up
+  by code and language (see `Feather.Highlighting.highlight_all/2`) and
+  show the escaped code when there is none.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -24,24 +26,29 @@ defmodule Feather.StaticSite.Blocks do
   @content_image_sizes "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
 
   @enforce_keys [:routes]
-  defstruct [:routes, images: %{}, books: %{}, diagrams: %{}]
+  defstruct [:routes, images: %{}, books: %{}, diagrams: %{}, highlights: %{}]
 
   @typedoc """
   What rendering needs besides the blocks: the routes, the site's images
-  and books by public id (books with `cover_image` preloaded) and the file
-  names of the rendered diagrams by source.
+  and books by public id (books with `cover_image` preloaded), the file
+  names of the rendered diagrams by source and the highlighted HTML of the
+  code blocks by `{code, language}`.
   """
   @type context :: %__MODULE__{
           routes: Routes.t(),
           images: %{String.t() => Image.t()},
           books: %{String.t() => Book.t()},
-          diagrams: %{String.t() => String.t()}
+          diagrams: %{String.t() => String.t()},
+          highlights: %{{String.t(), term()} => String.t()}
         }
 
-  @doc "Builds a rendering context."
-  @spec context(Routes.t(), map(), map(), map()) :: context()
-  def context(%Routes{} = routes, images \\ %{}, books \\ %{}, diagrams \\ %{}),
-    do: %__MODULE__{routes: routes, images: images, books: books, diagrams: diagrams}
+  @doc """
+  Builds a rendering context. Options: `:images`, `:books`, `:diagrams`
+  and `:highlights` (see `t:context/0`, default: none).
+  """
+  @spec context(Routes.t(), keyword()) :: context()
+  def context(%Routes{} = routes, opts \\ []),
+    do: struct!(%__MODULE__{routes: routes}, opts)
 
   @doc """
   Renders a list of blocks. Returns safe HTML for templates.
@@ -76,8 +83,12 @@ defmodule Feather.StaticSite.Blocks do
     ["<blockquote><p>", sanitize(text), "</p>", cite, "</blockquote>"]
   end
 
-  def render_block(%{"type" => "code", "code" => code} = block, _context),
-    do: code_block(code, code_language(block["language"]))
+  def render_block(%{"type" => "code", "code" => code} = block, context) do
+    case Map.get(context.highlights, {code, block["language"]}) do
+      nil -> code_block(code, code_language(block["language"]))
+      html -> code_block({:safe, html}, code_language(block["language"]))
+    end
+  end
 
   def render_block(%{"type" => "image", "image_id" => image_id} = block, context) do
     case Map.get(context.images, image_id) do
@@ -118,7 +129,7 @@ defmodule Feather.StaticSite.Blocks do
 
   def render_block(_block, _context), do: []
 
-  defp code_block(code, nil), do: ["<pre><code>", escape(code), "</code></pre>"]
+  defp code_block(code, nil), do: ["<pre><code>", code_html(code), "</code></pre>"]
 
   defp code_block(code, language) do
     [
@@ -127,10 +138,13 @@ defmodule Feather.StaticSite.Blocks do
       "\"><code class=\"language-",
       language,
       "\">",
-      escape(code),
+      code_html(code),
       "</code></pre>"
     ]
   end
+
+  defp code_html({:safe, html}), do: html
+  defp code_html(code), do: escape(code)
 
   defp embed(block) do
     src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")

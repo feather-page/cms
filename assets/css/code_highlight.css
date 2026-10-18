@@ -1,0 +1,74 @@
+/* Code tokens (Feather.Highlighting) in the editor: the text colours of the
+   Chroma styles github (light) and github-dark (dark) for every site, from
+   chroma --html-styles; the code keeps the editor's background. */
+.hl-k { color: #cf222e; @variant dark { color: #ff7b72; } }
+.hl-kc { color: #cf222e; @variant dark { color: #79c0ff; } }
+.hl-kd { color: #cf222e; @variant dark { color: #ff7b72; } }
+.hl-kn { color: #cf222e; @variant dark { color: #ff7b72; } }
+.hl-kp { color: #cf222e; @variant dark { color: #79c0ff; } }
+.hl-kr { color: #cf222e; @variant dark { color: #ff7b72; } }
+.hl-kt { color: #cf222e; @variant dark { color: #ff7b72; } }
+.hl-na { color: #1f2328; @variant dark { color: inherit; } }
+.hl-nc { color: #1f2328; @variant dark { color: #f0883e; font-weight: bold; } }
+.hl-no { color: #0550ae; @variant dark { color: #79c0ff; font-weight: bold; } }
+.hl-nd { color: #0550ae; @variant dark { color: #d2a8ff; font-weight: bold; } }
+.hl-ni { color: #6639ba; @variant dark { color: #ffa657; } }
+.hl-nl { color: #990000; font-weight: bold; @variant dark { color: #79c0ff; font-weight: bold; } }
+.hl-nn { color: #24292e; @variant dark { color: #ff7b72; } }
+.hl-nx { color: #1f2328; @variant dark { color: inherit; } }
+.hl-nt { color: #0550ae; @variant dark { color: #7ee787; } }
+.hl-nb { color: #6639ba; @variant dark { color: inherit; } }
+.hl-bp { color: #6a737d; @variant dark { color: inherit; } }
+.hl-nv { color: #953800; @variant dark { color: #79c0ff; } }
+.hl-vc { color: #953800; @variant dark { color: #79c0ff; } }
+.hl-vg { color: #953800; @variant dark { color: #79c0ff; } }
+.hl-vi { color: #953800; @variant dark { color: #79c0ff; } }
+.hl-vm { color: #953800; @variant dark { color: #79c0ff; } }
+.hl-nf { color: #6639ba; @variant dark { color: #d2a8ff; font-weight: bold; } }
+.hl-fm { color: #6639ba; @variant dark { color: #d2a8ff; font-weight: bold; } }
+.hl-s { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-sa { color: #0a3069; @variant dark { color: #79c0ff; } }
+.hl-sb { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-sc { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-dl { color: #0a3069; @variant dark { color: #79c0ff; } }
+.hl-sd { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-s2 { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-se { color: #0a3069; @variant dark { color: #79c0ff; } }
+.hl-sh { color: #0a3069; @variant dark { color: #79c0ff; } }
+.hl-si { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-sx { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-sr { color: #0a3069; @variant dark { color: #79c0ff; } }
+.hl-s1 { color: #0a3069; @variant dark { color: #a5d6ff; } }
+.hl-ss { color: #032f62; @variant dark { color: #a5d6ff; } }
+.hl-m { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-mb { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-mf { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-mh { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-mi { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-il { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-mo { color: #0550ae; @variant dark { color: #a5d6ff; } }
+.hl-o { color: #0550ae; @variant dark { color: #ff7b72; font-weight: bold; } }
+.hl-ow { color: #0550ae; @variant dark { color: #ff7b72; font-weight: bold; } }
+.hl-or { color: #0550ae; @variant dark { color: #ff7b72; font-weight: bold; } }
+.hl-p { color: #1f2328; @variant dark { color: inherit; } }
+.hl-c { color: #57606a; @variant dark { color: #8b949e; font-style: italic; } }
+.hl-ch { color: #57606a; @variant dark { color: #8b949e; font-style: italic; } }
+.hl-cm { color: #57606a; @variant dark { color: #8b949e; font-style: italic; } }
+.hl-c1 { color: #57606a; @variant dark { color: #8b949e; font-style: italic; } }
+.hl-cs { color: #57606a; @variant dark { color: #8b949e; font-weight: bold; font-style: italic; } }
+.hl-cp { color: #57606a; @variant dark { color: #8b949e; font-weight: bold; font-style: italic; } }
+.hl-cpf { color: #57606a; @variant dark { color: #8b949e; font-weight: bold; font-style: italic; } }
+.hl-ge { color: #1f2328; @variant dark { color: inherit; font-style: italic; } }
+.hl-go { color: #1f2328; @variant dark { color: #8b949e; } }
+.hl-w { color: #ffffff; @variant dark { color: #6e7681; } }
+.hl-err { @variant dark { color: #f85149; } }
+.hl-ne { @variant dark { color: #f0883e; font-weight: bold; } }
+.hl-py { @variant dark { color: #79c0ff; } }
+.hl-l { @variant dark { color: #a5d6ff; } }
+.hl-ld { @variant dark { color: #79c0ff; } }
+.hl-gr { @variant dark { color: #ffa198; } }
+.hl-gh { @variant dark { color: #79c0ff; font-weight: bold; } }
+.hl-gp { @variant dark { color: #8b949e; } }
+.hl-gs { @variant dark { font-weight: bold; } }
+.hl-gu { @variant dark { color: #79c0ff; } }
+.hl-gt { @variant dark { color: #ff7b72; } }
