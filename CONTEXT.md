@@ -78,6 +78,14 @@ Turning the unpublished changes into a new version, which becomes the published 
 files change only with the next deploy. **Unpublish** takes a record off the site; its versions stay.
 _Avoid_: Save, Release
 
+**Scheduled Post**:
+A published post whose publish date (`publish_at`) lies after the moment it was published. The static export leaves it
+out until it is due; when it becomes due, the CMS deploys the site to every deployment target deployed before that.
+_Avoid_: Future Post, Planned Post
+
+**Due**:
+A post is due once its publish date has passed. Only then does a deploy show it.
+
 **Draft**:
 A post, page or project without a published version, because it was never published or was unpublished.
 _Avoid_: using it for unpublished changes of a published record

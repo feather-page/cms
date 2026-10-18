@@ -308,6 +308,216 @@ defmodule Feather.PublishingTest do
     end
   end
 
+  describe "scheduled posts" do
+    setup %{scope: scope} do
+      Repo.update_all(Feather.Sites.Site, set: [updated_at: at("06:00")])
+      Repo.update_all(Feather.Content.PageVersion, set: [published_at: at("06:00")])
+      target = scope |> deployment_target_fixture() |> deployed(at("07:00"))
+      %{target: target}
+    end
+
+    defp at(hh_mm),
+      do: DateTime.new!(~D[2026-10-01], Time.from_iso8601!(hh_mm <> ":00.000000"), "Etc/UTC")
+
+    defp post_published(scope, published_at, publish_at) do
+      post = post_fixture(scope)
+
+      Repo.update_all(
+        from(v in Feather.Content.PostVersion, where: v.post_id == ^post.id),
+        set: [published_at: published_at, publish_at: publish_at]
+      )
+
+      post
+    end
+
+    defp republished(scope, post, published_at, publish_at) do
+      post = Content.get_post(scope, post.public_id)
+      {:ok, post} = Content.update_post(scope, post, %{title: "#{post.title} again"})
+      {:ok, post} = Content.publish(scope, post)
+
+      Repo.update_all(
+        from(v in Feather.Content.PostVersion, where: v.id == ^post.published_version_id),
+        set: [published_at: published_at, publish_at: publish_at]
+      )
+
+      post
+    end
+
+    test "undeployed_count/2 counts a scheduled post once it is due", %{
+      scope: scope,
+      target: target
+    } do
+      post_published(scope, at("07:24"), at("08:08"))
+      deployed(target, at("07:25"))
+
+      assert Publishing.undeployed_count(scope, at("08:00")) == 0
+      assert Publishing.undeployed_count(scope, at("08:09")) == 1
+
+      deployed(target, at("08:10"))
+      assert Publishing.undeployed_count(scope, at("08:11")) == 0
+    end
+
+    test "undeployed_count/2 leaves out a post not due yet, even for a target never deployed",
+         %{scope: scope} do
+      deployment_target_fixture(scope)
+      post_published(scope, at("07:24"), at("08:08"))
+
+      # The homepage and the site.
+      assert Publishing.undeployed_count(scope, at("08:00")) == 2
+      assert Publishing.undeployed_count(scope, at("08:09")) == 3
+    end
+
+    test "undeployed_count/2 ignores the date of a scheduled version republished for now", %{
+      scope: scope,
+      target: target
+    } do
+      post = post_published(scope, at("07:24"), at("08:08"))
+      republished(scope, post, at("07:30"), at("07:30"))
+      deployed(target, at("07:55"))
+
+      assert Publishing.undeployed_count(scope, at("08:00")) == 0
+      assert Publishing.undeployed_count(scope, at("08:09")) == 0
+    end
+
+    test "undeployed_count/2 does not count a scheduled post unpublished before its date", %{
+      scope: scope,
+      target: target
+    } do
+      post = post_published(scope, at("07:24"), at("08:08"))
+      deployed(target, at("07:25"))
+      {:ok, _post} = Content.unpublish(scope, Content.get_post(scope, post.public_id))
+
+      assert Publishing.undeployed_count(scope, at("08:09")) == 0
+    end
+
+    test "undeployed_count/2 counts a rescheduled post from its new date", %{
+      scope: scope,
+      target: target
+    } do
+      post = post_published(scope, at("07:24"), at("08:08"))
+      republished(scope, post, at("07:26"), at("10:00"))
+      deployed(target, at("07:27"))
+
+      assert Publishing.undeployed_count(scope, at("08:09")) == 0
+      assert Publishing.undeployed_count(scope, at("10:01")) == 1
+    end
+
+    test "publishing without a future date does not deploy", %{scope: scope} do
+      post_published(scope, at("07:40"), at("07:30"))
+
+      assert Publishing.undeployed_count(scope, at("07:41")) == 1
+      assert Publishing.deploy_due_posts(at("07:00"), at("07:41")) == []
+      assert Publishing.deploy_due_posts(nil, at("07:41")) == []
+      refute_received {:deploy_requested, _target}
+    end
+
+    test "deploy_due_posts/2 deploys only the targets of a site deployed before the post was due",
+         %{scope: scope, target: target} do
+      %{id: other_id} = scope |> deployment_target_fixture() |> deployed(at("08:08"))
+      post_published(scope, at("07:24"), at("08:08"))
+      deployed(target, at("07:25"))
+
+      assert [%{id: id}] = Publishing.deploy_due_posts(at("08:07"), at("08:09"))
+      assert id == target.id
+      refute_received {:deploy_requested, %{id: ^other_id}}
+    end
+
+    test "deploy_due_posts/2 skips a target whose config does not decrypt", %{
+      scope: scope,
+      target: target
+    } do
+      other = site_scope_fixture()
+      other_target = other |> deployment_target_fixture() |> deployed(at("07:00"))
+      post_published(scope, at("07:24"), at("08:08"))
+      post_published(other, at("07:24"), at("08:08"))
+
+      Repo.query!("UPDATE deployment_targets SET config = ? WHERE id = ?", [
+        "garbage",
+        target.id
+      ])
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert [%{id: id}] = Publishing.deploy_due_posts(at("08:07"), at("08:09"))
+          assert id == other_target.id
+        end)
+
+      assert log =~ target.public_hostname
+      assert_received {:deploy_requested, %{id: id}}
+      assert id == other_target.id
+      refute_received {:deploy_requested, _target}
+    end
+
+    test "deploy_due_posts/2 deploys the targets deployed before a post became due", %{
+      scope: scope,
+      target: target
+    } do
+      post_published(scope, at("07:24"), at("08:08"))
+      deployed(target, at("07:25"))
+
+      assert [%{id: id}] = Publishing.deploy_due_posts(at("08:07"), at("08:08"))
+      assert id == target.id
+      assert_received {:deploy_requested, %{id: ^id}}
+    end
+
+    test "deploy_due_posts/2 deploys each target once", %{scope: scope, target: target} do
+      post_published(scope, at("07:24"), at("08:08"))
+      post_published(scope, at("07:24"), at("08:08"))
+
+      assert [_target] = Publishing.deploy_due_posts(at("08:00"), at("08:09"))
+      assert_received {:deploy_requested, %{id: id}}
+      assert id == target.id
+      refute_received {:deploy_requested, _target}
+    end
+
+    test "deploy_due_posts/2 catches up on everything due and undeployed without a lower bound",
+         %{scope: scope} do
+      post_published(scope, at("07:24"), at("08:08"))
+
+      assert [_target] = Publishing.deploy_due_posts(nil, at("12:00"))
+      assert_received {:deploy_requested, _target}
+    end
+
+    test "deploy_due_posts/2 deploys only the site of the due post", %{scope: scope} do
+      other = site_scope_fixture()
+      other_target = other |> deployment_target_fixture() |> deployed(at("07:00"))
+      post_published(other, at("07:24"), at("08:08"))
+      post_published(scope, at("07:24"), at("07:30"))
+
+      assert [%{id: id}] = Publishing.deploy_due_posts(at("08:00"), at("08:09"))
+      assert id == other_target.id
+    end
+
+    test "deploy_due_posts/2 deploys nothing for posts that are not due in the window", %{
+      scope: scope,
+      target: target
+    } do
+      none_due = fn from, to ->
+        assert Publishing.deploy_due_posts(from, to) == []
+        refute_received {:deploy_requested, _target}
+      end
+
+      # A normal publish: the publish date had passed when it was published.
+      post_published(scope, at("07:40"), at("07:30"))
+      none_due.(at("07:00"), at("08:09"))
+
+      post = post_published(scope, at("07:24"), at("08:08"))
+      none_due.(at("08:00"), at("08:07"))
+      none_due.(at("08:08"), at("08:30"))
+
+      {:ok, _post} = Content.unpublish(scope, Content.get_post(scope, post.public_id))
+      none_due.(at("08:00"), at("08:09"))
+      none_due.(nil, at("08:09"))
+
+      post_published(scope, at("07:24"), at("08:08"))
+      deployed(target, at("08:08"))
+      none_due.(nil, at("08:09"))
+
+      deployed(target, nil)
+      none_due.(nil, at("08:09"))
+    end
+  end
+
   describe "live?/3" do
     test "a published version is live once every deployment target deployed after it" do
       now = DateTime.utc_now()

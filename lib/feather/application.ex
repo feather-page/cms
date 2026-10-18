@@ -21,6 +21,7 @@ defmodule Feather.Application do
       # Deploys run as tasks; the registry coalesces waiting deploys.
       {Task.Supervisor, name: Feather.TaskSupervisor},
       {Registry, keys: :unique, name: Feather.Publishing.Registry},
+      Feather.Publishing.ScheduledDeploys,
       # Start to serve requests, typically the last entry
       FeatherWeb.Endpoint
     ]
