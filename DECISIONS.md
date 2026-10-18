@@ -445,3 +445,11 @@ Accepted, 2026-10-18 (issue #435)
 - **Context:** Since [0017](#0017-sites-are-delivered-only-to-external-hosts-by-ftps) every target of a site exports the same published versions, so a second target only mirrored the first, and its `public_hostname` duplicated the site's `domain`, which the preview already uses as canonical address. Books, deletions and unpublishing changed the export without a version, so the deploy control kept saying live.
 - **Decision:** A site has at most one deployment target (unique on `site_id`), holding only its provider (`hetzner_ftps` renamed to `ftps`, nothing in it is specific to Hetzner) and credentials; its address is the site's `domain`. Changes without a version (books, deleting or unpublishing a published record) move the site's `updated_at`, and a deploy exports into a fresh directory that it syncs and removes.
 - **Consequences:** Delivering a site to two hosts at once, e.g. while moving, needs a second site; several book edits count as one pending change; uploading only the changed files would need a manifest of the last deploy, since no export persists.
+
+## 0020. Code blocks are highlighted at export with the chroma binary
+
+Accepted, 2026-10-18
+
+- **Context:** Code blocks need syntax highlighting, and published sites contain no JavaScript, so it has to happen when the export, the preview and the feed render a block. Issue #430 proposed a Go render service for D2 and highlighting, but highlighting reads only text, so it needs no isolation.
+- **Decision:** The export runs the `chroma` binary (v2), pinned in the release image like `d2`, on each code block. It caches the HTML by a hash of the Chroma version, lexer and code, and passes only languages from a fixed list. Each site theme styles the token classes with a light and a dark Chroma style. Rejected: Lumis (a NIF that embeds a Wasmtime JIT in the BEAM, and its architecture changed weeks before this decision), Makeup (no lexers for most of the editor's languages), and a separate render service.
+- **Consequences:** Chroma is a second runtime binary; Dependabot cannot update it, so version bumps are manual. Feed readers show code without colours, and a language outside the list stays plain.
