@@ -18,6 +18,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   alias Feather.Content.HTML
   alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Routes, SiteData}
+  alias Phoenix.HTML.Safe
 
   @priv_dir Path.expand("../../../../priv/static_site/themes/simple_sidebar", __DIR__)
   @css_path Path.join(@priv_dir, "theme.css")
@@ -253,7 +254,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
     {:safe,
      items
      |> Enum.filter(&(match?({:safe, _}, &1) or present?(&1)))
-     |> Enum.map(&Phoenix.HTML.Safe.to_iodata/1)
+     |> Enum.map(&Safe.to_iodata/1)
      |> Enum.intersperse(~s(<span class="sep" aria-hidden="true">·</span>))}
   end
 

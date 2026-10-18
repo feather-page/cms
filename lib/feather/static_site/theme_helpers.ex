@@ -15,8 +15,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   alias Feather.Books.Book
   alias Feather.Content
-  alias Feather.Content.{HTML, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Content.{HTML, Project}
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
   alias Feather.StaticSite.{Hue, Routes, SiteData}

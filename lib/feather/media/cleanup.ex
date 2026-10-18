@@ -28,12 +28,12 @@ defmodule Feather.Media.Cleanup do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Media.Image
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @grace_period_days 2

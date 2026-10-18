@@ -3,8 +3,8 @@ defmodule Feather.SitesTest do
 
   import Swoosh.TestAssertions
 
-  alias Feather.{Content, Publishing, Sites}
   alias Feather.Accounts.Scope
+  alias Feather.{Content, Publishing, Sites}
   alias Feather.Sites.{Invitation, Site, SocialMediaService}
 
   describe "create_site/2" do

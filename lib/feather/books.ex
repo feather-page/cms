@@ -9,12 +9,12 @@ defmodule Feather.Books do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Post
   alias Feather.Media
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @doc """

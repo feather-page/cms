@@ -1,10 +1,10 @@
 defmodule FeatherWeb.UserAuthTest do
   use FeatherWeb.ConnCase
 
-  alias Phoenix.LiveView
   alias Feather.Accounts
   alias Feather.Accounts.Scope
   alias FeatherWeb.UserAuth
+  alias Phoenix.LiveView
 
   @remember_me_cookie "_feather_web_user_remember_me"
   @remember_me_cookie_max_age 60 * 60 * 24 * 14

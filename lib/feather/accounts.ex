@@ -6,7 +6,7 @@ defmodule Feather.Accounts do
   import Ecto.Query, warn: false
   alias Feather.Repo
 
-  alias Feather.Accounts.{ApiToken, User, UserToken, UserNotifier}
+  alias Feather.Accounts.{ApiToken, User, UserNotifier, UserToken}
 
   ## Database getters
 

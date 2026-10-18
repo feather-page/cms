@@ -1,8 +1,8 @@
 defmodule Feather.Accounts.UserNotifier do
   import Swoosh.Email
 
-  alias Feather.Mailer
   alias Feather.Accounts.User
+  alias Feather.Mailer
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do

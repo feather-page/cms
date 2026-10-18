@@ -8,10 +8,11 @@ defmodule Feather.StaticSite.Renderer do
 
   use Gettext, backend: Feather.StaticSite.Gettext
 
-  alias Feather.Content.{Page, Post, Project}
   alias Feather.Content.Blocks, as: ContentBlocks
+  alias Feather.Content.{Page, Post, Project}
   alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Feed, Routes, SiteData, Sitemap, ThemeHelpers, Themes}
+  alias Phoenix.HTML.Safe
 
   @posts_per_page 25
   @description_length 155
@@ -251,7 +252,7 @@ defmodule Feather.StaticSite.Renderer do
       assigns
       |> Map.put(:inner_content, apply(theme, view, [assigns]))
       |> theme.layout()
-      |> Phoenix.HTML.Safe.to_iodata()
+      |> Safe.to_iodata()
     end)
   end
 

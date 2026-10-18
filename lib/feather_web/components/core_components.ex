@@ -15,6 +15,8 @@ defmodule FeatherWeb.CoreComponents do
   import Setzkasten.Components.Icons, only: [icon: 1]
   import Setzkasten.Components.Feedback, only: [badge: 1]
 
+  alias Feather.Sites.SocialMediaService
+
   @doc """
   Renders a social media brand icon (`priv/icons`, see
   `Feather.Sites.SocialMediaService`) as inline SVG in `currentColor`,
@@ -28,7 +30,7 @@ defmodule FeatherWeb.CoreComponents do
   attr :class, :any, default: nil
 
   def brand_icon(assigns) do
-    svg = Feather.Sites.SocialMediaService.svg(assigns.name) || raise_unknown(assigns.name)
+    svg = SocialMediaService.svg(assigns.name) || raise_unknown(assigns.name)
 
     # The brand SVGs are trusted files from priv/icons; only the class is
     # replaced (escaped) and the icon hidden from screen readers.

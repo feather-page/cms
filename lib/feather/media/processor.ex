@@ -7,8 +7,8 @@ defmodule Feather.Media.Processor do
   variant starts from a fresh thumbnail.
   """
 
-  alias Vix.Vips.{Image, Operation}
   alias Feather.Media.Variants
+  alias Vix.Vips.{Image, Operation}
 
   @loaders %{
     "jpegload" => {"image/jpeg", "jpg"},

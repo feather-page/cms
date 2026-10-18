@@ -3,8 +3,8 @@ defmodule FeatherWeb.SiteLive.NewTest do
 
   import Phoenix.LiveViewTest
 
-  alias Feather.Sites
   alias Feather.Accounts.Scope
+  alias Feather.Sites
 
   test "redirects to the login page when logged out", %{conn: conn} do
     assert {:error, {:redirect, %{to: "/users/log-in"}}} = live(conn, ~p"/sites/new")

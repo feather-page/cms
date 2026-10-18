@@ -35,6 +35,7 @@ defmodule Feather.Publishing.Deploy do
 
   require Logger
 
+  alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Publishing
   alias Feather.Publishing.{DeploymentTarget, Rclone}
@@ -229,7 +230,7 @@ defmodule Feather.Publishing.Deploy do
     Publishing.broadcast_notice(target.site, %{
       kind: :error,
       title: "Deploy to #{target.public_hostname} failed",
-      message: failure_message(step, Feather.Content.Blocks.truncate(message, 300)),
+      message: failure_message(step, Blocks.truncate(message, 300)),
       retry: target.public_id
     })
   end

@@ -92,8 +92,8 @@ defmodule FeatherWeb do
       import FeatherWeb.SiteComponents
 
       # Common modules used in templates
-      alias Phoenix.LiveView.JS
       alias FeatherWeb.Layouts
+      alias Phoenix.LiveView.JS
 
       # Routes generation with the ~p sigil
       unquote(verified_routes())

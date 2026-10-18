@@ -18,9 +18,9 @@ defmodule Feather.Media do
 
   require Logger
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Media.{Cleanup, Fetcher, Image, Processor, Variants}
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @max_byte_size 25 * 1024 * 1024

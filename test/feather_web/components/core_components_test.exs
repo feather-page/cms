@@ -6,6 +6,8 @@ defmodule FeatherWeb.CoreComponentsTest do
   import FeatherWeb.CoreComponents
   import Setzkasten.Components.Icons, only: [icon: 1]
 
+  alias Feather.Sites.SocialMediaService
+
   describe "icons" do
     test "the app's Lucide icons render through setzkasten's icon/1" do
       html = render_component(&icon/1, name: "list-plus")
@@ -23,7 +25,7 @@ defmodule FeatherWeb.CoreComponentsTest do
         )
         |> Enum.map(fn [_, name] -> name end)
         |> Enum.uniq()
-        |> Kernel.--(Enum.map(Feather.Sites.SocialMediaService.all(), & &1.icon))
+        |> Kernel.--(Enum.map(SocialMediaService.all(), & &1.icon))
 
       assert "trash-2" in names
 

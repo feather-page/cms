@@ -9,12 +9,12 @@ defmodule Feather.StaticSite.SiteData do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
+  alias Feather.{Books, Content, Diagrams, Media, Sites}
   alias Feather.Books.Book
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Media.Image
   alias Feather.Repo
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
-  alias Feather.{Books, Content, Diagrams, Media, Sites}
   alias Feather.StaticSite.Themes
 
   defstruct [

@@ -7,9 +7,9 @@ defmodule Feather.Publishing do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
   alias Feather.Publishing.{Deploy, DeploymentTarget}
+  alias Feather.Repo
   alias Feather.Sites.Site
 
   @registry Feather.Publishing.Registry

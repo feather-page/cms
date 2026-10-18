@@ -9,6 +9,8 @@ defmodule Feather.Release do
   `bin/migrate` and `bin/server` (in `rel/overlays/bin`) wrap the first.
   """
 
+  alias Feather.Accounts.Scope
+
   @app :feather
 
   @doc """
@@ -100,7 +102,7 @@ defmodule Feather.Release do
 
         target ->
           target = Feather.Repo.preload(target, :site)
-          scope = Feather.Accounts.Scope.for_site(target.site)
+          scope = Scope.for_site(target.site)
 
           with {:ok, target} <- Publishing.update_target_config(scope, target, config) do
             IO.puts("Config of #{target.public_id} (#{target.provider}) set.")

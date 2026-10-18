@@ -11,9 +11,9 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   alias Feather.Accounts.Scope
   alias Feather.Sites
-  alias FeatherWeb.SiteAuth
   alias Feather.Sites.{Languages, Site, SocialMediaLink, SocialMediaService}
   alias Feather.StaticSite.Themes
+  alias FeatherWeb.SiteAuth
 
   @mascot_accept ~w(.png .webp)
   @mascot_fallback "The image is deleted. The feather.page theme shows your site's emoji instead."

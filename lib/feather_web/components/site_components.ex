@@ -26,6 +26,7 @@ defmodule FeatherWeb.SiteComponents do
 
   use Setzkasten
 
+  alias Feather.Content.Blocks
   alias Feather.Publishing
   alias FeatherWeb.Layouts
   alias Phoenix.LiveView.JS
@@ -444,10 +445,10 @@ defmodule FeatherWeb.SiteComponents do
   def image_path(_site, nil, _variant), do: nil
 
   def image_path(site, image, nil),
-    do: Feather.Content.Blocks.image_url(site, image.public_id)
+    do: Blocks.image_url(site, image.public_id)
 
   def image_path(site, image, variant),
-    do: Feather.Content.Blocks.image_url(site, image.public_id) <> "?variant=#{variant}"
+    do: Blocks.image_url(site, image.public_id) <> "?variant=#{variant}"
 
   @doc "Renders a rating as stars, e.g. ★★★★☆."
   @spec stars(integer() | nil) :: String.t()

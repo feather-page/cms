@@ -38,14 +38,14 @@ defmodule Feather.Content do
 
   import Ecto.Query, warn: false
 
-  alias Feather.Repo
   alias Feather.Accounts.Scope
+  alias Feather.Books
   alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
   alias Feather.Content.{BlocksType, ProseMirror, Slug, Tags}
-  alias Feather.Books
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
+  alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
 
