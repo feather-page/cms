@@ -156,7 +156,7 @@ defmodule Feather.Content.HTML do
 
     case Enum.split_while(open, &(&1 != tag)) do
       {inner, [^tag | outer]} ->
-        walk(rest, mode, outer, nil, [Enum.map(inner ++ [tag], &close/1) | acc])
+        walk(rest, mode, outer, nil, [[Enum.map(inner, &close/1), close(tag)] | acc])
 
       {_inner, []} ->
         walk(rest, mode, open, nil, acc)

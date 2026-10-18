@@ -16,12 +16,12 @@ defmodule Feather.Media do
 
   import Ecto.Query, warn: false
 
-  require Logger
-
   alias Feather.Accounts.Scope
   alias Feather.Media.{Cleanup, Fetcher, Image, Processor, Variants}
   alias Feather.Repo
   alias Feather.Sites.Site
+
+  require Logger
 
   @max_byte_size 25 * 1024 * 1024
 

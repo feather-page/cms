@@ -9,8 +9,6 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   use Gettext, backend: Feather.StaticSite.Gettext
 
-  require EEx
-
   import Phoenix.HTML, only: [raw: 1]
 
   alias Feather.Books.Book
@@ -20,6 +18,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Media.Image
   alias Feather.Sites.SocialMediaService
   alias Feather.StaticSite.{Hue, Routes, SiteData}
+
+  require EEx
 
   @doc """
   The meta tags of a page (title, robots, description, canonical URL,

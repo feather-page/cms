@@ -4,6 +4,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
   import Phoenix.LiveViewTest
 
   alias Feather.Sites
+  alias Feather.Sites.Site
 
   test "redirects to the login page when logged out", %{conn: conn} do
     site = site_fixture()
@@ -248,7 +249,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
       content = content || File.read!(transparent_image_path(120, 40))
 
       lv
-      |> file_input("#mascot-#{slot}-form", :"#{slot}_mascot_image", [
+      |> file_input("#mascot-#{slot}-form", Site.mascot_assoc(slot), [
         %{name: name, content: content, type: "image/png"}
       ])
       |> render_upload(name)
@@ -273,7 +274,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
     test "uploads a mascot", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
-      upload_mascot(lv, "footer", "mice.png")
+      upload_mascot(lv, :footer, "mice.png")
 
       assert %Feather.Media.Image{filename: "mice.png"} =
                image = mascot(scope, :footer_mascot_image)
@@ -288,9 +289,9 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
     test "replaces a mascot", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
-      upload_mascot(lv, "post_end", "old.png")
+      upload_mascot(lv, :post_end, "old.png")
       old = mascot(scope, :post_end_mascot_image)
-      upload_mascot(lv, "post_end", "new.png")
+      upload_mascot(lv, :post_end, "new.png")
 
       assert %{filename: "new.png"} = new = mascot(scope, :post_end_mascot_image)
       assert has_element?(lv, ~s(#mascot-post_end-preview img[src*="#{new.public_id}"]))
@@ -299,7 +300,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
 
     test "removes a mascot after confirming", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
-      upload_mascot(lv, "projects")
+      upload_mascot(lv, :projects)
       image = mascot(scope, :projects_mascot_image)
 
       html = confirm_click(lv, "#remove-mascot-projects", "Remove the projects mascot?")
@@ -314,7 +315,7 @@ defmodule FeatherWeb.SiteLive.SettingsTest do
     test "shows an error for a file that is not an image", %{conn: conn, site: site, scope: scope} do
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/settings")
 
-      upload_mascot(lv, "footer", "fake.png", "not an image")
+      upload_mascot(lv, :footer, "fake.png", "not an image")
 
       assert has_element?(lv, "#mascot-footer-error", "must be an image")
       assert mascot(scope, :footer_mascot_image) == nil

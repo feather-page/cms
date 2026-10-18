@@ -33,14 +33,14 @@ defmodule Feather.Publishing.Deploy do
   one node, which is all a SQLite app has.)
   """
 
-  require Logger
-
   alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Publishing
   alias Feather.Publishing.{DeploymentTarget, Rclone}
   alias Feather.Repo
   alias Feather.StaticSite.{Export, FileSink, Precompress, Routes}
+
+  require Logger
 
   @registry Feather.Publishing.Registry
   @lock_retries 60

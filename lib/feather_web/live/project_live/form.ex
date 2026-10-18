@@ -10,8 +10,9 @@ defmodule FeatherWeb.ProjectLive.Form do
   published version back; Restore puts an earlier version into the
   unpublished changes.
   """
-  use FeatherWeb, :live_view
   @behaviour FeatherWeb.ContentForm
+
+  use FeatherWeb, :live_view
 
   import FeatherWeb.ContentFormComponents
 

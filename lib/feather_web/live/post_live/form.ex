@@ -8,8 +8,9 @@ defmodule FeatherWeb.PostLive.Form do
   published version back; Restore puts an earlier version into the
   unpublished changes; Unpublish makes the post a draft.
   """
-  use FeatherWeb, :live_view
   @behaviour FeatherWeb.ContentForm
+
+  use FeatherWeb, :live_view
 
   import FeatherWeb.ContentFormComponents
 

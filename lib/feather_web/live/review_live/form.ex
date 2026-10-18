@@ -9,8 +9,9 @@ defmodule FeatherWeb.ReviewLive.Form do
   published version back, Restore an earlier version. The rating is the
   book's: it saves at once and is not versioned.
   """
-  use FeatherWeb, :live_view
   @behaviour FeatherWeb.ContentForm
+
+  use FeatherWeb, :live_view
 
   import FeatherWeb.ContentFormComponents
 
