@@ -15,9 +15,6 @@ defmodule Feather.MixProject do
     ]
   end
 
-  # Configuration for the OTP application.
-  #
-  # Type `mix help compile.app` for more information.
   def application do
     [
       mod: {Feather.Application, []},
@@ -31,13 +28,9 @@ defmodule Feather.MixProject do
     ]
   end
 
-  # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  # Specifies your project dependencies.
-  #
-  # Type `mix help deps` for examples and options.
   defp deps do
     [
       {:phoenix, "~> 1.8.15"},
@@ -77,12 +70,6 @@ defmodule Feather.MixProject do
     ]
   end
 
-  # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to install project dependencies and perform other setup tasks, run:
-  #
-  #     $ mix setup
-  #
-  # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
@@ -94,8 +81,7 @@ defmodule Feather.MixProject do
       "assets.npm": ["cmd --cd assets npm ci --no-audit --no-fund"],
       "assets.build": ["compile", "assets.npm", "tailwind feather", "esbuild feather"],
       "assets.deploy": [
-        # compile first: app.js imports phoenix-colocated/feather, which the
-        # LiveView compiler writes while compiling (fresh checkouts, CI)
+        # app.js imports phoenix-colocated/feather, which only compiling writes
         "compile",
         "assets.npm",
         "tailwind feather --minify",
