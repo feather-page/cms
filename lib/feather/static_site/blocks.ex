@@ -99,34 +99,7 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   def render_block(%{"type" => "embed"} = block, _context) do
-    if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]) do
-      src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")
-
-      {caption, title} =
-        if present?(block["caption"]),
-          do:
-            {["<figcaption>", sanitize(block["caption"]), "</figcaption>"],
-             ContentBlocks.strip_tags(block["caption"])},
-          else: {[], ""}
-
-      title = if String.trim(title) == "", do: gettext("Embedded content"), else: title
-
-      [
-        "<figure class=\"embed\"><iframe src=\"",
-        escape(src),
-        "\" title=\"",
-        escape(title),
-        "\"",
-        size_attribute("width", block["width"]),
-        size_attribute("height", block["height"]),
-        aspect_ratio(block["width"], block["height"]),
-        " allowfullscreen></iframe>",
-        caption,
-        "</figure>"
-      ]
-    else
-      []
-    end
+    if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]), do: embed(block), else: []
   end
 
   def render_block(%{"type" => "book", "book_public_id" => public_id}, context) do
@@ -159,12 +132,32 @@ defmodule Feather.StaticSite.Blocks do
     ]
   end
 
+  defp embed(block) do
+    src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")
+
+    [
+      "<figure class=\"embed\"><iframe src=\"",
+      escape(src),
+      "\" title=\"",
+      escape(embed_title(block["caption"])),
+      "\"",
+      size_attribute("width", block["width"]),
+      size_attribute("height", block["height"]),
+      aspect_ratio(block["width"], block["height"]),
+      " allowfullscreen></iframe>",
+      figcaption(block["caption"]),
+      "</figure>"
+    ]
+  end
+
+  defp embed_title(caption) do
+    title = if present?(caption), do: ContentBlocks.strip_tags(caption), else: ""
+    if String.trim(title) == "", do: gettext("Embedded content"), else: title
+  end
+
   defp diagram(name, caption, routes) do
     alt = ContentBlocks.strip_tags(caption)
     alt = if present?(alt), do: alt, else: gettext("Diagram")
-
-    figcaption =
-      if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
 
     [
       "<figure class=\"diagram\"><img loading=\"lazy\" src=\"",
@@ -172,7 +165,7 @@ defmodule Feather.StaticSite.Blocks do
       "\" alt=\"",
       escape(alt),
       "\">",
-      figcaption,
+      figcaption(caption),
       "</figure>"
     ]
   end
@@ -196,9 +189,6 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp image(%Image{} = image, caption, routes) do
-    figcaption =
-      if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
-
     [
       "<figure><picture><source srcset=\"",
       escape(Routes.image_srcset(routes, image)),
@@ -212,7 +202,7 @@ defmodule Feather.StaticSite.Blocks do
       "\" alt=\"",
       escape(ContentBlocks.strip_tags(caption)),
       "\" /></picture>",
-      figcaption,
+      figcaption(caption),
       "</figure>"
     ]
   end
@@ -253,13 +243,21 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp aspect_ratio(width, height) do
-    with w when is_binary(w) <- size(width),
-         h when is_binary(h) <- size(height),
-         {w, ""} when w > 0 <- Integer.parse(w),
-         {h, ""} when h > 0 <- Integer.parse(h) do
-      [" style=\"aspect-ratio: ", Integer.to_string(w), " / ", Integer.to_string(h), "\""]
+    case {pixels(width), pixels(height)} do
+      {w, h} when is_integer(w) and is_integer(h) ->
+        [" style=\"aspect-ratio: ", Integer.to_string(w), " / ", Integer.to_string(h), "\""]
+
+      _ ->
+        []
+    end
+  end
+
+  defp pixels(value) do
+    with size when is_binary(size) <- size(value),
+         {pixels, ""} when pixels > 0 <- Integer.parse(size) do
+      pixels
     else
-      _ -> []
+      _ -> nil
     end
   end
 
@@ -284,6 +282,10 @@ defmodule Feather.StaticSite.Blocks do
 
   defp optional_attribute(_name, nil), do: []
   defp optional_attribute(name, value), do: [" ", name, "=\"", escape(value), "\""]
+
+  defp figcaption(caption) do
+    if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
+  end
 
   defp sanitize(html), do: HTML.sanitize(html)
 

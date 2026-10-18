@@ -535,22 +535,24 @@ defmodule Feather.Content do
     content = merge_blocks(current.content, synced_blocks(scope, nodes), order)
 
     cond do
-      (lock_version || 0) not in base..record.lock_version//1 or
-          current.lock_version != record.lock_version ->
-        {:error, :stale}
+      stale?(current, record, lock_version, base) -> {:error, :stale}
+      content == current.content -> {:ok, put_navigation_flag(current)}
+      true -> save_synced_content(scope, current, content)
+    end
+  end
 
-      content == current.content ->
-        {:ok, put_navigation_flag(current)}
+  defp stale?(current, record, lock_version, base) do
+    (lock_version || 0) not in base..record.lock_version//1 or
+      current.lock_version != record.lock_version
+  end
 
-      true ->
-        {_version_schema, owner_field} = Map.fetch!(@versions, schema)
+  defp save_synced_content(scope, %schema{} = current, content) do
+    {_version_schema, owner_field} = Map.fetch!(@versions, schema)
+    changeset = Ecto.Changeset.change(current, content: content)
 
-        changeset = Ecto.Changeset.change(current, content: content)
-
-        case save_with_images(changeset, scope, owner_field, []) do
-          {:ok, saved} -> {:ok, put_navigation_flag(saved)}
-          error -> stale_error(error)
-        end
+    case save_with_images(changeset, scope, owner_field, []) do
+      {:ok, saved} -> {:ok, put_navigation_flag(saved)}
+      error -> stale_error(error)
     end
   end
 

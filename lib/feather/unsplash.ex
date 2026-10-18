@@ -45,25 +45,26 @@ defmodule Feather.Unsplash do
         {:error, "Unsplash is not configured"}
 
       true ->
-        params = [
+        search_photos(
           query: query,
           page: Keyword.get(opts, :page, 1),
           per_page: Keyword.get(opts, :per_page, 12)
-        ]
+        )
+    end
+  end
 
-        case Req.get(req(), url: "/search/photos", params: params) do
-          {:ok, %Req.Response{status: 200, body: %{"results" => results}}}
-          when is_list(results) ->
-            {:ok, Enum.map(results, &to_photo/1)}
+  defp search_photos(params) do
+    case Req.get(req(), url: "/search/photos", params: params) do
+      {:ok, %Req.Response{status: 200, body: %{"results" => results}}} when is_list(results) ->
+        {:ok, Enum.map(results, &to_photo/1)}
 
-          {:ok, %Req.Response{status: status}} ->
-            Logger.warning("Unsplash search failed with status #{status}")
-            {:error, "Unsplash search failed (status #{status})"}
+      {:ok, %Req.Response{status: status}} ->
+        Logger.warning("Unsplash search failed with status #{status}")
+        {:error, "Unsplash search failed (status #{status})"}
 
-          {:error, exception} ->
-            Logger.warning("Unsplash search failed: #{Exception.message(exception)}")
-            {:error, "Unsplash search failed"}
-        end
+      {:error, exception} ->
+        Logger.warning("Unsplash search failed: #{Exception.message(exception)}")
+        {:error, "Unsplash search failed"}
     end
   end
 

@@ -51,18 +51,13 @@ defmodule Feather.Content.SchemaValidator do
   defp validate(data, schema, path, defs) do
     cond do
       not valid_type?(data, schema) ->
-        expected = schema |> Map.fetch!("type") |> List.wrap() |> Enum.join("/")
-        [error(path, "type", "expected #{expected}, got #{json_type(data)}")]
+        [type_error(data, schema, path)]
 
       Map.has_key?(schema, "const") and data != schema["const"] ->
         [error(path, "const", "has invalid value")]
 
       is_list(schema["enum"]) and data not in schema["enum"] ->
-        [
-          path
-          |> error("enum", "must be one of: #{Enum.join(schema["enum"], ", ")}")
-          |> Map.put(:enum, schema["enum"])
-        ]
+        [enum_error(path, schema["enum"])]
 
       is_map(data) ->
         validate_object(data, schema, path, defs)
@@ -73,6 +68,17 @@ defmodule Feather.Content.SchemaValidator do
       true ->
         []
     end
+  end
+
+  defp type_error(data, schema, path) do
+    expected = schema |> Map.fetch!("type") |> List.wrap() |> Enum.join("/")
+    error(path, "type", "expected #{expected}, got #{json_type(data)}")
+  end
+
+  defp enum_error(path, values) do
+    path
+    |> error("enum", "must be one of: #{Enum.join(values, ", ")}")
+    |> Map.put(:enum, values)
   end
 
   defp resolve(@ref_prefix <> name = ref, defs) do

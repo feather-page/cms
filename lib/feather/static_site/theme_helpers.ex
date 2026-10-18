@@ -66,17 +66,22 @@ defmodule Feather.StaticSite.ThemeHelpers do
   def pagination_page_numbers(_current, total) when total <= 7, do: Enum.to_list(1..total)
 
   def pagination_page_numbers(current, total) do
-    near_end =
-      cond do
-        current <= 3 -> Enum.to_list(1..4)
-        current >= total - 2 -> Enum.to_list((total - 3)..total)
-        true -> []
-      end
-
-    ([1, total, current, current - 1, current + 1] ++ near_end)
+    ([1, total, current, current - 1, current + 1] ++ pages_near_end(current, total))
     |> Enum.filter(&(&1 >= 1 and &1 <= total))
     |> Enum.uniq()
     |> Enum.sort()
+    |> insert_gaps()
+  end
+
+  defp pages_near_end(current, _total) when current <= 3, do: Enum.to_list(1..4)
+
+  defp pages_near_end(current, total) when current >= total - 2,
+    do: Enum.to_list((total - 3)..total)
+
+  defp pages_near_end(_current, _total), do: []
+
+  defp insert_gaps(pages) do
+    pages
     |> Enum.reduce([], fn
       page, [previous | _] = acc when is_integer(previous) and page > previous + 1 ->
         [page, :gap | acc]

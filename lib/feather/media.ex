@@ -130,31 +130,36 @@ defmodule Feather.Media do
     do: create_image_from_upload(site, path, filename, attrs)
 
   def create_image_from_upload(%Site{} = site, path, filename, attrs) do
-    attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
     %File.Stat{size: byte_size} = File.stat!(path)
 
     attrs =
-      Map.merge(attrs, %{"filename" => sanitize_filename(filename), "byte_size" => byte_size})
+      attrs
+      |> Map.new(fn {key, value} -> {to_string(key), value} end)
+      |> Map.merge(%{"filename" => sanitize_filename(filename), "byte_size" => byte_size})
 
     if byte_size > @max_byte_size do
       file_error(site, attrs, "is too big (at most 25 MB)")
     else
-      case Processor.inspect_file(path) do
-        {:ok, info} ->
-          attrs =
-            Map.merge(attrs, %{
-              "content_type" => info.content_type,
-              "width" => info.width,
-              "height" => info.height
-            })
+      create_image_from_file(site, path, attrs)
+    end
+  end
 
-          %Image{site_id: site.id}
-          |> Image.create_changeset(attrs)
-          |> insert_with_files(path, info.extension)
+  defp create_image_from_file(site, path, attrs) do
+    case Processor.inspect_file(path) do
+      {:ok, info} ->
+        attrs =
+          Map.merge(attrs, %{
+            "content_type" => info.content_type,
+            "width" => info.width,
+            "height" => info.height
+          })
 
-        {:error, :not_an_image} ->
-          file_error(site, attrs, "must be an image")
-      end
+        %Image{site_id: site.id}
+        |> Image.create_changeset(attrs)
+        |> insert_with_files(path, info.extension)
+
+      {:error, :not_an_image} ->
+        file_error(site, attrs, "must be an image")
     end
   end
 

@@ -31,21 +31,29 @@ defmodule Feather.StaticSite.Export do
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
     data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.render_diagrams()
+    jobs = [:not_found | document_jobs(data)] ++ asset_jobs(data, Themes.module(site))
+    run_jobs(jobs, data, routes, sink, opts)
+  end
+
+  defp document_jobs(data) do
+    Enum.map(1..Renderer.total_pages(data), &{:home, &1}) ++
+      Enum.map(data.posts, &{:post, &1}) ++
+      Enum.map(data.projects, &{:project, &1}) ++
+      (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1})) ++
+      Enum.map(~w(feed.xml robots.txt sitemap.xml), &{:artifact, &1})
+  end
+
+  defp asset_jobs(data, theme) do
+    fonts = theme.fonts() |> Map.keys() |> Enum.sort()
     images = SiteData.images_in_use(data)
-    theme = Themes.module(site)
 
-    jobs =
-      Enum.map(1..Renderer.total_pages(data), &{:home, &1}) ++
-        Enum.map(data.posts, &{:post, &1}) ++
-        Enum.map(data.projects, &{:project, &1}) ++
-        (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1})) ++
-        Enum.map(~w(feed.xml robots.txt sitemap.xml), &{:artifact, &1}) ++
-        [:not_found] ++
-        (theme.fonts() |> Map.keys() |> Enum.sort() |> Enum.map(&{:font, theme, &1})) ++
-        (data.diagrams |> Map.values() |> Enum.map(&{:diagram, &1})) ++
-        for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
+    Enum.map(fonts, &{:font, theme, &1}) ++
+      Enum.map(Map.values(data.diagrams), &{:diagram, &1}) ++
+      for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
+  end
 
-    # A crashing (linked) task would take the caller down, so failures are raised here instead.
+  # A crashing (linked) task would take the caller down, so failures are raised here instead.
+  defp run_jobs(jobs, data, routes, sink, opts) do
     jobs
     |> Task.async_stream(&safely_run_job(&1, data, routes, sink),
       max_concurrency: Keyword.get(opts, :max_concurrency, System.schedulers_online()),
