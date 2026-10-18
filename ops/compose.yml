@@ -1,13 +1,7 @@
-# Production on the home server: /web/config/featherpage/compose.yml, with
-# the secrets in stack.env next to it (keys in ops/stack.env.example).
+# Secrets go in stack.env next to this file (keys in ops/stack.env.example).
 #
-#   docker compose up -d
-#
-# CI pushes ghcr.io/feather-page/cms:latest on every push to main; Watchtower
-# pulls it at night and recreates the container, which migrates on start.
-#
-# Exactly one featherpage container: SQLite has a single writer, and a second
-# one would also run the daily image cleanup and deploys twice.
+# Run exactly one featherpage container: SQLite has a single writer, and a
+# second one would also run the daily image cleanup and deploys twice.
 
 services:
   featherpage:
@@ -16,12 +10,11 @@ services:
     env_file:
       - stack.env
     volumes:
-      # Database (feather.db), images and build output. Owned by uid 1000.
+      # Database, images and build output, owned by uid 1000.
       - /web/data/featherpage/phoenix:/data
     networks:
-      # Pangolin (newt) reaches the app as featherpage:4000.
+      # The reverse proxy reaches the app as featherpage:4000.
       - frontend
-      - default
 
 networks:
   frontend:
