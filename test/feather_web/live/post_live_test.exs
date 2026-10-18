@@ -203,7 +203,7 @@ defmodule FeatherWeb.PostLiveTest do
       assert_patch(lv, posts_path(site) <> "/#{post.public_id}/edit")
     end
 
-    test "a malformed first sync is refused", %{conn: conn, site: site, scope: scope} do
+    test "a malformed first sync is refused", %{conn: conn, site: site} do
       {:ok, lv, _html} = new_post(conn, site)
 
       lv
