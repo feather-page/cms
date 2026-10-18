@@ -252,7 +252,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   The copyright notice with `{{CurrentYear}}` replaced. Inline HTML is
-  allowed (sanitized like content; Rails inserted it unsanitized).
+  allowed, sanitized like content.
   """
   @spec copyright(String.t() | nil, integer()) :: Phoenix.HTML.safe()
   def copyright(text, year \\ Date.utc_today().year) do
@@ -263,9 +263,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
   end
 
   @doc """
-  Text as HTML paragraphs like Rails' `simple_format`: blank lines separate
-  paragraphs, single line breaks become `<br />`. Inline HTML is
-  sanitized like content.
+  Text as HTML paragraphs: blank lines separate paragraphs, single line
+  breaks become `<br />`. Inline HTML is sanitized like content.
   """
   @spec simple_format(String.t() | nil) :: Phoenix.HTML.safe()
   def simple_format(text) do

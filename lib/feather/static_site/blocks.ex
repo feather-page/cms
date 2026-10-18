@@ -189,7 +189,7 @@ defmodule Feather.StaticSite.Blocks do
   defp list(style, items) when is_list(items) do
     tag = if style == "ol", do: "ol", else: "ul"
 
-    # Nested lists keep the style of the block, like Rails.
+    # Nested lists keep the style of the block.
     items =
       Enum.map(items, fn item ->
         ["<li>", sanitize(item["content"]), list(tag, item["items"] || []), "</li>"]

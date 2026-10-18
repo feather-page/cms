@@ -1,10 +1,9 @@
 defmodule Feather.StaticSite.Themes.FeatherPage do
   @moduledoc """
-  The `feather` theme, ported from the Rails ERB views: a narrow column
-  with a masthead on the home page, a breadcrumb elsewhere and the site's
-  mascots, headings in Nunito, code in JetBrains Mono. Templates in
-  `feather_page/*.html.eex`, stylesheet and fonts in
-  `priv/static_site/themes/feather_page/`.
+  The `feather` theme: a narrow column with a masthead on the home page,
+  a breadcrumb elsewhere and the site's mascots, headings in Nunito, code
+  in JetBrains Mono. Templates in `feather_page/*.html.eex`, stylesheet
+  and fonts in `priv/static_site/themes/feather_page/`.
   """
 
   use Feather.StaticSite.Theme
