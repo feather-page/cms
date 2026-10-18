@@ -29,7 +29,7 @@ defmodule FeatherWeb.ProjectLiveTest do
     refute has_element?(lv, "#project-#{old.public_id}", "Ongoing")
     assert has_element?(lv, "#project-#{new.public_id}", "Paused")
 
-    ids = Regex.scan(~r/id="project-([0-9a-zA-Z]{12})"/, html) |> Enum.map(&List.last/1)
+    ids = Enum.map(Regex.scan(~r/id="project-([0-9a-zA-Z]{12})"/, html), &List.last/1)
     assert ids == [new.public_id, old.public_id]
   end
 
@@ -199,7 +199,7 @@ defmodule FeatherWeb.ProjectLiveTest do
     assert has_element?(lv, "#publication-badge", "Changes not published")
 
     {:ok, _lv, _html} =
-      confirm_click(lv, "#discard-project") |> follow_redirect(conn, edit_path)
+      lv |> confirm_click("#discard-project") |> follow_redirect(conn, edit_path)
 
     assert Content.get_project!(scope, project.public_id).title == "New project"
   end
@@ -212,7 +212,7 @@ defmodule FeatherWeb.ProjectLiveTest do
     {:ok, lv, _html} = live(conn, edit_path)
 
     {:ok, lv, _html} =
-      confirm_click(lv, "#restore-version-1") |> follow_redirect(conn, edit_path)
+      lv |> confirm_click("#restore-version-1") |> follow_redirect(conn, edit_path)
 
     assert has_element?(lv, "#project_title", "Old project")
     assert has_element?(lv, "#version-2", "Published")
@@ -235,8 +235,7 @@ defmodule FeatherWeb.ProjectLiveTest do
              "Removes the project from Feather. It stays on the live site until the next deploy."
 
     {:ok, _lv, html} =
-      confirm_click(lv, "#delete-project")
-      |> follow_redirect(conn, projects_path(site))
+      lv |> confirm_click("#delete-project") |> follow_redirect(conn, projects_path(site))
 
     assert html =~ "The project was successfully deleted."
     assert_raise Ecto.NoResultsError, fn -> Content.get_project!(scope, project.public_id) end
@@ -252,8 +251,7 @@ defmodule FeatherWeb.ProjectLiveTest do
     {:ok, _} = Content.delete_project(scope, project)
 
     {:ok, _lv, html} =
-      confirm_click(lv, "#delete-project")
-      |> follow_redirect(conn, projects_path(site))
+      lv |> confirm_click("#delete-project") |> follow_redirect(conn, projects_path(site))
 
     assert html =~ "This project no longer exists."
   end

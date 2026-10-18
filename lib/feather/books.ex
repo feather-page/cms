@@ -133,8 +133,8 @@ defmodule Feather.Books do
   """
   @spec books_by_public_id(Scope.t(), [String.t()]) :: %{String.t() => Book.t()}
   def books_by_public_id(%Scope{site: %Site{id: site_id}}, public_ids) do
-    Repo.all(from b in Book, where: b.site_id == ^site_id and b.public_id in ^public_ids)
-    |> Map.new(&{&1.public_id, &1})
+    query = from b in Book, where: b.site_id == ^site_id and b.public_id in ^public_ids
+    Map.new(Repo.all(query), &{&1.public_id, &1})
   end
 
   @doc "Preloads the cover image of a book."

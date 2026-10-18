@@ -95,7 +95,7 @@ defmodule Feather.DiagramsTest do
 
       assert {:ok, other_source} = Diagrams.render("a -> c", runner: fake_d2(version))
       assert {:ok, other_version} = Diagrams.render("a -> b", runner: fake_d2(version <> "-1"))
-      assert Enum.uniq([name, other_source, other_version]) |> length() == 3
+      assert length(Enum.uniq([name, other_source, other_version])) == 3
     end
 
     test "returns d2's error without the temporary directory and runs d2 once for it", %{

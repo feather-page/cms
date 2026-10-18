@@ -96,7 +96,7 @@ defmodule Feather.Unsplash do
   end
 
   defp req do
-    Req.new(
+    [
       base_url: @base_url,
       headers: [
         {"authorization", "Client-ID #{access_key()}"},
@@ -105,7 +105,8 @@ defmodule Feather.Unsplash do
       receive_timeout: @timeout,
       connect_options: [timeout: @timeout],
       retry: false
-    )
+    ]
+    |> Req.new()
     |> Req.merge(Application.get_env(:feather, :unsplash_req_options, []))
   end
 

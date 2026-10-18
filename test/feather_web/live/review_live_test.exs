@@ -178,7 +178,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
 
     {:ok, lv, _html} =
-      confirm_click(lv, "#delete-review")
+      lv
+      |> confirm_click("#delete-review")
       |> follow_redirect(conn, ~p"/sites/#{site.public_id}/books")
 
     assert has_element?(lv, "#book-#{book.public_id}")
@@ -233,7 +234,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     assert has_element?(lv, "#status-badge", "Changes not published")
 
     {:ok, lv, _html} =
-      confirm_click(lv, "#discard-review")
+      lv
+      |> confirm_click("#discard-review")
       |> follow_redirect(conn, review_path(site, book, "edit"))
 
     assert has_element?(lv, "#status-badge", "Published")
@@ -253,7 +255,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     {:ok, lv, _html} = live(conn, review_path(site, book, "edit"))
 
     {:ok, lv, _html} =
-      confirm_click(lv, "#restore-version-1")
+      lv
+      |> confirm_click("#restore-version-1")
       |> follow_redirect(conn, review_path(site, book, "edit"))
 
     assert has_element?(lv, "#status-badge", "Changes not published")
@@ -303,7 +306,8 @@ defmodule FeatherWeb.ReviewLiveTest do
     {:ok, _} = Books.delete_review(scope, Books.get_book!(scope, book.public_id))
 
     {:ok, _lv, html} =
-      confirm_click(lv, "#delete-review")
+      lv
+      |> confirm_click("#delete-review")
       |> follow_redirect(conn, ~p"/sites/#{site.public_id}/books")
 
     assert html =~ "This review no longer exists."

@@ -90,10 +90,12 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   defp first_sentence(""), do: nil
 
   defp first_sentence(text) do
-    ~r/(?<=[.!?…])\s+(?=\p{Lu})/u
-    |> Regex.scan(text, return: :index)
-    |> Enum.find(fn [{at, _length}] -> not abbreviation?(binary_part(text, 0, at)) end)
-    |> case do
+    sentence_end =
+      ~r/(?<=[.!?…])\s+(?=\p{Lu})/u
+      |> Regex.scan(text, return: :index)
+      |> Enum.find(fn [{at, _length}] -> not abbreviation?(binary_part(text, 0, at)) end)
+
+    case sentence_end do
       [{at, length}] ->
         {binary_part(text, 0, at), binary_part(text, at + length, byte_size(text) - at - length)}
 

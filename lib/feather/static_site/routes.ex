@@ -127,8 +127,9 @@ defmodule Feather.StaticSite.Routes do
   """
   @spec image_srcset(t(), Image.t()) :: String.t()
   def image_srcset(%__MODULE__{} = routes, %Image{} = image) do
-    Variants.srcset_widths(image.width, image.height)
-    |> Enum.map_join(", ", fn {filename, width} ->
+    widths = Variants.srcset_widths(image.width, image.height)
+
+    Enum.map_join(widths, ", ", fn {filename, width} ->
       "#{image_url(routes, image, filename)} #{width}w"
     end)
   end

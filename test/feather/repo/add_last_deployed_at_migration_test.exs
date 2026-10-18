@@ -34,7 +34,7 @@ defmodule Feather.Repo.AddLastDeployedAtMigrationTest do
     migrate.(:up, @add_last_deployed_at)
     migrate.(:down, @add_last_deployed_at)
 
-    refute "last_deployed_at" in (rows("SELECT name FROM pragma_table_info('deployment_targets')")
-                                  |> List.flatten())
+    columns = List.flatten(rows("SELECT name FROM pragma_table_info('deployment_targets')"))
+    refute "last_deployed_at" in columns
   end
 end

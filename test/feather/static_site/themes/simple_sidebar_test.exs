@@ -751,7 +751,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
     project = doc(sink, "projects/feather-page/index.html")
     assert text(project, "main .project-back a") == "Alle Projekte"
-    assert texts(project, "main dl.facts dt") |> Enum.take(2) == ["Technik", "Status"]
+    assert Enum.take(texts(project, "main dl.facts dt"), 2) == ["Technik", "Status"]
   end
 
   test "scripts and javascript: links from site data are neither run nor linked" do

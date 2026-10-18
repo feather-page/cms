@@ -172,9 +172,10 @@ defmodule Feather.Content.HTML do
         {name |> to_string() |> String.downcase(), IO.iodata_to_binary(value)}
       end)
 
+    candidates = [{"href", attributes["href"]} | editor_attributes(tag, attributes, mode)]
+
     kept =
-      [{"href", attributes["href"]} | editor_attributes(tag, attributes, mode)]
-      |> Enum.flat_map(fn {name, value} ->
+      Enum.flat_map(candidates, fn {name, value} ->
         case keep_attribute(tag, name, value) do
           nil -> []
           kept_value -> [[" ", name, ~s(="), escape_attribute(kept_value), ~s(")]]

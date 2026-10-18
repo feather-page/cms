@@ -45,9 +45,7 @@ defmodule Feather.StaticSite.Export do
         (data.diagrams |> Map.values() |> Enum.map(&{:diagram, &1})) ++
         for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
 
-    # A crashing task would take the caller down with it (tasks are
-    # linked), so failures are caught in the task and raised here, where
-    # the caller can handle them.
+    # A crashing (linked) task would take the caller down, so failures are raised here instead.
     jobs
     |> Task.async_stream(&safely_run_job(&1, data, routes, sink),
       max_concurrency: Keyword.get(opts, :max_concurrency, System.schedulers_online()),
@@ -58,11 +56,11 @@ defmodule Feather.StaticSite.Export do
       {:ok, :ok} -> nil
       {:ok, {:error, message}} -> message
     end)
-    |> case do
-      nil -> :ok
-      message -> raise RuntimeError, "static export failed: " <> message
-    end
+    |> raise_if_failed()
   end
+
+  defp raise_if_failed(nil), do: :ok
+  defp raise_if_failed(message), do: raise(RuntimeError, "static export failed: " <> message)
 
   defp safely_run_job(job, data, routes, sink) do
     run_job(job, data, routes, sink)

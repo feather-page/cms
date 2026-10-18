@@ -65,12 +65,13 @@ defmodule Feather.OpenLibrary do
   defp cover_url(cover_id), do: "#{@covers_url}/b/id/#{cover_id}-M.jpg"
 
   defp req do
-    Req.new(
+    [
       base_url: @base_url,
       receive_timeout: @timeout,
       connect_options: [timeout: @timeout],
       retry: false
-    )
+    ]
+    |> Req.new()
     |> Req.merge(Application.get_env(:feather, :open_library_req_options, []))
   end
 end

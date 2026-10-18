@@ -100,12 +100,13 @@ defmodule Feather.Content do
   """
   @spec paginate_posts(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
   def paginate_posts(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Post,
-      where: p.site_id == ^site_id,
-      order_by: [desc: p.publish_at, asc: p.id],
-      preload: [:header_image, :thumbnail_image]
-    )
-    |> Pagination.paginate(page, out_of_range: :empty)
+    query =
+      from p in Post,
+        where: p.site_id == ^site_id,
+        order_by: [desc: p.publish_at, asc: p.id],
+        preload: [:header_image, :thumbnail_image]
+
+    Pagination.paginate(query, page, out_of_range: :empty)
   end
 
   @doc """
@@ -308,11 +309,8 @@ defmodule Feather.Content do
   defp put_navigation_flags(pages) do
     ids = Enum.map(pages, & &1.id)
 
-    in_navigation =
-      Repo.all(
-        from n in Feather.Sites.NavigationItem, where: n.page_id in ^ids, select: n.page_id
-      )
-      |> MapSet.new()
+    query = from n in Feather.Sites.NavigationItem, where: n.page_id in ^ids, select: n.page_id
+    in_navigation = MapSet.new(Repo.all(query))
 
     Enum.map(pages, &%{&1 | add_to_navigation: MapSet.member?(in_navigation, &1.id)})
   end
@@ -547,10 +545,9 @@ defmodule Feather.Content do
       true ->
         {_version_schema, owner_field} = Map.fetch!(@versions, schema)
 
-        current
-        |> Ecto.Changeset.change(content: content)
-        |> save_with_images(scope, owner_field, [])
-        |> case do
+        changeset = Ecto.Changeset.change(current, content: content)
+
+        case save_with_images(changeset, scope, owner_field, []) do
           {:ok, saved} -> {:ok, put_navigation_flag(saved)}
           error -> stale_error(error)
         end
@@ -854,12 +851,13 @@ defmodule Feather.Content do
   @spec paginate_admin_posts(Scope.t(), pos_integer() | String.t() | nil) ::
           Pagination.t()
   def paginate_admin_posts(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Post,
-      where: p.site_id == ^site_id,
-      order_by: [desc: p.publish_at, desc: p.inserted_at],
-      preload: [:thumbnail_image, :book, :published_version]
-    )
-    |> Pagination.paginate(page)
+    query =
+      from p in Post,
+        where: p.site_id == ^site_id,
+        order_by: [desc: p.publish_at, desc: p.inserted_at],
+        preload: [:thumbnail_image, :book, :published_version]
+
+    Pagination.paginate(query, page)
   end
 
   @doc """
@@ -870,14 +868,15 @@ defmodule Feather.Content do
   @spec paginate_pages_outside_navigation(Scope.t(), pos_integer() | String.t() | nil) ::
           Pagination.t()
   def paginate_pages_outside_navigation(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Page,
-      left_join: n in Feather.Sites.NavigationItem,
-      on: n.page_id == p.id,
-      where: p.site_id == ^site_id and is_nil(n.id),
-      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
-      preload: [:thumbnail_image, :published_version]
-    )
-    |> Pagination.paginate(page)
+    query =
+      from p in Page,
+        left_join: n in Feather.Sites.NavigationItem,
+        on: n.page_id == p.id,
+        where: p.site_id == ^site_id and is_nil(n.id),
+        order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at],
+        preload: [:thumbnail_image, :published_version]
+
+    Pagination.paginate(query, page)
   end
 
   ## Shared

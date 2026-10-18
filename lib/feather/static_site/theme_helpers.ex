@@ -251,8 +251,13 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @spec photo_credit(Image.t()) :: Phoenix.HTML.safe()
   def photo_credit(%Image{} = image) do
     link = fn url, text ->
-      [~s(<a href="), escape(url), ~s(" target="_blank" rel="noopener">), escape(text), "</a>"]
-      |> IO.iodata_to_binary()
+      IO.iodata_to_binary([
+        ~s(<a href="),
+        escape(url),
+        ~s(" target="_blank" rel="noopener">),
+        escape(text),
+        "</a>"
+      ])
     end
 
     raw(
@@ -275,11 +280,11 @@ defmodule Feather.StaticSite.ThemeHelpers do
   # Open Graph wants language_TERRITORY; languages not listed here go without.
   @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP
                  ko_KR nl_NL pl_PL pt_PT ru_RU sv_SE tr_TR uk_UA zh_CN)
-              |> Map.new(&{binary_part(&1, 0, 2), &1})
+  @og_locale_by_language Map.new(@og_locales, &{binary_part(&1, 0, 2), &1})
 
   @doc "The Open Graph locale of a language, or nil."
   @spec og_locale(String.t() | nil) :: String.t() | nil
-  def og_locale(language_code), do: Map.get(@og_locales, language_code)
+  def og_locale(language_code), do: Map.get(@og_locale_by_language, language_code)
 
   @doc "The hue of the site's colours, derived from its emoji (`Feather.StaticSite.Hue`)."
   @spec hue(Feather.Sites.Site.t()) :: integer()

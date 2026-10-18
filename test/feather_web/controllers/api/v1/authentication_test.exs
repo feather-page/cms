@@ -11,14 +11,14 @@ defmodule FeatherWeb.Api.V1.AuthenticationTest do
 
   describe "bearer token" do
     test "is required", %{site: site} do
-      conn = build_conn() |> put_req_header("accept", "application/json")
+      conn = put_req_header(build_conn(), "accept", "application/json")
 
       assert conn |> get(posts_path(site.public_id)) |> json_response(401) ==
                %{"error" => "Unauthorized"}
     end
 
     test "must not be empty", %{site: site} do
-      conn = build_conn() |> authenticate("")
+      conn = authenticate(build_conn(), "")
 
       assert conn |> get(posts_path(site.public_id)) |> json_response(401)
     end
@@ -45,13 +45,13 @@ defmodule FeatherWeb.Api.V1.AuthenticationTest do
       [api_token] = Accounts.list_api_tokens(user)
       :ok = Accounts.delete_api_token(user, api_token.id)
 
-      conn = build_conn() |> authenticate(token)
+      conn = authenticate(build_conn(), token)
 
       assert conn |> get(posts_path(site.public_id)) |> json_response(401)
     end
 
     test "is checked before the site", %{} do
-      conn = build_conn() |> authenticate("invalid")
+      conn = authenticate(build_conn(), "invalid")
 
       assert conn |> get(posts_path("nonexistent")) |> json_response(401)
     end
@@ -91,7 +91,7 @@ defmodule FeatherWeb.Api.V1.AuthenticationTest do
       {:ok, token, _} = Accounts.create_api_token(super_admin_fixture())
       other_site = site_fixture()
 
-      conn = build_conn() |> authenticate(token)
+      conn = authenticate(build_conn(), token)
 
       assert conn |> get(posts_path(other_site.public_id)) |> json_response(200)
     end

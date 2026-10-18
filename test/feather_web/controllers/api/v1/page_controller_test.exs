@@ -19,7 +19,7 @@ defmodule FeatherWeb.Api.V1.PageControllerTest do
 
       body = conn |> get(path) |> assert_openapi_response("get", "/sites/{site_id}/pages", 200)
 
-      assert Enum.map(body["data"], & &1["slug"]) |> hd() == "/"
+      assert hd(Enum.map(body["data"], & &1["slug"])) == "/"
       assert body["data"] |> tl() |> Enum.map(& &1["title"]) == ["Apple", "Zebra"]
       assert body["meta"] == %{"page" => 1, "pages" => 1, "count" => 3}
     end

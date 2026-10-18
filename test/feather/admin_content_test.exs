@@ -39,7 +39,7 @@ defmodule Feather.AdminContentTest do
     in_nav = page_fixture(scope, title: "In nav", add_to_navigation: true)
     other = page_fixture(scope, title: "Other")
 
-    ids = Content.paginate_pages_outside_navigation(scope, 1).entries |> Enum.map(& &1.id)
+    ids = Enum.map(Content.paginate_pages_outside_navigation(scope, 1).entries, & &1.id)
     assert other.id in ids
     refute in_nav.id in ids
     assert hd(Content.paginate_pages_outside_navigation(scope, 1).entries).slug == "/"

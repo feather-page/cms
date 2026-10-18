@@ -34,5 +34,5 @@ defmodule Feather.Accounts.ApiToken do
     {plain_token, changeset}
   end
 
-  def digest(plain_token), do: :crypto.hash(:sha256, plain_token) |> Base.encode16(case: :lower)
+  def digest(plain_token), do: Base.encode16(:crypto.hash(:sha256, plain_token), case: :lower)
 end

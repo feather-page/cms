@@ -131,13 +131,13 @@ defmodule FeatherWeb.CoreComponents do
     |> String.split("@")
     |> hd()
     |> String.split(~r/[^[:alnum:]]+/u, trim: true)
-    |> case do
-      [] -> "?"
-      [word] -> String.first(word)
-      [first, second | _] -> String.first(first) <> String.first(second)
-    end
+    |> initials_of_words()
     |> String.upcase()
   end
+
+  defp initials_of_words([]), do: "?"
+  defp initials_of_words([word]), do: String.first(word)
+  defp initials_of_words([first, second | _]), do: String.first(first) <> String.first(second)
 
   @doc """
   Translates an error message using gettext.

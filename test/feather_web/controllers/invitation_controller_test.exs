@@ -33,7 +33,7 @@ defmodule FeatherWeb.InvitationControllerTest do
     end
 
     test "is shown to the logged-in invitee", %{conn: conn, token: token} do
-      conn = conn |> log_in_user(user_fixture(email: "invitee@example.com"))
+      conn = log_in_user(conn, user_fixture(email: "invitee@example.com"))
       assert html_response(get(conn, ~p"/invitations/#{token}"), 200) =~ "Accept invitation"
     end
 

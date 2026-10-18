@@ -47,7 +47,7 @@ defmodule Feather.Repo.AddLockVersionMigrationTest do
     migrate.(:down, @add_lock_version)
 
     for table <- ~w(posts pages projects) do
-      columns = rows("SELECT name FROM pragma_table_info('#{table}')") |> List.flatten()
+      columns = List.flatten(rows("SELECT name FROM pragma_table_info('#{table}')"))
       refute "lock_version" in columns
     end
   end

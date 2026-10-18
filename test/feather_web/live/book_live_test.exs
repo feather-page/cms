@@ -168,7 +168,7 @@ defmodule FeatherWeb.BookLiveTest do
                "Removes the book from Feather. It stays on the live site until the next deploy."
 
       {:ok, _lv, _html} =
-        confirm_click(lv, "#delete-book") |> follow_redirect(conn, books_path(site))
+        lv |> confirm_click("#delete-book") |> follow_redirect(conn, books_path(site))
 
       assert Books.list_books(scope) == []
     end
@@ -183,7 +183,7 @@ defmodule FeatherWeb.BookLiveTest do
       {:ok, _} = Books.delete_book(scope, book)
 
       {:ok, _lv, html} =
-        confirm_click(lv, "#delete-book") |> follow_redirect(conn, books_path(site))
+        lv |> confirm_click("#delete-book") |> follow_redirect(conn, books_path(site))
 
       assert html =~ "This book no longer exists."
     end

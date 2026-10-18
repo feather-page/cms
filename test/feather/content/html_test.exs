@@ -71,7 +71,7 @@ defmodule Feather.Content.HTMLTest do
     test "drops comments, CDATA markup and processing instructions" do
       assert sanitize("<!-- <script>x</script> --><b>c</b>") == "<b>c</b>"
       assert sanitize("<![CDATA[<script>x</script>]]>t") == "&lt;script&gt;x&lt;/script&gt;t"
-      assert sanitize("<?xml version=\"1.0\"?>t") |> String.ends_with?("t")
+      assert String.ends_with?(sanitize("<?xml version=\"1.0\"?>t"), "t")
     end
 
     test "removes every attribute but href on links" do

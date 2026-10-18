@@ -43,8 +43,7 @@ defmodule Feather.Publishing.DeploymentTarget do
 
   @doc "Changeset replacing the provider config."
   def config_changeset(target, config) do
-    target
-    |> cast(%{config: config}, [:config])
+    cast(target, %{config: config}, [:config])
   end
 
   defp validate(changeset) do

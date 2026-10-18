@@ -102,7 +102,7 @@ defmodule Feather.Repo.CreateVersionsMigrationTest do
 
     assert rows("SELECT name FROM sqlite_master WHERE name LIKE '%_versions'") == []
     assert rows("SELECT count(*) FROM posts") == [[2]]
-    columns = rows("SELECT name FROM pragma_table_info('posts')") |> List.flatten()
+    columns = List.flatten(rows("SELECT name FROM pragma_table_info('posts')"))
     refute "published_version_id" in columns
   end
 
