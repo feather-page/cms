@@ -1,10 +1,3 @@
-# This file is responsible for configuring your application
-# and its dependencies with the aid of the Config module.
-#
-# This configuration file is loaded before any dependency and
-# is restricted to this project.
-
-# General application configuration
 import Config
 
 config :feather, :scopes,
@@ -23,10 +16,9 @@ config :feather, :scopes,
 config :feather,
   ecto_repos: [Feather.Repo],
   generators: [timestamp_type: :utc_datetime_usec, binary_id: true],
-  # Sender of all application emails.
   mail_from: {"Feather", "no-reply@feather.page"},
-  # Unsplash is optional; without a key the image search is disabled.
-  unsplash_access_key: nil
+  unsplash_access_key: nil,
+  hardcover_token: nil
 
 # SQLite: take the write lock when a transaction starts instead of
 # upgrading later (avoids SQLITE_BUSY on upgrade), WAL for concurrent
@@ -36,7 +28,6 @@ config :feather, Feather.Repo,
   journal_mode: :wal,
   busy_timeout: 5_000
 
-# Configure the endpoint
 config :feather, FeatherWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
@@ -47,28 +38,16 @@ config :feather, FeatherWeb.Endpoint,
   pubsub_server: Feather.PubSub,
   live_view: [signing_salt: "3Bym1Y4h"]
 
-# Configure LiveView
 config :phoenix_live_view,
-  # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
   root_tag_attribute: "phx-r"
 
-# The admin's components (setzkasten): the app's Lucide icons, its plush
-# images and its Gettext error translation.
 config :setzkasten,
   icons: FeatherWeb.Icons,
   plush: FeatherWeb.Plush,
   translate_error: {FeatherWeb.CoreComponents, :translate_error}
 
-# Configure the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
 config :feather, Feather.Mailer, adapter: Swoosh.Adapters.Local
 
-# Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
   feather: [
@@ -78,7 +57,6 @@ config :esbuild,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
-# Configure tailwind (the version is required)
 config :tailwind,
   version: "4.3.3",
   feather: [
@@ -90,12 +68,10 @@ config :tailwind,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
-# Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
 # Magic link, email confirmation and invitation tokens are path parameters:

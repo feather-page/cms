@@ -84,9 +84,8 @@ defmodule Feather.Books do
   defp escape_like(text), do: String.replace(text, ~r/([\\%_])/, "\\\\\\1")
 
   @doc """
-  Downloads a cover image (e.g. from OpenLibrary) and makes it the book's
-  cover, like Rails' `RemoteImageCreator`. A previous cover image is
-  deleted.
+  Downloads a cover image (e.g. of a book search result) and makes it the
+  book's cover. A previous cover image is deleted.
   """
   @spec attach_cover_from_url(Scope.t(), Book.t(), String.t()) ::
           {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -96,15 +95,36 @@ defmodule Feather.Books do
         url
       ) do
     with {:ok, image} <- Media.create_image_from_url(scope, url) do
-      case update_book(scope, book, %{cover_image_id: image.id}) do
-        {:ok, updated} ->
-          delete_previous_cover(book.cover_image_id, image.id)
-          {:ok, updated}
+      attach_cover(scope, book, image)
+    end
+  end
 
-        {:error, changeset} ->
-          Media.delete_image(image)
-          {:error, changeset}
-      end
+  @doc """
+  Makes an uploaded file the book's cover. A previous cover image is
+  deleted.
+  """
+  @spec attach_cover_from_upload(Scope.t(), Book.t(), Path.t(), String.t()) ::
+          {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
+  def attach_cover_from_upload(
+        %Scope{site: %Site{id: site_id}} = scope,
+        %Book{site_id: site_id} = book,
+        path,
+        filename
+      ) do
+    with {:ok, image} <- Media.create_image_from_upload(scope, path, filename) do
+      attach_cover(scope, book, image)
+    end
+  end
+
+  defp attach_cover(scope, book, image) do
+    case update_book(scope, book, %{cover_image_id: image.id}) do
+      {:ok, updated} ->
+        delete_previous_cover(book.cover_image_id, image.id)
+        {:ok, updated}
+
+      {:error, changeset} ->
+        Media.delete_image(image)
+        {:error, changeset}
     end
   end
 
