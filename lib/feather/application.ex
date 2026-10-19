@@ -4,6 +4,7 @@ defmodule Feather.Application do
   use Application
 
   alias Feather.Publishing.Deploy
+  alias Feather.StaticSite.ImageVariants
 
   require Logger
 
@@ -27,7 +28,19 @@ defmodule Feather.Application do
 
     with {:ok, pid} <- Supervisor.start_link(children, opts) do
       release_stale_deploy_locks()
+      start_image_variant_backfill()
       {:ok, pid}
+    end
+  end
+
+  # bin/server migrates before it starts the app, so the images' records are current.
+  defp start_image_variant_backfill do
+    if Application.get_env(:feather, :backfill_image_variants, true) do
+      Task.Supervisor.start_child(Feather.TaskSupervisor, fn ->
+        Logger.info("Bringing image variants in line with the sites' themes")
+        ImageVariants.backfill()
+        Logger.info("Image variants are in line")
+      end)
     end
   end
 

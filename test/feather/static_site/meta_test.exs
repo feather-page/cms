@@ -105,7 +105,7 @@ defmodule Feather.StaticSite.MetaTest do
     assert meta(post, "og:url") == "https://example.com/hello/"
 
     assert meta(post, "og:image") ==
-             "https://example.com/images/#{c.header.public_id}/desktop_x1.jpg"
+             "https://example.com/images/#{c.header.public_id}/1200.jpg"
 
     assert meta(post, "twitter:card") == "summary_large_image"
   end
@@ -114,7 +114,7 @@ defmodule Feather.StaticSite.MetaTest do
     post = doc(c.sink, "pictures/index.html")
 
     assert meta(post, "og:image") ==
-             "https://example.com/images/#{c.picture.public_id}/desktop_x1.jpg"
+             "https://example.com/images/#{c.picture.public_id}/1200.jpg"
   end
 
   test "an untitled post is titled by its first words", c do

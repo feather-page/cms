@@ -109,6 +109,7 @@ defmodule FeatherWeb.PageLive.Form do
             module={HeaderImagePicker}
             id="page-header-image-picker"
             current_scope={@current_scope}
+            roles={%{cover: page_header_role(@page), thumbnail: nil}}
             header_image={@header_image}
             thumbnail_image={@thumbnail_image}
             emoji={@form[:emoji].value}
@@ -208,6 +209,10 @@ defmodule FeatherWeb.PageLive.Form do
 
   @impl ContentForm
   def assign_record(socket, page), do: assign(socket, :page, page)
+
+  # Exported pages show no thumbnail, so it gets no variants beyond the preview.
+  defp page_header_role(page),
+    do: if(Page.homepage?(page), do: :homepage_header, else: :header)
 
   @impl ContentForm
   def noun, do: "Page"

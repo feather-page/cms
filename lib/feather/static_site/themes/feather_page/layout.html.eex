@@ -23,9 +23,7 @@
       <%= cond do %>
       <% match?(%Image{}, @header_image) -> %>
       <div class="header-image-container">
-        <img src="<%= Routes.image_url(@routes, @header_image, :desktop_x1_webp) %>"
-             srcset="<%= Routes.image_srcset(@routes, @header_image) %>"
-             sizes="(min-width: 38rem) 38rem, 100vw"<%= dimensions(@header_image) %>
+        <img<%= image_sources(@routes, @header_image, variants(header_role(assigns)), "(min-width: 38rem) 38rem, 100vw") %><%= dimensions(@header_image) %>
              fetchpriority="high"
              alt=""
              class="header-image">
@@ -45,7 +43,7 @@
       <div class="title-row">
         <h1><%= @page_title %></h1>
         <span class="title-mascot">
-          <%= mascot(@routes, @title_mascot, "title-mascot-image", "10rem", lazy: false) %>
+          <%= mascot(@routes, @title_mascot, :projects_mascot, "title-mascot-image", "#{contained_width(@title_mascot, 160, 152)}px", lazy: false) %>
           <%= if @page_emoji && !match?(%Image{}, @header_image) do %><span class="title-mascot-badge" aria-hidden="true"><%= @page_emoji %></span><% end %>
         </span>
       </div>
@@ -60,7 +58,7 @@
     <footer class="site-footer">
       <%= cond do %>
       <% match?(%Image{}, @site.footer_mascot_image) -> %>
-      <%= mascot(@routes, @site.footer_mascot_image, "footer-mascot", "(min-width: 75rem) 16.5rem, (min-width: 30rem) calc(9rem + 10vw), 12rem") %>
+      <%= mascot(@routes, @site.footer_mascot_image, :footer_mascot, "footer-mascot", footer_mascot_sizes(@site.footer_mascot_image)) %>
       <% present?(@site.emoji) -> %>
       <span class="footer-emoji" aria-hidden="true"><%= @site.emoji %></span>
       <% true -> %>

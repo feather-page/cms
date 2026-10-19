@@ -56,30 +56,38 @@ defmodule Feather.Media.Processor do
   end
 
   @doc """
-  Writes all variants of `source` into `dir`, named as in
+  Writes the variants of `source` into `dir`, named as in
   `Feather.Media.Variants`.
   """
-  @spec write_variants(Path.t(), Path.t()) :: :ok | {:error, term()}
-  def write_variants(source, dir) do
+  @spec write_variants(Path.t(), Path.t(), [Variants.variant()]) :: :ok | {:error, term()}
+  def write_variants(source, dir, variants) do
     File.mkdir_p!(dir)
 
-    Enum.reduce_while(Variants.all(), :ok, fn variant, :ok ->
+    Enum.reduce_while(variants, :ok, fn variant, :ok ->
       case write_variant(source, Path.join(dir, variant.filename), variant) do
         :ok -> {:cont, :ok}
-        {:error, reason} -> {:halt, {:error, {variant.name, reason}}}
+        {:error, reason} -> {:halt, {:error, {variant.filename, reason}}}
       end
     end)
   end
 
   @doc """
   Writes one variant: fit within size×size without upscaling, EXIF
-  orientation applied, metadata stripped.
+  orientation applied, metadata stripped. The file appears complete or not
+  at all, so a concurrent export never copies half of it.
   """
   @spec write_variant(Path.t(), Path.t(), Variants.variant()) :: :ok | {:error, term()}
   def write_variant(source, target, %{size: size, format: format}) do
-    with {:ok, thumbnail} <-
-           Operation.thumbnail(source, size, height: size, size: :VIPS_SIZE_DOWN) do
-      save(thumbnail, target, format)
+    partial = "#{target}.#{System.unique_integer([:positive])}.part"
+
+    try do
+      with {:ok, thumbnail} <-
+             Operation.thumbnail(source, size, height: size, size: :VIPS_SIZE_DOWN),
+           :ok <- save(thumbnail, partial, format) do
+        File.rename(partial, target)
+      end
+    after
+      File.rm(partial)
     end
   end
 

@@ -237,6 +237,7 @@ defmodule FeatherWeb.ProjectLive.Form do
             module={HeaderImagePicker}
             id="project-header-image-picker"
             current_scope={@current_scope}
+            roles={%{cover: :project_header, thumbnail: :project_thumbnail}}
             header_image={@header_image}
             thumbnail_image={@thumbnail_image}
             emoji={@form[:emoji].value}

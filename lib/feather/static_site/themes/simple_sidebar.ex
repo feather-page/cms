@@ -70,6 +70,23 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
         "(min-width: 52rem) calc(89.1vw - 15rem), calc(100vw - 2rem)"
 
   @impl true
+  def book_cover_sizes, do: "28px"
+
+  # A 576 px column, small boxes at 1×, 2× and 3×; the inventory is on issue #453.
+  @impl true
+  def image_variants do
+    %{
+      content: [640, 960, 1280, 1600],
+      header: [640, 960, 1280, 1600],
+      thumbnail: [640, 960, 1280, 1600],
+      project_header: [240, 480, 640, 960, 1280],
+      project_thumbnail: [240, 480, 640, 960, 1280],
+      book_cover: [64, 128],
+      portrait: [120, 240, 360]
+    }
+  end
+
+  @impl true
   def site_image_fields, do: [:portrait_image_id]
 
   defp font_url(routes), do: Routes.font_url(routes, @font_file)
@@ -84,23 +101,27 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
 
   defp homepage_content?(_data), do: false
 
+  defp variants(role), do: Map.fetch!(image_variants(), role)
+
+  # Square boxes, contained: 108 px in the panel, 60 px in the compact header, 48 px in the footer.
   defp portrait(
          routes,
          %Image{} = image,
          class \\ "portrait",
-         sizes \\ "(max-width: 52rem) 60px, 108px"
+         boxes \\ [{"(max-width: 52rem) ", 60}, {"", 108}]
        ) do
+    sizes =
+      Enum.map_join(boxes, ", ", fn {query, box} ->
+        "#{query}#{contained_width(image, box, box)}px"
+      end)
+
     {:safe,
      [
        ~s(<img class="),
        class,
-       ~s(" src="),
-       escape(Routes.image_url(routes, image, :mobile_x1_webp)),
-       ~s(" srcset="),
-       escape(Routes.image_srcset(routes, image)),
-       ~s(" sizes="),
-       sizes,
-       ~s(" width="96" height="96" alt="">)
+       ~s("),
+       routes |> image_sources(image, variants(:portrait), sizes) |> elem(1),
+       ~s( width="96" height="96" alt="">)
      ]}
   end
 
@@ -204,12 +225,12 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   defp split_projects(projects),
     do: projects |> sort_projects() |> Enum.split_with(&(&1.project_type != "professional"))
 
-  defp list_picture(%{thumbnail_image: %Image{} = image}), do: image
-  defp list_picture(%{header_image: %Image{} = image}), do: image
-  defp list_picture(_project), do: nil
+  defp list_picture(%{thumbnail_image: %Image{} = image}), do: {image, :project_thumbnail}
+  defp list_picture(%{header_image: %Image{} = image}), do: {image, :project_header}
+  defp list_picture(_project), do: {nil, nil}
 
-  defp page_picture(%{header_image: %Image{} = image}), do: image
-  defp page_picture(%{thumbnail_image: %Image{} = image}), do: image
+  defp page_picture(%{header_image: %Image{} = image}), do: {image, :project_header}
+  defp page_picture(%{thumbnail_image: %Image{} = image}), do: {image, :project_thumbnail}
   defp page_picture(_project), do: nil
 
   defp project_stack(project), do: project |> Content.tag_list() |> Enum.join(", ")

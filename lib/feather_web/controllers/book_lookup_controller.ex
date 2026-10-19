@@ -21,7 +21,7 @@ defmodule FeatherWeb.BookLookupController do
           public_id: book.public_id,
           title: book.title,
           author: book.author,
-          cover_url: SiteComponents.image_path(scope.site, book.cover_image, "mobile_x1.webp"),
+          cover_url: SiteComponents.image_path(scope.site, book.cover_image, :preview),
           emoji: book.emoji
         }
       end)

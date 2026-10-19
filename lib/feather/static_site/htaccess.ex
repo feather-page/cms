@@ -1,8 +1,11 @@
 defmodule Feather.StaticSite.Htaccess do
   @moduledoc """
   The `.htaccess` the export writes for Apache hosts: the 404 page, the
-  precompressed files and a long cache for `style.css`. Rules sit in module
-  guards, so a host without a module serves plain files instead of failing.
+  precompressed files and a year-long immutable cache for `style.css`, the
+  image variants and the fonts: their URLs change whenever their content
+  does (a hash in the query, or a variant's file name that always means
+  the same file). Rules sit in module guards, so a host without a module
+  serves plain files instead of failing.
   """
 
   alias Feather.StaticSite.{Precompress, Routes}

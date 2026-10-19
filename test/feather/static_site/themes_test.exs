@@ -29,6 +29,8 @@ defmodule Feather.StaticSite.ThemesTest do
           do: assert(function_exported?(theme, name, arity), "#{key}: #{name}/#{arity}")
 
       assert theme.fonts() != %{}
+      assert [_ | _] = theme.image_variants()[:content], "#{key}: content variants"
+      assert [_ | _] = theme.image_variants()[:book_cover], "#{key}: book cover variants"
 
       for name <- Map.keys(theme.fonts()),
           do: assert(File.regular?(theme.font_path(name)), "#{key}: #{name}")

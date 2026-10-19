@@ -283,7 +283,7 @@ defmodule FeatherWeb.SiteLive.Settings do
       >
         <img
           :if={@image}
-          src={image_path(@site, @image, "mobile_x1.webp")}
+          src={image_path(@site, @image, :preview)}
           alt=""
           class="max-h-full max-w-full object-contain"
         />

@@ -59,14 +59,19 @@ defmodule Feather.MediaFixtures do
   end
 
   @doc """
-  Creates an image in the scope's site from a generated file.
+  Creates an image in the scope's site from a generated file. `:width`,
+  `:height` and `:variants` (see `Feather.Media.create_image_from_upload/5`)
+  are taken from `attrs`.
   """
   def image_fixture(scope, attrs \\ %{}) do
     {width, attrs} = Map.pop(Map.new(attrs), :width, 64)
     {height, attrs} = Map.pop(attrs, :height, 48)
+    {variants, attrs} = Map.pop(attrs, :variants, [])
     path = test_image_path(width, height)
 
-    {:ok, image} = Feather.Media.create_image_from_upload(scope, path, "photo.png", attrs)
+    {:ok, image} =
+      Feather.Media.create_image_from_upload(scope, path, "photo.png", attrs, variants: variants)
+
     File.rm(path)
     image
   end

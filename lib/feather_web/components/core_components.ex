@@ -70,7 +70,7 @@ defmodule FeatherWeb.CoreComponents do
   ## Examples
 
       <.tile emoji={post.emoji} />
-      <.tile image={image_path(site, post.thumbnail_image, "mobile_x1.webp")} />
+      <.tile image={image_path(site, post.thumbnail_image, :preview)} />
       <.tile icon="file-text" />
   """
   attr :emoji, :string, default: nil

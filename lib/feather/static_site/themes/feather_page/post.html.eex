@@ -7,7 +7,7 @@
 <nav class="post-nav" aria-label="<%= gettext("More posts") %>">
   <%= cond do %>
   <% match?(%Image{}, @site.post_end_mascot_image) -> %>
-  <%= mascot(@routes, @site.post_end_mascot_image, "post-nav-mascot", "9rem") %>
+  <%= mascot(@routes, @site.post_end_mascot_image, :post_end_mascot, "post-nav-mascot", nav_mascot_sizes(@site.post_end_mascot_image)) %>
   <% present?(@site.emoji) -> %>
   <span class="post-nav-seal" aria-hidden="true"><%= @site.emoji %></span>
   <% true -> %>

@@ -1,7 +1,7 @@
 <figure class="book-card book-card--detail">
   <%= cond do %>
   <% match?(%Image{}, @book.cover_image) -> %>
-  <img src="<%= Routes.image_url(@routes, @book.cover_image, :mobile_x1_webp) %>" alt="" class="book-cover"<%= dimensions(@book.cover_image) %> loading="lazy">
+  <img<%= image_sources(@routes, @book.cover_image, variants(:book_cover), book_cover_sizes()) %> alt="" class="book-cover"<%= dimensions(@book.cover_image) %> loading="lazy">
   <% present?(@book.emoji) -> %>
   <span class="book-emoji"><%= @book.emoji %></span>
   <% true -> %>

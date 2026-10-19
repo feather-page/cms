@@ -165,6 +165,33 @@ defmodule FeatherWeb.HeaderImagePickerTest do
     assert [%{thumbnail_image_id: nil}] = Content.list_posts(scope)
   end
 
+  test "an upload gets the variants of its slot's role, the cover those of the sharing image", %{
+    conn: conn,
+    site: site,
+    scope: scope
+  } do
+    {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/projects/new")
+    picker = "#project-header-image-picker"
+    content = File.read!(test_image_path(2000, 1500))
+
+    for {target, name} <- [{"cover", "cover.png"}, {"thumbnail", "thumb.png"}] do
+      lv |> element("#{picker}-choose-#{target}") |> render_click()
+
+      lv
+      |> file_input("#{picker}-upload-form", :image, [
+        %{name: name, content: content, type: "image/png"}
+      ])
+      |> render_upload(name)
+    end
+
+    images = Map.new(Media.list_images(scope), &{&1.filename, &1})
+
+    assert Media.variant_filenames(images["cover.png"]) ==
+             ~w(1200.jpg 1280.webp 480.webp 640.webp 960.webp)
+
+    assert Media.variant_filenames(images["thumb.png"]) == ~w(128.webp 480.webp)
+  end
+
   test "shows an error for files that are not images", %{conn: conn, site: site} do
     {:ok, lv, _html} = new_post(conn, site)
     lv |> element("#{@picker}-choose-cover") |> render_click()

@@ -45,7 +45,7 @@ defmodule FeatherWeb.BookLookupControllerTest do
     book = book_fixture(scope, cover_image_id: cover.id)
 
     assert [%{"cover_url" => url}] = lookup(conn, site)
-    assert url == "/sites/#{site.public_id}/images/#{cover.public_id}?variant=mobile_x1.webp"
+    assert url == "/sites/#{site.public_id}/images/#{cover.public_id}?variant=480.webp"
     assert book.cover_image_id == cover.id
   end
 

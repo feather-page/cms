@@ -2,8 +2,9 @@ defmodule Feather.StaticSite.RoutesTest do
   use Feather.DataCase
 
   alias Feather.Content.{Page, Post, Project}
-  alias Feather.Media.Image
+  alias Feather.Media.{Image, Variants}
   alias Feather.StaticSite.Routes
+  alias Feather.StaticSite.Themes.FeatherPage
 
   setup do
     scope = site_scope_fixture()
@@ -41,18 +42,27 @@ defmodule Feather.StaticSite.RoutesTest do
                "projects/my-project/index.html"
     end
 
-    test "images by variant name or file name, unknown variants raise", %{routes: r} do
+    test "images by variant or file name, unknown variants raise", %{routes: r} do
       image = %Image{public_id: "img123456789"}
-      assert Routes.image_url(r, image, :mobile_x1_webp) == "/images/img123456789/mobile_x1.webp"
-      assert Routes.image_path(r, image, "desktop_x1.jpg") == "images/img123456789/desktop_x1.jpg"
+      assert Routes.image_url(r, image, Variants.webp(640)) == "/images/img123456789/640.webp"
+      assert Routes.image_path(r, image, "1200.jpg") == "images/img123456789/1200.jpg"
 
-      assert Routes.image_srcset(r, image) =~
-               "/images/img123456789/mobile_x1.webp 430w, /images/img123456789/mobile_x2.webp 860w"
+      assert Routes.image_srcset(r, image, [960, 640]) ==
+               "/images/img123456789/640.webp 640w, /images/img123456789/960.webp 960w"
 
-      assert Routes.image_srcset(r, %{image | width: 606, height: 341}) ==
-               "/images/img123456789/mobile_x1.webp 430w, /images/img123456789/mobile_x2.webp 606w"
+      assert Routes.image_srcset(r, %{image | width: 800, height: 450}, [640, 960, 1280]) ==
+               "/images/img123456789/640.webp 640w, /images/img123456789/960.webp 800w"
 
-      assert_raise ArgumentError, fn -> Routes.image_url(r, image, :desktop_x1_png) end
+      assert_raise ArgumentError, fn -> Routes.image_url(r, image, "640.png") end
+    end
+
+    test "font URLs carry a hash of the font's content, output paths do not", %{routes: r} do
+      font = "nunito-latin-700.woff2"
+      content = File.read!(FeatherPage.font_path(font))
+      hash = :sha256 |> :crypto.hash(content) |> Base.encode16(case: :lower) |> binary_part(0, 12)
+
+      assert Routes.font_url(r, font) == "/fonts/#{font}?v=#{hash}"
+      assert Routes.font_path(r, font) == "fonts/#{font}"
     end
 
     test "artifacts, unknown ones raise", %{routes: r} do
@@ -118,14 +128,15 @@ defmodule Feather.StaticSite.RoutesTest do
     test "image variants of the site only", %{routes: r, scope: scope} do
       image = image_fixture(scope)
 
-      assert {:image, found, %{name: :mobile_x2_webp}} =
-               Routes.resolve(r, "images/#{image.public_id}/mobile_x2.webp")
+      assert {:image, found, %{filename: "960.webp", size: 960}} =
+               Routes.resolve(r, "images/#{image.public_id}/960.webp")
 
       assert found.id == image.id
-      assert Routes.resolve(r, "images/#{image.public_id}/mobile_x2.png") == nil
+      assert Routes.resolve(r, "images/#{image.public_id}/960.png") == nil
+      assert Routes.resolve(r, "images/#{image.public_id}/mobile_x1.webp") == nil
 
       other = image_fixture(site_scope_fixture())
-      assert Routes.resolve(r, "images/#{other.public_id}/mobile_x1.webp") == nil
+      assert Routes.resolve(r, "images/#{other.public_id}/480.webp") == nil
     end
 
     test "projects by slug", %{routes: r, scope: scope} do

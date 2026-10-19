@@ -127,7 +127,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
   end
 
   defp put_portrait(scope) do
-    path = test_image_path(120, 120)
+    path = test_image_path(400, 400)
     {:ok, _} = Sites.put_portrait(scope, path, "me.png")
     File.rm(path)
     %{scope | site: Repo.reload!(scope.site)}
@@ -140,6 +140,11 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
   end
 
   defp doc(sink, path), do: sink |> RecordingSink.get(path) |> LazyHTML.from_document()
+
+  defp portrait_public_id(scope),
+    do: Repo.preload(Repo.reload!(scope.site), :portrait_image).portrait_image.public_id
+
+  defp font_url(scope, file), do: Routes.font_url(Routes.new(scope.site), file)
 
   defp find(doc, selector), do: LazyHTML.query(doc, selector)
 
@@ -198,7 +203,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       refute present?(home, "header.sidebar--bar")
 
       assert attr(home, "header.sidebar img.portrait", "src") ==
-               ["/images/#{portrait.public_id}/mobile_x1.webp"]
+               ["/images/#{portrait.public_id}/120.webp"]
 
       assert text(home, "header.sidebar .bio") == "I build web apps. Mostly with Elixir."
       assert text(home, "footer.site-footer .bio") == "I build web apps. Mostly with Elixir."
@@ -210,11 +215,11 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
         assert present?(page, "header.sidebar.sidebar--bar"), path
 
         assert attr(page, "header.sidebar img.portrait", "src") ==
-                 ["/images/#{portrait.public_id}/mobile_x1.webp"],
+                 ["/images/#{portrait.public_id}/120.webp"],
                path
 
         assert attr(page, "footer.site-footer .footer-bio img.footer-portrait", "src") ==
-                 ["/images/#{portrait.public_id}/mobile_x1.webp"],
+                 ["/images/#{portrait.public_id}/120.webp"],
                path
 
         assert text(page, "header.sidebar .bio") == "I build web apps. Mostly with Elixir.", path
@@ -225,7 +230,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     end
 
     test "the portrait is square and decorative, the site name a heading only at home", %{
-      sink: sink
+      sink: sink,
+      scope: scope
     } do
       home = doc(sink, "index.html")
       [portrait] = home |> find("img.portrait") |> Enum.to_list()
@@ -233,7 +239,14 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert LazyHTML.attribute(portrait, "width") == ["96"]
       assert LazyHTML.attribute(portrait, "height") == ["96"]
       assert LazyHTML.attribute(portrait, "alt") == [""]
-      assert [_] = LazyHTML.attribute(portrait, "srcset")
+
+      assert LazyHTML.attribute(portrait, "srcset") == [
+               Enum.map_join([120, 240, 360], ", ", fn size ->
+                 "/images/#{portrait_public_id(scope)}/#{size}.webp #{size}w"
+               end)
+             ]
+
+      assert LazyHTML.attribute(portrait, "sizes") == ["(max-width: 52rem) 60px, 108px"]
       refute present?(home, ".portrait--emoji")
 
       assert text(home, "h1.site-name") == "Robert Curth"
@@ -589,7 +602,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
       wide = image_fixture(scope, %{width: 300, height: 100})
       tall = image_fixture(scope, %{width: 100, height: 300})
-      header = image_fixture(scope, %{width: 160, height: 100})
+      header = image_fixture(scope, %{width: 400, height: 250})
 
       project_fixture(scope, %{
         title: "ZiWoAS",
@@ -673,12 +686,20 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
                ["https://www.example.com/code/"]
 
       assert attr(projects, "main li.project .project-shot img", "src") ==
-               Enum.map([wide, header, tall], &"/images/#{&1.public_id}/mobile_x1.webp")
+               Enum.map([wide, header, tall], &"/images/#{&1.public_id}/240.webp")
 
       assert attr(projects, "main li.project .project-shot img", "loading") ==
                ["lazy", "lazy", "lazy"]
 
-      assert [_, _, _] = attr(projects, "main li.project .project-shot img", "srcset")
+      assert attr(projects, "main li.project .project-shot img", "srcset") ==
+               Enum.map([{wide, 240, 300}, {header, 240, 400}, {tall, 80, 100}], fn {image, w1,
+                                                                                     w2} ->
+                 "/images/#{image.public_id}/240.webp #{w1}w, /images/#{image.public_id}/480.webp #{w2}w"
+               end)
+
+      assert attr(projects, "main li.project .project-shot img", "sizes") ==
+               List.duplicate("(min-width: 52rem) 200px, 112px", 3)
+
       assert projects |> find("main li.project .project-title + .meta") |> Enum.count() == 4
       assert projects |> find("main li.project--text") |> Enum.count() == 1
       refute present?(projects, "main li.project--text .project-shot")
@@ -720,7 +741,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert text(project, "main .lead") == "My own home automation."
 
       assert attr(project, "main figure.project-image img", "src") ==
-               ["/images/#{header.public_id}/desktop_x1.webp"]
+               ["/images/#{header.public_id}/240.webp"]
 
       assert texts(project, "main .content p") == ["Solar, plugs and lamps."]
       assert attr(project, "main .project-back a", "href") == ["/work/"]
@@ -731,7 +752,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       project = doc(sink, "projects/trmnl/index.html")
 
       assert attr(project, "main figure.project-image img", "src") ==
-               ["/images/#{tall.public_id}/desktop_x1.webp"]
+               ["/images/#{tall.public_id}/240.webp"]
 
       refute present?(doc(sink, "projects/feather-page/index.html"), "main figure")
     end
@@ -849,7 +870,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
         "(min-width: 52rem) calc(89.1vw - 15rem), calc(100vw - 2rem)"
 
     for path <- ~w(photos/index.html shot/index.html) do
-      assert attr(doc(sink, path), "figure picture source", "sizes") == [sizes], path
+      assert attr(doc(sink, path), "figure img", "sizes") == [sizes], path
     end
 
     assert RecordingSink.get(sink, "feed.xml") =~ "sizes=&quot;#{sizes}&quot;"
@@ -879,27 +900,33 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       end
     end
 
-    test "the stylesheet declares the variable font against the site root", %{sink: sink} do
+    test "the stylesheet declares the variable font against the site root, with its hash",
+         %{sink: sink, scope: scope} do
       css = RecordingSink.get(sink, "style.css")
 
       assert css =~ ~s[font-family: "Schibsted Grotesk"]
       assert css =~ "font-weight: 400 700"
-      assert css =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
+
+      assert css =~
+               ~s[url("#{font_url(scope, "schibsted-grotesk-latin-wght.woff2")}") format("woff2")]
 
       for {file, weight, style} <- @mono_faces do
         assert css =~
                  ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
-                   ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
+                   ~s[font-weight: #{weight}; font-display: swap; src: url("#{font_url(scope, file)}") format("woff2"); }]
       end
 
       assert css =~ ~s[--mono: "JetBrains Mono", ui-monospace]
     end
 
-    test "every page preloads the variable font", %{sink: sink} do
+    test "every page preloads the variable font by its hashed URL", %{sink: sink, scope: scope} do
       html = RecordingSink.get(sink, "about/index.html")
+      url = font_url(scope, "schibsted-grotesk-latin-wght.woff2")
+
+      assert url =~ ~r"\A/fonts/schibsted-grotesk-latin-wght\.woff2\?v=[0-9a-f]{12}\z"
 
       assert attr(LazyHTML.from_document(html), ~s(link[rel="preload"][as="font"]), "href") ==
-               ["/fonts/schibsted-grotesk-latin-wght.woff2"]
+               [url]
     end
   end
 end

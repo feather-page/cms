@@ -4,7 +4,7 @@
   <% :article -> %>
   <h2 class="entry-title"><a href="<%= Routes.post_url(@routes, @post) %>"><%= @post.title %></a></h2>
   <%= if match?(%Image{}, @post.thumbnail_image) do %>
-  <a class="entry-thumbnail" href="<%= Routes.post_url(@routes, @post) %>" tabindex="-1" aria-hidden="true"><img src="<%= Routes.image_url(@routes, @post.thumbnail_image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, @post.thumbnail_image) %>" sizes="(min-width: 52rem) 36rem, calc(100vw - 2rem)"<%= dimensions(@post.thumbnail_image) %> alt="" loading="lazy"></a>
+  <a class="entry-thumbnail" href="<%= Routes.post_url(@routes, @post) %>" tabindex="-1" aria-hidden="true"><img<%= image_sources(@routes, @post.thumbnail_image, variants(:thumbnail), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(@post.thumbnail_image) %> alt="" loading="lazy"></a>
   <% end %>
   <%= if Content.content_excerpt(@post) != "" do %>
   <p class="excerpt"><%= Content.content_excerpt(@post) %></p>

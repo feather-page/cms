@@ -27,6 +27,7 @@ defmodule FeatherWeb.SiteComponents do
   use Setzkasten
 
   alias Feather.Content.Blocks
+  alias Feather.Media.Variants
   alias Feather.Publishing
   alias FeatherWeb.Layouts
   alias Phoenix.LiveView.JS
@@ -433,12 +434,18 @@ defmodule FeatherWeb.SiteComponents do
   @doc """
   The admin URL of an image of the site (served by
   `FeatherWeb.ImageController`), optionally of a variant such as
-  `"mobile_x1.webp"`.
+  `"640.webp"`, or of the admin preview (`:preview`).
   """
-  @spec image_path(Feather.Sites.Site.t(), Feather.Media.Image.t() | nil, String.t() | nil) ::
-          String.t() | nil
+  @spec image_path(
+          Feather.Sites.Site.t(),
+          Feather.Media.Image.t() | nil,
+          String.t() | :preview | nil
+        ) :: String.t() | nil
   def image_path(site, image, variant \\ nil)
   def image_path(_site, nil, _variant), do: nil
+
+  def image_path(site, image, :preview),
+    do: image_path(site, image, Variants.preview().filename)
 
   def image_path(site, image, nil),
     do: Blocks.image_url(site, image.public_id)

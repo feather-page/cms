@@ -1,7 +1,7 @@
 <div class="not-found">
   <%= cond do %>
-  <% match?(%Image{}, not_found_mascot(@site)) -> %>
-  <%= mascot(@routes, not_found_mascot(@site), "not-found-mascot", "9rem", lazy: false) %>
+  <% match?({%Image{}, _role}, not_found_mascot(@site)) -> %>
+  <%= not_found_mascot_image(@routes, @site) %>
   <% present?(@site.emoji) -> %>
   <span class="not-found-seal" aria-hidden="true"><%= @site.emoji %></span>
   <% true -> %>

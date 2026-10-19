@@ -42,7 +42,7 @@ defmodule Feather.StaticSite.SiteDataTest do
 
       %{footer_mascot_image: footer, projects_mascot_image: projects} = SiteData.load(site).site
 
-      for image <- [footer, projects], filename <- Media.Variants.filenames() do
+      for {image, filename} <- [{footer, "280.webp"}, {projects, "160.webp"}] do
         assert RecordingSink.get(sink, "images/#{image.public_id}/#{filename}") ==
                  {:copy, Media.variant_path(image, filename)}
       end
@@ -83,10 +83,8 @@ defmodule Feather.StaticSite.SiteDataTest do
       :ok = Export.run(site, Routes.new(site), sink)
       portrait = SiteData.load(site).site.portrait_image
 
-      for filename <- Media.Variants.filenames() do
-        assert RecordingSink.get(sink, "images/#{portrait.public_id}/#{filename}") ==
-                 {:copy, Media.variant_path(portrait, filename)}
-      end
+      assert RecordingSink.get(sink, "images/#{portrait.public_id}/120.webp") ==
+               {:copy, Media.variant_path(portrait, "120.webp")}
     end
 
     test "a feather site, which shows no portrait, leaves it out", %{site: site} do

@@ -25,6 +25,7 @@ defmodule Feather.Sites do
   alias Feather.Content.Page
   alias Feather.Media.Cleanup
   alias Feather.Repo
+  alias Feather.StaticSite.ImageVariants
 
   alias Feather.Sites.{
     Invitation,
@@ -125,15 +126,17 @@ defmodule Feather.Sites do
   end
 
   @doc """
-  Updates a site.
+  Updates a site. A new theme brings the image variants in line with it
+  (`Feather.StaticSite.ImageVariants.start_sync/1`).
   """
   @spec update_site(Scope.t(), Site.t(), map()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def update_site(%Scope{} = scope, %Site{} = site, attrs) do
     true = can_access_site?(scope, site)
 
-    site
-    |> Site.changeset(attrs)
-    |> Repo.update()
+    with {:ok, updated} <- site |> Site.changeset(attrs) |> Repo.update() do
+      if updated.theme != site.theme, do: ImageVariants.start_sync(updated)
+      {:ok, updated}
+    end
   end
 
   @doc """
@@ -215,7 +218,10 @@ defmodule Feather.Sites do
   defp put_image(%Scope{site: %Site{} = site} = scope, field, path, filename) do
     true = can_access_site?(scope, site)
 
-    with {:ok, image} <- Feather.Media.create_image_from_upload(scope, path, filename) do
+    variants = ImageVariants.for_site_field(site, field)
+
+    with {:ok, image} <-
+           Feather.Media.create_image_from_upload(scope, path, filename, %{}, variants: variants) do
       case set_image(site, field, image) do
         {:ok, site} ->
           {:ok, site}

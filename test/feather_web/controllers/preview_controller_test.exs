@@ -56,24 +56,25 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert html_response(get(conn, root <> "/hello/"), 200) =~ "<h1>Unpublished change</h1>"
   end
 
-  test "serves image variants with their content type", %{
-    conn: conn,
-    scope: scope,
-    root: root,
-    user: user
-  } do
-    image = image_fixture(scope)
+  test "serves stored variants and those an image's roles need, generating missing ones",
+       %{conn: conn, scope: scope, root: root, user: user} do
+    image = image_fixture(scope, width: 1000, height: 700)
+    post_fixture(scope, %{header_image_id: image.id})
+    refute File.exists?(Feather.Media.variant_path(image, "640.webp"))
 
-    conn = get(conn, "#{root}/images/#{image.public_id}/mobile_x1.webp")
+    conn = get(conn, "#{root}/images/#{image.public_id}/640.webp")
     assert conn.status == 200
     assert get_resp_header(conn, "content-type") == ["image/webp"]
-    assert conn.resp_body == File.read!(Feather.Media.variant_path(image, "mobile_x1.webp"))
+    assert conn.resp_body == File.read!(Feather.Media.variant_path(image, "640.webp"))
 
-    conn = get(fresh(user), "#{root}/images/#{image.public_id}/desktop_x1.jpg")
+    conn = get(fresh(user), "#{root}/images/#{image.public_id}/1200.jpg")
     assert get_resp_header(conn, "content-type") == ["image/jpeg"]
 
-    assert get(fresh(user), "#{root}/images/#{image.public_id}/original.png").status ==
-             404
+    assert get(fresh(user), "#{root}/images/#{image.public_id}/480.webp").status == 200
+
+    for file <- ~w(128.webp original.png mobile_x1.webp) do
+      assert get(fresh(user), "#{root}/images/#{image.public_id}/#{file}").status == 404, file
+    end
   end
 
   test "renders diagrams and serves their SVG files without scripts", %{
@@ -165,7 +166,7 @@ defmodule FeatherWeb.PreviewControllerTest do
 
     assert conn.status == 200
     assert get_resp_header(conn, "content-type") == ["text/css; charset=utf-8"]
-    assert conn.resp_body =~ ~s[url("#{root}/fonts/nunito-latin-800.woff2")]
+    assert conn.resp_body =~ ~s[url("#{root}/fonts/nunito-latin-800.woff2?v=]
     assert String.ends_with?(conn.resp_body, FeatherPage.css())
   end
 
@@ -197,7 +198,7 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert html =~ "<h1>Page not found</h1>"
     assert html =~ ~s(<a class="not-found-home" href="#{root}/">)
 
-    assert html_response(get(fresh(user), root <> "/images/unknown/mobile_x1.webp"), 404) =~
+    assert html_response(get(fresh(user), root <> "/images/unknown/640.webp"), 404) =~
              "<h1>Page not found</h1>"
 
     assert response(get(fresh(user), "/preview/unknown00000/"), 404) == "Not Found"

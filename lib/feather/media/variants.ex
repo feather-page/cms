@@ -1,43 +1,56 @@
 defmodule Feather.Media.Variants do
   @moduledoc """
-  The resized versions generated for every image. Their file names are the
-  ones the static export uses (`images/<public_id>/<file name>`).
+  The resized versions of an image. A variant fits within N×N pixels
+  (never upscaled), metadata stripped, and is named after its box and
+  format (`640.webp`, `1200.jpg`), so a file name always means the same
+  file and the export can cache it for a year.
 
-  Each variant fits within N×N pixels (never upscaled), metadata stripped.
+  Which variants an image gets follows from its roles in the site's theme
+  (`Feather.StaticSite.ImageVariants`); every image also gets the admin
+  preview, and the sharing image (`og:image`) a JPEG.
   """
 
-  @variants [
-    %{name: :mobile_x1_webp, filename: "mobile_x1.webp", size: 430, format: :webp},
-    %{name: :mobile_x2_webp, filename: "mobile_x2.webp", size: 860, format: :webp},
-    %{name: :desktop_x1_webp, filename: "desktop_x1.webp", size: 1000, format: :webp},
-    %{name: :mobile_x3_webp, filename: "mobile_x3.webp", size: 1290, format: :webp},
-    %{name: :desktop_x2_webp, filename: "desktop_x2.webp", size: 2000, format: :webp},
-    %{name: :desktop_x1_jpg, filename: "desktop_x1.jpg", size: 1000, format: :jpg}
-  ]
+  @type format :: :webp | :jpg
+  @type variant :: %{filename: String.t(), size: pos_integer(), format: format()}
 
-  @type variant :: %{name: atom(), filename: String.t(), size: pos_integer(), format: atom()}
+  @preview_size 480
+  @sharing_size 1200
 
-  @doc "All variants."
-  @spec all() :: [variant()]
-  def all, do: @variants
+  @doc "The webp variant fitting within size×size."
+  @spec webp(pos_integer()) :: variant()
+  def webp(size), do: new(size, :webp)
 
-  @doc "The variant names, e.g. `:mobile_x1_webp`."
-  @spec names() :: [atom()]
-  def names, do: Enum.map(@variants, & &1.name)
+  @doc "The JPEG variant fitting within size×size."
+  @spec jpg(pos_integer()) :: variant()
+  def jpg(size), do: new(size, :jpg)
 
-  @doc "The variant file names, e.g. `\"mobile_x1.webp\"`."
-  @spec filenames() :: [String.t()]
-  def filenames, do: Enum.map(@variants, & &1.filename)
+  defp new(size, format) when is_integer(size) and size > 0,
+    do: %{filename: "#{size}.#{format}", size: size, format: format}
+
+  @doc "The variant the admin shows of every image."
+  @spec preview() :: variant()
+  def preview, do: webp(@preview_size)
+
+  @doc "The variant `og:image` links to."
+  @spec sharing() :: variant()
+  def sharing, do: jpg(@sharing_size)
 
   @doc """
-  Finds a variant by name (`:mobile_x1_webp`) or file name
-  (`"mobile_x1.webp"`). Returns nil for unknown variants.
+  The variant a file name (`"640.webp"`) names, or nil for anything else.
+  Variants given as maps are returned as they are.
   """
-  @spec fetch(atom() | String.t()) :: variant() | nil
-  def fetch(name) when is_atom(name), do: Enum.find(@variants, &(&1.name == name))
+  @spec fetch(String.t() | variant()) :: variant() | nil
+  def fetch(%{filename: _, size: _, format: _} = variant), do: variant
 
-  def fetch(filename) when is_binary(filename),
-    do: Enum.find(@variants, &(&1.filename == filename))
+  def fetch(filename) when is_binary(filename) do
+    case Regex.run(~r/\A([1-9][0-9]{1,3})\.(webp|jpg)\z/, filename) do
+      [_, size, "webp"] -> webp(String.to_integer(size))
+      [_, size, "jpg"] -> jpg(String.to_integer(size))
+      nil -> nil
+    end
+  end
+
+  def fetch(_other), do: nil
 
   @doc "The content type of a variant."
   @spec content_type(variant()) :: String.t()
@@ -59,15 +72,24 @@ defmodule Feather.Media.Variants do
   def width(%{size: size}, _width, _height), do: size
 
   @doc """
-  The webp variants of an image of `width` × `height` pixels with their
-  real widths, for `srcset` attributes: narrowest first, and of variants
-  with the same width only the first.
+  The webp variants of the given sizes for an image of `width` × `height`
+  pixels with their real widths: narrowest first, and of sizes the image is
+  too small for only the smallest, since they would be the same file.
   """
-  @spec srcset_widths(pos_integer() | nil, pos_integer() | nil) :: [{String.t(), pos_integer()}]
-  def srcset_widths(width, height) do
-    @variants
-    |> Enum.filter(&(&1.format == :webp))
-    |> Enum.map(&{&1.filename, width(&1, width, height)})
+  @spec srcset_widths([pos_integer()], pos_integer() | nil, pos_integer() | nil) ::
+          [{variant(), pos_integer()}]
+  def srcset_widths(sizes, width, height) do
+    sizes
+    |> Enum.uniq()
+    |> Enum.sort()
+    |> Enum.map(&with_width(webp(&1), width, height))
     |> Enum.uniq_by(&elem(&1, 1))
   end
+
+  defp with_width(variant, width, height), do: {variant, width(variant, width, height)}
+
+  @doc "The webp variants an image of `width` × `height` needs for the given sizes."
+  @spec for_image([pos_integer()], pos_integer() | nil, pos_integer() | nil) :: [variant()]
+  def for_image(sizes, width, height),
+    do: sizes |> srcset_widths(width, height) |> Enum.map(&elem(&1, 0))
 end

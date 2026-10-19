@@ -25,7 +25,7 @@
       <div class="post-long-content">
         <%= if match?(%Image{}, post.thumbnail_image) do %>
         <div class="post-thumbnail">
-          <img src="<%= Routes.image_url(@routes, post.thumbnail_image, :mobile_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, post.thumbnail_image) %>" sizes="(max-width: 600px) calc(100vw - 2rem), 240px"<%= dimensions(post.thumbnail_image) %> alt="" loading="lazy">
+          <img<%= image_sources(@routes, post.thumbnail_image, variants(:thumbnail), "(max-width: 600px) calc(100vw - 2rem), 240px") %><%= dimensions(post.thumbnail_image) %> alt="" loading="lazy">
         </div>
         <% end %>
         <%= if post.content not in [nil, []] do %>
