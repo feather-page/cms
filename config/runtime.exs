@@ -1,21 +1,5 @@
 import Config
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
-
-# ## Using releases
-#
-# If you use `mix release`, you need to explicitly enable the server
-# by passing the PHX_SERVER=true when you start it:
-#
-#     PHX_SERVER=true bin/feather start
-#
-# Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
-# script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
   config :feather, FeatherWeb.Endpoint, server: true
 end
@@ -23,8 +7,7 @@ end
 config :feather, FeatherWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
-# Settings read from the environment in dev and prod. Defaults live in
-# config/config.exs and config/dev.exs; tests never read the environment.
+# Tests never read the environment.
 if config_env() != :test do
   if unsplash_access_key = System.get_env("UNSPLASH_ACCESS_KEY") do
     config :feather, :unsplash_access_key, unsplash_access_key
@@ -40,16 +23,12 @@ if config_env() != :test do
 end
 
 if config_env() == :dev do
-  # Reload browser tabs when matching files change.
   config :feather, FeatherWeb.Endpoint,
     live_reload: [
       web_console_logger: true,
       patterns: [
-        # Static assets, except user uploads
         ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-        # Gettext translations
         ~r"priv/gettext/.*\.po$"E,
-        # Router, Controllers, LiveViews and LiveComponents
         ~r"lib/feather_web/router\.ex$"E,
         ~r"lib/feather_web/(controllers|live|components)/.*\.(ex|heex)$"E
       ]
@@ -68,7 +47,6 @@ if config_env() == :prod do
     database: database_path,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "5")
 
-  # The secret key base is used to sign/encrypt cookies and other secrets.
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||
       raise """
@@ -114,10 +92,6 @@ if config_env() == :prod do
   config :feather, FeatherWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
-      # Enable IPv6 and bind on all interfaces.
-      # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
-      # for details about using IPv6 vs IPv4 and loopback vs public addresses.
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ],
     secret_key_base: secret_key_base

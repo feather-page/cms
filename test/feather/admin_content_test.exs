@@ -1,5 +1,4 @@
 defmodule Feather.AdminContentTest do
-  # Context functions added for the content admin.
   use Feather.DataCase
 
   alias Feather.{Books, Content, Hardcover, Media, OpenLibrary, Pagination, Unsplash}

@@ -304,9 +304,6 @@ defmodule FeatherWeb.BookLive.Form do
   attr :results, :list, required: true
   attr :error, :string, default: nil
 
-  # The book search: at the top of a new book, in the cover block of
-  # an existing one (inside the book form, so its field names the search
-  # form).
   defp book_search(assigns) do
     ~H"""
     <.input
@@ -349,7 +346,6 @@ defmodule FeatherWeb.BookLive.Form do
     """
   end
 
-  # The bar's link to the book's review; a new book has no bar actions.
   defp review_link(_site, %Book{public_id: nil}), do: nil
 
   defp review_link(site, book) do

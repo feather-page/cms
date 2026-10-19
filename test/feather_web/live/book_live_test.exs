@@ -1,5 +1,4 @@
 defmodule FeatherWeb.BookLiveTest do
-  # Ports features/books.feature plus the bookshelf, the book search and cover uploads.
   use FeatherWeb.ConnCase
 
   import Phoenix.LiveViewTest
