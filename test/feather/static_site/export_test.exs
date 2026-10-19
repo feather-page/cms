@@ -172,6 +172,8 @@ defmodule Feather.StaticSite.ExportTest do
     end
   end
 
+  defp compact(html), do: String.replace(html, ~r/\n */, "")
+
   test "writes every page, artifact and image variant", c do
     paths = RecordingSink.paths(c.sink)
 
@@ -188,7 +190,9 @@ defmodule Feather.StaticSite.ExportTest do
           "feed.xml",
           "robots.txt",
           "sitemap.xml",
-          "404.html"
+          "style.css",
+          "404.html",
+          ".htaccess"
         ] do
       assert path in paths, "#{path} missing from #{inspect(paths)}"
     end
@@ -208,10 +212,10 @@ defmodule Feather.StaticSite.ExportTest do
 
     assert html =~ ~s(<html lang="en")
     assert html =~ "<title>Everything · My &lt;Site&gt;</title>"
-    assert html =~ "<style>"
+    assert html =~ ~s(<link rel="stylesheet" href="/style.css?v=)
     # Only the emoji is interpolated (escaped); the rest is a fixed literal.
     assert html =~
-             ~s(<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">)
+             ~s(<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🧪%3C/text%3E%3C/svg%3E">)
 
     assert html =~ "🧪"
     assert html =~ "<h1>Everything</h1>"
@@ -224,16 +228,16 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ "<p>Some <b>bold</b> text.</p>"
     refute html =~ "alert(1)"
     assert html =~ "<h3>A section</h3>"
-    assert html =~ "<ol><li>One<ol><li>Nested</li></ol></li></ol>"
-    assert html =~ "<blockquote><p>Simplicity.</p><cite>Dijkstra</cite></blockquote>"
+    assert compact(html) =~ "<ol><li>One<ol><li>Nested</li></ol></li></ol>"
+    assert compact(html) =~ "<blockquote><p>Simplicity.</p><cite>Dijkstra</cite></blockquote>"
 
     assert html =~
              ~s(<pre data-language="html"><code class="language-html"><span class="hl-fake">&lt;b&gt;x&lt;/b&gt;)
 
     assert html =~ ~s(src="/images/#{c.image.public_id}/desktop_x1.jpg" alt="An image")
-    assert html =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
+    assert compact(html) =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
     assert html =~ "youtube-nocookie.com/embed/abc"
-    assert html =~ ~s(<div class="book-title">Dune</div>)
+    assert html =~ ~s(<cite class="book-title">Dune</cite>)
     assert html |> Floki.parse_document!() |> Floki.attribute("img.header-image", "alt") == [""]
 
     assert html =~
@@ -270,12 +274,15 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<h3 class="post-title"><a href="/everything/">Everything</a></h3>)
     assert html =~ ~s(<div class="post-excerpt">)
     # The untitled review shows the book card with cover and rating.
-    assert html =~ ~s(<img src="/images/#{c.cover.public_id}/mobile_x1.webp" alt="")
+    [cover] = html |> Floki.parse_document!() |> Floki.find("figure.book-card img.book-cover")
+    assert attr(cover, "src") == "/images/#{c.cover.public_id}/mobile_x1.webp"
+    assert {attr(cover, "width"), attr(cover, "height")} == {"64", "48"}
+    assert attr(cover, "loading") == "lazy"
 
     assert html =~
              ~s(<span class="book-rating" role="img" aria-label="4 of 5 stars"><span aria-hidden="true">★★★★☆</span></span>)
 
-    assert html =~ ~s(<div class="post-content"><p>Loved it.</p></div>)
+    assert compact(html) =~ ~s(<div class="post-content"><p>Loved it.</p></div>)
     assert html =~ ~s(<time datetime="2024-03-05">March 5, 2024</time>)
     refute html =~ "Draft"
     refute html =~ "Future"
@@ -313,7 +320,7 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<span class="project-company">ACME</span>)
     assert html =~ ~s(<span class="project-period">Jan 2024 – Jun 2024</span>)
     assert html =~ ~s(<div class="project-role">Lead</div>)
-    assert html =~ "<p>Line one\n<br />line two</p>\n\n<p>Second <b>para</b></p>"
+    assert compact(html) =~ "<p>Line one<br>line two</p><p>Second <b>para</b></p>"
     assert html =~ ~s(href="https://github.com/x")
     refute html =~ "javascript:"
   end
@@ -463,7 +470,7 @@ defmodule Feather.StaticSite.ExportPaginationTest do
     assert second =~ ">Post 1<"
 
     assert second =~
-             ~s(<a href="/" class="pagination-link" aria-label="Previous page">&larr;</a>)
+             ~s(<a href="/" class="pagination-link" aria-label="Previous page">←</a>)
 
     refute RecordingSink.exists?(sink, "page/3/index.html")
   end

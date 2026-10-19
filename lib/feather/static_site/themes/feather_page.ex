@@ -46,18 +46,17 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
 
   @impl true
   def font_faces(%Routes{} = routes) do
-    {:safe,
-     [
-       font_face(routes, "Nunito", 700, ["Nunito Bold", "Nunito-Bold"], "nunito-latin-700.woff2"),
-       font_face(
-         routes,
-         "Nunito",
-         800,
-         ["Nunito ExtraBold", "Nunito-ExtraBold"],
-         "nunito-latin-800.woff2"
-       ),
-       jetbrains_mono_faces(routes)
-     ]}
+    [
+      font_face(routes, "Nunito", 700, ["Nunito Bold", "Nunito-Bold"], "nunito-latin-700.woff2"),
+      font_face(
+        routes,
+        "Nunito",
+        800,
+        ["Nunito ExtraBold", "Nunito-ExtraBold"],
+        "nunito-latin-800.woff2"
+      ),
+      jetbrains_mono_faces(routes)
+    ]
   end
 
   # Nunito 700 and 800, Latin subset of @fontsource/nunito 5.2.7, SIL Open Font License.

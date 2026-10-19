@@ -1,18 +1,16 @@
-<div class="book-card book-card--detail">
-  <div class="book-card-header">
-    <%= cond do %>
-    <% match?(%Image{}, @book.cover_image) -> %>
-    <img src="<%= Routes.image_url(@routes, @book.cover_image, :mobile_x1_webp) %>" alt="" class="book-cover" loading="lazy">
-    <% present?(@book.emoji) -> %>
-    <span class="book-emoji"><%= @book.emoji %></span>
-    <% true -> %>
+<figure class="book-card book-card--detail">
+  <%= cond do %>
+  <% match?(%Image{}, @book.cover_image) -> %>
+  <img src="<%= Routes.image_url(@routes, @book.cover_image, :mobile_x1_webp) %>" alt="" class="book-cover"<%= dimensions(@book.cover_image) %> loading="lazy">
+  <% present?(@book.emoji) -> %>
+  <span class="book-emoji"><%= @book.emoji %></span>
+  <% true -> %>
+  <% end %>
+  <figcaption class="book-info">
+    <cite class="book-title"><%= @book.title %></cite>
+    <span class="book-author"><%= @book.author %></span>
+    <%= if @book.rating do %>
+    <%= rating(@book.rating, "book-rating") %>
     <% end %>
-    <div class="book-info">
-      <div class="book-title"><%= @book.title %></div>
-      <div class="book-author"><%= @book.author %></div>
-      <%= if @book.rating do %>
-      <%= rating(@book.rating, "book-rating") %>
-      <% end %>
-    </div>
-  </div>
-</div>
+  </figcaption>
+</figure>

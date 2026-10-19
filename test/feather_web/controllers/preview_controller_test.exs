@@ -26,7 +26,7 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert html =~ ~s(href="#{root}/about/")
 
     assert html =~ ~s(<h1 class="site-title">My Site</h1>)
-    assert html =~ ~s[url("#{root}/fonts/nunito-latin-800.woff2")]
+    assert html =~ ~s(<link rel="stylesheet" href="#{root}/style.css?v=)
 
     refute html =~ "phx-r"
 
@@ -149,6 +149,24 @@ defmodule FeatherWeb.PreviewControllerTest do
 
     assert conn.resp_body ==
              File.read!(FeatherPage.font_path("nunito-latin-800.woff2"))
+  end
+
+  test "serves the stylesheet the pages link as text/css", %{conn: conn, root: root, user: user} do
+    [href] =
+      get(conn, root <> "/")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(~s(link[rel="stylesheet"]))
+      |> LazyHTML.attribute("href")
+
+    assert href =~ ~r"\A#{root}/style\.css\?v=[0-9a-f]{12}\z"
+
+    conn = get(fresh(user), href)
+
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") == ["text/css; charset=utf-8"]
+    assert conn.resp_body =~ ~s[url("#{root}/fonts/nunito-latin-800.woff2")]
+    assert String.ends_with?(conn.resp_body, FeatherPage.css())
   end
 
   test "serves only the fonts of the site's theme", %{conn: conn, scope: scope, root: root} do

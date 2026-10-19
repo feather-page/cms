@@ -2,7 +2,7 @@ defmodule Feather.StaticSite.Precompress do
   @moduledoc """
   Writes precompressed copies of the text files of an exported site, which
   the deploy uploads with the rest, so a web server on the external host
-  can serve them as they are (e.g. Caddy's `precompressed br gzip`):
+  can serve them as they are (on Apache through `Feather.StaticSite.Htaccess`):
   `<file>.gz` with `:zlib` and `<file>.br` with the `brotli` command line
   tool. Without `brotli` on the `PATH` the `.br` files are skipped (logged
   once per run).
@@ -51,6 +51,10 @@ defmodule Feather.StaticSite.Precompress do
 
   defp raise_if_failed(nil), do: :ok
   defp raise_if_failed(message), do: raise(RuntimeError, message)
+
+  @doc "The extensions of the files that get precompressed."
+  @spec extensions() :: [String.t()]
+  def extensions, do: @extensions
 
   @doc "The files below `dir` that get precompressed."
   @spec text_files(Path.t()) :: [Path.t()]

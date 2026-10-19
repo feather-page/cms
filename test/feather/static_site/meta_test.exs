@@ -187,13 +187,12 @@ defmodule Feather.StaticSite.MetaTest do
     :ok = Export.run(site, Routes.new(site, canonical_url: "https://example.com/"), sink)
     html = RecordingSink.get(sink, "say/index.html")
 
-    title = "Say &quot;hi&quot; &lt;now&gt;"
     description = "Quote &quot;this&quot; &lt;tag&gt; here."
 
-    assert html =~ "<title>#{title} · Site</title>"
-    assert html =~ ~s(<meta property="og:title" content="#{title}" />)
-    assert html =~ ~s(<meta name="description" content="#{description}" />)
-    assert html =~ ~s(<meta property="og:description" content="#{description}" />)
+    assert html =~ ~s(<title>Say "hi" &lt;now&gt; · Site</title>)
+    assert html =~ ~s(<meta property="og:title" content="Say &quot;hi&quot; &lt;now&gt;">)
+    assert html =~ ~s(<meta name="description" content="#{description}">)
+    assert html =~ ~s(<meta property="og:description" content="#{description}">)
   end
 
   test "og:locale follows the site language", c do

@@ -48,11 +48,10 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
 
   @impl true
   def font_faces(%Routes{} = routes) do
-    {:safe,
-     [
-       font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file),
-       jetbrains_mono_faces(routes)
-     ]}
+    [
+      font_face(routes, "Schibsted Grotesk", "400 700", [], @font_file),
+      jetbrains_mono_faces(routes)
+    ]
   end
 
   # Schibsted Grotesk, variable weight axis, Latin subset, SIL Open Font License.
@@ -80,16 +79,10 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
       String.downcase(String.trim(site.domain)) != String.downcase(String.trim(site.title || ""))
   end
 
-  # Clearing the editor stores an empty paragraph, which must not open the reading column.
   defp homepage_content?(%SiteData{homepage: %{content: content}}),
-    do: content |> ContentBlocks.normalize() |> Enum.any?(&visible_block?/1)
+    do: content |> ContentBlocks.normalize() |> Enum.any?(&Blocks.visible?/1)
 
   defp homepage_content?(_data), do: false
-
-  defp visible_block?(%{"type" => "paragraph", "text" => text}),
-    do: present?(ContentBlocks.strip_tags(text || ""))
-
-  defp visible_block?(_block), do: true
 
   defp portrait(
          routes,
@@ -256,12 +249,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
         nil
 
       {:safe, label} ->
-        {:safe,
-         [
-           ~s(<p class="meta"><span class="meta-label">),
-           label,
-           ~s(</span><span class="rule" aria-hidden="true"></span></p>)
-         ]}
+        {:safe, [~s(<p class="meta"><span class="meta-label">), label, "</span></p>"]}
     end
   end
 

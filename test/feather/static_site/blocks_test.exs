@@ -48,6 +48,12 @@ defmodule Feather.StaticSite.BlocksTest do
              "<p>Hi <b>you</b></p>"
   end
 
+  test "a paragraph without text renders nothing", %{context: c} do
+    for text <- ["", "  ", "<br>", "<b> </b>", "&nbsp;", nil] do
+      assert html(%{"type" => "paragraph", "text" => text}, c) == "", inspect(text)
+    end
+  end
+
   test "header with levels 2 to 4, others become 2", %{context: c} do
     assert html(%{"type" => "header", "level" => 3, "text" => "A <i>title</i>"}, c) ==
              "<h3>A <i>title</i></h3>"
@@ -206,17 +212,18 @@ defmodule Feather.StaticSite.BlocksTest do
 
   test "book card with emoji, escaped", %{context: c} do
     assert html(%{"type" => "book", "book_public_id" => "book00000001"}, c) ==
-             ~s(<div class="book-card book-card--detail"><div class="book-card-header">) <>
-               ~s(<span class="book-emoji">📘</span><div class="book-info">) <>
-               ~s(<div class="book-title">Dune &amp; More</div>) <>
-               ~s(<div class="book-author">Frank Herbert</div></div></div></div>)
+             ~s(<figure class="book-card book-card--detail">) <>
+               ~s(<span class="book-emoji">📘</span><figcaption class="book-info">) <>
+               ~s(<cite class="book-title">Dune &amp; More</cite>) <>
+               ~s(<span class="book-author">Frank Herbert</span></figcaption></figure>)
   end
 
-  test "book card prefers the cover", %{context: c} do
+  test "book card prefers the cover, with its size and loaded lazily", %{context: c} do
     output = html(%{"type" => "book", "book_public_id" => "book00000002"}, c)
 
     assert output =~
-             ~s(<img src="/images/cov000000001/mobile_x1.webp" alt="" class="book-cover">)
+             ~s(<img src="/images/cov000000001/mobile_x1.webp" alt="" class="book-cover" ) <>
+               ~s(width="200" height="300" loading="lazy">)
 
     refute output =~ "book-emoji"
   end

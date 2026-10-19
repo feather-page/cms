@@ -4,7 +4,8 @@ defmodule Feather.StaticSite.Export do
   of the post list, the posts that are due, projects, pages (the homepage
   is the first page of the post list), the image variants in use, the
   fonts of the site's theme, the rendered diagrams, `feed.xml`,
-  `robots.txt`, `sitemap.xml` and `404.html`.
+  `robots.txt`, `sitemap.xml`, `style.css`, `404.html` and the
+  `.htaccess` for Apache hosts.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -12,11 +13,11 @@ defmodule Feather.StaticSite.Export do
   too; one that fails shows its source and does not fail the export.
   """
 
-  alias Feather.Content.Page
+  alias Feather.Content.{Page, Slug}
   alias Feather.{Diagrams, Media}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Renderer, Routes, Sink, SiteData, Themes}
+  alias Feather.StaticSite.{Htaccess, Renderer, Routes, Sink, SiteData, Themes}
 
   require Logger
 
@@ -31,7 +32,7 @@ defmodule Feather.StaticSite.Export do
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
     data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
-    jobs = [:not_found | document_jobs(data)] ++ asset_jobs(data, Themes.module(site))
+    jobs = [:not_found, :htaccess | document_jobs(data)] ++ asset_jobs(data, Themes.module(site))
     run_jobs(jobs, data, routes, sink, opts)
   end
 
@@ -40,7 +41,7 @@ defmodule Feather.StaticSite.Export do
       Enum.map(data.posts, &{:post, &1}) ++
       Enum.map(data.projects, &{:project, &1}) ++
       (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1})) ++
-      Enum.map(~w(feed.xml robots.txt sitemap.xml), &{:artifact, &1})
+      Enum.map(Slug.artifacts(), &{:artifact, &1})
   end
 
   defp asset_jobs(data, theme) do
@@ -78,6 +79,7 @@ defmodule Feather.StaticSite.Export do
   end
 
   defp describe(:not_found), do: "404 page"
+  defp describe(:htaccess), do: ".htaccess"
   defp describe({:image, image, variant}), do: "image #{image.public_id} #{variant.filename}"
   defp describe({kind, %{public_id: public_id}}), do: "#{kind} #{public_id}"
   defp describe({:font, _theme, name}), do: "font #{name}"
@@ -102,6 +104,9 @@ defmodule Feather.StaticSite.Export do
 
   defp run_job(:not_found, data, routes, sink),
     do: Sink.write(sink, Routes.not_found_path(routes), Renderer.render_not_found(data, routes))
+
+  defp run_job(:htaccess, _data, routes, sink),
+    do: Sink.write(sink, Routes.htaccess_path(routes), Htaccess.render(routes))
 
   defp run_job({:artifact, name}, data, routes, sink) do
     Sink.write(

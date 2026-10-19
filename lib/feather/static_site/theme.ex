@@ -15,8 +15,7 @@ defmodule Feather.StaticSite.Theme do
   two themes may render it differently.
 
   `use Feather.StaticSite.Theme` declares the behaviour and imports
-  `Feather.StaticSite.ThemeHelpers`, `Phoenix.HTML.raw/1` and the static
-  site's Gettext. Templates are EEx with `Phoenix.HTML.Engine` (output is
+  `Feather.StaticSite.ThemeHelpers` and the static site's Gettext. Templates are EEx with `Phoenix.HTML.Engine` (output is
   escaped unless it is `{:safe, iodata}`) rather than HEEx, which would add
   the app's `phx-r` root tag attribute to the static pages.
 
@@ -33,7 +32,8 @@ defmodule Feather.StaticSite.Theme do
       `<title>` and `og:title`; an untitled post's label where `page_title`
       is the site title), `document_title`, `page_emoji`, `is_home`,
       `noindex`, the meta tags (`description`, `canonical_url`, `og_type`,
-      `og_image_url`; render them with `ThemeHelpers.head_meta/1`)
+      `og_image_url`; render them with `ThemeHelpers.head_meta/1`),
+      `stylesheet_url` (`style.css` with a hash of its content)
     * `header_image`, `title_mascot`, `published_at`, `masthead_image`,
       `rss_url`, `trail` (breadcrumb entries `%{title, emoji, url}`), all
       `nil` or `[]` unless the view sets them
@@ -58,11 +58,11 @@ defmodule Feather.StaticSite.Theme do
   @callback project(assigns()) :: Phoenix.HTML.safe()
   @callback not_found(assigns()) :: Phoenix.HTML.safe()
 
-  @doc "The stylesheet the layout inlines into every page."
+  @doc "The stylesheet, which `style.css` serves after `c:font_faces/1`."
   @callback css() :: String.t()
 
   @doc "The `@font-face` rules of the theme's fonts (see `ThemeHelpers.font_face/5`)."
-  @callback font_faces(Routes.t()) :: Phoenix.HTML.safe()
+  @callback font_faces(Routes.t()) :: iodata()
 
   @doc """
   The files the export writes under `fonts/`, file name to content type,
@@ -93,7 +93,6 @@ defmodule Feather.StaticSite.Theme do
 
       require EEx
 
-      import Phoenix.HTML, only: [raw: 1], warn: false
       import Feather.StaticSite.ThemeHelpers, warn: false
     end
   end

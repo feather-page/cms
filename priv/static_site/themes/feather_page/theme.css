@@ -425,144 +425,47 @@ code {
 }
 
 /* Code tokens (Feather.Highlighting): the text colours of the Chroma styles
-   rose-pine-dawn (light) and rose-pine (dark), from chroma --html-styles; the
-   code keeps the theme's background. */
-.hl-err { color: #b4637a; }
-.hl-k { color: #286983; }
-.hl-kc { color: #286983; }
-.hl-kd { color: #286983; }
-.hl-kn { color: #907aa9; }
-.hl-kp { color: #286983; }
-.hl-kr { color: #286983; }
-.hl-kt { color: #286983; }
-.hl-n { color: #d7827e; }
-.hl-na { color: #d7827e; }
-.hl-nc { color: #56949f; }
-.hl-no { color: #ea9d34; }
-.hl-nd { color: #797593; }
-.hl-ni { color: #d7827e; }
-.hl-ne { color: #286983; }
-.hl-nl { color: #d7827e; }
-.hl-nn { color: #d7827e; }
-.hl-py { color: #d7827e; }
-.hl-nt { color: #d7827e; }
-.hl-nb { color: #d7827e; }
-.hl-bp { color: #d7827e; }
-.hl-nv { color: #d7827e; }
-.hl-vc { color: #d7827e; }
-.hl-vg { color: #d7827e; }
-.hl-vi { color: #d7827e; }
-.hl-vm { color: #d7827e; }
-.hl-nf { color: #d7827e; }
-.hl-fm { color: #d7827e; }
-.hl-l { color: #ea9d34; }
-.hl-ld { color: #ea9d34; }
-.hl-s { color: #ea9d34; }
-.hl-sa { color: #ea9d34; }
-.hl-sb { color: #ea9d34; }
-.hl-sc { color: #ea9d34; }
-.hl-dl { color: #ea9d34; }
-.hl-sd { color: #ea9d34; }
-.hl-s2 { color: #ea9d34; }
-.hl-se { color: #286983; }
-.hl-sh { color: #ea9d34; }
-.hl-si { color: #ea9d34; }
-.hl-sx { color: #ea9d34; }
-.hl-sr { color: #ea9d34; }
-.hl-s1 { color: #ea9d34; }
-.hl-ss { color: #ea9d34; }
-.hl-m { color: #ea9d34; }
-.hl-mb { color: #ea9d34; }
-.hl-mf { color: #ea9d34; }
-.hl-mh { color: #ea9d34; }
-.hl-mi { color: #ea9d34; }
-.hl-il { color: #ea9d34; }
-.hl-mo { color: #ea9d34; }
-.hl-o { color: #797593; }
-.hl-ow { color: #797593; }
-.hl-or { color: #797593; }
-.hl-p { color: #797593; }
-.hl-c { color: #9893a5; }
-.hl-ch { color: #9893a5; }
-.hl-cm { color: #9893a5; }
-.hl-c1 { color: #9893a5; }
-.hl-cs { color: #9893a5; }
-.hl-cp { color: #9893a5; }
-.hl-cpf { color: #9893a5; }
-.hl-gd { color: #b4637a; }
+   rose-pine-dawn (light) and rose-pine (dark), from chroma --html-styles, named
+   as in the Rosé Pine palette; the code keeps the theme's background. */
+:root {
+  --hl-love: #b4637a;
+  --hl-pine: #286983;
+  --hl-iris: #907aa9;
+  --hl-rose: #d7827e;
+  --hl-foam: #56949f;
+  --hl-gold: #ea9d34;
+  --hl-subtle: #797593;
+  --hl-muted: #9893a5;
+}
+
+.hl-err, .hl-gd { color: var(--hl-love); }
+.hl-k, .hl-kc, .hl-kd, .hl-kp, .hl-kr, .hl-kt, .hl-ne, .hl-se { color: var(--hl-pine); }
+.hl-kn, .hl-gu { color: var(--hl-iris); }
+.hl-n, .hl-na, .hl-ni, .hl-nl, .hl-nn, .hl-py, .hl-nt, .hl-nb, .hl-bp, .hl-nv, .hl-vc, .hl-vg,
+.hl-vi, .hl-vm, .hl-nf, .hl-fm {
+  color: var(--hl-rose);
+}
+.hl-nc, .hl-gi { color: var(--hl-foam); }
+.hl-no, .hl-l, .hl-ld, .hl-s, .hl-sa, .hl-sb, .hl-sc, .hl-dl, .hl-sd, .hl-s2, .hl-sh, .hl-si,
+.hl-sx, .hl-sr, .hl-s1, .hl-ss, .hl-m, .hl-mb, .hl-mf, .hl-mh, .hl-mi, .hl-il, .hl-mo {
+  color: var(--hl-gold);
+}
+.hl-nd, .hl-o, .hl-ow, .hl-or, .hl-p { color: var(--hl-subtle); }
+.hl-c, .hl-ch, .hl-cm, .hl-c1, .hl-cs, .hl-cp, .hl-cpf { color: var(--hl-muted); }
 .hl-ge { font-style: italic; }
-.hl-gi { color: #56949f; }
 .hl-gs { font-weight: bold; }
-.hl-gu { color: #907aa9; }
 
 @media (prefers-color-scheme: dark) {
-  .hl-err { color: #eb6f92; }
-  .hl-k { color: #31748f; }
-  .hl-kc { color: #31748f; }
-  .hl-kd { color: #31748f; }
-  .hl-kn { color: #c4a7e7; }
-  .hl-kp { color: #31748f; }
-  .hl-kr { color: #31748f; }
-  .hl-kt { color: #31748f; }
-  .hl-n { color: #ebbcba; }
-  .hl-na { color: #ebbcba; }
-  .hl-nc { color: #9ccfd8; }
-  .hl-no { color: #f6c177; }
-  .hl-nd { color: #908caa; }
-  .hl-ni { color: #ebbcba; }
-  .hl-ne { color: #31748f; }
-  .hl-nl { color: #ebbcba; }
-  .hl-nn { color: #ebbcba; }
-  .hl-py { color: #ebbcba; }
-  .hl-nt { color: #ebbcba; }
-  .hl-nb { color: #ebbcba; }
-  .hl-bp { color: #ebbcba; }
-  .hl-nv { color: #ebbcba; }
-  .hl-vc { color: #ebbcba; }
-  .hl-vg { color: #ebbcba; }
-  .hl-vi { color: #ebbcba; }
-  .hl-vm { color: #ebbcba; }
-  .hl-nf { color: #ebbcba; }
-  .hl-fm { color: #ebbcba; }
-  .hl-l { color: #f6c177; }
-  .hl-ld { color: #f6c177; }
-  .hl-s { color: #f6c177; }
-  .hl-sa { color: #f6c177; }
-  .hl-sb { color: #f6c177; }
-  .hl-sc { color: #f6c177; }
-  .hl-dl { color: #f6c177; }
-  .hl-sd { color: #f6c177; }
-  .hl-s2 { color: #f6c177; }
-  .hl-se { color: #31748f; }
-  .hl-sh { color: #f6c177; }
-  .hl-si { color: #f6c177; }
-  .hl-sx { color: #f6c177; }
-  .hl-sr { color: #f6c177; }
-  .hl-s1 { color: #f6c177; }
-  .hl-ss { color: #f6c177; }
-  .hl-m { color: #f6c177; }
-  .hl-mb { color: #f6c177; }
-  .hl-mf { color: #f6c177; }
-  .hl-mh { color: #f6c177; }
-  .hl-mi { color: #f6c177; }
-  .hl-il { color: #f6c177; }
-  .hl-mo { color: #f6c177; }
-  .hl-o { color: #908caa; }
-  .hl-ow { color: #908caa; }
-  .hl-or { color: #908caa; }
-  .hl-p { color: #908caa; }
-  .hl-c { color: #6e6a86; }
-  .hl-ch { color: #6e6a86; }
-  .hl-cm { color: #6e6a86; }
-  .hl-c1 { color: #6e6a86; }
-  .hl-cs { color: #6e6a86; }
-  .hl-cp { color: #6e6a86; }
-  .hl-cpf { color: #6e6a86; }
-  .hl-gd { color: #eb6f92; }
-  .hl-ge { font-style: italic; }
-  .hl-gi { color: #9ccfd8; }
-  .hl-gs { font-weight: bold; }
-  .hl-gu { color: #c4a7e7; }
+  :root {
+    --hl-love: #eb6f92;
+    --hl-pine: #31748f;
+    --hl-iris: #c4a7e7;
+    --hl-rose: #ebbcba;
+    --hl-foam: #9ccfd8;
+    --hl-gold: #f6c177;
+    --hl-subtle: #908caa;
+    --hl-muted: #6e6a86;
+  }
 }
 
 blockquote {
@@ -692,9 +595,10 @@ hr {
   margin: 2em 0;
 }
 
-.page-list > hr {
-  border-top: 1px solid var(--divider);
-  margin: 2.25rem 0;
+.page-list > article {
+  margin-bottom: 2.25rem;
+  padding-bottom: 2.25rem;
+  border-bottom: 1px solid var(--divider);
 }
 
 .post-title,
@@ -905,16 +809,17 @@ hr {
   text-align: left;
   gap: 1rem;
   padding: 1rem;
-  margin-bottom: 1.5rem;
+  margin: 0 0 1.5rem;
   background: var(--surface);
   border-radius: 8px;
 }
 
-.book-card--detail .book-card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  width: 100%;
+.book-card figcaption {
+  margin: 0;
+  font: inherit;
+  text-align: inherit;
+  color: inherit;
+  text-wrap: inherit;
 }
 
 .book-card--detail .book-cover {
@@ -934,6 +839,7 @@ hr {
 }
 
 .book-card--detail .book-title {
+  font-style: normal;
   font-size: 1.1rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
@@ -1120,8 +1026,10 @@ a.book-title:is(:hover, :focus-visible) {
   margin: 2rem 0;
 }
 
-.projects-list > hr {
-  margin: 1.75rem 0;
+.project-item + .project-item {
+  margin-top: 1.75rem;
+  padding-top: 1.75rem;
+  border-top: 2px dotted var(--divider);
 }
 
 .project-header {

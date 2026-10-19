@@ -26,7 +26,8 @@ defmodule Feather.StaticSite.Preview do
   path segments) of the site:
 
     * `{:html, iodata}` - a page
-    * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`
+    * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`,
+      `style.css`
     * `{:file, path, content_type}` - an image variant, a font of the site's
       theme or a rendered diagram
     * `{:not_found, iodata}` - the site's 404 page

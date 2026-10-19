@@ -362,8 +362,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert texts(home, "main article.entry .meta > .meta-emoji:first-child") ==
                ["🚗", "🚲", "🧿"]
 
-      assert attr(home, "main article.entry .meta > .meta-label + .rule", "aria-hidden") ==
-               ["true", "true", "true"]
+      refute present?(home, "main article.entry .meta .rule")
 
       assert attr(home, "main article.entry .meta time", "datetime") ==
                ["2026-02-10", "2026-02-09", "2026-02-08"]
@@ -403,7 +402,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
     } do
       home = doc(sink, "index.html")
 
-      assert [label] = home |> find("article.entry .meta > .rule + .new") |> Enum.to_list()
+      assert [label] = home |> find("article.entry .meta > .meta-label + .new") |> Enum.to_list()
       assert label |> LazyHTML.text() |> String.trim() == "New"
       assert LazyHTML.attribute(label, "aria-label") == ["Newest post"]
       assert LazyHTML.attribute(label, "role") == ["img"]
@@ -668,8 +667,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       assert texts(projects, "main li.project .meta .meta-label") ==
                ["Ongoing·elixir, phoenix·Code", "Ongoing", "Ongoing", "Ongoing"]
 
-      assert projects |> find("main li.project .meta > .meta-label + .rule") |> Enum.count() ==
-               4
+      refute present?(projects, "main li.project .meta .rule")
 
       assert attr(projects, "main li.project .meta a", "href") ==
                ["https://www.example.com/code/"]
@@ -742,7 +740,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       own = doc(sink, "projects/feather-page/index.html")
 
       assert text(own, "main .meta .meta-label") == "Ongoing·elixir, phoenix"
-      assert present?(own, "main article.project-page > .meta > .meta-label + .rule")
+      assert present?(own, "main article.project-page > .meta > .meta-label")
       assert texts(own, "main dl.facts dt") == ["Stack", "Status", "Period", "Code", "Website"]
 
       assert texts(own, "main dl.facts dd") ==
@@ -881,20 +879,24 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       end
     end
 
-    test "every page declares the variable font against the site root", %{sink: sink} do
-      html = RecordingSink.get(sink, "about/index.html")
+    test "the stylesheet declares the variable font against the site root", %{sink: sink} do
+      css = RecordingSink.get(sink, "style.css")
 
-      assert html =~ ~s[font-family: "Schibsted Grotesk"]
-      assert html =~ "font-weight: 400 700"
-      assert html =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
+      assert css =~ ~s[font-family: "Schibsted Grotesk"]
+      assert css =~ "font-weight: 400 700"
+      assert css =~ ~s[url("/fonts/schibsted-grotesk-latin-wght.woff2") format("woff2")]
 
       for {file, weight, style} <- @mono_faces do
-        assert html =~
+        assert css =~
                  ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
                    ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
       end
 
-      assert html =~ ~s[--mono: "JetBrains Mono", ui-monospace]
+      assert css =~ ~s[--mono: "JetBrains Mono", ui-monospace]
+    end
+
+    test "every page preloads the variable font", %{sink: sink} do
+      html = RecordingSink.get(sink, "about/index.html")
 
       assert attr(LazyHTML.from_document(html), ~s(link[rel="preload"][as="font"]), "href") ==
                ["/fonts/schibsted-grotesk-latin-wght.woff2"]

@@ -58,6 +58,7 @@ defmodule Feather.StaticSite.RoutesTest do
     test "artifacts, unknown ones raise", %{routes: r} do
       assert Routes.artifact_url(r, "feed.xml") == "/feed.xml"
       assert Routes.artifact_path(r, "sitemap.xml") == "sitemap.xml"
+      assert Routes.artifact_url(r, "style.css") == "/style.css"
       assert_raise ArgumentError, fn -> Routes.artifact_url(r, "humans.txt") end
     end
 
@@ -104,6 +105,7 @@ defmodule Feather.StaticSite.RoutesTest do
     test "artifacts", %{routes: r} do
       assert Routes.resolve(r, "feed.xml") == {:artifact, "feed.xml"}
       assert Routes.resolve(r, "robots.txt") == {:artifact, "robots.txt"}
+      assert Routes.resolve(r, "style.css") == {:artifact, "style.css"}
     end
 
     test "diagrams by file name", %{routes: r} do

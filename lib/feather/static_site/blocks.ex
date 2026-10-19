@@ -72,10 +72,17 @@ defmodule Feather.StaticSite.Blocks do
     IO.iodata_to_binary(iodata)
   end
 
+  @doc "Whether a (normalized) block shows anything: an empty paragraph does not."
+  @spec visible?(map()) :: boolean()
+  def visible?(%{"type" => "paragraph", "text" => text}),
+    do: present?(ContentBlocks.strip_tags(text || ""))
+
+  def visible?(_block), do: true
+
   @doc "Renders one (normalized) block to iodata."
   @spec render_block(map(), context()) :: iodata()
-  def render_block(%{"type" => "paragraph", "text" => text}, _context),
-    do: ["<p>", sanitize(text), "</p>"]
+  def render_block(%{"type" => "paragraph", "text" => text} = block, _context),
+    do: if(visible?(block), do: ["<p>", sanitize(text), "</p>"], else: [])
 
   def render_block(%{"type" => "header", "level" => level, "text" => text}, _context) do
     tag = "h#{level}"
@@ -196,7 +203,6 @@ defmodule Feather.StaticSite.Blocks do
   defp list(style, items) when is_list(items) do
     tag = if style == "ol", do: "ol", else: "ul"
 
-    # Nested lists keep the style of the block.
     items =
       Enum.map(items, fn item ->
         ["<li>", sanitize(item["content"]), list(tag, item["items"] || []), "</li>"]
@@ -229,31 +235,30 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp book(%Book{} = book, routes) do
-    cover =
-      cond do
-        match?(%Image{}, book.cover_image) ->
-          [
-            "<img src=\"",
-            escape(Routes.image_url(routes, book.cover_image, :mobile_x1_webp)),
-            "\" alt=\"\" class=\"book-cover\">"
-          ]
-
-        present?(book.emoji) ->
-          ["<span class=\"book-emoji\">", escape(book.emoji), "</span>"]
-
-        true ->
-          []
-      end
-
     [
-      "<div class=\"book-card book-card--detail\"><div class=\"book-card-header\">",
-      cover,
-      "<div class=\"book-info\"><div class=\"book-title\">",
+      "<figure class=\"book-card book-card--detail\">",
+      book_mark(book, routes),
+      "<figcaption class=\"book-info\"><cite class=\"book-title\">",
       escape(book.title),
-      "</div><div class=\"book-author\">",
+      "</cite><span class=\"book-author\">",
       escape(book.author),
-      "</div></div></div></div>"
+      "</span></figcaption></figure>"
     ]
+  end
+
+  defp book_mark(%Book{cover_image: %Image{} = cover}, routes) do
+    [
+      "<img src=\"",
+      escape(Routes.image_url(routes, cover, :mobile_x1_webp)),
+      "\" alt=\"\" class=\"book-cover\"",
+      optional_attribute("width", cover.width),
+      optional_attribute("height", cover.height),
+      " loading=\"lazy\">"
+    ]
+  end
+
+  defp book_mark(%Book{emoji: emoji}, _routes) do
+    if present?(emoji), do: ["<span class=\"book-emoji\">", escape(emoji), "</span>"], else: []
   end
 
   defp size_attribute(name, value) do
@@ -282,7 +287,6 @@ defmodule Feather.StaticSite.Blocks do
     end
   end
 
-  # Embed sizes are numbers (or numeric strings); anything else is dropped.
   defp size(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
 
   defp size(value) when is_binary(value) do

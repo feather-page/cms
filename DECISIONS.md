@@ -75,7 +75,8 @@ a record of why the multi-theme era worked the way it did.
 
 ## 0005. Static sites rendered with ERB
 
-Accepted, 2026-08-28; updated 2026-10-06: EEx instead of ERB after the Phoenix port
+Accepted, 2026-08-28; updated 2026-10-06: EEx instead of ERB after the Phoenix port; updated
+2026-10-18: a separate stylesheet ([0021](#0021-exported-sites-link-one-cached-stylesheet))
 
 The CMS used Hugo as an external static site generator, which split templating across Go and ERB,
 required a build step before any preview, and resisted RSpec testing. Static sites are now rendered
@@ -102,7 +103,8 @@ mechanism is different; the paragraphs above describe the Rails app.
   with `Phoenix.HTML.Engine` (escaped output); shared helpers live in
   `Feather.StaticSite.ThemeHelpers`. Not HEEx: HEEx adds LiveView's `phx-r` root tag attribute,
   which has no place in a static site. Each theme's stylesheet is
-  `priv/static_site/themes/<theme>/theme.css`, inlined into every page.
+  `priv/static_site/themes/<theme>/theme.css`, inlined into every page (replaced on 2026-10-18 by
+  `style.css`, see [0021](#0021-exported-sites-link-one-cached-stylesheet)).
 - `Feather.StaticSite.SiteData` loads everything a site needs up front;
   `Feather.StaticSite.Renderer` then renders pages, the RSS feed, the sitemap and robots.txt from
   that data and `Routes` without touching the database. Content blocks render through `Feather.StaticSite.Blocks`.
@@ -430,6 +432,15 @@ is called `ftps` ([0019](#0019-a-site-has-one-deployment-target-addressed-by-its
 the site's own changes, books and deleting or unpublishing a published record now move the site's
 `updated_at`.
 
+The sites' current host runs Apache, not Caddy, so the precompressed files went unused (issue
+#447). The export now writes an `.htaccess` (`Feather.StaticSite.Htaccess`) that
+serves the `.br` or `.gz` copy of a file or directory index when the browser accepts it, with its
+content type, `Content-Encoding` and `Vary: Accept-Encoding`, caches `style.css` for a year and sets
+`404.html` as the error document. Every rule but the error document is guarded by the modules it
+needs (`mod_rewrite` and `mod_headers`), so a host without them serves the files uncompressed. The
+host must allow `AllowOverride FileInfo` and `FollowSymLinks` or `SymLinksIfOwnerMatch`; without
+them Apache answers 500 or 403 for every path, which no guard can catch.
+
 ## 0018. Scheduled posts deploy themselves when they become due
 
 Accepted, 2026-10-18
@@ -453,3 +464,19 @@ Accepted, 2026-10-18
 - **Context:** Code blocks need syntax highlighting, and published sites contain no JavaScript, so it has to happen when the export, the preview and the feed render a block. Issue #430 proposed a Go render service for D2 and highlighting, but highlighting reads only text, so it needs no isolation.
 - **Decision:** The export runs the `chroma` binary (v2), pinned in the release image like `d2`, on each code block. It caches the HTML by a hash of the Chroma version, lexer and code, and passes only languages from a fixed list. Each site theme styles the token classes with a light and a dark Chroma style. Rejected: Lumis (a NIF that embeds a Wasmtime JIT in the BEAM, and its architecture changed weeks before this decision), Makeup (no lexers for most of the editor's languages), and a separate render service.
 - **Consequences:** Chroma is a second runtime binary; Dependabot cannot update it, so version bumps are manual. Feed readers show code without colours, and a language outside the list stays plain.
+
+## 0021. Exported sites link one cached stylesheet
+
+Accepted, 2026-10-18 (issue #447); replaces the inlined stylesheet of [0005](#0005-static-sites-rendered-with-erb)'s 2026-10-06 update
+
+- **Context:** Every exported page inlined its theme's font faces and stylesheet (about 26 KB, [0005](#0005-static-sites-rendered-with-erb)), so the CSS made up most of a short page and no browser could cache it.
+- **Decision:** The export writes the font faces and the theme's stylesheet as one `style.css` at the site root, a generated file next to `feed.xml`, and every page links it as `style.css?v=<first 12 hex digits of its SHA-256>`; the preview serves the same file. The `.htaccess` lets browsers cache it for a year as `immutable` ([0017](#0017-sites-are-delivered-only-to-external-hosts-by-ftps)), and the hash makes them fetch a changed stylesheet at once. The font preload stays. Rejected: splitting the stylesheet by the blocks a site uses, which saves about 1.5 KB gzipped per visit once the stylesheet is cached.
+- **Consequences:** A first visit makes one more request, once per site. The year-long cache comes from the `.htaccess`, so a host other than Apache needs its own rules for it; without them browsers revalidate `style.css` like any other file.
+
+## 0022. Exported pages are formatted with lazy_html
+
+Accepted, 2026-10-18 (issue #448)
+
+- **Context:** The source of exported pages looked generated: a quarter to a third of the lines were blank, the indentation restarted at column 0 in every partial, block content ran on one line and empty elements were written both with and without a closing slash.
+- **Decision:** `Feather.StaticSite.HTMLFormatter` runs as the last step of rendering a page, so the preview and the export show the same markup; the feed, the sitemap and `style.css` are not formatted. It parses the page with lazy_html (lexbor, which builds the tree a browser builds), moved from a test-only dependency into the release, and writes the tree back with the HTML serialisation's escaping: block elements on their own lines, indented two spaces per level, no blank lines, no closing slash on empty HTML elements, no comments. Whitespace changes only next to block elements, where browsers ignore it; raw text and `pre`/`textarea` content render unchanged. Rejected: Floki, already in the release, whose default parser does not build the browser's tree; fixing the whitespace in the EEx templates, which leaves the blocks' output on one line.
+- **Consequences:** The release carries one more NIF (lazy_html, precompiled, needs `libstdc++`). Which tags count as block elements is a list in the formatter: a theme that makes a block element inline in CSS, or gives an element `white-space: pre` other than through these tags, has to be checked with before/after screenshots, as `.bio` (`pre-line`) relies on its text being kept. lexbor 0.1.13 drops the letters after `</` inside a script when they start an end tag (`"</scr"` becomes `"</"`); no page has an inline script today.
