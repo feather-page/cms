@@ -1,7 +1,7 @@
 defmodule Feather.OpenLibrary do
   @moduledoc """
-  A small client for the OpenLibrary search API (port of Rails'
-  `OpenLibrary::Client`), used by the admin's book form.
+  A small client for the OpenLibrary search API, used by the admin's book
+  form when no Hardcover token is configured (ADR 0023).
 
   Requests time out after 5 seconds. Tests stub them with `Req.Test`
   (`config :feather, :open_library_req_options, plug: {Req.Test,
@@ -14,12 +14,12 @@ defmodule Feather.OpenLibrary do
   @covers_url "https://covers.openlibrary.org"
   @timeout 5_000
   @min_query_length 3
+  @fields "title,author_name,isbn,cover_i"
 
   @type result :: %{
           title: String.t() | nil,
           author: String.t() | nil,
           isbn: String.t() | nil,
-          key: String.t() | nil,
           cover_url: String.t() | nil
         }
 
@@ -34,7 +34,7 @@ defmodule Feather.OpenLibrary do
     if String.length(query) < @min_query_length do
       {:ok, []}
     else
-      params = [q: query, limit: Keyword.get(opts, :limit, 10)]
+      params = [q: query, fields: @fields, limit: Keyword.get(opts, :limit, 10)]
 
       case Req.get(req(), url: "/search.json", params: params) do
         {:ok, %Req.Response{status: 200, body: %{"docs" => docs}}} when is_list(docs) ->
@@ -55,8 +55,7 @@ defmodule Feather.OpenLibrary do
     %{
       title: doc["title"],
       author: doc["author_name"] |> List.wrap() |> List.first(),
-      isbn: doc["isbn"] |> List.wrap() |> List.first(),
-      key: doc["key"],
+      isbn: doc["isbn"] |> List.wrap() |> Enum.find(&(String.length(&1) == 13)),
       cover_url: cover_url(doc["cover_i"])
     }
   end

@@ -1,14 +1,18 @@
 defmodule FeatherWeb.BookLive.Form do
   @moduledoc """
-  Creates and edits books. An OpenLibrary search (server-side, debounced)
-  fills title, author, ISBN and OpenLibrary key; the cover of the chosen
-  result is downloaded on save (`Feather.Books.attach_cover_from_url/3`).
-  The edit page links to the book's review and deletes the book.
+  Creates and edits books. A book search (server-side, debounced) on
+  Hardcover, or on OpenLibrary without a Hardcover token (ADR 0023), fills
+  title, author and ISBN of a new book and only the ISBN of an existing
+  one. The cover of the chosen result, or an uploaded cover, becomes the
+  book's cover on save. The edit page links to the book's review and
+  deletes the book.
   """
   use FeatherWeb, :live_view
 
-  alias Feather.{Books, OpenLibrary}
+  alias Feather.{Books, Hardcover, Media, OpenLibrary}
   alias Feather.Books.Book
+
+  @cover_extensions ~w(.jpg .jpeg .png .webp)
 
   @reading_statuses [
     {"Want to read", "want_to_read"},
@@ -89,6 +93,8 @@ defmodule FeatherWeb.BookLive.Form do
         >
           <.book_search
             :if={@live_action == :new}
+            label={"Search #{search_name(@search_service)}"}
+            help="Fills in title, author and cover."
             query={@query}
             results={@results}
             error={@search_error}
@@ -124,29 +130,38 @@ defmodule FeatherWeb.BookLive.Form do
             <legend class="fieldset-legend">Cover</legend>
             <div class="flex items-center gap-4">
               <div id="book-cover-preview" class="book-cover-preview">
-                <img :if={@cover_url} src={@cover_url} alt="Cover" />
-                <img
-                  :if={!@cover_url && @book.cover_image}
-                  src={image_path(@site, @book.cover_image, "mobile_x1.webp")}
-                  alt="Cover"
-                />
-                <span
-                  :if={!@cover_url && !@book.cover_image && @form[:emoji].value not in [nil, ""]}
-                  aria-hidden="true"
-                >
-                  {@form[:emoji].value}
-                </span>
-                <.icon
-                  :if={!@cover_url && !@book.cover_image && @form[:emoji].value in [nil, ""]}
-                  name="book-open"
-                  class="size-8 text-base-content/70"
-                />
+                <%= cond do %>
+                  <% entry = List.first(@uploads.cover.entries) -> %>
+                    <.live_img_preview entry={entry} alt="Cover" />
+                  <% @cover_url -> %>
+                    <img src={@cover_url} alt="Cover" />
+                  <% @book.cover_image -> %>
+                    <img src={image_path(@site, @book.cover_image, "mobile_x1.webp")} alt="Cover" />
+                  <% @form[:emoji].value not in [nil, ""] -> %>
+                    <span aria-hidden="true">{@form[:emoji].value}</span>
+                  <% true -> %>
+                    <.icon name="book-open" class="size-8 text-base-content/70" />
+                <% end %>
               </div>
-              <p :if={@live_action == :new} class="label whitespace-normal">
-                {if @cover_url,
-                  do: "From OpenLibrary. Search again to pick another one.",
-                  else: "Search OpenLibrary above to add a cover."}
-              </p>
+              <div class="flex flex-col items-start gap-2">
+                <label
+                  id="book-cover-upload"
+                  class="btn btn-sm focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+                >
+                  <.icon name="upload" />Upload cover
+                  <.live_file_input upload={@uploads.cover} class="sr-only" />
+                </label>
+                <p class="label whitespace-normal">
+                  JPG, PNG or WebP, at most {max_cover_mb()} MB.
+                </p>
+                <p
+                  :if={@cover_error}
+                  id="book-cover-error"
+                  class="flex items-center gap-1.5 text-sm text-error-ink"
+                >
+                  <.icon name="circle-alert" class="size-4 shrink-0" />{@cover_error}
+                </p>
+              </div>
             </div>
             <div :if={@live_action == :edit} class="mt-2">
               <.book_search
@@ -154,6 +169,7 @@ defmodule FeatherWeb.BookLive.Form do
                 label={
                   if @cover_url || @book.cover_image, do: "Find another cover", else: "Find a cover"
                 }
+                help={"Searches #{search_name(@search_service)} and sets the cover and ISBN."}
                 query={@query}
                 results={@results}
                 error={@search_error}
@@ -161,7 +177,6 @@ defmodule FeatherWeb.BookLive.Form do
             </div>
           </fieldset>
           <.input field={@form[:isbn]} type="hidden" />
-          <.input field={@form[:open_library_key]} type="hidden" />
 
           <.action_bar class="mt-6">
             <.button navigate={~p"/sites/#{@site.public_id}/books"}>Cancel</.button>
@@ -194,13 +209,19 @@ defmodule FeatherWeb.BookLive.Form do
      )
      |> assign(:reading_statuses, @reading_statuses)
      |> assign(:book, book)
-     |> assign(query: "", results: [], search_error: nil, cover_url: nil)
+     |> assign(query: "", results: [], search_error: nil, cover_url: nil, cover_error: nil)
+     |> assign(:search_service, if(Hardcover.configured?(), do: Hardcover, else: OpenLibrary))
+     |> allow_upload(:cover,
+       accept: @cover_extensions,
+       max_entries: 1,
+       max_file_size: Media.max_byte_size()
+     )
      |> assign_form(%{})}
   end
 
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
-    case OpenLibrary.search(query) do
+    case socket.assigns.search_service.search(query) do
       {:ok, results} ->
         {:noreply, assign(socket, query: query, results: results, search_error: nil)}
 
@@ -216,22 +237,21 @@ defmodule FeatherWeb.BookLive.Form do
 
       result ->
         params =
-          Map.merge(socket.assigns.params, %{
-            "title" => result.title || "",
-            "author" => result.author || "",
-            "isbn" => result.isbn || "",
-            "open_library_key" => result.key || ""
-          })
+          Map.merge(socket.assigns.params, result_params(socket.assigns.live_action, result))
 
         {:noreply,
          socket
-         |> assign(query: "", results: [], cover_url: result.cover_url)
+         |> cancel_cover_uploads()
+         |> assign(query: "", results: [], cover_url: result.cover_url, cover_error: nil)
          |> assign_form(params, socket.assigns.form.source.action)}
     end
   end
 
-  def handle_event("validate", %{"book" => book_params}, socket) do
-    {:noreply, assign_form(socket, book_params, :validate)}
+  def handle_event("validate", params, socket) do
+    {:noreply,
+     socket
+     |> reject_invalid_cover_upload()
+     |> assign_form(Map.get(params, "book", socket.assigns.params), :validate)}
   end
 
   def handle_event("save", %{"book" => book_params}, socket) do
@@ -253,7 +273,7 @@ defmodule FeatherWeb.BookLive.Form do
         {:noreply,
          socket
          |> put_flash(:info, message)
-         |> maybe_attach_cover(saved)
+         |> attach_chosen_cover(saved)
          |> push_navigate(to: ~p"/sites/#{socket.assigns.site.public_id}/books")}
 
       {:error, %Ecto.Changeset{}} ->
@@ -278,12 +298,13 @@ defmodule FeatherWeb.BookLive.Form do
   end
 
   attr :form, :string, default: nil, doc: "the search form's id, when rendered outside it"
-  attr :label, :string, default: "Search OpenLibrary"
+  attr :label, :string, required: true
+  attr :help, :string, required: true
   attr :query, :string, required: true
   attr :results, :list, required: true
   attr :error, :string, default: nil
 
-  # The OpenLibrary search: at the top of a new book, in the cover block of
+  # The book search: at the top of a new book, in the cover block of
   # an existing one (inside the book form, so its field names the search
   # form).
   defp book_search(assigns) do
@@ -299,7 +320,7 @@ defmodule FeatherWeb.BookLive.Form do
       autocomplete="off"
       phx-debounce="300"
       form={@form}
-      help="Fills in title, author and cover."
+      help={@help}
     />
     <p :if={@error} id="book-search-error" class="flex items-center gap-1.5 text-sm text-error-ink">
       <.icon name="circle-alert" class="size-4 shrink-0" />{@error}
@@ -345,14 +366,68 @@ defmodule FeatherWeb.BookLive.Form do
     Enum.find_value(@reading_statuses, status, fn {label, value} -> value == status && label end)
   end
 
-  defp maybe_attach_cover(%{assigns: %{cover_url: nil}} = socket, _book), do: socket
+  defp search_name(Hardcover), do: "Hardcover"
+  defp search_name(OpenLibrary), do: "OpenLibrary"
 
-  defp maybe_attach_cover(socket, book) do
-    case Books.attach_cover_from_url(socket.assigns.current_scope, book, socket.assigns.cover_url) do
-      {:ok, _book} -> socket
-      {:error, _reason} -> put_flash(socket, :error, "The cover could not be downloaded.")
+  defp result_params(:new, result) do
+    %{"title" => result.title || "", "author" => result.author || "", "isbn" => result.isbn || ""}
+  end
+
+  defp result_params(:edit, %{isbn: nil}), do: %{}
+  defp result_params(:edit, result), do: %{"isbn" => result.isbn}
+
+  defp cancel_cover_uploads(socket) do
+    Enum.reduce(socket.assigns.uploads.cover.entries, socket, &cancel_upload(&2, :cover, &1.ref))
+  end
+
+  # An entry with errors would keep LiveView from submitting the form.
+  defp reject_invalid_cover_upload(socket) do
+    upload = socket.assigns.uploads.cover
+    invalid = Enum.reject(upload.entries, & &1.valid?)
+
+    case upload_errors(upload) ++ Enum.flat_map(invalid, &upload_errors(upload, &1)) do
+      [] ->
+        assign(socket, :cover_error, nil)
+
+      [error | _] ->
+        invalid
+        |> Enum.reduce(socket, &cancel_upload(&2, :cover, &1.ref))
+        |> assign(:cover_error, upload_error_message(error))
     end
   end
+
+  defp max_cover_mb, do: div(Media.max_byte_size(), 1024 * 1024)
+
+  defp upload_error_message(:too_large), do: "The file is too big (at most #{max_cover_mb()} MB)."
+  defp upload_error_message(:not_accepted), do: "Only JPG, PNG and WebP images can be uploaded."
+  defp upload_error_message(:too_many_files), do: "Please choose one file."
+  defp upload_error_message(error), do: "Upload failed: #{inspect(error)}"
+
+  defp attach_chosen_cover(socket, book) do
+    scope = socket.assigns.current_scope
+
+    uploaded =
+      consume_uploaded_entries(socket, :cover, fn %{path: path}, entry ->
+        {:ok, Books.attach_cover_from_upload(scope, book, path, entry.client_name)}
+      end)
+
+    case uploaded do
+      [result] -> put_cover_error(socket, result, "The cover could not be saved.")
+      [] -> attach_cover_url(socket, book)
+    end
+  end
+
+  defp attach_cover_url(%{assigns: %{cover_url: nil}} = socket, _book), do: socket
+
+  defp attach_cover_url(socket, book) do
+    result =
+      Books.attach_cover_from_url(socket.assigns.current_scope, book, socket.assigns.cover_url)
+
+    put_cover_error(socket, result, "The cover could not be downloaded.")
+  end
+
+  defp put_cover_error(socket, {:ok, _book}, _message), do: socket
+  defp put_cover_error(socket, {:error, _reason}, message), do: put_flash(socket, :error, message)
 
   defp assign_form(socket, params, action \\ nil) do
     changeset =

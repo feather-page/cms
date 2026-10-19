@@ -2,7 +2,7 @@ defmodule Feather.AdminContentTest do
   # Context functions added for the content admin.
   use Feather.DataCase
 
-  alias Feather.{Books, Content, Media, OpenLibrary, Pagination, Unsplash}
+  alias Feather.{Books, Content, Hardcover, Media, OpenLibrary, Pagination, Unsplash}
   alias Feather.Content.Blocks
 
   setup do
@@ -160,14 +160,133 @@ defmodule Feather.AdminContentTest do
     end
   end
 
-  test "OpenLibrary.search/1 maps results and skips short queries" do
+  test "OpenLibrary.search/1 asks for ISBNs, maps results and skips short queries" do
     Req.Test.stub(Feather.OpenLibrary, fn conn ->
-      Req.Test.json(conn, %{"docs" => [%{"title" => "Dune", "key" => "/works/1"}]})
+      assert conn.query_params["fields"] =~ "isbn"
+
+      Req.Test.json(conn, %{
+        "docs" => [
+          %{"title" => "Dune", "isbn" => ["0441013597", "9780441013593"], "cover_i" => 42}
+        ]
+      })
     end)
 
-    assert {:ok, [%{title: "Dune", author: nil, isbn: nil, cover_url: nil, key: "/works/1"}]} =
-             OpenLibrary.search("dune")
+    assert {:ok, [result]} = OpenLibrary.search("dune")
+
+    assert result == %{
+             title: "Dune",
+             author: nil,
+             isbn: "9780441013593",
+             cover_url: "https://covers.openlibrary.org/b/id/42-M.jpg"
+           }
 
     assert {:ok, []} = OpenLibrary.search("du")
+  end
+
+  describe "Hardcover" do
+    setup do
+      previous = Application.get_env(:feather, :hardcover_token)
+      Application.put_env(:feather, :hardcover_token, "secret")
+      on_exit(fn -> Application.put_env(:feather, :hardcover_token, previous) end)
+    end
+
+    test "is configured with a token" do
+      assert Hardcover.configured?()
+      Application.put_env(:feather, :hardcover_token, nil)
+      refute Hardcover.configured?()
+    end
+
+    test "searches books with the token and maps the hits" do
+      Req.Test.stub(Feather.Hardcover, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer secret"]
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        assert Jason.decode!(body)["variables"] == %{"query" => "dune"}
+
+        Req.Test.json(conn, %{
+          "data" => %{
+            "search" => %{
+              "results" => %{
+                "hits" => [
+                  %{
+                    "document" => %{
+                      "title" => "Dune",
+                      "author_names" => ["Frank Herbert", "Brian Herbert"],
+                      "isbns" => ["0441013597", "9780441013593"],
+                      "image" => %{"url" => "https://assets.hardcover.app/dune.jpeg"}
+                    }
+                  },
+                  %{"document" => %{"title" => "Dune Messiah", "image" => %{}}}
+                ]
+              }
+            }
+          }
+        })
+      end)
+
+      assert {:ok, [dune, messiah]} = Hardcover.search("dune")
+
+      assert dune == %{
+               title: "Dune",
+               author: "Frank Herbert",
+               isbn: "9780441013593",
+               cover_url: "https://assets.hardcover.app/dune.jpeg"
+             }
+
+      assert messiah == %{title: "Dune Messiah", author: nil, isbn: nil, cover_url: nil}
+    end
+
+    test "skips short queries" do
+      Req.Test.stub(Feather.Hardcover, fn _conn -> flunk("Hardcover must not be asked") end)
+      assert {:ok, []} = Hardcover.search("du")
+    end
+
+    @tag capture_log: true
+    test "reports an invalid or expired token" do
+      Req.Test.stub(Feather.Hardcover, fn conn ->
+        conn |> Plug.Conn.put_status(401) |> Req.Test.json(%{"error" => "invalid_token"})
+      end)
+
+      assert {:error, "Hardcover token is invalid or expired"} = Hardcover.search("dune")
+    end
+
+    @tag capture_log: true
+    test "reports GraphQL errors, unexpected responses and transport errors" do
+      for body <- [
+            %{"errors" => [%{"message" => "x"}]},
+            %{"data" => %{"search" => nil}},
+            %{"data" => %{"search" => %{"results" => %{"hits" => nil}}}}
+          ] do
+        Req.Test.stub(Feather.Hardcover, &Req.Test.json(&1, body))
+        assert {:error, "Hardcover search failed"} = Hardcover.search("dune")
+      end
+
+      Req.Test.stub(Feather.Hardcover, &Req.Test.transport_error(&1, :timeout))
+      assert {:error, "Hardcover search failed"} = Hardcover.search("dune")
+    end
+
+    test "ignores ISBNs and images of an unexpected shape" do
+      Req.Test.stub(Feather.Hardcover, fn conn ->
+        hits = [%{"document" => %{"title" => "Dune", "isbns" => [123], "image" => "x"}}, "junk"]
+        Req.Test.json(conn, %{"data" => %{"search" => %{"results" => %{"hits" => hits}}}})
+      end)
+
+      assert {:ok, [%{title: "Dune", isbn: nil, cover_url: nil}]} = Hardcover.search("dune")
+    end
+
+    test "accepts a token pasted with its Bearer prefix" do
+      Application.put_env(:feather, :hardcover_token, "Bearer secret")
+
+      Req.Test.stub(Feather.Hardcover, fn conn ->
+        assert Plug.Conn.get_req_header(conn, "authorization") == ["Bearer secret"]
+        Req.Test.json(conn, %{"data" => %{"search" => %{"results" => %{"hits" => []}}}})
+      end)
+
+      assert {:ok, []} = Hardcover.search("dune")
+    end
+
+    test "is not asked without a token" do
+      Application.put_env(:feather, :hardcover_token, nil)
+      assert {:error, "Hardcover is not configured"} = Hardcover.search("dune")
+    end
   end
 end

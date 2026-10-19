@@ -30,6 +30,10 @@ if config_env() != :test do
     config :feather, :unsplash_access_key, unsplash_access_key
   end
 
+  if hardcover_token = System.get_env("HARDCOVER_TOKEN") do
+    config :feather, :hardcover_token, hardcover_token
+  end
+
   if System.get_env("IMAGE_CLEANUP") == "false" do
     config :feather, Feather.Media.CleanupScheduler, enabled: false
   end

@@ -15,7 +15,6 @@ defmodule Feather.Books.Book do
     field :author, :string
     field :emoji, :string
     field :isbn, :string
-    field :open_library_key, :string
     field :rating, :integer
     field :read_at, :date
     field :reading_status, :string, default: "finished"
@@ -38,7 +37,6 @@ defmodule Feather.Books.Book do
       :author,
       :emoji,
       :isbn,
-      :open_library_key,
       :rating,
       :read_at,
       :reading_status,

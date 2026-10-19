@@ -62,4 +62,5 @@ config :feather, Feather.Publishing.ScheduledDeploys, enabled: false
 
 # Unsplash and OpenLibrary requests go through Req.Test stubs as well.
 config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}
+config :feather, :hardcover_req_options, plug: {Req.Test, Feather.Hardcover}
 config :feather, :open_library_req_options, plug: {Req.Test, Feather.OpenLibrary}

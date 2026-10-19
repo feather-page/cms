@@ -26,7 +26,8 @@ config :feather,
   # Sender of all application emails.
   mail_from: {"Feather", "no-reply@feather.page"},
   # Unsplash is optional; without a key the image search is disabled.
-  unsplash_access_key: nil
+  unsplash_access_key: nil,
+  hardcover_token: nil
 
 # SQLite: take the write lock when a transaction starts instead of
 # upgrading later (avoids SQLITE_BUSY on upgrade), WAL for concurrent
