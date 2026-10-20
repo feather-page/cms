@@ -32,7 +32,7 @@ defmodule Feather.StaticSite.Routes do
   alias Feather.Media.{Image, Variants}
   alias Feather.Repo
   alias Feather.Sites.Site
-  alias Feather.StaticSite.Themes
+  alias Feather.StaticSite.{Precompress, Themes}
 
   @enforce_keys [:site, :site_root, :canonical_url]
   defstruct [:site, :site_root, :canonical_url]
@@ -105,6 +105,12 @@ defmodule Feather.StaticSite.Routes do
   def project_url(%__MODULE__{site_root: root}, %Project{} = project),
     do: "#{root}#{project_segment(project)}/"
 
+  @doc "The URL of a post, page or project."
+  @spec record_url(t(), Post.t() | Page.t() | Project.t()) :: String.t()
+  def record_url(routes, %Post{} = post), do: post_url(routes, post)
+  def record_url(routes, %Page{} = page), do: page_url(routes, page)
+  def record_url(routes, %Project{} = project), do: project_url(routes, project)
+
   @doc """
   The URL of an image variant, by variant or file name (`"640.webp"`).
   Raises for anything that names no variant.
@@ -146,6 +152,10 @@ defmodule Feather.StaticSite.Routes do
   """
   @spec artifact_url(t(), String.t()) :: String.t()
   def artifact_url(%__MODULE__{site_root: root}, name), do: root <> artifact(name)
+
+  @doc "The URL of a path relative to the site root (`/feed.xml`)."
+  @spec path_url(t(), String.t()) :: String.t()
+  def path_url(%__MODULE__{site_root: root}, path), do: root <> String.trim_leading(path, "/")
 
   @doc "The URL of the page web servers show for missing paths."
   @spec not_found_url(t()) :: String.t()
@@ -284,6 +294,46 @@ defmodule Feather.StaticSite.Routes do
       &resolve_page/2,
       &resolve_post_by_slug/2
     ]
+  end
+
+  @doc """
+  Returns true if the export writes a file at the path (relative to the
+  site root) that `resolve/2` does not serve: the 404 page, the
+  `.htaccess` and the precompressed copies of the text files
+  (`Feather.StaticSite.Precompress`).
+  """
+  @spec unserved_file?(t(), String.t()) :: boolean()
+  def unserved_file?(%__MODULE__{} = routes, path) when is_binary(path) do
+    path = String.trim_leading(path, "/")
+    path in [not_found_path(routes), htaccess_path(routes)] or precompressed_copy?(routes, path)
+  end
+
+  defp precompressed_copy?(routes, path) do
+    case Enum.find(Precompress.suffixes(), &String.ends_with?(path, &1)) do
+      nil ->
+        false
+
+      suffix ->
+        source = String.replace_suffix(path, suffix, "")
+
+        Path.extname(source) in Precompress.extensions() and
+          (source == not_found_path(routes) or resolve(routes, source) != nil)
+    end
+  end
+
+  @doc """
+  The slug a requested path addresses a record by, read like `resolve/2`
+  does: `{Project, slug}` under `projects/`, otherwise `{Post, slug}` (a
+  post or page, see `Feather.Content.Slug.url_space/1`); nil for the site
+  root.
+  """
+  @spec addressed_slug(String.t()) :: {Post | Project, String.t()} | nil
+  def addressed_slug(path) when is_binary(path) do
+    case normalize_request_path(path) do
+      "" -> nil
+      "projects/" <> slug -> {Project, "/" <> slug}
+      path -> {Post, "/" <> String.replace_suffix(path, ".html", "")}
+    end
   end
 
   defp normalize_request_path(path) do

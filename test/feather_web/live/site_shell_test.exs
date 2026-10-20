@@ -11,6 +11,7 @@ defmodule FeatherWeb.SiteShellTest do
         {"/books", "Books"},
         {"/projects", "Projects"},
         {"/settings", "Settings"},
+        {"/redirects", "Redirects"},
         {"/users", "Users"},
         {"/deployments", "Deployments"}
       ] do
@@ -36,7 +37,7 @@ defmodule FeatherWeb.SiteShellTest do
     assert has_element?(lv, ~s(nav[aria-label=Main] a[aria-current="page"]), "Books")
     refute has_element?(lv, ~s(nav[aria-label=Main] a[aria-current="page"]), "Posts")
 
-    for section <- ~w(posts pages books projects settings users deployments) do
+    for section <- ~w(posts pages books projects settings redirects users deployments) do
       assert has_element?(
                lv,
                ~s(nav[aria-label=Main] a[href="/sites/#{site.public_id}/#{section}"])

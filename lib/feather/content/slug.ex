@@ -32,20 +32,16 @@ defmodule Feather.Content.Slug do
   def artifacts, do: @artifacts
 
   @doc """
-  Normalizes a slug: blank becomes nil, otherwise exactly one leading and
-  no trailing slash (`"about/"` -> `"/about"`, `"/"` -> `"/"`).
+  Normalizes a slug or a path: blank becomes nil, otherwise exactly one
+  leading and no trailing slash (`"about/"` -> `"/about"`, `"/"` -> `"/"`).
   """
   @spec normalize(String.t() | nil) :: String.t() | nil
   def normalize(nil), do: nil
 
   def normalize(slug) when is_binary(slug) do
     case String.trim(slug) do
-      "" ->
-        nil
-
-      slug ->
-        slug = slug |> String.replace_prefix("/", "") |> String.replace_suffix("/", "")
-        "/" <> slug
+      "" -> nil
+      slug -> "/" <> String.trim(slug, "/")
     end
   end
 

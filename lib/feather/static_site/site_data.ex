@@ -10,10 +10,11 @@ defmodule Feather.StaticSite.SiteData do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Content, Diagrams, Highlighting, Media, Sites}
+  alias Feather.{Books, Content, Diagrams, Highlighting, Media, Redirects, Sites}
   alias Feather.Books.Book
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Media.Image
+  alias Feather.Redirects.Redirect
   alias Feather.Repo
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
   alias Feather.StaticSite.Themes
@@ -123,6 +124,32 @@ defmodule Feather.StaticSite.SiteData do
 
   defp load_navigation(scope, pages),
     do: scope |> Sites.list_navigation_items() |> put_pages(pages)
+
+  @doc """
+  The active redirects of the site of the data, each with the post, page
+  or project of the data it leads to or its target path. One to a record
+  the data leaves out is left out too.
+  """
+  @spec redirects(t()) :: [{Redirect.t(), Post.t() | Page.t() | Project.t() | String.t()}]
+  def redirects(%__MODULE__{site: site} = data) do
+    scope = Scope.for_site(site)
+    records_by_id = Map.new(data.posts ++ data.pages ++ data.projects, &{&1.id, &1})
+
+    scope
+    |> Redirects.list_redirects()
+    |> Enum.flat_map(fn redirect ->
+      case shown_target(scope, redirect, records_by_id) do
+        nil -> []
+        target -> [{redirect, target}]
+      end
+    end)
+  end
+
+  defp shown_target(_scope, %Redirect{target_path: nil} = redirect, records_by_id),
+    do: Map.get(records_by_id, Redirect.target_record(redirect).id)
+
+  defp shown_target(scope, %Redirect{target_path: path} = redirect, _records_by_id),
+    do: if(Redirects.active?(scope, redirect), do: path)
 
   defp load_images(scope), do: scope |> Media.list_images() |> Map.new(&{&1.public_id, &1})
 

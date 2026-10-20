@@ -656,16 +656,30 @@ defmodule Feather.Content do
 
   defp published_slug_taken?(%{slug: nil}), do: false
 
-  defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}) do
+  defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}),
+    do: published_with_slug?(schema, site_id, slug, id)
+
+  @doc """
+  Returns true if a record of the scope's site in the URL space of
+  `schema` (`Feather.Content.Slug.url_space/1`) is published with the
+  slug. The record with id `except_id` does not count.
+  """
+  @spec published_slug?(Scope.t(), module(), String.t(), Ecto.UUID.t() | nil) :: boolean()
+  def published_slug?(%Scope{site: %Site{id: site_id}}, schema, slug, except_id \\ nil),
+    do: published_with_slug?(schema, site_id, slug, except_id)
+
+  defp published_with_slug?(schema, site_id, slug, except_id) do
     Enum.any?(Slug.url_space(schema), fn other ->
       {version_schema, _owner_field} = Map.fetch!(@versions, other)
 
-      Repo.exists?(
+      query =
         from r in other,
           join: v in ^version_schema,
           on: v.id == r.published_version_id,
-          where: r.site_id == ^site_id and r.id != ^id and v.slug == ^slug
-      )
+          where: r.site_id == ^site_id and v.slug == ^slug
+
+      query = if except_id, do: where(query, [r], r.id != ^except_id), else: query
+      Repo.exists?(query)
     end)
   end
 

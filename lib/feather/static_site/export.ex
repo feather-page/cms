@@ -6,7 +6,7 @@ defmodule Feather.StaticSite.Export do
   that their roles need in the theme (`Feather.StaticSite.ImageVariants`,
   missing ones are generated first), the fonts of the site's theme, the rendered diagrams, `feed.xml`,
   `robots.txt`, `sitemap.xml`, `style.css`, `404.html` and the
-  `.htaccess` for Apache hosts.
+  `.htaccess` for Apache hosts, with the active redirects.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -32,7 +32,8 @@ defmodule Feather.StaticSite.Export do
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
     data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
-    jobs = [:not_found, :htaccess | document_jobs(data)] ++ asset_jobs(data, site)
+    redirects = SiteData.redirects(data)
+    jobs = [:not_found, {:htaccess, redirects} | document_jobs(data)] ++ asset_jobs(data, site)
     run_jobs(jobs, data, routes, sink, opts)
   end
 
@@ -82,7 +83,7 @@ defmodule Feather.StaticSite.Export do
   end
 
   defp describe(:not_found), do: "404 page"
-  defp describe(:htaccess), do: ".htaccess"
+  defp describe({:htaccess, _redirects}), do: ".htaccess"
   defp describe({:image, image, variant}), do: "image #{image.public_id} #{variant.filename}"
   defp describe({kind, %{public_id: public_id}}), do: "#{kind} #{public_id}"
   defp describe({:font, _theme, name}), do: "font #{name}"
@@ -108,8 +109,8 @@ defmodule Feather.StaticSite.Export do
   defp run_job(:not_found, data, routes, sink),
     do: Sink.write(sink, Routes.not_found_path(routes), Renderer.render_not_found(data, routes))
 
-  defp run_job(:htaccess, _data, routes, sink),
-    do: Sink.write(sink, Routes.htaccess_path(routes), Htaccess.render(routes))
+  defp run_job({:htaccess, redirects}, _data, routes, sink),
+    do: Sink.write(sink, Routes.htaccess_path(routes), Htaccess.render(routes, redirects))
 
   defp run_job({:artifact, name}, data, routes, sink) do
     Sink.write(

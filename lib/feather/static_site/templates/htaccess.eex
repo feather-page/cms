@@ -1,6 +1,11 @@
 ErrorDocument 404 <%= @not_found_url %>
 
-<IfModule mod_rewrite.c>
+<%= if @redirects != [] do %><IfModule mod_rewrite.c>
+  RewriteEngine On
+<%= for rule <- @redirects do %>  RewriteRule <%= rule.pattern %> <%= rule.url %> [R=<%= rule.status %>,L]
+<% end %></IfModule>
+
+<% end %><IfModule mod_rewrite.c>
   <IfModule mod_headers.c>
     RewriteEngine On
 <%= for {encoding, suffix} <- @encodings do %>
