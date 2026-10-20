@@ -82,7 +82,7 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
 ## Project structure
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
-    `Media`, `Publishing`)
+    `Media`, `Publishing`, `Redirects`)
 *   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, the theme
     registry `Themes`); each theme's EEx templates live in `themes/<theme>/`
 *   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
