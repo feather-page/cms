@@ -723,6 +723,14 @@ defmodule Feather.Content do
   def draft?(%{published_version_id: id}), do: is_nil(id)
 
   @doc """
+  Returns true if the post is due at `now`: its `publish_at` has passed,
+  so the export shows it once it is published.
+  """
+  @spec due?(Post.t(), DateTime.t()) :: boolean()
+  def due?(%Post{publish_at: nil}, _now), do: false
+  def due?(%Post{publish_at: publish_at}, now), do: DateTime.compare(publish_at, now) != :gt
+
+  @doc """
   Returns true if the stored post, page or project is published, whatever
   the given struct, which may be stale, says.
   """

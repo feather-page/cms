@@ -98,7 +98,7 @@ defmodule Feather.StaticSite.SiteData do
     scope
     |> Content.list_posts()
     |> in_state(content)
-    |> Enum.filter(&due?(&1, now))
+    |> Enum.filter(&Content.due?(&1, now))
     |> Enum.sort_by(& &1.publish_at, {:desc, DateTime})
     |> Repo.preload(@post_preloads)
   end
@@ -135,9 +135,6 @@ defmodule Feather.StaticSite.SiteData do
 
   defp project_order(%Project{started_at: started_at, title: title}),
     do: {0, -Date.to_gregorian_days(started_at), title}
-
-  defp due?(%Post{publish_at: nil}, _now), do: false
-  defp due?(%Post{publish_at: publish_at}, now), do: DateTime.compare(publish_at, now) != :gt
 
   # The review as the export shows it, if it is shown.
   defp put_review(%Book{post_id: post_id} = book, posts) do
