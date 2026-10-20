@@ -905,8 +905,8 @@ defmodule Feather.ContentTest do
     test "restoring a version whose slug another record has taken fails", %{scope: scope} do
       post = post_fixture(scope, slug: "/taken")
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
+      post_fixture(scope, slug: "/taken", draft: true)
       {:ok, post} = Content.publish(scope, post)
-      post_fixture(scope, slug: "/taken")
 
       assert {:error, changeset} =
                Content.restore_version(scope, post, Content.get_version!(scope, post, 1))
@@ -918,8 +918,8 @@ defmodule Feather.ContentTest do
     test "restoring a version whose slug a page has taken fails", %{scope: scope} do
       post = post_fixture(scope, slug: "/taken")
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
+      page_fixture(scope, slug: "/taken", draft: true)
       {:ok, post} = Content.publish(scope, post)
-      page_fixture(scope, slug: "/taken")
 
       assert {:error, changeset} =
                Content.restore_version(scope, post, Content.get_version!(scope, post, 1))

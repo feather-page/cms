@@ -11,13 +11,17 @@ defmodule Feather.Content.Slug do
   from the reservation.
 
   Posts and pages share the site root, so a slug is unique among the
-  posts and pages of a site, see `url_space/1`.
+  posts and pages of a site, see `url_space/1`. The old paths of the
+  site's redirects share the URL space too (ADR 0025).
   """
 
   import Ecto.Changeset
   import Ecto.Query, only: [from: 2, where: 3]
 
   alias Feather.Content.{Page, Post, Project}
+  alias Feather.Redirects.Redirect
+  alias Feather.Sites.Site
+  alias Feather.StaticSite.Routes
 
   @format ~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z}
   @reserved_prefixes ~w(images page posts projects)
@@ -103,33 +107,49 @@ defmodule Feather.Content.Slug do
 
   @doc """
   Adds "has already been taken" to a changed `:slug` that another record
-  of the site's URL space (`url_space/1`) has. The unique index of a
-  table only covers its own records. Like
-  `Ecto.Changeset.unsafe_validate_unique/4` it checks without a lock.
+  of the site's URL space (`url_space/1`) has, and "has already been taken
+  by a redirect" to one whose URL the old path of a redirect holds, in any
+  form the site serves it at (`Feather.StaticSite.Routes.record_paths/2`),
+  unless the redirect leads to the record itself. The unique index of a table
+  only covers its own records. Like `Ecto.Changeset.unsafe_validate_unique/4`
+  it checks without a lock.
   """
   @spec unsafe_validate_unique(Ecto.Changeset.t()) :: Ecto.Changeset.t()
   def unsafe_validate_unique(%Ecto.Changeset{data: %schema{id: id}} = changeset) do
     slug = get_change(changeset, :slug)
     site_id = get_field(changeset, :site_id)
 
-    if is_binary(slug) and not is_nil(site_id) and not Keyword.has_key?(changeset.errors, :slug) and
-         taken?(schema, site_id, slug, id) do
-      add_error(changeset, :slug, "has already been taken",
-        validation: :unsafe_unique,
-        fields: [:site_id, :slug]
-      )
-    else
-      changeset
+    cond do
+      not is_binary(slug) or is_nil(site_id) or Keyword.has_key?(changeset.errors, :slug) ->
+        changeset
+
+      record_taken?(schema, site_id, slug, id) ->
+        add_taken_error(changeset, "has already been taken")
+
+      redirect_taken?(schema, site_id, slug, id) ->
+        add_taken_error(changeset, "has already been taken by a redirect")
+
+      true ->
+        changeset
     end
+  end
+
+  defp add_taken_error(changeset, message) do
+    add_error(changeset, :slug, message, validation: :unsafe_unique, fields: [:site_id, :slug])
   end
 
   @doc """
   Returns true if a record of the site's URL space of `schema`
-  (`url_space/1`) has the slug. The `schema` record with id `except_id`
-  does not count.
+  (`url_space/1`) has the slug, or a redirect holds its URL. The `schema`
+  record with id `except_id` and the redirects to it do not count.
   """
   @spec taken?(module(), Ecto.UUID.t(), String.t(), Ecto.UUID.t() | nil) :: boolean()
   def taken?(schema, site_id, slug, except_id \\ nil) do
+    record_taken?(schema, site_id, slug, except_id) or
+      redirect_taken?(schema, site_id, slug, except_id)
+  end
+
+  defp record_taken?(schema, site_id, slug, except_id) do
     Enum.any?(url_space(schema), fn other ->
       query = from r in other, where: r.site_id == ^site_id and r.slug == ^slug
 
@@ -141,6 +161,19 @@ defmodule Feather.Content.Slug do
       Feather.Repo.exists?(query)
     end)
   end
+
+  defp redirect_taken?(schema, site_id, slug, except_id) do
+    paths = Routes.record_paths(Routes.new(%Site{id: site_id}), struct(schema, slug: slug))
+
+    from(r in Redirect, where: r.site_id == ^site_id and r.old_path in ^paths)
+    |> except_redirects_to(Redirect.target_field(schema), except_id)
+    |> Feather.Repo.exists?()
+  end
+
+  defp except_redirects_to(query, _field, nil), do: query
+
+  defp except_redirects_to(query, field, id),
+    do: where(query, [r], is_nil(field(r, ^field)) or field(r, ^field) != ^id)
 
   @doc """
   Turns a title into a slug candidate the way Rails' `SlugGenerator` did:

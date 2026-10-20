@@ -47,6 +47,7 @@ defmodule Feather.Content do
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
+  alias Feather.Redirects
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
@@ -627,6 +628,9 @@ defmodule Feather.Content do
   (`Feather.Content.Slug.url_space/1`, posts and pages share one) is
   published with the record's slug: the unique slug of the current
   records does not cover a published version whose record has moved on.
+
+  Publishing a record under a URL other than the one it was last
+  published at redirects the old URL to it (`Feather.Redirects.follow_publish/3`).
   """
   @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()
@@ -642,9 +646,24 @@ defmodule Feather.Content do
       cond do
         publication_status(current) == :published -> {:ok, current}
         published_slug_taken?(current) -> {:error, :slug_taken}
-        true -> insert_version(scope, current)
+        true -> insert_version_following_url(scope, current)
       end
     end
+  end
+
+  defp insert_version_following_url(scope, record) do
+    previous = as_newest_version(scope, record)
+
+    with {:ok, published} <- insert_version(scope, record),
+         :ok <- Redirects.follow_publish(scope, previous, published) do
+      {:ok, published}
+    end
+  end
+
+  defp as_newest_version(scope, record) do
+    newest = from v in versions_query(scope, record), order_by: [desc: v.number], limit: 1
+
+    if version = Repo.one(newest), do: with_version_fields(record, version)
   end
 
   defp stored(%schema{id: id, lock_version: lock_version}) do
@@ -875,11 +894,13 @@ defmodule Feather.Content do
   """
   @spec as_published([record]) :: [record] when record: Post.t() | Page.t() | Project.t()
   def as_published(records) do
-    for %{published_version: %version_schema{} = version} = record <-
-          Repo.preload(records, :published_version) do
-      struct(record, Map.take(version, version_schema.copied_fields()))
-    end
+    for %{published_version: %{} = version} = record <-
+          Repo.preload(records, :published_version),
+        do: with_version_fields(record, version)
   end
+
+  defp with_version_fields(record, %version_schema{} = version),
+    do: struct(record, Map.take(version, version_schema.copied_fields()))
 
   ## Admin listings
 

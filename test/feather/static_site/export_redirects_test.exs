@@ -1,7 +1,7 @@
 defmodule Feather.StaticSite.ExportRedirectsTest do
   use Feather.DataCase
 
-  alias Feather.Content
+  alias Feather.{Content, Redirects}
   alias Feather.StaticSite.{Export, RecordingSink, Routes}
 
   setup do
@@ -75,5 +75,22 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
 
     {:ok, _} = Content.publish(scope, page)
     assert rules(htaccess(scope)) == ["  RewriteRule ^old/?$ /target/ [R=301,L]"]
+  end
+
+  test "renaming a published post twice redirects both old URLs to the current one in a single step",
+       %{scope: scope} do
+    post = post_fixture(scope, %{slug: "/ssh-copy-id"})
+    {:ok, post} = Content.update_post(scope, post, %{slug: "/install-ssh-key"})
+    {:ok, post} = Content.publish(scope, post)
+    {:ok, post} = Content.update_post(scope, post, %{slug: "/ssh-key"})
+    {:ok, _post} = Content.publish(scope, post)
+
+    assert scope |> Redirects.list_redirects() |> Enum.map(& &1.old_path) ==
+             ["/install-ssh-key", "/ssh-copy-id"]
+
+    assert rules(htaccess(scope)) == [
+             "  RewriteRule ^install\\-ssh\\-key/?$ /ssh-key/ [R=301,L]",
+             "  RewriteRule ^ssh\\-copy\\-id/?$ /ssh-key/ [R=301,L]"
+           ]
   end
 end

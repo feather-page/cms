@@ -57,6 +57,10 @@ defmodule Feather.Redirects.Redirect do
   def target_record(%__MODULE__{} = redirect),
     do: Enum.find_value(target_assocs(), &Map.fetch!(redirect, &1))
 
+  @doc "Returns true if the path has the format of an old path (no query, fragment or space)."
+  @spec valid_path?(String.t()) :: boolean()
+  def valid_path?(path), do: Regex.match?(@path_format, path)
+
   @doc false
   def changeset(redirect, attrs) do
     redirect

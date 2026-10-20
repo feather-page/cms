@@ -426,5 +426,237 @@ defmodule Feather.RedirectsTest do
     end
   end
 
+  describe "publishing a record under a new URL" do
+    test "renaming back to an old slug deletes its redirect and redirects the URL it leaves",
+         %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/b"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a", target: "/b/"})
+
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/a"})
+      {:ok, _post} = Content.publish(scope, post)
+
+      assert [%Redirect{old_path: "/b", kind: :permanent} = redirect] =
+               Redirects.list_redirects(scope)
+
+      assert redirect.post_id == post.id
+    end
+
+    test "publishing deletes a redirect to the record from its URL's /index.html form, not from the .html form",
+         %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/b"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a/index.html", target: "/b/"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a.html", target: "/b/"})
+
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/a"})
+      {:ok, _post} = Content.publish(scope, post)
+
+      assert scope |> Redirects.list_redirects() |> Enum.map(& &1.old_path) == ["/a.html", "/b"]
+    end
+
+    test "redirects the old URL of a page and of a project, under /projects/", %{scope: scope} do
+      page = page_fixture(scope, %{slug: "/about"})
+      project = project_fixture(scope, %{slug: "/cms"})
+
+      {:ok, page} = Content.update_page(scope, page, %{slug: "/me"})
+      {:ok, _} = Content.publish(scope, page)
+      {:ok, project} = Content.update_project(scope, project, %{slug: "/feather"})
+      {:ok, _} = Content.publish(scope, project)
+
+      assert [
+               %Redirect{old_path: "/about", page_id: page_id},
+               %Redirect{old_path: "/projects/cms", project_id: project_id}
+             ] = Redirects.list_redirects(scope)
+
+      assert {page_id, project_id} == {page.id, project.id}
+    end
+
+    test "redirects the public id URL of a post that got a slug", %{scope: scope} do
+      post = post_fixture(scope, %{slug: nil})
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/named"})
+      {:ok, _} = Content.publish(scope, post)
+
+      old_path = "/posts/" <> String.downcase(post.public_id)
+      assert [%Redirect{old_path: ^old_path, target: "/named/"}] = Redirects.list_redirects(scope)
+    end
+
+    test "stores no redirect from an old URL another record holds, draft included",
+         %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+      page_fixture(scope, %{slug: "/a", draft: true})
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert Redirects.list_redirects(scope) == []
+    end
+
+    test "stores no redirect from an old URL another record is published at", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.unpublish(scope, post)
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+      other = page_fixture(scope, %{slug: "/a"})
+      {:ok, _} = Content.update_page(scope, other, %{slug: "/elsewhere"})
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert Redirects.list_redirects(scope) == []
+    end
+
+    test "stores no redirect from an old URL that is no valid old path", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+
+      # Imported versions may hold slugs the slug format refuses.
+      Repo.update_all(from(v in Feather.Content.PostVersion, where: v.post_id == ^post.id),
+        set: [slug: "/Old Post?"]
+      )
+
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+
+      assert {:ok, _} = Content.publish(scope, post)
+      assert Redirects.list_redirects(scope) == []
+    end
+
+    test "stores no redirect from the site root a homepage leaves", %{scope: scope} do
+      {:ok, page} = Content.publish(scope, Content.get_homepage(scope))
+      {:ok, page} = Content.update_page(scope, page, %{slug: "/welcome"})
+      {:ok, _} = Content.publish(scope, page)
+
+      assert Redirects.list_redirects(scope) == []
+    end
+
+    test "replaces a redirect from the old URL", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+
+      # Saving it is refused now that the post is published at /a; older data may hold one.
+      %Redirect{site_id: scope.site.id, old_path: "/a", kind: :temporary, target_path: "/"}
+      |> Ecto.Changeset.change()
+      |> Feather.PublicId.put()
+      |> Repo.insert!()
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert [%Redirect{old_path: "/a", kind: :permanent, target_path: nil, post_id: post_id}] =
+               Redirects.list_redirects(scope)
+
+      assert post_id == post.id
+    end
+
+    test "redirects the URL it was last published at after an unpublish", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.unpublish(scope, post)
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert [%Redirect{old_path: "/a"}] = Redirects.list_redirects(scope)
+    end
+
+    test "moves the site's updated_at", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/b"})
+      Repo.update_all(Site, set: [updated_at: ~U[2026-01-01 00:00:00.000000Z]])
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert DateTime.after?(site_updated_at(scope), ~U[2026-01-01 00:00:00.000000Z])
+    end
+
+    test "moves the site's updated_at when it only deletes a redirect", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/b"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a", target: "/b/"})
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/a"})
+      page_fixture(scope, %{slug: "/b", draft: true})
+      Repo.update_all(Site, set: [updated_at: ~U[2026-01-01 00:00:00.000000Z]])
+
+      {:ok, _} = Content.publish(scope, post)
+
+      assert Redirects.list_redirects(scope) == []
+      assert DateTime.after?(site_updated_at(scope), ~U[2026-01-01 00:00:00.000000Z])
+    end
+
+    test "stores nothing when the URL stays", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/a"})
+      {:ok, post} = Content.update_post(scope, post, %{title: "Renamed"})
+      {:ok, _} = Content.publish(scope, post)
+
+      assert Redirects.list_redirects(scope) == []
+    end
+  end
+
+  describe "slugs and the old paths of redirects" do
+    test "a slug cannot take a URL a redirect holds", %{scope: scope} do
+      post_fixture(scope, %{title: "Linchpin: Are you indispensable?", slug: "/linchpin-book"})
+
+      {:ok, redirect} =
+        Redirects.create_redirect(scope, %{old_path: "/linchpin", target: "/linchpin-book/"})
+
+      assert {:error, changeset} =
+               Content.create_page(scope, %{title: "Linchpin", slug: "/linchpin"})
+
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+
+      {:ok, _} = Redirects.delete_redirect(scope, redirect)
+      assert {:ok, _page} = Content.create_page(scope, %{title: "Linchpin", slug: "/linchpin"})
+    end
+
+    test "a slug cannot take a URL a redirect holds in its .html form", %{scope: scope} do
+      {:ok, redirect} = Redirects.create_redirect(scope, %{old_path: "/about.html", target: "/"})
+
+      assert {:error, changeset} = Content.create_page(scope, %{title: "About", slug: "/about"})
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+
+      {:ok, _} = Redirects.delete_redirect(scope, redirect)
+      assert {:ok, _page} = Content.create_page(scope, %{title: "About", slug: "/about"})
+    end
+
+    test "a slug cannot take a URL a redirect holds in its /index.html form", %{scope: scope} do
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/foo/index.html", target: "/"})
+
+      {:ok, _} =
+        Redirects.create_redirect(scope, %{old_path: "/projects/cms/index.html", target: "/"})
+
+      assert {:error, changeset} = Content.create_page(scope, %{title: "Foo", slug: "/foo"})
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+
+      assert {:error, changeset} =
+               Content.create_project(scope, %{
+                 title: "CMS",
+                 slug: "/cms",
+                 short_description: "S",
+                 started_at: ~D[2024-03-01]
+               })
+
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+    end
+
+    test "a slug may take the URL of a redirect to its own record", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/b"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a", target: "/b/"})
+
+      assert {:error, changeset} = Content.create_post(scope, %{title: "x", slug: "/a"})
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+
+      assert {:ok, _post} = Content.update_post(scope, post, %{slug: "/a"})
+    end
+
+    test "a project's URL lies under /projects/", %{scope: scope} do
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/projects/old", target: "/"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/new", target: "/"})
+
+      attrs = %{title: "P", short_description: "S", started_at: ~D[2024-03-01]}
+
+      assert {:error, changeset} = Content.create_project(scope, Map.put(attrs, :slug, "/old"))
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+      assert {:ok, _project} = Content.create_project(scope, Map.put(attrs, :slug, "/new"))
+    end
+
+    test "a suggested slug leaves out URLs redirects hold", %{scope: scope} do
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/linchpin", target: "/"})
+
+      assert Content.suggest_slug(scope, "Linchpin") == "/linchpin1"
+    end
+  end
+
   defp site_updated_at(%{site: %Site{id: id}}), do: Repo.get!(Site, id).updated_at
 end

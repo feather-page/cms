@@ -13,7 +13,7 @@ defmodule Feather.Redirects do
   alias Ecto.Changeset
   alias Feather.Accounts.Scope
   alias Feather.Content
-  alias Feather.Content.{Post, Slug}
+  alias Feather.Content.{Page, Post, Project, Slug}
   alias Feather.Redirects.Redirect
   alias Feather.Repo
   alias Feather.Sites
@@ -146,22 +146,77 @@ defmodule Feather.Redirects do
     save(redirect, scope, &Repo.delete(&1, @stale_opts))
   end
 
-  defp held?(scope, routes, path) do
-    case Routes.resolve(routes, path) do
-      nil -> Routes.unserved_file?(routes, path) or published?(scope, path)
-      _content_or_generated -> true
+  @doc """
+  Follows the publish of a post, page or project of the scope's site:
+  deletes the redirects from its URL and the URL's `index.html`, and
+  redirects the URL it was last published at (`previous`, the record as
+  published then, or nil) to it permanently, replacing a redirect from
+  that path, unless another record holds that URL as it is or as
+  published. Moves the site's `updated_at` if a redirect changed.
+  """
+  @spec follow_publish(Scope.t(), record | nil, record) :: :ok
+        when record: Post.t() | Page.t() | Project.t()
+  def follow_publish(
+        %Scope{site: %Site{id: site_id} = site} = scope,
+        previous,
+        %{site_id: site_id} = record
+      ) do
+    routes = Routes.new(site)
+    path = url_path(routes, record)
+    # On Apache a redirect from the URL's index.html would loop; one from its .html form leads on.
+    {deleted, _} = Repo.delete_all(from_path(site, [path, Path.join(path, "index.html")]))
+    redirected? = redirect_previous_url(scope, routes, previous, path)
+
+    if deleted > 0 or redirected?, do: Sites.touch_site(scope), else: :ok
+  end
+
+  defp redirect_previous_url(_scope, _routes, nil, _path), do: false
+
+  defp redirect_previous_url(%Scope{site: site} = scope, routes, %schema{id: id} = previous, path) do
+    old_path = url_path(routes, previous)
+
+    if old_path != path and Redirect.valid_path?(old_path) and
+         not held?(scope, routes, old_path, previous) do
+      Repo.delete_all(from_path(site, old_path))
+
+      %Redirect{site_id: site.id, old_path: old_path, kind: :permanent}
+      |> Changeset.change(%{Redirect.target_field(schema) => id})
+      |> Feather.PublicId.put()
+      |> Repo.insert!()
+
+      true
+    else
+      false
     end
   end
 
-  defp published?(scope, path) do
-    case Routes.addressed_slug(path) do
-      nil -> false
-      {schema, slug} -> Content.published_slug?(scope, schema, slug)
+  defp held?(scope, routes, path, except) do
+    case {Routes.resolve(routes, path), except} do
+      {nil, _except} ->
+        Routes.unserved_file?(routes, path) or published_by_other?(scope, path, except)
+
+      {{_kind, %schema{id: id}}, %schema{id: id}} ->
+        published_by_other?(scope, path, except)
+
+      _content_or_generated ->
+        true
     end
   end
+
+  defp published_by_other?(scope, path, except) do
+    case Routes.addressed_slug(path) do
+      nil -> false
+      {schema, slug} -> Content.published_slug?(scope, schema, slug, except && except.id)
+    end
+  end
+
+  defp from_path(%Site{id: site_id}, old_paths) when is_list(old_paths),
+    do: from(r in Redirect, where: r.site_id == ^site_id and r.old_path in ^old_paths)
 
   defp from_path(%Site{id: site_id}, old_path),
     do: from(r in Redirect, where: r.site_id == ^site_id and r.old_path == ^old_path)
+
+  defp url_path(routes, record), do: Slug.normalize(Routes.record_url(routes, record))
 
   @doc "Returns a changeset for a redirect form, validated like a save."
   @spec change_redirect(Scope.t(), Redirect.t(), map()) :: Changeset.t()
@@ -219,7 +274,7 @@ defmodule Feather.Redirects do
 
   defp validate_old_path(changeset, scope, routes) do
     Changeset.validate_change(changeset, :old_path, fn :old_path, old_path ->
-      if held?(scope, routes, old_path),
+      if held?(scope, routes, old_path, nil),
         do: [old_path: "is already a URL of the site"],
         else: []
     end)

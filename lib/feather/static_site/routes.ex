@@ -112,6 +112,22 @@ defmodule Feather.StaticSite.Routes do
   def record_url(routes, %Project{} = project), do: project_url(routes, project)
 
   @doc """
+  The paths `resolve/2` finds a post, page or project at, relative to the
+  site root and without a trailing slash: its URL, the URL with
+  `/index.html` and, for a post or page, the URL with `.html`.
+  """
+  @spec record_paths(t(), Post.t() | Page.t() | Project.t()) :: [String.t()]
+  def record_paths(%__MODULE__{site_root: root} = routes, record) do
+    case routes |> record_url(record) |> String.replace_prefix(root, "") |> strip_slug() do
+      "" -> ["/", "/index.html"]
+      segment -> ["/" <> segment, "/#{segment}/index.html" | html_path(record, segment)]
+    end
+  end
+
+  defp html_path(%Project{}, _segment), do: []
+  defp html_path(_post_or_page, segment), do: ["/" <> segment <> ".html"]
+
+  @doc """
   The URL of an image variant, by variant or file name (`"640.webp"`).
   Raises for anything that names no variant.
   """
