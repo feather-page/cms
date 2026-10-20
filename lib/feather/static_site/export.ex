@@ -2,8 +2,9 @@ defmodule Feather.StaticSite.Export do
   @moduledoc """
   Renders the published versions of a whole site into a sink: the pages
   of the post list, the posts that are due, projects, pages (the homepage
-  is the first page of the post list), the image variants in use, the
-  fonts of the site's theme, the rendered diagrams, `feed.xml`,
+  is the first page of the post list), the variants of the images in use
+  that their roles need in the theme (`Feather.StaticSite.ImageVariants`,
+  missing ones are generated first), the fonts of the site's theme, the rendered diagrams, `feed.xml`,
   `robots.txt`, `sitemap.xml`, `style.css`, `404.html` and the
   `.htaccess` for Apache hosts.
 
@@ -15,9 +16,8 @@ defmodule Feather.StaticSite.Export do
 
   alias Feather.Content.{Page, Slug}
   alias Feather.{Diagrams, Media}
-  alias Feather.Media.Variants
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Htaccess, Renderer, Routes, Sink, SiteData, Themes}
+  alias Feather.StaticSite.{Htaccess, ImageVariants, Renderer, Routes, Sink, SiteData, Themes}
 
   require Logger
 
@@ -32,7 +32,7 @@ defmodule Feather.StaticSite.Export do
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
     data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
-    jobs = [:not_found, :htaccess | document_jobs(data)] ++ asset_jobs(data, Themes.module(site))
+    jobs = [:not_found, :htaccess | document_jobs(data)] ++ asset_jobs(data, site)
     run_jobs(jobs, data, routes, sink, opts)
   end
 
@@ -44,13 +44,16 @@ defmodule Feather.StaticSite.Export do
       Enum.map(Slug.artifacts(), &{:artifact, &1})
   end
 
-  defp asset_jobs(data, theme) do
+  defp asset_jobs(data, site) do
+    theme = Themes.module(site)
     fonts = theme.fonts() |> Map.keys() |> Enum.sort()
-    images = SiteData.images_in_use(data)
+    roles = ImageVariants.image_roles(site)
 
     Enum.map(fonts, &{:font, theme, &1}) ++
       Enum.map(Map.values(data.diagrams), &{:diagram, &1}) ++
-      for(image <- images, variant <- Variants.all(), do: {:image, image, variant})
+      for image <- SiteData.images_in_use(data),
+          variant <- ImageVariants.variants(site, image, Map.get(roles, image.id, [])),
+          do: {:image, image, variant}
   end
 
   # A crashing (linked) task would take the caller down, so failures are raised here instead.
@@ -123,12 +126,15 @@ defmodule Feather.StaticSite.Export do
     do: Sink.copy(sink, Routes.diagram_path(routes, name), from: Diagrams.path(name))
 
   defp run_job({:image, image, variant}, _data, routes, sink) do
-    source = Media.variant_path(image, variant.name)
+    case Media.ensure_variant(image, variant) do
+      :ok ->
+        source = Media.variant_path(image, variant)
+        Sink.copy(sink, Routes.image_path(routes, image, variant), from: source)
 
-    if File.regular?(source) do
-      Sink.copy(sink, Routes.image_path(routes, image, variant.name), from: source)
-    else
-      Logger.warning("Image variant missing, not exported: #{source}")
+      {:error, reason} ->
+        Logger.warning(
+          "Image variant #{image.public_id}/#{variant.filename} missing, not exported: #{inspect(reason)}"
+        )
     end
   end
 end

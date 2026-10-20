@@ -13,7 +13,7 @@ defmodule Feather.StaticSite.Routes do
   | page              | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
   | project           | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
   | image variant     | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
-  | theme font        | `/fonts/<file>`                | `fonts/<file>`                        |
+  | theme font        | `/fonts/<file>?v=<hash>`       | `fonts/<file>`                        |
   | diagram           | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
   | artifact          | `/feed.xml`, `/style.css`, ... | `feed.xml`, `style.css`, ...          |
   | not found page    | (any missing path)             | `404.html`                            |
@@ -106,29 +106,35 @@ defmodule Feather.StaticSite.Routes do
     do: "#{root}#{project_segment(project)}/"
 
   @doc """
-  The URL of an image variant, by variant name (`:mobile_x1_webp`) or file
-  name (`"mobile_x1.webp"`). Raises for unknown variants.
+  The URL of an image variant, by variant or file name (`"640.webp"`).
+  Raises for anything that names no variant.
   """
-  @spec image_url(t(), Image.t(), atom() | String.t()) :: String.t()
+  @spec image_url(t(), Image.t(), Variants.variant() | String.t()) :: String.t()
   def image_url(%__MODULE__{site_root: root}, %Image{} = image, variant),
     do: root <> image_segment(image, variant)
 
   @doc """
-  The `srcset` of an image: its webp variants with their real widths.
+  The `srcset` of an image shown with the webp variants of the given
+  sizes: narrowest first, with their real widths (see
+  `Feather.Media.Variants.srcset_widths/3`).
   """
-  @spec image_srcset(t(), Image.t()) :: String.t()
-  def image_srcset(%__MODULE__{} = routes, %Image{} = image) do
-    widths = Variants.srcset_widths(image.width, image.height)
-
-    Enum.map_join(widths, ", ", fn {filename, width} ->
-      "#{image_url(routes, image, filename)} #{width}w"
+  @spec image_srcset(t(), Image.t(), [pos_integer()]) :: String.t()
+  def image_srcset(%__MODULE__{} = routes, %Image{} = image, sizes) do
+    sizes
+    |> Variants.srcset_widths(image.width, image.height)
+    |> Enum.map_join(", ", fn {variant, width} ->
+      "#{image_url(routes, image, variant)} #{width}w"
     end)
   end
 
-  @doc "The URL of a font file of the site's theme (see `Feather.StaticSite.Theme`)."
+  @doc """
+  The URL of a font file of the site's theme (see `Feather.StaticSite.Theme`),
+  with a hash of its content, so a changed font reaches browsers despite
+  the year-long cache.
+  """
   @spec font_url(t(), String.t()) :: String.t()
-  def font_url(%__MODULE__{site_root: root} = routes, name),
-    do: root <> font_segment(routes, name)
+  def font_url(%__MODULE__{site_root: root, site: site} = routes, name),
+    do: root <> font_segment(routes, name) <> "?v=" <> font_hash(site, name)
 
   @doc "The URL of a rendered diagram by its file name (see `Feather.Diagrams`)."
   @spec diagram_url(t(), String.t()) :: String.t()
@@ -169,7 +175,7 @@ defmodule Feather.StaticSite.Routes do
     do: "#{project_segment(project)}/index.html"
 
   @doc "The output path of an image variant."
-  @spec image_path(t(), Image.t(), atom() | String.t()) :: String.t()
+  @spec image_path(t(), Image.t(), Variants.variant() | String.t()) :: String.t()
   def image_path(%__MODULE__{}, %Image{} = image, variant), do: image_segment(image, variant)
 
   @doc "The output path of a theme font file."
@@ -204,6 +210,19 @@ defmodule Feather.StaticSite.Routes do
     if font?(site, name),
       do: "fonts/" <> name,
       else: raise(ArgumentError, "unknown font file #{inspect(name)}")
+  end
+
+  # Fonts ship with the release, so each is hashed once per run.
+  defp font_hash(site, name) do
+    path = Themes.module(site).font_path(name)
+    key = {__MODULE__, :font_hash, path}
+
+    with nil <- :persistent_term.get(key, nil) do
+      hash = :sha256 |> :crypto.hash(File.read!(path)) |> Base.encode16(case: :lower)
+      short = binary_part(hash, 0, 12)
+      :persistent_term.put(key, short)
+      short
+    end
   end
 
   defp diagram_segment(name) do

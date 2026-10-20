@@ -5,13 +5,14 @@ defmodule Feather.Media do
   Files live in the storage root (`config :feather, :storage_root`):
 
       <storage_root>/images/<public_id>/original.<ext>
-      <storage_root>/images/<public_id>/mobile_x1.webp   (and the other variants)
+      <storage_root>/images/<public_id>/640.webp   (and the other variants)
 
   Rendered diagrams live next to them in `<storage_root>/diagrams/` (see
   `Feather.Diagrams`).
 
-  Variants are generated synchronously on create, see
-  `Feather.Media.Variants` for the list.
+  Variants (`Feather.Media.Variants`) are generated synchronously on create:
+  the admin preview and those the caller asks for, which follow from the
+  image's role (`Feather.StaticSite.ImageVariants`).
   """
 
   import Ecto.Query, warn: false
@@ -115,21 +116,22 @@ defmodule Feather.Media do
 
   @doc """
   Creates an image from a file on disk (an upload). The file is copied
-  into storage and the variants are generated.
+  into storage and the admin preview and the variants given as `:variants`
+  are generated.
 
   `attrs` may contain `:source_url`, `:unsplash_data`, `:post_id`,
   `:page_id` and `:project_id`.
 
   Returns `{:error, changeset}` if the file is not an image or too big.
   """
-  @spec create_image_from_upload(Scope.t() | Site.t(), Path.t(), String.t(), map()) ::
+  @spec create_image_from_upload(Scope.t() | Site.t(), Path.t(), String.t(), map(), keyword()) ::
           {:ok, Image.t()} | {:error, Ecto.Changeset.t()}
-  def create_image_from_upload(scope_or_site, path, filename, attrs \\ %{})
+  def create_image_from_upload(scope_or_site, path, filename, attrs \\ %{}, opts \\ [])
 
-  def create_image_from_upload(%Scope{site: %Site{} = site}, path, filename, attrs),
-    do: create_image_from_upload(site, path, filename, attrs)
+  def create_image_from_upload(%Scope{site: %Site{} = site}, path, filename, attrs, opts),
+    do: create_image_from_upload(site, path, filename, attrs, opts)
 
-  def create_image_from_upload(%Site{} = site, path, filename, attrs) do
+  def create_image_from_upload(%Site{} = site, path, filename, attrs, opts) do
     %File.Stat{size: byte_size} = File.stat!(path)
 
     attrs =
@@ -140,11 +142,11 @@ defmodule Feather.Media do
     if byte_size > @max_byte_size do
       file_error(site, attrs, "is too big (at most 25 MB)")
     else
-      create_image_from_file(site, path, attrs)
+      create_image_from_file(site, path, attrs, Keyword.get(opts, :variants, []))
     end
   end
 
-  defp create_image_from_file(site, path, attrs) do
+  defp create_image_from_file(site, path, attrs, variants) do
     case Processor.inspect_file(path) do
       {:ok, info} ->
         attrs =
@@ -156,11 +158,16 @@ defmodule Feather.Media do
 
         %Image{site_id: site.id}
         |> Image.create_changeset(attrs)
-        |> insert_with_files(path, info.extension)
+        |> insert_with_files(path, info.extension, fitting(variants, info))
 
       {:error, :not_an_image} ->
         file_error(site, attrs, "must be an image")
     end
+  end
+
+  defp fitting(variants, %{width: width, height: height}) do
+    {webp, others} = Enum.split_with(variants, &(&1.format == :webp))
+    Variants.for_image(Enum.map(webp, & &1.size), width, height) ++ others
   end
 
   # Only the file error: running the full changeset here would add
@@ -175,7 +182,7 @@ defmodule Feather.Media do
     {:error, %{changeset | action: :insert}}
   end
 
-  defp insert_with_files(changeset, source_path, extension) do
+  defp insert_with_files(changeset, source_path, extension, variants) do
     with {:ok, image} <- Ecto.Changeset.apply_action(changeset, :insert) do
       dir = image_dir(image)
       original = Path.join(dir, "original.#{extension}")
@@ -184,7 +191,7 @@ defmodule Feather.Media do
         File.mkdir_p!(dir)
         File.cp!(source_path, original)
 
-        case Processor.write_variants(original, dir) do
+        case Processor.write_variants(original, dir, with_preview(variants)) do
           :ok ->
             case Repo.insert(changeset) do
               {:ok, image} ->
@@ -210,7 +217,7 @@ defmodule Feather.Media do
 
   @doc """
   Fetches an image from a URL and creates it like an upload, recording the
-  URL as `source_url`.
+  URL as `source_url`. Takes the options of `create_image_from_upload/5`.
 
   `Feather.Media.Fetcher` does the download: only http(s) URLs on ports
   80/443 whose host resolves to public addresses only, connecting to the
@@ -224,14 +231,14 @@ defmodule Feather.Media do
   does not tell the caller anything about the network the server sees. The
   details are logged.
   """
-  @spec create_image_from_url(Scope.t() | Site.t(), String.t(), map()) ::
+  @spec create_image_from_url(Scope.t() | Site.t(), String.t(), map(), keyword()) ::
           {:ok, Image.t()} | {:error, Ecto.Changeset.t() | String.t()}
-  def create_image_from_url(scope_or_site, url, attrs \\ %{})
+  def create_image_from_url(scope_or_site, url, attrs \\ %{}, opts \\ [])
 
-  def create_image_from_url(%Scope{site: %Site{} = site}, url, attrs),
-    do: create_image_from_url(site, url, attrs)
+  def create_image_from_url(%Scope{site: %Site{} = site}, url, attrs, opts),
+    do: create_image_from_url(site, url, attrs, opts)
 
-  def create_image_from_url(%Site{} = site, url, attrs) do
+  def create_image_from_url(%Site{} = site, url, attrs, opts) do
     with {:ok, body} <- fetch(url) do
       tmp = Path.join(System.tmp_dir!(), "feather-fetch-#{Feather.PublicId.generate()}")
 
@@ -239,7 +246,7 @@ defmodule Feather.Media do
         File.write!(tmp, body)
         filename = url |> URI.parse() |> Map.get(:path) |> Kernel.||("") |> Path.basename()
         attrs = attrs |> Map.new() |> Map.put(:source_url, url)
-        create_image_from_upload(site, tmp, filename, attrs)
+        create_image_from_upload(site, tmp, filename, attrs, opts)
       after
         File.rm(tmp)
       end
@@ -288,16 +295,76 @@ defmodule Feather.Media do
   end
 
   @doc """
-  The path of a variant file, by variant name (`:mobile_x1_webp`) or file
-  name (`"mobile_x1.webp"`). Raises for unknown variants.
+  The path of a variant file, by variant or file name (`"640.webp"`).
+  Raises for anything that names no variant.
   """
-  @spec variant_path(Image.t(), atom() | String.t()) :: Path.t()
+  @spec variant_path(Image.t(), Variants.variant() | String.t()) :: Path.t()
   def variant_path(%Image{} = image, variant) do
     case Variants.fetch(variant) do
       %{filename: filename} -> Path.join(image_dir(image), filename)
       nil -> raise ArgumentError, "unknown image variant #{inspect(variant)}"
     end
   end
+
+  @doc """
+  The file names of the stored variants of an image, sorted: every file
+  but the original and variants still being written.
+  """
+  @spec variant_filenames(Image.t()) :: [String.t()]
+  def variant_filenames(%Image{} = image) do
+    case File.ls(image_dir(image)) do
+      {:ok, names} -> names |> Enum.reject(&(original?(&1) or partial?(&1))) |> Enum.sort()
+      {:error, _reason} -> []
+    end
+  end
+
+  defp original?(name), do: String.starts_with?(name, "original.")
+  defp partial?(name), do: String.ends_with?(name, ".part")
+
+  @doc """
+  Generates a variant from the original unless it is stored already.
+  """
+  @spec ensure_variant(Image.t(), Variants.variant()) :: :ok | {:error, term()}
+  def ensure_variant(%Image{} = image, variant) do
+    target = variant_path(image, variant)
+
+    cond do
+      File.regular?(target) -> :ok
+      original = original_path(image) -> Processor.write_variant(original, target, variant)
+      true -> {:error, :original_missing}
+    end
+  end
+
+  @doc """
+  Brings the stored variants of an image in line with `variants` (the
+  admin preview is always kept): generates the missing ones from the
+  original and deletes the others. Variants that are stored and needed are
+  left untouched. Returns the added and removed file names.
+  """
+  @spec sync_variants(Image.t(), [Variants.variant()]) ::
+          {:ok, %{added: [String.t()], removed: [String.t()]}} | {:error, term()}
+  def sync_variants(%Image{} = image, variants) do
+    needed = with_preview(variants)
+    stored = variant_filenames(image)
+    missing = Enum.reject(needed, &(&1.filename in stored))
+    unneeded = stored -- Enum.map(needed, & &1.filename)
+
+    with :ok <- write_missing(image, missing) do
+      Enum.each(unneeded, &File.rm(Path.join(image_dir(image), &1)))
+      {:ok, %{added: missing |> Enum.map(& &1.filename) |> Enum.sort(), removed: unneeded}}
+    end
+  end
+
+  defp write_missing(_image, []), do: :ok
+
+  defp write_missing(image, missing) do
+    case original_path(image) do
+      nil -> {:error, :original_missing}
+      original -> Processor.write_variants(original, image_dir(image), missing)
+    end
+  end
+
+  defp with_preview(variants), do: Enum.uniq_by([Variants.preview() | variants], & &1.filename)
 
   ## Deleting
 

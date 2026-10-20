@@ -6,8 +6,8 @@ defmodule FeatherWeb.HeaderImagePicker do
   button (an × after "Change", so every slot ends on one line).
 
   Images come from an Unsplash search (downloaded with
-  `Feather.Media.create_image_from_url/3`, attribution stored in
-  `unsplash_data`) or from an upload (`Feather.Media.create_image_from_upload/4`).
+  `Feather.Media.create_image_from_url/4`, attribution stored in
+  `unsplash_data`) or from an upload (`Feather.Media.create_image_from_upload/5`).
 
   It is rendered outside the record's form (it has forms of its own) and
   tells the parent LiveView about every change by sending
@@ -19,6 +19,7 @@ defmodule FeatherWeb.HeaderImagePicker do
   use FeatherWeb, :live_component
 
   alias Feather.{Media, Unsplash}
+  alias Feather.StaticSite.ImageVariants
   alias FeatherWeb.EmojiList
 
   @type change ::
@@ -46,11 +47,16 @@ defmodule FeatherWeb.HeaderImagePicker do
 
   @impl true
   def update(assigns, socket) do
-    {:ok, socket |> assign(assigns) |> assign_new(:emoji, fn -> nil end)}
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign_new(:emoji, fn -> nil end)
+     |> assign_new(:roles, fn -> %{cover: :header, thumbnail: :thumbnail} end)}
   end
 
   # Assigns: id, current_scope (with site), header_image, thumbnail_image
-  # (image structs or nil) and emoji.
+  # (image structs or nil), emoji and roles (the image roles of cover and
+  # thumbnail, see Feather.StaticSite.ImageVariants; a post's by default).
   @impl true
   def render(assigns) do
     ~H"""
@@ -99,16 +105,16 @@ defmodule FeatherWeb.HeaderImagePicker do
 
         <.image_slot
           :for={
-            {target, label, image, version} <- [
-              {"thumbnail", "Thumbnail", @thumbnail_image, "mobile_x1.webp"},
-              {"cover", "Cover", @header_image, "mobile_x1.webp"}
+            {target, label, image} <- [
+              {"thumbnail", "Thumbnail", @thumbnail_image},
+              {"cover", "Cover", @header_image}
             ]
           }
           id={@id}
           target={target}
           label={label}
           image={image}
-          src={image && image_path(@current_scope.site, image, version)}
+          src={image && image_path(@current_scope.site, image, :preview)}
           mode={if @unsplash?, do: "search", else: "upload"}
           myself={@myself}
         />
@@ -331,9 +337,12 @@ defmodule FeatherWeb.HeaderImagePicker do
     with {:search, target} <- socket.assigns.mode,
          %{} = photo <- Enum.find(socket.assigns.results, &(&1.id == id)),
          {:ok, image} <-
-           Media.create_image_from_url(socket.assigns.current_scope, photo.full_url, %{
-             unsplash_data: Unsplash.unsplash_data(photo)
-           }) do
+           Media.create_image_from_url(
+             socket.assigns.current_scope,
+             photo.full_url,
+             %{unsplash_data: Unsplash.unsplash_data(photo)},
+             variants: variants(socket, target)
+           ) do
       notify_parent({target, image})
       {:noreply, assign(socket, mode: nil, error: nil)}
     else
@@ -367,10 +376,12 @@ defmodule FeatherWeb.HeaderImagePicker do
          {:upload, target} <- socket.assigns.mode,
          {:cont, socket} <- FeatherWeb.SiteAuth.check_access(socket) do
       scope = socket.assigns.current_scope
+      variants = variants(socket, target)
 
       result =
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
-          {:ok, Media.create_image_from_upload(scope, path, entry.client_name)}
+          {:ok,
+           Media.create_image_from_upload(scope, path, entry.client_name, %{}, variants: variants)}
         end)
 
       case result do
@@ -394,6 +405,14 @@ defmodule FeatherWeb.HeaderImagePicker do
   end
 
   defp notify_parent(change), do: send(self(), {__MODULE__, change})
+
+  # The cover is the record's sharing image.
+  defp variants(socket, target) do
+    site = socket.assigns.current_scope.site
+    role = Map.fetch!(socket.assigns.roles, target)
+    variants = if role, do: ImageVariants.for_role(site, role), else: []
+    if target == :cover, do: variants ++ ImageVariants.for_role(site, :sharing), else: variants
+  end
 
   defp image_error(%Ecto.Changeset{errors: errors}) do
     case Keyword.get(errors, :file) do

@@ -21,6 +21,7 @@ defmodule Feather.Books do
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
+  alias Feather.StaticSite.ImageVariants
 
   @doc """
   Lists the books of the scope's site, most recently read first. Pass
@@ -94,7 +95,7 @@ defmodule Feather.Books do
         %Book{site_id: site_id} = book,
         url
       ) do
-    with {:ok, image} <- Media.create_image_from_url(scope, url) do
+    with {:ok, image} <- Media.create_image_from_url(scope, url, %{}, cover_variants(scope)) do
       attach_cover(scope, book, image)
     end
   end
@@ -111,10 +112,14 @@ defmodule Feather.Books do
         path,
         filename
       ) do
-    with {:ok, image} <- Media.create_image_from_upload(scope, path, filename) do
+    with {:ok, image} <-
+           Media.create_image_from_upload(scope, path, filename, %{}, cover_variants(scope)) do
       attach_cover(scope, book, image)
     end
   end
+
+  defp cover_variants(scope),
+    do: [variants: ImageVariants.for_role(scope.site, :book_cover)]
 
   defp attach_cover(scope, book, image) do
     case update_book(scope, book, %{cover_image_id: image.id}) do

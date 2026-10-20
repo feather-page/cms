@@ -36,7 +36,9 @@ defmodule Feather.StaticSite.BlocksTest do
           images: %{@image.public_id => @image},
           books: books,
           diagrams: %{"a -> b" => @diagram},
-          content_image_sizes: "(min-width: 40rem) 30rem, 100vw"
+          content_image_sizes: "(min-width: 40rem) 30rem, 100vw",
+          book_cover_sizes: "80px",
+          image_variants: %{content: [430, 640, 960], book_cover: [180, 360]}
         )
     }
   end
@@ -130,23 +132,24 @@ defmodule Feather.StaticSite.BlocksTest do
     end
   end
 
-  test "image in a figure with srcset, sizes, size, alt and caption", %{context: c} do
+  test "image in a figure with the content variants narrowest first, sizes, size, alt and caption",
+       %{context: c} do
     block = %{"type" => "image", "image_id" => "img000000001", "caption" => "A <b>nice</b> view"}
 
     assert html(block, c) ==
-             ~s(<figure><picture><source srcset="/images/img000000001/mobile_x1.webp 430w, ) <>
-               ~s(/images/img000000001/mobile_x2.webp 800w" ) <>
+             ~s(<figure><img loading="lazy" height="600" width="800" ) <>
+               ~s(src="/images/img000000001/430.webp" ) <>
+               ~s(srcset="/images/img000000001/430.webp 430w, /images/img000000001/640.webp 640w, ) <>
+               ~s(/images/img000000001/960.webp 800w" ) <>
                ~s|sizes="(min-width: 40rem) 30rem, 100vw" | <>
-               ~s(type="image/webp">) <>
-               ~s(<img loading="lazy" height="600" width="800" ) <>
-               ~s(src="/images/img000000001/desktop_x1.jpg" alt="A nice view" /></picture>) <>
+               ~s(alt="A nice view" />) <>
                ~s(<figcaption>A <b>nice</b> view</figcaption></figure>)
   end
 
   test "image without caption has an empty alt and no figcaption", %{context: c} do
     output = html(%{"type" => "image", "image_id" => "img000000001", "caption" => ""}, c)
     assert output =~ ~s(alt="")
-    assert output =~ ~r{\A<figure><picture>.*</picture></figure>\z}
+    assert output =~ ~r{\A<figure><img [^>]*/></figure>\z}
     refute output =~ "figcaption"
   end
 
@@ -218,12 +221,13 @@ defmodule Feather.StaticSite.BlocksTest do
                ~s(<span class="book-author">Frank Herbert</span></figcaption></figure>)
   end
 
-  test "book card prefers the cover, with its size and loaded lazily", %{context: c} do
+  test "book card prefers the cover, with its variants, size and loaded lazily", %{context: c} do
     output = html(%{"type" => "book", "book_public_id" => "book00000002"}, c)
 
     assert output =~
-             ~s(<img src="/images/cov000000001/mobile_x1.webp" alt="" class="book-cover" ) <>
-               ~s(width="200" height="300" loading="lazy">)
+             ~s(<img src="/images/cov000000001/180.webp" ) <>
+               ~s(srcset="/images/cov000000001/180.webp 120w, /images/cov000000001/360.webp 200w" ) <>
+               ~s(sizes="80px" alt="" class="book-cover" width="200" height="300" loading="lazy">)
 
     refute output =~ "book-emoji"
   end

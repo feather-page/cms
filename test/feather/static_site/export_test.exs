@@ -15,17 +15,19 @@ defmodule Feather.StaticSite.ExportTest do
     {:ok, site} = Sites.update_site(scope, scope.site, %{})
     scope = %{scope | site: site}
 
-    image = image_fixture(scope, width: 80, height: 60)
+    image = image_fixture(scope, width: 800, height: 600)
 
     header =
       image_fixture(scope, %{
+        width: 1000,
+        height: 563,
         unsplash_data: %{
           "photographer_name" => "Ann Lens",
           "photographer_url" => "https://unsplash.com/@ann"
         }
       })
 
-    cover = image_fixture(scope)
+    cover = image_fixture(scope, width: 200, height: 300)
 
     book =
       book_fixture(scope, %{
@@ -174,7 +176,7 @@ defmodule Feather.StaticSite.ExportTest do
 
   defp compact(html), do: String.replace(html, ~r/\n */, "")
 
-  test "writes every page, artifact and image variant", c do
+  test "writes every page, artifact and the image variants the images' roles need", c do
     paths = RecordingSink.paths(c.sink)
 
     for path <- [
@@ -201,9 +203,20 @@ defmodule Feather.StaticSite.ExportTest do
     refute "future/index.html" in paths
     refute "page/2/index.html" in paths
 
-    for image <- [c.image, c.header, c.cover], filename <- Media.Variants.filenames() do
-      path = "images/#{image.public_id}/#{filename}"
-      assert RecordingSink.get(c.sink, path) == {:copy, Media.variant_path(image, filename)}
+    for {image, filenames} <- [
+          {c.image, ~w(1200.jpg 128.webp 240.webp 480.webp 640.webp 960.webp)},
+          {c.header, ~w(1200.jpg 1280.webp 640.webp 960.webp)},
+          {c.cover, ~w(180.webp 360.webp)}
+        ] do
+      dir = "images/#{image.public_id}/"
+
+      assert paths |> Enum.filter(&String.starts_with?(&1, dir)) |> Enum.sort() ==
+               Enum.map(filenames, &(dir <> &1))
+
+      for filename <- filenames do
+        assert RecordingSink.get(c.sink, dir <> filename) ==
+                 {:copy, Media.variant_path(image, filename)}
+      end
     end
   end
 
@@ -234,7 +247,12 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~
              ~s(<pre data-language="html"><code class="language-html"><span class="hl-fake">&lt;b&gt;x&lt;/b&gt;)
 
-    assert html =~ ~s(src="/images/#{c.image.public_id}/desktop_x1.jpg" alt="An image")
+    assert compact(html) =~
+             ~s(<figure><img loading="lazy" height="600" width="800" ) <>
+               ~s(src="/images/#{c.image.public_id}/640.webp" ) <>
+               ~s(srcset="/images/#{c.image.public_id}/640.webp 640w, /images/#{c.image.public_id}/960.webp 800w" )
+
+    assert html =~ ~s(alt="An image")
     assert compact(html) =~ "<thead><tr><th>H1</th><th>H2</th></tr></thead>"
     assert html =~ "youtube-nocookie.com/embed/abc"
     assert html =~ ~s(<cite class="book-title">Dune</cite>)
@@ -275,8 +293,13 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<div class="post-excerpt">)
     # The untitled review shows the book card with cover and rating.
     [cover] = html |> Floki.parse_document!() |> Floki.find("figure.book-card img.book-cover")
-    assert attr(cover, "src") == "/images/#{c.cover.public_id}/mobile_x1.webp"
-    assert {attr(cover, "width"), attr(cover, "height")} == {"64", "48"}
+    assert attr(cover, "src") == "/images/#{c.cover.public_id}/180.webp"
+
+    assert attr(cover, "srcset") ==
+             "/images/#{c.cover.public_id}/180.webp 120w, /images/#{c.cover.public_id}/360.webp 200w"
+
+    assert attr(cover, "sizes") == "80px"
+    assert {attr(cover, "width"), attr(cover, "height")} == {"200", "300"}
     assert attr(cover, "loading") == "lazy"
 
     assert html =~
@@ -330,9 +353,14 @@ defmodule Feather.StaticSite.ExportTest do
     [header] = Floki.find(doc, "img.header-image")
     header_id = c.header.public_id
 
-    assert attr(header, "srcset") == "/images/#{header_id}/mobile_x1.webp 64w"
+    assert attr(header, "src") == "/images/#{header_id}/640.webp"
+
+    assert attr(header, "srcset") ==
+             "/images/#{header_id}/640.webp 640w, /images/#{header_id}/960.webp 960w, " <>
+               "/images/#{header_id}/1280.webp 1000w"
+
     assert attr(header, "sizes") == "(min-width: 38rem) 38rem, 100vw"
-    assert {attr(header, "width"), attr(header, "height")} == {"64", "48"}
+    assert {attr(header, "width"), attr(header, "height")} == {"1000", "563"}
     assert attr(header, "fetchpriority") == "high"
     assert attr(header, "loading") == nil
 
@@ -344,9 +372,13 @@ defmodule Feather.StaticSite.ExportTest do
     [thumbnail] =
       c.sink |> file("index.html") |> Floki.parse_document!() |> Floki.find(".post-thumbnail img")
 
-    assert attr(thumbnail, "srcset") == "/images/#{c.image.public_id}/mobile_x1.webp 80w"
+    id = c.image.public_id
+
+    assert attr(thumbnail, "srcset") ==
+             "/images/#{id}/240.webp 240w, /images/#{id}/480.webp 480w, /images/#{id}/960.webp 800w"
+
     assert attr(thumbnail, "sizes") == "(max-width: 600px) calc(100vw - 2rem), 240px"
-    assert {attr(thumbnail, "width"), attr(thumbnail, "height")} == {"80", "60"}
+    assert {attr(thumbnail, "width"), attr(thumbnail, "height")} == {"800", "600"}
     assert attr(thumbnail, "loading") == "lazy"
   end
 
@@ -361,16 +393,21 @@ defmodule Feather.StaticSite.ExportTest do
     assert attr(thumbnail, "loading") == "lazy"
   end
 
-  test "book covers load lazily and reserve their space", c do
+  test "book covers list their variants narrowest first, load lazily and reserve their space",
+       c do
     [cover] =
       c.sink
       |> file("books/index.html")
       |> Floki.parse_document!()
       |> Floki.find("img.book-cover")
 
+    assert attr(cover, "srcset") ==
+             "/images/#{c.cover.public_id}/180.webp 120w, /images/#{c.cover.public_id}/360.webp 200w"
+
+    assert attr(cover, "sizes") == "120px"
     assert attr(cover, "loading") == "lazy"
     assert attr(cover, "alt") == ""
-    assert {attr(cover, "width"), attr(cover, "height")} == {"64", "48"}
+    assert {attr(cover, "width"), attr(cover, "height")} == {"200", "300"}
   end
 
   test "a book card shows the cover or else the emoji", c do
@@ -397,7 +434,7 @@ defmodule Feather.StaticSite.ExportTest do
     assert xml =~ "<pubDate>Wed, 06 Mar 2024 10:00:00 +0000</pubDate>"
     assert xml =~ ~s(<guid isPermaLink="true">https://example.com/everything/</guid>)
     assert xml =~ "&lt;p&gt;Some &lt;b&gt;bold&lt;/b&gt; text.&lt;/p&gt;"
-    assert xml =~ "https://example.com/images/#{c.image.public_id}/desktop_x1.jpg"
+    assert xml =~ "https://example.com/images/#{c.image.public_id}/640.webp"
     assert xml =~ "<title>Post</title>"
     refute xml =~ "Draft"
     assert {:ok, _} = Floki.parse_document(xml)

@@ -9,12 +9,16 @@ defmodule Feather.MediaTest do
     %{scope: site_scope_fixture()}
   end
 
-  describe "create_image_from_upload/4" do
-    test "stores the original and generates every variant", %{scope: scope} do
+  describe "create_image_from_upload/5" do
+    test "stores the original and generates the preview and the given variants",
+         %{scope: scope} do
       path = test_image_path(2400, 1200)
+      variants = [Variants.webp(640), Variants.webp(1600), Variants.jpg(1200)]
 
       assert {:ok, %Image{} = image} =
-               Media.create_image_from_upload(scope, path, "../evil/photo.png", %{})
+               Media.create_image_from_upload(scope, path, "../evil/photo.png", %{},
+                 variants: variants
+               )
 
       assert image.public_id =~ ~r/\A[0-9a-zA-Z]{12}\z/
       assert image.filename == "photo.png"
@@ -35,10 +39,11 @@ defmodule Feather.MediaTest do
                  image.public_id
                ])
 
-      for %{name: name, filename: filename, size: size, format: format} <- Variants.all() do
-        variant_path = Media.variant_path(image, name)
-        assert variant_path == Media.variant_path(image, filename)
-        assert Path.basename(variant_path) == filename
+      assert Media.variant_filenames(image) == ~w(1200.jpg 1600.webp 480.webp 640.webp)
+
+      for %{filename: filename, size: size, format: format} <- [Variants.preview() | variants] do
+        variant_path = Media.variant_path(image, filename)
+        assert variant_path == Path.join(Media.image_dir(image), filename)
 
         {:ok, variant} = Vix.Vips.Image.new_from_file(variant_path)
         assert Vix.Vips.Image.width(variant) == min(size, 2400), "#{filename} width"
@@ -48,16 +53,25 @@ defmodule Feather.MediaTest do
       end
     end
 
+    test "without variants an image gets only the admin preview", %{scope: scope} do
+      image = image_fixture(scope)
+
+      assert Media.variant_filenames(image) == [Variants.preview().filename]
+    end
+
     test "webp variants keep the alpha channel, the JPEG is flattened", %{scope: scope} do
       path = transparent_image_path(1200, 400)
 
-      assert {:ok, image} = Media.create_image_from_upload(scope, path, "mascot.png", %{})
+      assert {:ok, image} =
+               Media.create_image_from_upload(scope, path, "mascot.png", %{},
+                 variants: [Variants.sharing()]
+               )
 
-      for %{name: name, format: format} <- Variants.all() do
-        {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, name))
+      for %{filename: filename, format: format} <- [Variants.preview(), Variants.sharing()] do
+        {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, filename))
 
         if format == :webp do
-          assert Vix.Vips.Image.has_alpha?(variant), "#{name} has no alpha channel"
+          assert Vix.Vips.Image.has_alpha?(variant), "#{filename} has no alpha channel"
           {:ok, alpha} = Operation.extract_band(variant, 3)
           assert {:ok, {+0.0, _}} = Operation.min(alpha)
           assert {:ok, {opaque, _}} = Operation.max(alpha)
@@ -72,65 +86,77 @@ defmodule Feather.MediaTest do
       path = ultra_hdr_image_path(64, 48)
 
       assert {:ok, %Image{} = image} =
-               Media.create_image_from_upload(scope, path, "IMG_0001.jpeg", %{})
+               Media.create_image_from_upload(scope, path, "IMG_0001.jpeg", %{},
+                 variants: [Variants.sharing()]
+               )
 
       assert image.content_type == "image/jpeg"
       assert {image.width, image.height} == {64, 48}
       assert Path.basename(Media.original_path(image)) == "original.jpg"
-      assert File.exists?(Media.variant_path(image, :desktop_x1_jpg))
+      assert File.exists?(Media.variant_path(image, Variants.sharing()))
     end
 
     test "variants are never upscaled", %{scope: scope} do
       image = image_fixture(scope, width: 300, height: 200)
 
-      {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, :desktop_x2_webp))
+      {:ok, variant} = Vix.Vips.Image.new_from_file(Media.variant_path(image, "480.webp"))
       assert {Vix.Vips.Image.width(variant), Vix.Vips.Image.height(variant)} == {300, 200}
     end
 
     test "variant widths follow from the stored size", %{scope: scope} do
-      portrait = image_fixture(scope, width: 900, height: 1500)
-      small = image_fixture(scope, width: 300, height: 200)
+      sizes = [120, 640, 1600]
+      variants = Enum.map(sizes, &Variants.webp/1)
+      portrait = image_fixture(scope, width: 900, height: 1500, variants: variants)
+      small = image_fixture(scope, width: 300, height: 200, variants: variants)
 
-      for image <- [portrait, small], variant <- Variants.all() do
-        {:ok, file} = Vix.Vips.Image.new_from_file(Media.variant_path(image, variant.name))
+      assert Media.variant_filenames(small) == ~w(120.webp 480.webp 640.webp)
+
+      for image <- [portrait, small],
+          variant <- Variants.for_image(sizes, image.width, image.height) do
+        {:ok, file} = Vix.Vips.Image.new_from_file(Media.variant_path(image, variant))
 
         assert Variants.width(variant, image.width, image.height) == Vix.Vips.Image.width(file),
                "#{image.width}×#{image.height} #{variant.filename}"
       end
 
-      assert Variants.width(Variants.fetch(:mobile_x2_webp), nil, nil) == 860
+      assert Variants.width(Variants.webp(860), nil, nil) == 860
     end
 
-    test "srcset widths are the real widths, one candidate per width" do
-      assert Variants.srcset_widths(3024, 4032) == [
-               {"mobile_x1.webp", 323},
-               {"mobile_x2.webp", 645},
-               {"desktop_x1.webp", 750},
-               {"mobile_x3.webp", 968},
-               {"desktop_x2.webp", 1500}
+    test "srcset widths are the real widths, narrowest first, one candidate per width" do
+      sizes = [1600, 640, 960, 1280]
+
+      assert Variants.srcset_widths(sizes, 3024, 4032) == [
+               {Variants.webp(640), 480},
+               {Variants.webp(960), 720},
+               {Variants.webp(1280), 960},
+               {Variants.webp(1600), 1200}
              ]
 
-      assert Variants.srcset_widths(606, 341) == [
-               {"mobile_x1.webp", 430},
-               {"mobile_x2.webp", 606}
+      assert Variants.srcset_widths(sizes, 1000, 563) == [
+               {Variants.webp(640), 640},
+               {Variants.webp(960), 960},
+               {Variants.webp(1280), 1000}
              ]
 
-      assert Variants.srcset_widths(180, 277) == [{"mobile_x1.webp", 180}]
+      assert Variants.srcset_widths(sizes, 180, 277) == [{Variants.webp(640), 180}]
+      assert Variants.for_image(sizes, 180, 277) == [Variants.webp(640)]
 
-      assert Variants.srcset_widths(nil, nil) == [
-               {"mobile_x1.webp", 430},
-               {"mobile_x2.webp", 860},
-               {"desktop_x1.webp", 1000},
-               {"mobile_x3.webp", 1290},
-               {"desktop_x2.webp", 2000}
+      assert Variants.srcset_widths([960, 640], nil, nil) == [
+               {Variants.webp(640), 640},
+               {Variants.webp(960), 960}
              ]
     end
 
-    test "variant names match the static export file names" do
-      assert Variants.filenames() ==
-               ~w(mobile_x1.webp mobile_x2.webp desktop_x1.webp mobile_x3.webp desktop_x2.webp desktop_x1.jpg)
+    test "variant file names name their box and format" do
+      assert Variants.fetch("640.webp") == %{filename: "640.webp", size: 640, format: :webp}
+      assert Variants.fetch("1200.jpg") == Variants.sharing()
+      assert Variants.preview().filename == "480.webp"
 
-      assert_raise ArgumentError, fn -> Media.variant_path(%Image{public_id: "x"}, :huge) end
+      for name <- ~w(mobile_x1.webp 0.webp 640.png 12345.webp ../640.webp 640.webp.br) do
+        assert Variants.fetch(name) == nil, name
+      end
+
+      assert_raise ArgumentError, fn -> Media.variant_path(%Image{public_id: "x"}, "huge") end
     end
 
     test "rejects files that are not images", %{scope: scope} do
@@ -169,6 +195,58 @@ defmodule Feather.MediaTest do
       assert Image.unsplash_photographer_url(image) == "https://unsplash.com/@jane"
       assert Image.unsplash_download_location(image) =~ "download"
       refute Image.unsplash?(image_fixture(scope))
+    end
+  end
+
+  describe "sync_variants/2" do
+    test "adds missing variants, removes unneeded ones and leaves the rest untouched",
+         %{scope: scope} do
+      image = image_fixture(scope, width: 800, height: 600, variants: [Variants.webp(640)])
+      kept = Media.variant_path(image, "640.webp")
+      File.write!(kept, "kept as it is")
+      File.write!(Path.join(Media.image_dir(image), "mobile_x1.webp"), "legacy")
+      in_flight = Path.join(Media.image_dir(image), "960.webp.123.part")
+      File.write!(in_flight, "being written")
+
+      assert {:ok, %{added: ["1200.jpg", "960.webp"], removed: ["mobile_x1.webp"]}} =
+               Media.sync_variants(image, [
+                 Variants.webp(640),
+                 Variants.webp(960),
+                 Variants.sharing()
+               ])
+
+      assert Media.variant_filenames(image) == ~w(1200.jpg 480.webp 640.webp 960.webp)
+      assert File.read!(kept) == "kept as it is"
+      assert File.read!(in_flight) == "being written"
+      assert File.exists?(Media.original_path(image))
+
+      assert {:ok, %{added: [], removed: ["1200.jpg", "640.webp", "960.webp"]}} =
+               Media.sync_variants(image, [])
+
+      assert Media.variant_filenames(image) == [Variants.preview().filename]
+    end
+
+    test "fails without the original", %{scope: scope} do
+      image = image_fixture(scope)
+      File.rm!(Media.original_path(image))
+
+      assert {:error, :original_missing} = Media.sync_variants(image, [Variants.webp(640)])
+    end
+  end
+
+  describe "ensure_variant/2" do
+    test "generates a missing variant from the original", %{scope: scope} do
+      image = image_fixture(scope, width: 800, height: 600)
+      path = Media.variant_path(image, "640.webp")
+      refute File.exists?(path)
+
+      assert Media.ensure_variant(image, Variants.webp(640)) == :ok
+      {:ok, file} = Vix.Vips.Image.new_from_file(path)
+      assert Vix.Vips.Image.width(file) == 640
+
+      File.write!(path, "existing")
+      assert Media.ensure_variant(image, Variants.webp(640)) == :ok
+      assert File.read!(path) == "existing"
     end
   end
 

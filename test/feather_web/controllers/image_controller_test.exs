@@ -24,6 +24,19 @@ defmodule FeatherWeb.ImageControllerTest do
              }
     end
 
+    test "gives the upload the variants of a content image", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      post(conn, ~p"/sites/#{site.public_id}/images", %{
+        "image" => upload(test_image_path(2000, 1500))
+      })
+
+      [image] = Media.list_images(scope)
+      assert Media.variant_filenames(image) == ~w(1280.webp 1600.webp 480.webp 640.webp 960.webp)
+    end
+
     test "refuses files that are not images with the reason", %{conn: conn, site: site} do
       path = Path.join(System.tmp_dir!(), "fake-#{System.unique_integer([:positive])}.png")
       File.write!(path, "nope")
@@ -120,10 +133,23 @@ defmodule FeatherWeb.ImageControllerTest do
       assert cache =~ "max-age=31536000"
 
       response =
-        get(conn, ~p"/sites/#{site.public_id}/images/#{image.public_id}?variant=mobile_x1.webp")
+        get(conn, ~p"/sites/#{site.public_id}/images/#{image.public_id}?variant=480.webp")
 
       assert response.status == 200
       assert get_resp_header(response, "content-type") == ["image/webp"]
+    end
+
+    test "generates a missing admin preview, but no other variant", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
+      image = image_fixture(scope)
+      File.rm!(Media.variant_path(image, "480.webp"))
+      path = ~p"/sites/#{site.public_id}/images/#{image.public_id}"
+
+      assert get(conn, path <> "?variant=480.webp").status == 200
+      assert get(conn, path <> "?variant=640.webp").status == 404
     end
 
     test "does not serve images of another site", %{conn: conn, site: site} do

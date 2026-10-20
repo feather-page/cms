@@ -105,7 +105,7 @@ defmodule FeatherWeb.BookLive.Index do
       <div class="book-cover__image">
         <img
           :if={@book.cover_image}
-          src={image_path(@site, @book.cover_image, "mobile_x1.webp")}
+          src={image_path(@site, @book.cover_image, :preview)}
           class="book-cover__img"
           alt=""
         />

@@ -20,12 +20,14 @@ defmodule Feather.StaticSite.Blocks do
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.HTML
   alias Feather.Media.Image
-  alias Feather.StaticSite.Routes
+  alias Feather.StaticSite.{Routes, ThemeHelpers}
 
   @enforce_keys [:routes, :content_image_sizes]
   defstruct [
     :routes,
     :content_image_sizes,
+    image_variants: %{},
+    book_cover_sizes: "80px",
     images: %{},
     books: %{},
     diagrams: %{},
@@ -35,7 +37,10 @@ defmodule Feather.StaticSite.Blocks do
   @typedoc """
   What rendering needs besides the blocks: the routes, the `sizes`
   attribute of content images
-  (`c:Feather.StaticSite.Theme.content_image_sizes/0`), the site's images
+  (`c:Feather.StaticSite.Theme.content_image_sizes/0`) and of the cover in
+  a book block (`c:Feather.StaticSite.Theme.book_cover_sizes/0`), the
+  theme's variant sizes per image role
+  (`c:Feather.StaticSite.Theme.image_variants/0`), the site's images
   and books by public id (books with `cover_image` preloaded), the file
   names of the rendered diagrams by source and the highlighted HTML of the
   code blocks by `{code, language}`.
@@ -43,6 +48,8 @@ defmodule Feather.StaticSite.Blocks do
   @type context :: %__MODULE__{
           routes: Routes.t(),
           content_image_sizes: String.t(),
+          image_variants: %{atom() => [pos_integer()]},
+          book_cover_sizes: String.t(),
           images: %{String.t() => Image.t()},
           books: %{String.t() => Book.t()},
           diagrams: %{String.t() => String.t()},
@@ -51,8 +58,8 @@ defmodule Feather.StaticSite.Blocks do
 
   @doc """
   Builds a rendering context. Options: `:content_image_sizes` (required),
-  `:images`, `:books`, `:diagrams` and `:highlights` (see `t:context/0`,
-  default: none).
+  `:image_variants`, `:book_cover_sizes`, `:images`, `:books`, `:diagrams`
+  and `:highlights` (see `t:context/0`, default: none).
   """
   @spec context(Routes.t(), keyword()) :: context()
   def context(%Routes{} = routes, opts), do: struct!(__MODULE__, [routes: routes] ++ opts)
@@ -129,7 +136,7 @@ defmodule Feather.StaticSite.Blocks do
 
   def render_block(%{"type" => "book", "book_public_id" => public_id}, context) do
     case Map.get(context.books, public_id) do
-      %Book{} = book -> book(book, context.routes)
+      %Book{} = book -> book(book, context)
       nil -> []
     end
   end
@@ -215,29 +222,31 @@ defmodule Feather.StaticSite.Blocks do
     ["<tr>", Enum.map(cells, &["<", tag, ">", sanitize(&1), "</", tag, ">"]), "</tr>"]
   end
 
-  defp image(%Image{} = image, caption, %{routes: routes} = context) do
+  defp image(%Image{} = image, caption, context) do
     [
-      "<figure><picture><source srcset=\"",
-      escape(Routes.image_srcset(routes, image)),
-      "\" sizes=\"",
-      escape(context.content_image_sizes),
-      "\" type=\"image/webp\"><img loading=\"lazy\"",
+      "<figure><img loading=\"lazy\"",
       optional_attribute("height", image.height),
       optional_attribute("width", image.width),
-      " src=\"",
-      escape(Routes.image_url(routes, image, :desktop_x1_jpg)),
-      "\" alt=\"",
+      sources(image, :content, context.content_image_sizes, context),
+      " alt=\"",
       escape(ContentBlocks.strip_tags(caption)),
-      "\" /></picture>",
+      "\" />",
       figcaption(caption),
       "</figure>"
     ]
   end
 
-  defp book(%Book{} = book, routes) do
+  defp sources(image, role, sizes, %{routes: routes, image_variants: variants}) do
+    {:safe, attributes} =
+      ThemeHelpers.image_sources(routes, image, Map.get(variants, role, []), sizes)
+
+    attributes
+  end
+
+  defp book(%Book{} = book, context) do
     [
       "<figure class=\"book-card book-card--detail\">",
-      book_mark(book, routes),
+      book_mark(book, context),
       "<figcaption class=\"book-info\"><cite class=\"book-title\">",
       escape(book.title),
       "</cite><span class=\"book-author\">",
@@ -246,18 +255,18 @@ defmodule Feather.StaticSite.Blocks do
     ]
   end
 
-  defp book_mark(%Book{cover_image: %Image{} = cover}, routes) do
+  defp book_mark(%Book{cover_image: %Image{} = cover}, context) do
     [
-      "<img src=\"",
-      escape(Routes.image_url(routes, cover, :mobile_x1_webp)),
-      "\" alt=\"\" class=\"book-cover\"",
+      "<img",
+      sources(cover, :book_cover, context.book_cover_sizes, context),
+      " alt=\"\" class=\"book-cover\"",
       optional_attribute("width", cover.width),
       optional_attribute("height", cover.height),
       " loading=\"lazy\">"
     ]
   end
 
-  defp book_mark(%Book{emoji: emoji}, _routes) do
+  defp book_mark(%Book{emoji: emoji}, _context) do
     if present?(emoji), do: ["<span class=\"book-emoji\">", escape(emoji), "</span>"], else: []
   end
 

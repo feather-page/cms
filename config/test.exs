@@ -21,6 +21,8 @@ config :feather,
   deploy_mode: :manual,
   base_url: "http://localhost:4002",
   storage_root: Path.expand("../tmp/test_storage", __DIR__),
+  backfill_image_variants: false,
+  image_variant_sync: :inline,
   config_encryption_key: "TNNvQkxC2kCFMB1wciLl7rHKXNTwz4kCIREO7dEvVKA="
 
 config :feather, Feather.Mailer, adapter: Swoosh.Adapters.Test

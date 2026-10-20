@@ -1,7 +1,7 @@
 defmodule Feather.Media.Fetcher do
   @moduledoc """
   Downloads a file from a URL a user gave us, for
-  `Feather.Media.create_image_from_url/3`.
+  `Feather.Media.create_image_from_url/4`.
 
     * The URL must pass `Feather.Media.UrlChecker.check/1`, its host must
       resolve to public addresses only (`Feather.Media.UrlChecker.resolve/2`)

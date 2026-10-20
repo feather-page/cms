@@ -59,7 +59,7 @@
         <%= if present?(@site.bio) do %>
         <div class="footer-bio">
           <%= if match?(%Image{}, @site.portrait_image) do %>
-          <%= portrait(@routes, @site.portrait_image, "footer-portrait", "48px") %>
+          <%= portrait(@routes, @site.portrait_image, "footer-portrait", [{"", 48}]) %>
           <% end %>
           <p class="bio"><%= @site.bio %></p>
         </div>

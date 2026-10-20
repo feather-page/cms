@@ -47,7 +47,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     {:ok, _} = Content.publish(scope, homepage)
 
     for slot <- Sites.mascot_slots() do
-      path = test_image_path(90, 30)
+      path = test_image_path(300, 600)
       {:ok, _} = Sites.put_mascot(scope, slot, path, "#{slot}.png")
       File.rm(path)
     end
@@ -79,16 +79,24 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       header = Repo.preload(Content.get_homepage(c.scope), :header_image).header_image
 
       assert [img] = Floki.find(home, "header.masthead img.masthead-art")
-      assert Floki.attribute(img, "src") == ["/images/#{header.public_id}/desktop_x1.webp"]
+      assert Floki.attribute(img, "src") == ["/images/#{header.public_id}/640.webp"]
       assert Floki.attribute(img, "alt") == [""]
       assert Floki.attribute(img, "fetchpriority") == ["high"]
 
       assert {Floki.attribute(img, "width"), Floki.attribute(img, "height")} ==
                {["1200"], ["675"]}
 
-      [srcset] = Floki.attribute(img, "srcset")
-      refute srcset =~ ".jpg"
-      assert [_ | _] = Floki.attribute(img, "sizes")
+      assert Floki.attribute(img, "srcset") == [
+               Enum.map_join(
+                 [{640, 640}, {960, 960}, {1280, 1200}],
+                 ", ",
+                 fn {size, width} -> "/images/#{header.public_id}/#{size}.webp #{width}w" end
+               )
+             ]
+
+      assert Floki.attribute(img, "sizes") == [
+               "(min-width: 39rem) 36rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
+             ]
 
       assert Floki.find(home, ".masthead-emoji") == []
       assert text(home, "h1") == "Mice"
@@ -107,7 +115,11 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       assert [mascot] = Floki.find(post, ".post-nav img.post-nav-mascot")
       assert Floki.attribute(mascot, "alt") == [""]
       assert Floki.attribute(mascot, "loading") == ["lazy"]
-      assert Floki.attribute(mascot, "width") == ["90"]
+      assert Floki.attribute(mascot, "width") == ["300"]
+      assert [srcset] = Floki.attribute(mascot, "srcset")
+      assert srcset =~ ~r"/160\.webp 80w, .*/320\.webp 160w, .*/480\.webp 240w\z"
+      # The tall mascot fills the 136 px height of its 144 × 136 box, so it is 68 px wide.
+      assert Floki.attribute(mascot, "sizes") == ["68px"]
       assert Floki.find(post, ".post-nav-seal") == []
     end
 
@@ -117,6 +129,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       assert text(page, ".title-row h1") == "Work"
       assert [mascot] = Floki.find(page, ".title-row .title-mascot img")
       assert Floki.attribute(mascot, "alt") == [""]
+      assert Floki.attribute(mascot, "sizes") == ["76px"]
       assert text(page, ".title-row .title-mascot-badge") == "💡"
       assert Floki.find(page, "main > .emoji") == []
 
@@ -137,6 +150,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
         page = doc(sink, path)
         assert [mascot] = Floki.find(page, "footer img.footer-mascot"), path
         assert Floki.attribute(mascot, "alt") == [""]
+        assert Floki.attribute(mascot, "sizes") == ["44px"]
         assert Floki.attribute(mascot, "loading") == ["lazy"]
         assert Floki.find(page, "footer .footer-emoji") == []
       end
@@ -270,17 +284,20 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
       refute RecordingSink.exists?(sink, "fonts/schibsted-grotesk-latin-wght.woff2")
     end
 
-    test "the stylesheet declares the font faces against the site root", %{sink: sink} do
+    test "the stylesheet declares the font faces against the site root, with their hashes",
+         %{sink: sink} = c do
       css = RecordingSink.get(sink, "style.css")
+      url = &Routes.font_url(Routes.new(c.scope.site), &1)
 
-      assert css =~ ~s[url("/fonts/nunito-latin-700.woff2") format("woff2")]
-      assert css =~ ~s[url("/fonts/nunito-latin-800.woff2") format("woff2")]
+      assert css =~ ~s[url("#{url.("nunito-latin-700.woff2")}") format("woff2")]
+      assert css =~ ~s[url("#{url.("nunito-latin-800.woff2")}") format("woff2")]
+      assert css =~ ~r|url\("/fonts/nunito-latin-700\.woff2\?v=[0-9a-f]{12}"\)|
       assert css =~ "font-display: swap"
 
       for {file, weight, style} <- @mono_faces do
         assert css =~
                  ~s[@font-face { font-family: "JetBrains Mono"; font-style: #{style}; ] <>
-                   ~s[font-weight: #{weight}; font-display: swap; src: url("/fonts/#{file}") format("woff2"); }]
+                   ~s[font-weight: #{weight}; font-display: swap; src: url("#{url.(file)}") format("woff2"); }]
       end
 
       assert css =~ ~s[--mono: "JetBrains Mono", ui-monospace]
@@ -299,7 +316,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     sizes = "(min-width: 38rem) 35rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)"
 
     for path <- ~w(photos/index.html shot/index.html) do
-      assert attr(doc(sink, path), "figure picture source", "sizes") == [sizes], path
+      assert attr(doc(sink, path), "figure img", "sizes") == [sizes], path
     end
 
     assert RecordingSink.get(sink, "feed.xml") =~ "sizes=&quot;#{sizes}&quot;"
@@ -309,8 +326,8 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     scope = site_scope_fixture()
     routes = Routes.new(scope.site, site_root: "/preview/abc/")
 
-    assert Routes.font_url(routes, "nunito-latin-800.woff2") ==
-             "/preview/abc/fonts/nunito-latin-800.woff2"
+    assert Routes.font_url(routes, "nunito-latin-800.woff2") =~
+             ~r"\A/preview/abc/fonts/nunito-latin-800\.woff2\?v=[0-9a-f]{12}\z"
 
     assert Routes.resolve(routes, "fonts/nunito-latin-800.woff2") ==
              {:font, "nunito-latin-800.woff2"}

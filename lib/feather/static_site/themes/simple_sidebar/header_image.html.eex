@@ -1,6 +1,6 @@
 <%= if match?(%Image{}, @image) do %>
 <figure class="header-image">
-  <img src="<%= Routes.image_url(@routes, @image, :desktop_x1_webp) %>" srcset="<%= Routes.image_srcset(@routes, @image) %>" sizes="(min-width: 52rem) 36rem, calc(100vw - 2rem)"<%= dimensions(@image) %> fetchpriority="high" alt="">
+  <img<%= image_sources(@routes, @image, variants(:header), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(@image) %> fetchpriority="high" alt="">
   <%= if unsplash_credit?(@image) do %>
   <figcaption class="photo-credit"><%= photo_credit(@image) %></figcaption>
   <% end %>

@@ -136,7 +136,7 @@ defmodule FeatherWeb.BookLive.Form do
                   <% @cover_url -> %>
                     <img src={@cover_url} alt="Cover" />
                   <% @book.cover_image -> %>
-                    <img src={image_path(@site, @book.cover_image, "mobile_x1.webp")} alt="Cover" />
+                    <img src={image_path(@site, @book.cover_image, :preview)} alt="Cover" />
                   <% @form[:emoji].value not in [nil, ""] -> %>
                     <span aria-hidden="true">{@form[:emoji].value}</span>
                   <% true -> %>

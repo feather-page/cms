@@ -13,7 +13,7 @@ defmodule Feather.StaticSite.Preview do
   alias Feather.{Diagrams, Media}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Renderer, Routes, SiteData, Themes}
+  alias Feather.StaticSite.{ImageVariants, Renderer, Routes, SiteData, Themes}
 
   @type result ::
           {:html, iodata()}
@@ -28,8 +28,9 @@ defmodule Feather.StaticSite.Preview do
     * `{:html, iodata}` - a page
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`,
       `style.css`
-    * `{:file, path, content_type}` - an image variant, a font of the site's
-      theme or a rendered diagram
+    * `{:file, path, content_type}` - a stored image variant or one the
+      image's roles need (generated then), a font of the site's theme or a
+      rendered diagram
     * `{:not_found, iodata}` - the site's 404 page
   """
   @spec render(Site.t(), String.t() | [String.t()]) :: result()
@@ -40,9 +41,17 @@ defmodule Feather.StaticSite.Preview do
 
   defp serve(nil, site, routes), do: not_found(site, routes)
 
+  # A missing variant is generated only if the image's roles need it.
   defp serve({:image, image, variant}, site, routes) do
-    file = Media.variant_path(image, variant.name)
-    existing_file(file, Variants.content_type(variant), site, routes)
+    path = Media.variant_path(image, variant)
+
+    if File.regular?(path) or
+         (variant in ImageVariants.variants_of(site, image) and
+            Media.ensure_variant(image, variant) == :ok) do
+      {:file, path, Variants.content_type(variant)}
+    else
+      not_found(site, routes)
+    end
   end
 
   defp serve({:font, name}, site, _routes) do

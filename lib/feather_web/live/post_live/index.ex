@@ -62,9 +62,7 @@ defmodule FeatherWeb.PostLive.Index do
         >
           <:leading>
             <.tile
-              image={
-                post.thumbnail_image && image_path(@site, post.thumbnail_image, "mobile_x1.webp")
-              }
+              image={post.thumbnail_image && image_path(@site, post.thumbnail_image, :preview)}
               emoji={post.emoji}
               icon={if short?(post), do: "message-square-text", else: "file-text"}
             />

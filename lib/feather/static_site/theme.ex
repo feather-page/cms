@@ -3,7 +3,8 @@ defmodule Feather.StaticSite.Theme do
   What a theme of the static site implements (ADR 0015): its layout and
   page views, its stylesheet and its fonts. Themes are listed in
   `Feather.StaticSite.Themes`; block rendering, routes, Gettext, meta
-  tags, feed, sitemap and image variants are shared.
+  tags, feed, sitemap and the image files are shared;
+  the theme declares which variants each image role gets.
 
   What does not depend on the look is shared in
   `Feather.StaticSite.ThemeHelpers`: localised text, domain data and its
@@ -78,6 +79,18 @@ defmodule Feather.StaticSite.Theme do
   column is at which viewport width.
   """
   @callback content_image_sizes() :: String.t()
+
+  @doc "The `sizes` attribute of the cover in a book block."
+  @callback book_cover_sizes() :: String.t()
+
+  @doc """
+  The sizes of the webp variants (`Feather.Media.Variants`) each image role
+  of `Feather.StaticSite.ImageVariants` gets in this theme: the widths its
+  CSS shows the role at, at device pixel ratios 1 to 3. Roles the theme
+  does not show are left out, but `:content` and `:book_cover` are needed by
+  every theme: the shared image and book blocks show them.
+  """
+  @callback image_variants() :: %{Feather.StaticSite.ImageVariants.role() => [pos_integer()]}
 
   @doc """
   The site's image fields (of `Feather.Sites.Site.image_fields/0`) the

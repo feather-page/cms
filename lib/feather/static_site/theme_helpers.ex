@@ -13,7 +13,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Content
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Project}
-  alias Feather.Media.Image
+  alias Feather.Media.{Image, Variants}
   alias Feather.Sites.SocialMediaService
   alias Feather.StaticSite.{Routes, SiteData}
 
@@ -295,6 +295,43 @@ defmodule Feather.StaticSite.ThemeHelpers do
       do: raw(~s( width="#{width}" height="#{height}"))
 
   def dimensions(_image), do: {:safe, ""}
+
+  @doc """
+  ` src="…"` of an `<img>` showing the image with the webp variants of
+  `variant_sizes` (`c:Feather.StaticSite.Theme.image_variants/0`), plus
+  ` srcset="…" sizes="…"` when there is more than one: `src` is the
+  narrowest, `sizes` the displayed width as in the theme's CSS.
+  """
+  @spec image_sources(Routes.t(), Image.t(), [pos_integer()], String.t()) :: Phoenix.HTML.safe()
+  def image_sources(%Routes{} = routes, %Image{} = image, variant_sizes, sizes) do
+    case Variants.for_image(variant_sizes, image.width, image.height) do
+      [variant] ->
+        {:safe, [~s( src="), escape(Routes.image_url(routes, image, variant)), ~s(")]}
+
+      [narrowest | _] ->
+        {:safe,
+         [
+           ~s( src="),
+           escape(Routes.image_url(routes, image, narrowest)),
+           ~s(" srcset="),
+           escape(Routes.image_srcset(routes, image, variant_sizes)),
+           ~s(" sizes="),
+           escape(sizes),
+           ~s(")
+         ]}
+    end
+  end
+
+  @doc """
+  The width in CSS pixels at which `object-fit: contain` shows the image in
+  a box of `width` × `height`, for `sizes` of images narrower than their box.
+  """
+  @spec contained_width(Image.t(), pos_integer(), pos_integer()) :: pos_integer()
+  def contained_width(%Image{width: w, height: h}, width, height)
+      when is_integer(w) and is_integer(h) and w > 0 and h > 0,
+      do: max(1, min(width, round(height * w / h)))
+
+  def contained_width(_image, width, _height), do: width
 
   # Open Graph wants language_TERRITORY; languages not listed here go without.
   @og_locales ~w(ar_AR cs_CZ da_DK de_DE el_GR en_US es_ES fi_FI fr_FR he_IL hu_HU it_IT ja_JP

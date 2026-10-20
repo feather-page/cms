@@ -10,7 +10,7 @@ defmodule Feather.StaticSite.Renderer do
 
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Page, Post, Project}
-  alias Feather.Media.Image
+  alias Feather.Media.{Image, Variants}
 
   alias Feather.StaticSite.{
     Blocks,
@@ -202,8 +202,12 @@ defmodule Feather.StaticSite.Renderer do
   @doc "The context for rendering blocks of the site."
   @spec block_context(SiteData.t(), Routes.t()) :: Blocks.context()
   def block_context(%SiteData{} = data, %Routes{} = routes) do
+    theme = Themes.module(data.site)
+
     Blocks.context(routes,
-      content_image_sizes: Themes.module(data.site).content_image_sizes(),
+      content_image_sizes: theme.content_image_sizes(),
+      book_cover_sizes: theme.book_cover_sizes(),
+      image_variants: theme.image_variants(),
       images: data.images,
       books: data.books_by_public_id,
       diagrams: data.diagrams,
@@ -266,7 +270,7 @@ defmodule Feather.StaticSite.Renderer do
       description: description(text),
       og_type: type,
       og_image_url:
-        if(match?(%Image{}, image), do: Routes.image_url(canonical, image, :desktop_x1_jpg))
+        if(match?(%Image{}, image), do: Routes.image_url(canonical, image, Variants.sharing()))
     }
   end
 

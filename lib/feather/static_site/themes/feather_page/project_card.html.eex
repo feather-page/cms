@@ -2,7 +2,7 @@
   <div class="project-header">
     <%= cond do %>
     <% match?(%Image{}, @project.thumbnail_image) -> %>
-    <img src="<%= Routes.image_url(@routes, @project.thumbnail_image, :mobile_x1_webp) %>" alt="" class="project-thumbnail" width="28" height="28" loading="lazy">
+    <img<%= image_sources(@routes, @project.thumbnail_image, variants(:project_thumbnail), "28px") %> alt="" class="project-thumbnail" width="28" height="28" loading="lazy">
     <% present?(@project.emoji) -> %>
     <span class="project-emoji"><%= @project.emoji %></span>
     <% true -> %>
