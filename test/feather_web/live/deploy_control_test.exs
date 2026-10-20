@@ -140,7 +140,7 @@ defmodule FeatherWeb.DeployControlTest do
       end
     end
 
-    test "after saving and deleting redirects", %{conn: conn, site: site, scope: scope} do
+    test "after saving, pasting and deleting redirects", %{conn: conn, site: site, scope: scope} do
       redirect = redirect_fixture(scope, old_path: "/gone", target: "/")
       target = scope |> deployment_target_fixture() |> deployed(DateTime.utc_now())
       {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/redirects")
@@ -151,6 +151,9 @@ defmodule FeatherWeb.DeployControlTest do
           lv
           |> form("#redirect-form", redirect: %{old_path: "/old", target: "/"})
           |> render_submit()
+        end,
+        fn ->
+          lv |> form("#paste-redirects-form", paste: %{lines: "/older /"}) |> render_submit()
         end,
         fn -> confirm_click(lv, "#delete-redirect-#{redirect.public_id}-menu-item") end
       ]

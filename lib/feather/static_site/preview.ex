@@ -4,13 +4,15 @@ defmodule Feather.StaticSite.Preview do
   addressed under `/preview/<site public id>/` (see
   `Feather.StaticSite.Routes.preview/1`). Shows the records as they are,
   unpublished changes and drafts included. Scheduled posts can be
-  previewed by their address; the post list leaves them out.
+  previewed by their address; the post list leaves them out. A path no
+  content lives at follows the site's active redirect from it, if any.
 
   Access control is the caller's job: load the site with
   `Feather.Sites.get_site/2`.
   """
 
-  alias Feather.{Diagrams, Media}
+  alias Feather.Accounts.Scope
+  alias Feather.{Diagrams, Media, Redirects}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
   alias Feather.StaticSite.{ImageVariants, Renderer, Routes, SiteData, Themes}
@@ -19,6 +21,7 @@ defmodule Feather.StaticSite.Preview do
           {:html, iodata()}
           | {:content, String.t(), iodata()}
           | {:file, Path.t(), String.t()}
+          | {:redirect, String.t()}
           | {:not_found, iodata()}
 
   @doc """
@@ -31,15 +34,26 @@ defmodule Feather.StaticSite.Preview do
     * `{:file, path, content_type}` - a stored image variant or one the
       image's roles need (generated then), a font of the site's theme or a
       rendered diagram
+    * `{:redirect, url}` - the preview URL an active redirect from the path
+      leads to
     * `{:not_found, iodata}` - the site's 404 page
   """
   @spec render(Site.t(), String.t() | [String.t()]) :: result()
   def render(%Site{} = site, path) do
     routes = Routes.preview(site)
-    routes |> Routes.resolve(path) |> serve(site, routes)
+
+    case Routes.resolve(routes, path) do
+      nil -> follow_redirect(site, routes, path)
+      route -> serve(route, site, routes)
+    end
   end
 
-  defp serve(nil, site, routes), do: not_found(site, routes)
+  defp follow_redirect(site, routes, path) do
+    case Redirects.find_active_redirect(Scope.for_site(site), path) do
+      nil -> not_found(site, routes)
+      redirect -> {:redirect, Routes.path_url(routes, redirect.target)}
+    end
+  end
 
   # A missing variant is generated only if the image's roles need it.
   defp serve({:image, image, variant}, site, routes) do

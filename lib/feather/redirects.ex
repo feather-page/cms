@@ -13,7 +13,7 @@ defmodule Feather.Redirects do
   alias Ecto.Changeset
   alias Feather.Accounts.Scope
   alias Feather.Content
-  alias Feather.Content.Post
+  alias Feather.Content.{Post, Slug}
   alias Feather.Redirects.Redirect
   alias Feather.Repo
   alias Feather.Sites
@@ -51,6 +51,27 @@ defmodule Feather.Redirects do
   def get_redirect!(%Scope{site: %Site{} = site}, public_id),
     do: site |> redirect_query(public_id) |> Repo.one!() |> with_target(site)
 
+  @doc """
+  Gets the active redirect of the scope's site whose old path a requested
+  path (a string or path segments) matches, with or without a trailing
+  slash, or nil. Unlike `get_redirect/2` its target record is as it is
+  and `target` its current URL, where the preview shows it.
+  """
+  @spec find_active_redirect(Scope.t(), String.t() | [String.t()]) :: Redirect.t() | nil
+  def find_active_redirect(%Scope{} = scope, segments) when is_list(segments),
+    do: find_active_redirect(scope, Enum.join(segments, "/"))
+
+  def find_active_redirect(%Scope{site: %Site{} = site} = scope, path) do
+    with old_path when is_binary(old_path) <- Slug.normalize(path),
+         %Redirect{} = redirect <- Repo.one(from_path(site, old_path)),
+         redirect = with_target(redirect, site, :current),
+         true <- active?(scope, redirect) do
+      redirect
+    else
+      _ -> nil
+    end
+  end
+
   defp redirect_query(%Site{id: site_id}, public_id),
     do: from(r in Redirect, where: r.site_id == ^site_id and r.public_id == ^public_id)
 
@@ -67,6 +88,29 @@ defmodule Feather.Redirects do
     |> validate(scope)
     |> save(scope, &Repo.insert/1)
     |> with_saved_target(site)
+  end
+
+  @doc """
+  Creates a permanent redirect for each line of `text` that is not blank:
+  its old path and its target separated by whitespace, each validated like
+  `create_redirect/2`. Returns the trimmed lines with their results, in
+  order.
+  """
+  @spec create_redirects(Scope.t(), String.t()) ::
+          [{String.t(), {:ok, Redirect.t()} | {:error, Changeset.t()}}]
+  def create_redirects(%Scope{site: %Site{}} = scope, text) when is_binary(text) do
+    text
+    |> String.split(~r/\R/)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.map(&{&1, create_redirect(scope, line_attrs(&1))})
+  end
+
+  defp line_attrs(line) do
+    case String.split(line, ~r/\s+/, parts: 2) do
+      [old_path, target] -> %{old_path: old_path, target: target, kind: :permanent}
+      [old_path] -> %{old_path: old_path, kind: :permanent}
+    end
   end
 
   @doc """
@@ -115,6 +159,9 @@ defmodule Feather.Redirects do
       {schema, slug} -> Content.published_slug?(scope, schema, slug)
     end
   end
+
+  defp from_path(%Site{id: site_id}, old_path),
+    do: from(r in Redirect, where: r.site_id == ^site_id and r.old_path == ^old_path)
 
   @doc "Returns a changeset for a redirect form, validated like a save."
   @spec change_redirect(Scope.t(), Redirect.t(), map()) :: Changeset.t()
@@ -212,16 +259,16 @@ defmodule Feather.Redirects do
   defp with_saved_target({:ok, redirect}, site), do: {:ok, with_target(redirect, site)}
   defp with_saved_target(error, _site), do: error
 
-  defp with_target(redirect, site) do
+  defp with_target(redirect, site, content \\ :published) do
     redirect
     |> Repo.preload(target_preloads(), force: true)
-    |> put_target_url(Routes.new(site))
+    |> put_target_url(Routes.new(site), content)
   end
 
   defp target_preloads, do: Enum.map(Redirect.target_assocs(), &{&1, :published_version})
 
-  defp put_target_url(redirect, routes) do
-    redirect = as_published_target(redirect)
+  defp put_target_url(redirect, routes, content \\ :published) do
+    redirect = if content == :published, do: as_published_target(redirect), else: redirect
     %{redirect | target: target_url(routes, redirect)}
   end
 

@@ -185,6 +185,82 @@ defmodule Feather.RedirectsTest do
     end
   end
 
+  describe "create_redirects/2" do
+    test "saves the valid lines as permanent redirects and returns each line with its result",
+         %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/rule-of-72"})
+      page_fixture(scope, %{slug: "/about"})
+
+      text = """
+      /posts/rule-of-72   /rule-of-72/
+
+      /about /
+      \t/old\t/nowhere\r
+      /lonely
+      """
+
+      assert [
+               {"/posts/rule-of-72   /rule-of-72/", {:ok, %Redirect{} = saved}},
+               {"/about /", {:error, held}},
+               {"/old\t/nowhere", {:error, unresolvable}},
+               {"/lonely", {:error, missing}}
+             ] = Redirects.create_redirects(scope, text)
+
+      assert {saved.old_path, saved.post_id, saved.kind} ==
+               {"/posts/rule-of-72", post.id, :permanent}
+
+      assert "is already a URL of the site" in errors_on(held).old_path
+      assert "does not lead to anything on the site" in errors_on(unresolvable).target
+      assert "can't be blank" in errors_on(missing).target
+      assert [%{old_path: "/posts/rule-of-72"}] = Redirects.list_redirects(scope)
+    end
+
+    test "refuses a line whose old path an earlier line took", %{scope: scope} do
+      assert [{_, {:ok, _}}, {_, {:error, changeset}}] =
+               Redirects.create_redirects(scope, "/old /\n/old/ /feed.xml")
+
+      assert "already has a redirect" in errors_on(changeset).old_path
+    end
+
+    test "returns nothing for blank text", %{scope: scope} do
+      assert Redirects.create_redirects(scope, " \n\n") == []
+    end
+  end
+
+  describe "find_active_redirect/2" do
+    test "finds the redirect of an old path, with and without a trailing slash",
+         %{scope: scope} do
+      post_fixture(scope, %{slug: "/rule-of-72"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/posts/rule-of-72", target: "/"})
+
+      {:ok, _} =
+        Redirects.create_redirect(scope, %{
+          old_path: "/2013/how-to.html",
+          target: "/rule-of-72/"
+        })
+
+      assert %Redirect{old_path: "/posts/rule-of-72", target: "/"} =
+               Redirects.find_active_redirect(scope, "posts/rule-of-72")
+
+      assert %Redirect{old_path: "/posts/rule-of-72"} =
+               Redirects.find_active_redirect(scope, "/posts/rule-of-72/")
+
+      assert %Redirect{target: "/rule-of-72/"} =
+               Redirects.find_active_redirect(scope, ["2013", "how-to.html"])
+
+      assert Redirects.find_active_redirect(scope, "/posts") == nil
+      assert Redirects.find_active_redirect(site_scope_fixture(), "/posts/rule-of-72") == nil
+    end
+
+    test "leaves out an inactive redirect", %{scope: scope} do
+      page = page_fixture(scope, %{slug: "/target"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/old", target: "/target"})
+      {:ok, _} = Content.unpublish(scope, page)
+
+      assert Redirects.find_active_redirect(scope, "/old") == nil
+    end
+  end
+
   describe "update_redirect/3" do
     test "changes old path, target and kind and moves the site's updated_at", %{scope: scope} do
       post = post_fixture(scope, %{slug: "/now"})
@@ -281,7 +357,9 @@ defmodule Feather.RedirectsTest do
       assert post_id == post.id
 
       {:ok, _} = Content.publish(scope, post)
-      assert [%{old_path: "/a", target: "/new-slug/"} | _] = Redirects.list_redirects(scope)
+      redirect = Redirects.find_active_redirect(scope, "/a")
+      assert redirect.target == "/new-slug/"
+      assert Redirects.get_redirect!(scope, redirect.public_id).target == "/new-slug/"
     end
 
     test "shows a draft target at its current URL", %{scope: scope} do
@@ -332,6 +410,7 @@ defmodule Feather.RedirectsTest do
 
       [redirect] = Redirects.list_redirects(scope)
       refute Redirects.active?(scope, redirect)
+      assert Redirects.find_active_redirect(scope, "/old") == nil
     end
 
     test "a redirect to a path is active while the path resolves", %{scope: scope} do

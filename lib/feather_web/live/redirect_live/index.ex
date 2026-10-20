@@ -1,8 +1,9 @@
 defmodule FeatherWeb.RedirectLive.Index do
   @moduledoc """
   The redirects of a site: the list, marking temporary and inactive
-  redirects, and below it the form that adds a redirect or, at
-  `/redirects/:id/edit`, edits one.
+  redirects, below it the form that adds a redirect or, at
+  `/redirects/:id/edit`, edits one, and the form that adds many pasted as
+  lines.
   """
   use FeatherWeb, :live_view
 
@@ -106,6 +107,44 @@ defmodule FeatherWeb.RedirectLive.Index do
             </.action_bar>
           </.form>
         </section>
+
+        <section aria-labelledby="paste-redirects-heading" class="mt-8">
+          <.section_heading id="paste-redirects-heading">Paste redirects</.section_heading>
+          <.form
+            for={@paste_form}
+            id="paste-redirects-form"
+            phx-change="change_paste"
+            phx-submit="paste"
+            class="max-w-md"
+          >
+            <.input
+              field={@paste_form[:lines]}
+              type="textarea"
+              label="Redirects"
+              rows="6"
+              placeholder="/posts/old-post /new-post/"
+              help="One per line: the old path, a space and the target. All are permanent."
+              autocomplete="off"
+            />
+            <.alert
+              :if={@paste_errors != []}
+              id="paste-errors"
+              tone={:error}
+              title={lines_not_added(length(@paste_errors))}
+              class="mt-4"
+            >
+              <ul class="space-y-1">
+                <li :for={{line, messages} <- @paste_errors}>
+                  <code class="wrap-anywhere">{line}</code>
+                  <span class="block">{Enum.join(messages, ". ")}</span>
+                </li>
+              </ul>
+            </.alert>
+            <.action_bar id="paste-redirects-actions" class="mt-4">
+              <.button type="submit" phx-disable-with="Adding…">Add redirects</.button>
+            </.action_bar>
+          </.form>
+        </section>
       </div>
     </.site_shell>
     """
@@ -117,6 +156,7 @@ defmodule FeatherWeb.RedirectLive.Index do
      socket
      |> assign(:page_title, "Redirects")
      |> assign(:site, socket.assigns.current_scope.site)
+     |> assign_paste([])
      |> assign_redirects()}
   end
 
@@ -157,6 +197,27 @@ defmodule FeatherWeb.RedirectLive.Index do
          |> assign_redirects()
          |> push_patch(to: ~p"/sites/#{socket.assigns.site.public_id}/redirects")}
     end
+  end
+
+  def handle_event("change_paste", %{"paste" => params}, socket),
+    do: {:noreply, assign(socket, :paste_form, to_form(params, as: :paste))}
+
+  def handle_event("paste", %{"paste" => %{"lines" => lines}}, socket) do
+    {created, failed} =
+      socket.assigns.current_scope
+      |> Redirects.create_redirects(lines)
+      |> Enum.split_with(&match?({_line, {:ok, _redirect}}, &1))
+
+    socket =
+      if created == [] do
+        socket
+      else
+        socket
+        |> put_flash(:info, redirects_created(length(created)))
+        |> SiteAuth.refresh_deploy_status()
+      end
+
+    {:noreply, socket |> assign_paste(failed) |> assign_redirects()}
   end
 
   def handle_event("delete", %{"id" => id}, socket) do
@@ -216,6 +277,29 @@ defmodule FeatherWeb.RedirectLive.Index do
     |> assign(:redirect, redirect)
     |> assign(:form, to_form(changeset, action: action))
   end
+
+  defp assign_paste(socket, failed) do
+    lines = Enum.map_join(failed, "\n", &elem(&1, 0))
+
+    socket
+    |> assign(:paste_form, to_form(%{"lines" => lines}, as: :paste))
+    |> assign(
+      :paste_errors,
+      Enum.map(failed, fn {line, {:error, changeset}} -> {line, messages(changeset)} end)
+    )
+  end
+
+  defp messages(changeset) do
+    for {field, errors} <- Ecto.Changeset.traverse_errors(changeset, &translate_error/1),
+        error <- errors,
+        do: "#{Phoenix.Naming.humanize(field)} #{error}"
+  end
+
+  defp redirects_created(1), do: "1 redirect was created."
+  defp redirects_created(count), do: "#{count} redirects were created."
+
+  defp lines_not_added(1), do: "1 line was not added"
+  defp lines_not_added(count), do: "#{count} lines were not added"
 
   defp kind_options, do: [{"Permanent (301)", "permanent"}, {"Temporary (302)", "temporary"}]
 
