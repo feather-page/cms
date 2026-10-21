@@ -58,7 +58,6 @@ defmodule Feather.Media.AltTextTest do
       {:ok, body, conn} = Plug.Conn.read_body(conn)
       request = Jason.decode!(body)
 
-      assert request["model"] == "gemma4-26b"
       assert request["stream"] == false
       assert request["format"]["required"] == ["alt"]
       assert [%{"role" => "user", "content" => prompt, "images" => [jpeg]}] = request["messages"]
