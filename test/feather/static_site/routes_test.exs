@@ -69,6 +69,7 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.artifact_url(r, "feed.xml") == "/feed.xml"
       assert Routes.artifact_path(r, "sitemap.xml") == "sitemap.xml"
       assert Routes.artifact_url(r, "style.css") == "/style.css"
+      assert Routes.artifact_path(r, "llms.txt") == "llms.txt"
       assert_raise ArgumentError, fn -> Routes.artifact_url(r, "humans.txt") end
     end
 
@@ -92,6 +93,25 @@ defmodule Feather.StaticSite.RoutesTest do
 
       assert Routes.generated_image_path(r, name) == "images/#{name}"
       assert_raise ArgumentError, fn -> Routes.generated_image_path(r, "../feather.db") end
+    end
+
+    test "Markdown alternates next to the home page and the pages of posts, pages and projects",
+         %{routes: r} do
+      post = %Post{slug: "/hello"}
+      without_slug = %Post{slug: nil, public_id: "ABC123xyz789"}
+
+      assert Routes.markdown_url(r, :home) == "/index.md"
+      assert Routes.markdown_path(r, :home) == "index.md"
+      assert Routes.markdown_url(r, %Page{slug: "/"}) == "/index.md"
+
+      assert Routes.markdown_url(r, post) == "/hello/index.md"
+      assert Routes.markdown_path(r, post) == "hello/index.md"
+      assert Routes.markdown_url(r, without_slug) == "/posts/abc123xyz789/index.md"
+      assert Routes.markdown_path(r, %Page{slug: "/a/b"}) == "a/b/index.md"
+      assert Routes.markdown_url(r, %Project{slug: "/cms"}) == "/projects/cms/index.md"
+
+      assert Routes.markdown_url(Routes.canonical(r), post) ==
+               "https://example.com/hello/index.md"
     end
 
     test "canonical routes", %{routes: r, scope: scope} do
@@ -127,6 +147,7 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.resolve(r, "feed.xml") == {:artifact, "feed.xml"}
       assert Routes.resolve(r, "robots.txt") == {:artifact, "robots.txt"}
       assert Routes.resolve(r, "style.css") == {:artifact, "style.css"}
+      assert Routes.resolve(r, "llms.txt") == {:artifact, "llms.txt"}
     end
 
     test "diagrams by file name", %{routes: r} do
@@ -195,6 +216,39 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.resolve(r, "posts/unknown") == nil
       assert Routes.resolve(r, "images/x/y.webp") == nil
       assert Routes.resolve(r, "projects/") == nil
+    end
+
+    test "the Markdown alternates of the home page, posts, pages and projects",
+         %{routes: r, scope: scope} do
+      post = post_fixture(scope, slug: "/hello", draft: true)
+      without_slug = post_fixture(scope, slug: nil)
+      page = page_fixture(scope, slug: "/about/team")
+      project = project_fixture(scope, slug: "/alpha")
+
+      for {path, record} <- [
+            {"hello/index.md", post},
+            {"/posts/#{String.downcase(without_slug.public_id)}/index.md", without_slug},
+            {"about/team/index.md", page},
+            {"projects/alpha/index.md", project}
+          ] do
+        assert {:markdown, %{id: id}} = Routes.resolve(r, path), path
+        assert id == record.id, path
+      end
+
+      assert Routes.resolve(r, "index.md") == {:markdown, :home}
+      assert Routes.resolve(r, "/index.md") == {:markdown, :home}
+
+      for path <- [
+            "page/2/index.md",
+            "index.html/index.md",
+            "missing/index.md",
+            "hello.md",
+            "hello.html/index.md",
+            "posts/#{String.upcase(without_slug.public_id)}/index.md",
+            "hello/index.markdown"
+          ] do
+        assert Routes.resolve(r, path) == nil, path
+      end
     end
 
     test "content of other sites is not found", %{routes: r} do

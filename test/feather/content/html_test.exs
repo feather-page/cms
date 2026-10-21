@@ -1,7 +1,8 @@
 defmodule Feather.Content.HTMLTest do
   use ExUnit.Case, async: true
 
-  import Feather.Content.HTML, only: [sanitize: 1, sanitize: 2, safe_url?: 1]
+  import Feather.Content.HTML,
+    only: [sanitize: 1, sanitize: 2, safe_url?: 1, to_markdown: 1, to_markdown: 2]
 
   # No markup that could execute survives: no event handlers, no script or
   # style elements, no dangerous URLs, no elements outside the allow list.
@@ -241,6 +242,83 @@ defmodule Feather.Content.HTMLTest do
           end
         end
       end
+    end
+  end
+
+  describe "to_markdown/2" do
+    test "converts bold, italic, code and links, underline becomes plain text" do
+      assert to_markdown(
+               ~S|<b>Bold</b>, <i>it</i>, <u>under</u>, <code>x * y</code> and <a href="https://example.com/">a link</a>.|
+             ) == "**Bold**, *it*, under, `x * y` and [a link](https://example.com/)."
+    end
+
+    test "keeps the space between elements" do
+      assert to_markdown("<b>a</b> <i>b</i>") == "**a** *b*"
+    end
+
+    test "keeps line breaks as hard line breaks" do
+      assert to_markdown("One<br>two<br/>three") == "One\\\ntwo\\\nthree"
+      assert to_markdown("<br>Trailing<br><br>") == "Trailing"
+    end
+
+    test "escapes Markdown characters in text, not in code" do
+      assert to_markdown("2 * 3 = <i>six</i> [sic] &lt;b&gt; `x` <code>a_b *c*</code>") ==
+               ~S"2 \* 3 = *six* \[sic\] \<b> \`x\` `a_b *c*`"
+
+      assert to_markdown("# Not a heading<br>- not a list") ==
+               "\\# Not a heading\\\n\\- not a list"
+    end
+
+    test "moves whitespace at the edges of an element outside its delimiters" do
+      assert to_markdown("a<b> bold </b>b<i></i>c") == "a **bold** bc"
+    end
+
+    test "moves no-break spaces at the edges of bold and italic outside their delimiters" do
+      assert to_markdown("<b>Wichtig:&nbsp;</b>Bitte") == "**Wichtig:**\u00A0Bitte"
+      assert to_markdown("Bitte<b>&nbsp;lesen</b>") == "Bitte\u00A0**lesen**"
+      assert to_markdown("<i>a&nbsp;</i>b") == "*a*\u00A0b"
+      assert to_markdown("a<i>&nbsp;b</i>") == "a\u00A0*b*"
+    end
+
+    test "writes emphasis holding only whitespace as that whitespace" do
+      assert to_markdown("a<b>&nbsp;</b>b<i>&nbsp;</i>c") == "a\u00A0b\u00A0c"
+    end
+
+    test "merges neighbouring elements of the same kind" do
+      assert to_markdown("<b>a</b><b>b</b> <code>x</code><code>y</code>") == "**ab** `xy`"
+    end
+
+    test "escapes an ampersand that would start a character reference in text and links" do
+      assert to_markdown("Write &amp;nbsp; here &amp;#39; &amp; there") ==
+               ~S"Write \&nbsp; here \&#39; & there"
+
+      assert to_markdown(~S|<a href="https://e.com/?a=1&amp;copy;=2">&amp;copy;</a>|) ==
+               ~S"[\&copy;](https://e.com/?a=1\&copy;=2)"
+    end
+
+    test "collapses whitespace like a browser" do
+      assert to_markdown("  a \n\t b  ") == "a b"
+    end
+
+    test "resolves relative links against the base URL, keeps absolute ones" do
+      html = ~S|<a href="/about/">About</a> <a href="#top">top</a> <a href="https://e.com/">e</a>|
+
+      assert to_markdown(html, "https://example.com/hello/") ==
+               "[About](https://example.com/about/) [top](https://example.com/hello/#top) [e](https://e.com/)"
+    end
+
+    test "a link without text shows its URL, a nested link only its text" do
+      assert to_markdown(~S|<a href="https://e.com/"></a>|) == "[https://e.com/](https://e.com/)"
+
+      assert to_markdown(~S|<a href="https://a.com/">a <a href="https://b.com/">b</a></a>|) ==
+               "[a b](https://a.com/)"
+    end
+
+    test "drops what sanitizing drops" do
+      assert to_markdown(~S|<script>x</script><a href="javascript:alert(1)">a</a><span>b</span>|) ==
+               "ab"
+
+      assert to_markdown(nil) == ""
     end
   end
 

@@ -161,7 +161,7 @@ defmodule Feather.StaticSite.ExportDeliveryTest do
                    RewriteRule ^(.*/)?$ $1index.html#{suffix} [L]
                    RewriteCond %{HTTP:Accept-Encoding} \\b#{encoding}\\b
                    RewriteCond %{REQUEST_FILENAME}#{suffix} -f
-                   RewriteRule ^(.+\\.(html|css|js|txt|xml|svg))$ $1#{suffix} [L]
+                   RewriteRule ^(.+\\.(html|css|js|txt|xml|svg|md))$ $1#{suffix} [L]
                """
 
         assert compression =~ "Header always set Content-Encoding #{encoding}"
@@ -170,7 +170,9 @@ defmodule Feather.StaticSite.ExportDeliveryTest do
       for {extension, type} <- [
             {"html", "text/html"},
             {"css", "text/css"},
-            {"svg", "image/svg+xml"}
+            {"svg", "image/svg+xml"},
+            {"txt", "text/plain;charset=utf-8"},
+            {"md", "text/markdown;charset=utf-8"}
           ] do
         assert compression =~
                  "RewriteRule \\.#{extension}\\.(br|gz)$ - [T=#{type},E=no-gzip:1,E=no-brotli:1]"
@@ -178,6 +180,42 @@ defmodule Feather.StaticSite.ExportDeliveryTest do
 
       assert compression =~ "RemoveEncoding .br .gz"
       assert compression =~ "Header always merge Vary Accept-Encoding"
+    end
+
+    test "serves a page's Markdown alternate to clients that ask for it, with mod_rewrite and mod_headers",
+         %{htaccess: htaccess} do
+      [_, guarded] =
+        String.split(htaccess, "<IfModule mod_rewrite.c>\n  <IfModule mod_headers.c>\n")
+
+      assert guarded =~ """
+                 RewriteEngine On
+
+                 RewriteCond %{HTTP:Accept} \\btext/markdown\\b [NC]
+                 RewriteCond %{REQUEST_FILENAME}/index.md -f
+                 RewriteRule ^(.*/)?$ $1index.md [L]
+
+                 RewriteCond %{HTTP:Accept-Encoding} \\bbr\\b
+             """
+
+      assert guarded =~ """
+                 <FilesMatch "^index\\.(html|md)(\\.br|\\.gz)?$">
+                   Header always merge Vary Accept
+                 </FilesMatch>
+               </IfModule>
+             </IfModule>
+             """
+    end
+
+    test "sends Markdown alternates as UTF-8 text/markdown and text files like llms.txt as UTF-8, with mod_mime",
+         %{htaccess: htaccess} do
+      assert htaccess =~ """
+
+             <IfModule mod_mime.c>
+               AddType text/markdown .md
+               AddCharset utf-8 .md .txt
+             </IfModule>
+
+             """
     end
 
     test "lets browsers cache style.css, images, drawn images and fonts for a year, with mod_headers",

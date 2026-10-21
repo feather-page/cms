@@ -2,11 +2,13 @@ defmodule Feather.StaticSite.Htaccess do
   @moduledoc """
   The `.htaccess` the export writes for Apache hosts: the 404 page, the
   security headers (ADR 0029), the site's redirects (ADR 0025), the
-  precompressed files and a year-long immutable cache for `style.css`, the
-  image variants and the fonts: their URLs change whenever their content
-  does (a hash in the query, or a variant's file name that always means the
-  same file). Rules sit in module guards, so a host without a module serves
-  plain files instead of failing.
+  Markdown alternates for clients whose `Accept` header names
+  `text/markdown` (ADR 0030), UTF-8 for them and text files like
+  `llms.txt`, the precompressed files and a year-long immutable cache for
+  `style.css`, the image variants and the fonts: their URLs change
+  whenever their content does (a hash in the query, or a variant's file
+  name that always means the same file). Rules sit in module guards, so a
+  host without a module serves plain files instead of failing.
 
   The content security policy allows only what the themes load: the site's
   own images (the drawn favicon among them), stylesheet and fonts, the
@@ -18,6 +20,7 @@ defmodule Feather.StaticSite.Htaccess do
   """
 
   alias Feather.Content.{Page, Post, Project}
+  alias Feather.Redirects
   alias Feather.Redirects.Redirect
   alias Feather.StaticSite.{Precompress, Routes}
 
@@ -27,9 +30,10 @@ defmodule Feather.StaticSite.Htaccess do
     ".html" => "text/html",
     ".css" => "text/css",
     ".js" => "text/javascript",
-    ".txt" => "text/plain",
+    ".txt" => "text/plain;charset=utf-8",
     ".xml" => "application/xml",
-    ".svg" => "image/svg+xml"
+    ".svg" => "image/svg+xml",
+    ".md" => "text/markdown;charset=utf-8"
   }
 
   @content_security_policy [
@@ -72,9 +76,11 @@ defmodule Feather.StaticSite.Htaccess do
   rewrite rule for each of the redirects, given with the record or path
   they lead to (see `Feather.StaticSite.SiteData`). An old path without
   an extension also matches with a trailing slash and as its `index.html`
-  (`Feather.Redirects.Redirect.catches_index_files?/1`). The rules of old
-  paths with an extension come first, so a redirect from such an
-  `index.html` itself wins.
+  (`Feather.Redirects.Redirect.catches_index_files?/1`), and a second rule
+  sends its `index.md` to the target's Markdown alternate
+  (`Feather.Redirects.markdown_target_url/2`). The rules of old paths with
+  an extension come first, so a redirect from such an `index.html` or
+  `index.md` itself wins.
   """
   @spec render(Routes.t(), [{Redirect.t(), Post.t() | Page.t() | Project.t() | String.t()}]) ::
           String.t()
@@ -89,7 +95,7 @@ defmodule Feather.StaticSite.Htaccess do
       not_found_url: Routes.not_found_url(routes),
       security_headers: @security_headers,
       diagram_content_security_policy: Enum.join(@diagram_content_security_policy, "; "),
-      redirects: Enum.map(with_extension_first(redirects), &redirect_rule(routes, &1)),
+      redirects: Enum.flat_map(with_extension_first(redirects), &redirect_rules(routes, &1)),
       encodings: [{"br", ".br"}, {"gzip", ".gz"}],
       extensions: Enum.map_join(content_types, "|", &elem(&1, 0)),
       content_types: content_types
@@ -102,21 +108,22 @@ defmodule Feather.StaticSite.Htaccess do
     end)
   end
 
-  defp redirect_rule(routes, {%Redirect{old_path: old_path} = redirect, target}) do
-    %{
-      pattern: old_path_pattern(old_path),
-      url: target_url(routes, target),
-      status: Redirect.status(redirect)
-    }
-  end
-
-  defp old_path_pattern(old_path) do
+  defp redirect_rules(routes, {%Redirect{old_path: old_path} = redirect, target}) do
     path = old_path |> String.trim_leading("/") |> Regex.escape()
+    url = target_url(routes, target)
 
-    if Redirect.catches_index_files?(old_path),
-      do: "^#{path}(/(index\\.html)?)?$",
-      else: "^#{path}$"
+    if Redirect.catches_index_files?(old_path) do
+      [
+        rule(redirect, "^#{path}(/(index\\.html)?)?$", url),
+        rule(redirect, "^#{path}/index\\.md$", Redirects.markdown_target_url(routes, target))
+      ]
+    else
+      [rule(redirect, "^#{path}$", url)]
+    end
   end
+
+  defp rule(redirect, pattern, url),
+    do: %{pattern: pattern, url: url, status: Redirect.status(redirect)}
 
   defp target_url(routes, path) when is_binary(path), do: Routes.path_url(routes, path)
 

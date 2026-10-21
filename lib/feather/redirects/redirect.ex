@@ -59,8 +59,8 @@ defmodule Feather.Redirects.Redirect do
 
   @doc """
   Returns true if a redirect from the old path also catches the
-  `index.html` of the directory the path names: the path has no
-  extension.
+  `index.html` and `index.md` of the directory the path names: the path
+  has no extension.
   """
   @spec catches_index_files?(String.t()) :: boolean()
   def catches_index_files?(old_path), do: Path.extname(old_path) == ""

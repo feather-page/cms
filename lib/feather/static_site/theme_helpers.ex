@@ -14,7 +14,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Project}
   alias Feather.Media.{Image, Variants}
-  alias Feather.Sites.SocialMediaService
+  alias Feather.Sites.{Site, SocialMediaService}
   alias Feather.StaticSite.Routes
 
   require EEx
@@ -23,7 +23,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   The meta tags of a page (title, icon, robots, description, canonical URL,
-  Open Graph, structured data), from the assigns `Feather.StaticSite.Renderer` builds.
+  Open Graph, structured data) and the link to its Markdown alternate,
+  from the assigns `Feather.StaticSite.Renderer` builds.
   """
   EEx.function_from_file(
     :def,
@@ -426,9 +427,9 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   The description of a post, page or project for sharing, as its page's
-  meta tags give it: a post's or page's stored description, a project's
-  short description, otherwise the excerpt of its content; on one line
-  and at most 155 characters, nil without text.
+  meta tags and `llms.txt` give it: a post's or page's stored
+  description, a project's short description, otherwise the excerpt of
+  its content; on one line and at most 155 characters, nil without text.
   """
   @spec description(Content.Post.t() | Content.Page.t() | Project.t()) :: String.t() | nil
   def description(%Project{short_description: text} = project) do
@@ -465,6 +466,18 @@ defmodule Feather.StaticSite.ThemeHelpers do
     end
   end
 
+  @doc """
+  What the document title, `og:title`, the Markdown alternates and
+  `llms.txt` name a post by: a short post's meta title, else its label
+  (`post_label/1`).
+  """
+  @spec post_meta_title(Content.Post.t()) :: String.t()
+  def post_meta_title(post) do
+    if blank?(post.title) and present?(post.meta_title),
+      do: post.meta_title,
+      else: post_label(post)
+  end
+
   defp untitled_label(post) do
     case post.content |> ContentBlocks.excerpt() |> String.split() do
       [] ->
@@ -481,6 +494,11 @@ defmodule Feather.StaticSite.ThemeHelpers do
         |> Kernel.<>("…")
     end
   end
+
+  @doc "What the Markdown alternates name a page by: its title, the site's for an untitled page."
+  @spec page_label(Site.t(), Content.Page.t()) :: String.t()
+  def page_label(%Site{} = site, page),
+    do: if(present?(page.title), do: page.title, else: site.title)
 
   @doc "Returns true if the assigns render that page."
   @spec current_page?(map(), Content.Page.t()) :: boolean()

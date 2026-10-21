@@ -189,7 +189,9 @@ defmodule Feather.StaticSite.ExportTest do
           "work/index.html",
           "projects/done/index.html",
           "projects/ongoing/index.html",
+          "index.md",
           "feed.xml",
+          "llms.txt",
           "robots.txt",
           "sitemap.xml",
           "style.css",
@@ -523,6 +525,21 @@ defmodule Feather.StaticSite.ExportPaginationTest do
              ~s(<a href="/" class="pagination-link" aria-label="Previous page">←</a>)
 
     refute RecordingSink.exists?(sink, "page/3/index.html")
+
+    markdown = RecordingSink.get(sink, "index.md")
+    assert markdown =~ "### [Post 27](/post-"
+    assert markdown =~ "### [Post 1](/post-"
+    assert length(Regex.scan(~r/^### /m, markdown)) == 27
+    refute RecordingSink.exists?(sink, "page/2/index.md")
+    assert markdown_alternate_links(first) == ["/index.md"]
+    assert markdown_alternate_links(second) == []
+  end
+
+  defp markdown_alternate_links(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query(~s(link[rel="alternate"][type="text/markdown"]))
+    |> LazyHTML.attribute("href")
   end
 
   test "numbers the titles of the post list pages after the first, in the site's language" do

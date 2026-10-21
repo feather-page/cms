@@ -2,14 +2,16 @@ defmodule Feather.StaticSite.Export do
   @moduledoc """
   Renders the published versions of a whole site into a sink: the pages
   of the post list, the posts that are due, projects, pages (the homepage
-  is the first page of the post list), the variants of the images in use
-  that their roles need in the theme (`Feather.StaticSite.ImageVariants`,
-  missing ones are generated first), the favicon and share cards the pages
-  link (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of
-  the site's theme, the rendered diagrams, `feed.xml`, `robots.txt`,
-  `sitemap.xml`, `style.css`, `404.html`, the IndexNow key file (ADR 0027)
-  and the `.htaccess` for Apache hosts, with the security headers and the
-  active redirects.
+  is the first page of the post list), the Markdown alternates of the home
+  page and those posts, projects and pages as `index.md` next to their
+  `index.html`, the variants of the images in use that their roles need in
+  the theme (`Feather.StaticSite.ImageVariants`, missing ones are generated
+  first), the favicon and share cards the pages link
+  (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of the
+  site's theme, the rendered diagrams, `feed.xml`, `llms.txt`,
+  `robots.txt`, `sitemap.xml`, `style.css`, `404.html`, the IndexNow key
+  file (ADR 0027) and the `.htaccess` for Apache hosts, with the security
+  headers and the active redirects.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -50,6 +52,7 @@ defmodule Feather.StaticSite.Export do
 
     jobs =
       [:not_found, {:htaccess, redirects} | documents] ++
+        markdown_jobs(data) ++
         indexnow_key_jobs(site) ++
         Enum.map(Slug.artifacts(), &{:artifact, &1}) ++
         asset_jobs(data, site) ++ generated_image_jobs(data, routes, documents)
@@ -62,6 +65,11 @@ defmodule Feather.StaticSite.Export do
       Enum.map(data.posts, &{:post, &1}) ++
       Enum.map(data.projects, &{:project, &1}) ++
       (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1}))
+  end
+
+  defp markdown_jobs(data) do
+    pages = Enum.reject(data.pages, &Page.homepage?/1)
+    [{:markdown, :home} | Enum.map(data.posts ++ data.projects ++ pages, &{:markdown, &1})]
   end
 
   defp indexnow_key_jobs(%Site{indexnow_key: nil}), do: []
@@ -139,6 +147,14 @@ defmodule Feather.StaticSite.Export do
 
   defp run_job({:page, page}, data, routes, sink),
     do: Sink.write(sink, Routes.page_path(routes, page), Renderer.render_page(data, routes, page))
+
+  defp run_job({:markdown, record}, data, routes, sink) do
+    Sink.write(
+      sink,
+      Routes.markdown_path(routes, record),
+      Renderer.render_markdown(data, routes, record)
+    )
+  end
 
   defp run_job(:not_found, data, routes, sink),
     do: Sink.write(sink, Routes.not_found_path(routes), Renderer.render_not_found(data, routes))

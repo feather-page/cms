@@ -10,11 +10,11 @@ defmodule Feather.StaticSite.Precompress do
 
   require Logger
 
-  @extensions ~w(.html .css .js .txt .xml .svg)
+  @extensions ~w(.html .css .js .txt .xml .svg .md)
 
   @doc """
-  Precompresses every `.html`, `.css`, `.js`, `.txt`, `.xml` and `.svg`
-  file below `dir`. Returns the list of compressed source files; raises if
+  Precompresses every `.html`, `.css`, `.js`, `.txt`, `.xml`, `.svg` and
+  `.md` file below `dir`. Returns the list of compressed source files; raises if
   a file could not be compressed.
 
   ## Options

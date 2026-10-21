@@ -1,7 +1,8 @@
 defmodule Feather.StaticSite.Renderer do
   @moduledoc """
   Renders the pages and files of a static site from `SiteData` and
-  `Routes`, the pages through the site's theme (`Feather.StaticSite.Theme`).
+  `Routes`, the pages through the site's theme (`Feather.StaticSite.Theme`)
+  and their Markdown alternates through `Feather.StaticSite.MarkdownAlternate`.
   Used by the export and the preview alike, so both show the same markup.
   Every function returns iodata and touches no database.
   """
@@ -17,6 +18,8 @@ defmodule Feather.StaticSite.Renderer do
     Feed,
     GeneratedImages,
     HTMLFormatter,
+    LlmsTxt,
+    MarkdownAlternate,
     Routes,
     SiteData,
     Sitemap,
@@ -42,7 +45,8 @@ defmodule Feather.StaticSite.Renderer do
 
   @doc """
   A page of the post list. Pages past the end list no posts; pages after
-  the first carry their number in the document title.
+  the first carry their number in the document title, only the first
+  links the home page's Markdown alternate.
   """
   @spec render_home(SiteData.t(), Routes.t(), pos_integer()) :: iodata()
   def render_home(%SiteData{} = data, %Routes{} = routes, page_number \\ 1),
@@ -55,6 +59,7 @@ defmodule Feather.StaticSite.Renderer do
     |> base_assigns(routes, data.site.title, data.site.emoji, true)
     |> Map.merge(home_sharing(data, routes, homepage, page_number))
     |> Map.merge(%{
+      markdown_url: if(page_number == 1, do: Routes.markdown_url(routes, :home)),
       masthead_image: homepage.header_image,
       rss_url: Routes.artifact_url(routes, "feed.xml"),
       posts: posts_on_page(data, page_number),
@@ -97,10 +102,11 @@ defmodule Feather.StaticSite.Renderer do
       post_heading(data, post),
       post.emoji,
       false,
-      post_meta_title(data, post)
+      in_site_language(data, fn -> ThemeHelpers.post_meta_title(post) end)
     )
     |> Map.merge(post_sharing(data, routes, post))
     |> Map.merge(%{
+      markdown_url: Routes.markdown_url(routes, post),
       post: post,
       published_at: post.publish_at,
       header_image: post.header_image,
@@ -110,12 +116,6 @@ defmodule Feather.StaticSite.Renderer do
   end
 
   defp post_heading(data, post), do: if(blank?(post.title), do: data.site.title, else: post.title)
-
-  defp post_meta_title(data, post) do
-    if blank?(post.title) and not blank?(post.meta_title),
-      do: post.meta_title,
-      else: in_site_language(data, fn -> ThemeHelpers.post_label(post) end)
-  end
 
   defp post_sharing(data, routes, post) do
     sharing(
@@ -144,6 +144,7 @@ defmodule Feather.StaticSite.Renderer do
       )
     )
     |> Map.merge(%{
+      markdown_url: Routes.markdown_url(routes, page),
       page: page,
       header_image: page.header_image,
       title_mascot: if(page.page_type == "projects", do: data.site.projects_mascot_image)
@@ -160,6 +161,7 @@ defmodule Feather.StaticSite.Renderer do
     |> base_assigns(routes, project.title, project.emoji, false)
     |> Map.merge(project_sharing(data, routes, project))
     |> Map.merge(%{
+      markdown_url: Routes.markdown_url(routes, project),
       project: project,
       header_image: project.header_image,
       trail: projects_trail(data, routes)
@@ -193,6 +195,19 @@ defmodule Feather.StaticSite.Renderer do
   defp document_assigns(data, routes, {:project, project}),
     do: project_assigns(data, routes, project)
 
+  @doc """
+  The Markdown alternate of the home page (`:home`), a post (its book
+  preloaded), page or project, with canonical URLs.
+  """
+  @spec render_markdown(SiteData.t(), Routes.t(), MarkdownAlternate.target()) :: iodata()
+  def render_markdown(%SiteData{} = data, %Routes{} = routes, target) do
+    canonical = Routes.canonical(routes)
+
+    in_site_language(data, fn ->
+      MarkdownAlternate.render(data, canonical, target, block_context(data, canonical))
+    end)
+  end
+
   @doc "The page shown for paths that do not exist."
   @spec render_not_found(SiteData.t(), Routes.t()) :: iodata()
   def render_not_found(%SiteData{} = data, %Routes{} = routes) do
@@ -207,8 +222,9 @@ defmodule Feather.StaticSite.Renderer do
   end
 
   @doc """
-  A generated file at the site root: `feed.xml`, `sitemap.xml`,
-  `robots.txt` or `style.css` (the theme's font faces and stylesheet).
+  A generated file at the site root: `feed.xml`, `llms.txt`,
+  `sitemap.xml`, `robots.txt` or `style.css` (the theme's font faces and
+  stylesheet).
   """
   @spec render_artifact(SiteData.t(), Routes.t(), String.t()) :: iodata()
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "feed.xml"),
@@ -216,6 +232,9 @@ defmodule Feather.StaticSite.Renderer do
       in_site_language(data, fn ->
         Feed.render(data, routes, block_context(data, Routes.canonical(routes)))
       end)
+
+  def render_artifact(%SiteData{} = data, %Routes{} = routes, "llms.txt"),
+    do: in_site_language(data, fn -> LlmsTxt.render(data, routes) end)
 
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "sitemap.xml"),
     do: Sitemap.render(data, routes)
@@ -238,6 +257,7 @@ defmodule Feather.StaticSite.Renderer do
   @doc "The content type of a generated file at the site root."
   @spec artifact_content_type(String.t()) :: String.t()
   def artifact_content_type("feed.xml"), do: "application/rss+xml"
+  def artifact_content_type("llms.txt"), do: "text/plain"
   def artifact_content_type("sitemap.xml"), do: "application/xml"
   def artifact_content_type("robots.txt"), do: "text/plain"
   def artifact_content_type("style.css"), do: "text/css"
@@ -277,6 +297,7 @@ defmodule Feather.StaticSite.Renderer do
       canonical_url: nil,
       og_type: "website",
       og_image_url: nil,
+      markdown_url: nil,
       page_emoji: page_emoji,
       favicon: favicon,
       favicon_url:

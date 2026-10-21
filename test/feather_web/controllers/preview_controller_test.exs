@@ -56,6 +56,70 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert html_response(get(conn, root <> "/hello/"), 200) =~ "<h1>Unpublished change</h1>"
   end
 
+  test "serves the Markdown alternate of a post with unpublished changes and links it",
+       %{conn: conn, scope: scope, root: root, user: user} do
+    post_fixture(scope, %{title: "Published", slug: "/hello", content: [paragraph("Old text.")]})
+    |> Ecto.Changeset.change(title: "Unpublished change", content: [paragraph("New *text*.")])
+    |> Feather.Repo.update!()
+
+    conn = get(conn, root <> "/hello/index.md")
+
+    assert response(conn, 200) =~ ~r/\A---\ntitle: "Unpublished change"\n/
+    assert conn.resp_body =~ ~s(url: "https://#{scope.site.domain}/hello/")
+    assert conn.resp_body =~ "# Unpublished change\n\nNew \\*text\\*.\n"
+    assert get_resp_header(conn, "content-type") == ["text/markdown; charset=utf-8"]
+
+    assert get(fresh(user), root <> "/hello/")
+           |> html_response(200)
+           |> LazyHTML.from_document()
+           |> LazyHTML.query(~s(link[rel="alternate"][type="text/markdown"]))
+           |> LazyHTML.attribute("href") == [root <> "/hello/index.md"]
+
+    assert get(fresh(user), root <> "/missing/index.md").status == 404
+  end
+
+  test "serves the Markdown alternates of pages and projects, with the list of a books or projects page",
+       %{scope: scope, root: root, user: user} do
+    page_fixture(scope, %{title: "About", slug: "/about", content: [paragraph("Me.")]})
+    page_fixture(scope, %{title: "Books", slug: "/books", page_type: "books", content: []})
+    page_fixture(scope, %{title: "Work", slug: "/work", page_type: "projects", content: []})
+    project_fixture(scope, %{title: "CMS", slug: "/cms", content: [paragraph("Code.")]})
+    book_fixture(scope, %{title: "Dune", author: "Frank Herbert", read_at: ~D[2024-02-01]})
+    project_url = "https://#{scope.site.domain}/projects/cms/"
+
+    for {path, markdown} <- [
+          {"/about/index.md", "\n# About\n\nMe.\n"},
+          {"/projects/cms/index.md", "\n# CMS\n\nSomething I built.\n\nCode.\n"},
+          {"/books/index.md", "\n# Books\n\n## 2024\n\n- *Dune* · Frank Herbert · 2024-02-01\n"},
+          {"/work/index.md", "\n# Work\n\n## [CMS](#{project_url})\n\nSomething I built.\n"}
+        ] do
+      conn = get(fresh(user), root <> path)
+
+      assert response(conn, 200) =~ markdown, path
+      assert get_resp_header(conn, "content-type") == ["text/markdown; charset=utf-8"], path
+    end
+  end
+
+  test "serves llms.txt and the home page's Markdown alternate with unpublished changes",
+       %{conn: conn, scope: scope, root: root, user: user} do
+    post_fixture(scope, %{title: "Published", slug: "/hello", content: [paragraph("Old text.")]})
+    |> Ecto.Changeset.change(title: "Grüße", content: [paragraph("New text.")])
+    |> Feather.Repo.update!()
+
+    conn = get(conn, root <> "/llms.txt")
+
+    assert get_resp_header(conn, "content-type") == ["text/plain; charset=utf-8"]
+
+    assert response(conn, 200) =~
+             "- [Grüße](https://#{scope.site.domain}/hello/index.md): New text.\n"
+
+    conn = get(fresh(user), root <> "/index.md")
+
+    assert get_resp_header(conn, "content-type") == ["text/markdown; charset=utf-8"]
+    assert response(conn, 200) =~ "### [Grüße](https://#{scope.site.domain}/hello/)\n"
+    assert get(fresh(user), root <> "/page/2/index.md").status == 404
+  end
+
   test "serves stored variants and those an image's roles need, generating missing ones",
        %{conn: conn, scope: scope, root: root, user: user} do
     image = image_fixture(scope, width: 1000, height: 700)
@@ -251,6 +315,21 @@ defmodule FeatherWeb.PreviewControllerTest do
              root <> "/unpublished-slug/"
 
     assert redirected_to(get(fresh(user), root <> "/atom.xml"), 302) == root <> "/feed.xml"
+  end
+
+  test "follows the index.md of an old path to the Markdown alternate of the target, or to a target without one",
+       %{conn: conn, scope: scope, root: root, user: user} do
+    post = post_fixture(scope, %{title: "Hello", slug: "/alt"})
+    {:ok, post} = Feather.Content.update_post(scope, post, %{slug: "/neu"})
+    {:ok, _} = Feather.Content.publish(scope, post)
+    redirect_fixture(scope, old_path: "/start", target: "/")
+    redirect_fixture(scope, old_path: "/rss", target: "/feed.xml")
+
+    assert redirected_to(get(conn, root <> "/alt/index.md"), 302) == root <> "/neu/index.md"
+    assert redirected_to(get(fresh(user), root <> "/alt/index.html"), 302) == root <> "/neu/"
+    assert redirected_to(get(fresh(user), root <> "/start/index.md"), 302) == root <> "/index.md"
+    assert redirected_to(get(fresh(user), root <> "/rss/index.md"), 302) == root <> "/feed.xml"
+    assert response(get(fresh(user), root <> "/neu/index.md"), 200) =~ "# Hello\n"
   end
 
   test "renders the 404 page for the old path of an inactive redirect", %{

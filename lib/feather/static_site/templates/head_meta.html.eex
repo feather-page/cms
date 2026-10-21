@@ -29,6 +29,9 @@
     <meta name="twitter:card" content="summary_large_image" />
     <% end %>
     <% end %>
+    <%= if @markdown_url do %>
+    <link rel="alternate" type="text/markdown" href="<%= @markdown_url %>" />
+    <% end %>
     <%= if @structured_data do %>
     <script type="application/ld+json"><%= Feather.StaticSite.StructuredData.encode(@structured_data) %></script>
     <% end %>

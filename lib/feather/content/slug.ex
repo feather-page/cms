@@ -6,9 +6,9 @@ defmodule Feather.Content.Slug do
   must match `#{inspect(~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z})}`. Only the
   homepage may own the site root `/`. Paths the export generates itself
   are reserved: everything under `images/`, `page/`, `posts/` and
-  `projects/`, plus `feed.xml`, `robots.txt`, `sitemap.xml` and
-  `style.css`. Projects live under `projects/`, so their slugs are exempt
-  from the reservation.
+  `projects/`, plus `feed.xml`, `llms.txt`, `robots.txt`, `sitemap.xml`
+  and `style.css`. Projects live under `projects/`, so their slugs are
+  exempt from the reservation.
 
   Posts and pages share the site root, so a slug is unique among the
   posts and pages of a site, see `url_space/1`. The old paths of the
@@ -25,7 +25,7 @@ defmodule Feather.Content.Slug do
 
   @format ~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z}
   @reserved_prefixes ~w(images page posts projects)
-  @artifacts ~w(feed.xml robots.txt sitemap.xml style.css)
+  @artifacts ~w(feed.xml llms.txt robots.txt sitemap.xml style.css)
 
   @doc "Top-level path segments the export generates."
   @spec reserved_prefixes() :: [String.t()]

@@ -44,7 +44,9 @@ defmodule Feather.RedirectsTest do
             {"/", "/"},
             {"/page/2", "/page/2/"},
             {"feed.xml", "/feed.xml"},
-            {generated_image, generated_image}
+            {generated_image, generated_image},
+            {"llms.txt", "/llms.txt"},
+            {"/index.md", "/index.md"}
           ] do
         assert {:ok, %Redirect{target_path: ^stored, post_id: nil, page_id: nil}} =
                  Redirects.create_redirect(scope, %{
@@ -52,6 +54,25 @@ defmodule Feather.RedirectsTest do
                    target: given
                  })
       end
+    end
+
+    test "refuses the Markdown alternate of a post, page or project as the target, not /index.md",
+         %{scope: scope} do
+      post_fixture(scope, %{slug: "/hello"})
+      page_fixture(scope, %{slug: "/about", draft: true})
+      project_fixture(scope, %{slug: "/cms"})
+
+      for target <- ["/hello/index.md", "about/index.md", "/projects/cms/index.md"] do
+        assert {:error, changeset} =
+                 Redirects.create_redirect(scope, %{old_path: "/old", target: target})
+
+        assert "is the Markdown alternate of a page: choose the page itself" in errors_on(
+                 changeset
+               ).target
+      end
+
+      assert {:ok, %Redirect{target_path: "/index.md"}} =
+               Redirects.create_redirect(scope, %{old_path: "/old", target: "/index.md"})
     end
 
     test "normalizes the old path: a leading slash, no trailing slash, .html kept",
@@ -70,7 +91,7 @@ defmodule Feather.RedirectsTest do
          %{scope: scope} do
       page_fixture(scope, %{slug: "/about", draft: true})
 
-      for old_path <- ["/about/", "/feed.xml", "/", "/page/2"] do
+      for old_path <- ["/about/", "/feed.xml", "/llms.txt", "/", "/index.md", "/page/2"] do
         assert {:error, changeset} =
                  Redirects.create_redirect(scope, %{old_path: old_path, target: "/"})
 
@@ -114,6 +135,22 @@ defmodule Feather.RedirectsTest do
       end
     end
 
+    test "refuses the Markdown alternate of a URL where content lives and its precompressed copies",
+         %{scope: scope} do
+      page_fixture(scope, %{slug: "/foo", draft: true})
+      project_fixture(scope, %{slug: "/cms"})
+
+      for old_path <- ["/foo/index.md", "/foo/index.md.br", "/projects/cms/index.md.gz"] do
+        assert {:error, changeset} =
+                 Redirects.create_redirect(scope, %{old_path: old_path, target: "/"})
+
+        assert "is already a URL of the site" in errors_on(changeset).old_path
+      end
+
+      assert {:ok, _} =
+               Redirects.create_redirect(scope, %{old_path: "/bar/index.md", target: "/"})
+    end
+
     test "refuses an old path a published version serves", %{scope: scope} do
       post = post_fixture(scope, %{slug: "/a"})
       {:ok, _} = Content.update_post(scope, post, %{slug: "/b"})
@@ -122,7 +159,14 @@ defmodule Feather.RedirectsTest do
       slugless = post_fixture(scope, %{slug: nil})
       {:ok, _} = Content.update_post(scope, slugless, %{slug: "/named"})
 
-      for old_path <- ["/a", "/a.html", "/projects/cms", "/posts/#{slugless.public_id}"] do
+      for old_path <- [
+            "/a",
+            "/a.html",
+            "/a/index.md",
+            "/projects/cms",
+            "/projects/cms/index.md",
+            "/posts/#{slugless.public_id}"
+          ] do
         assert {:error, changeset} =
                  Redirects.create_redirect(scope, %{old_path: old_path, target: "/b/"})
 
@@ -224,6 +268,18 @@ defmodule Feather.RedirectsTest do
       assert [%{old_path: "/posts/rule-of-72"}] = Redirects.list_redirects(scope)
     end
 
+    test "refuses a line whose target is the Markdown alternate of a post, not one to /index.md",
+         %{scope: scope} do
+      post_fixture(scope, %{slug: "/hello"})
+
+      assert [{"/a /hello/index.md", {:error, changeset}}, {"/b /index.md", {:ok, saved}}] =
+               Redirects.create_redirects(scope, "/a /hello/index.md\n/b /index.md")
+
+      assert "is the Markdown alternate of a page: choose the page itself" in errors_on(changeset).target
+      assert saved.target_path == "/index.md"
+      assert [%{old_path: "/b"}] = Redirects.list_redirects(scope)
+    end
+
     test "refuses a line whose old path an earlier line took", %{scope: scope} do
       assert [{_, {:ok, _}}, {_, {:error, changeset}}] =
                Redirects.create_redirects(scope, "/old /\n/old/ /feed.xml")
@@ -287,6 +343,35 @@ defmodule Feather.RedirectsTest do
                Redirects.find_active_redirect(scope, "/alt/index.html")
     end
 
+    test "leads an old path's index.md to the Markdown alternate of the target, or to a target without one",
+         %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/neu"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/alt", target: "/neu"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/start", target: "/"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/rss", target: "/feed.xml"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/b.html", target: "/neu"})
+      {:ok, _} = Content.update_post(scope, post, %{slug: "/unpublished"})
+
+      assert %Redirect{old_path: "/alt", target: "/unpublished/index.md"} =
+               Redirects.find_active_redirect(scope, ["alt", "index.md"])
+
+      assert %Redirect{target: "/unpublished/"} = Redirects.find_active_redirect(scope, "/alt/")
+
+      assert %Redirect{target: "/index.md"} =
+               Redirects.find_active_redirect(scope, "/start/index.md")
+
+      assert %Redirect{target: "/feed.xml"} =
+               Redirects.find_active_redirect(scope, "/rss/index.md")
+
+      assert Redirects.find_active_redirect(scope, "/b.html/index.md") == nil
+
+      {:ok, _} =
+        Redirects.create_redirect(scope, %{old_path: "/alt/index.md", target: "/llms.txt"})
+
+      assert %Redirect{old_path: "/alt/index.md", target: "/llms.txt"} =
+               Redirects.find_active_redirect(scope, "/alt/index.md")
+    end
+
     test "leaves out an inactive redirect", %{scope: scope} do
       page = page_fixture(scope, %{slug: "/target"})
       {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/old", target: "/target"})
@@ -344,6 +429,21 @@ defmodule Feather.RedirectsTest do
 
       assert site_updated_at(scope) == ~U[2026-01-01 00:00:00.000000Z]
       assert Repo.reload!(redirect).updated_at == redirect.updated_at
+    end
+
+    test "refuses the Markdown alternate of a post as the target, not /index.md", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/hello"})
+      {:ok, redirect} = Redirects.create_redirect(scope, %{old_path: "/x", target: "/hello"})
+      redirect = Redirects.get_redirect!(scope, redirect.public_id)
+
+      assert {:error, changeset} =
+               Redirects.update_redirect(scope, redirect, %{target: "/hello/index.md"})
+
+      assert "is the Markdown alternate of a page: choose the page itself" in errors_on(changeset).target
+      assert Repo.reload!(redirect).post_id == post.id
+
+      assert {:ok, %Redirect{target_path: "/index.md", post_id: nil}} =
+               Redirects.update_redirect(scope, redirect, %{target: "/index.md"})
     end
 
     test "keeps its own old path", %{scope: scope} do
@@ -486,6 +586,16 @@ defmodule Feather.RedirectsTest do
       {:ok, _post} = Content.publish(scope, post)
 
       assert scope |> Redirects.list_redirects() |> Enum.map(& &1.old_path) == ["/a.html", "/b"]
+    end
+
+    test "publishing deletes a redirect from its URL's Markdown alternate", %{scope: scope} do
+      post = post_fixture(scope, %{slug: "/b"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/a/index.md", target: "/b/"})
+
+      {:ok, post} = Content.update_post(scope, post, %{slug: "/a"})
+      {:ok, _post} = Content.publish(scope, post)
+
+      assert scope |> Redirects.list_redirects() |> Enum.map(& &1.old_path) == ["/b"]
     end
 
     test "redirects the old URL of a page and of a project, under /projects/", %{scope: scope} do
@@ -662,6 +772,13 @@ defmodule Feather.RedirectsTest do
                  started_at: ~D[2024-03-01]
                })
 
+      assert "has already been taken by a redirect" in errors_on(changeset).slug
+    end
+
+    test "a slug cannot take a URL a redirect holds in its Markdown alternate", %{scope: scope} do
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/foo/index.md", target: "/"})
+
+      assert {:error, changeset} = Content.create_page(scope, %{title: "Foo", slug: "/foo"})
       assert "has already been taken by a redirect" in errors_on(changeset).slug
     end
 

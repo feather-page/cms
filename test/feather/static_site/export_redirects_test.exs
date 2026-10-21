@@ -29,14 +29,18 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
 
     assert rules(htaccess) == [
              "  RewriteRule ^current(/(index\\.html)?)?$ /now/ [R=302,L]",
-             "  RewriteRule ^posts/rule\\-of\\-72(/(index\\.html)?)?$ /rule-of-72/ [R=301,L]"
+             "  RewriteRule ^current/index\\.md$ /now/index.md [R=302,L]",
+             "  RewriteRule ^posts/rule\\-of\\-72(/(index\\.html)?)?$ /rule-of-72/ [R=301,L]",
+             "  RewriteRule ^posts/rule\\-of\\-72/index\\.md$ /rule-of-72/index.md [R=301,L]"
            ]
 
     assert htaccess =~ """
            <IfModule mod_rewrite.c>
              RewriteEngine On
              RewriteRule ^current(/(index\\.html)?)?$ /now/ [R=302,L]
+             RewriteRule ^current/index\\.md$ /now/index.md [R=302,L]
              RewriteRule ^posts/rule\\-of\\-72(/(index\\.html)?)?$ /rule-of-72/ [R=301,L]
+             RewriteRule ^posts/rule\\-of\\-72/index\\.md$ /rule-of-72/index.md [R=301,L]
            </IfModule>
 
            <IfModule mod_rewrite.c>
@@ -67,7 +71,34 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
     assert rules(htaccess(scope)) == [
              "  RewriteRule ^alt/index\\.html$ /other/ [R=301,L]",
              "  RewriteRule ^b\\.html$ /neu/ [R=301,L]",
-             "  RewriteRule ^alt(/(index\\.html)?)?$ /neu/ [R=301,L]"
+             "  RewriteRule ^alt(/(index\\.html)?)?$ /neu/ [R=301,L]",
+             "  RewriteRule ^alt/index\\.md$ /neu/index.md [R=301,L]"
+           ]
+  end
+
+  test "sends an old path's index.md to the Markdown alternate of the target, or to a target without one",
+       %{scope: scope} do
+    post = post_fixture(scope, %{slug: "/alt"})
+    {:ok, post} = Content.update_post(scope, post, %{slug: "/neu"})
+    {:ok, _post} = Content.publish(scope, post)
+    page_fixture(scope, %{slug: "/about"})
+    project_fixture(scope, %{slug: "/cms"})
+    redirect_fixture(scope, old_path: "/me", target: "/about/")
+    redirect_fixture(scope, old_path: "/work", target: "/projects/cms/")
+    redirect_fixture(scope, old_path: "/start", target: "/", kind: "temporary")
+    redirect_fixture(scope, old_path: "/rss", target: "/feed.xml")
+
+    assert rules(htaccess(scope)) == [
+             "  RewriteRule ^alt(/(index\\.html)?)?$ /neu/ [R=301,L]",
+             "  RewriteRule ^alt/index\\.md$ /neu/index.md [R=301,L]",
+             "  RewriteRule ^me(/(index\\.html)?)?$ /about/ [R=301,L]",
+             "  RewriteRule ^me/index\\.md$ /about/index.md [R=301,L]",
+             "  RewriteRule ^rss(/(index\\.html)?)?$ /feed.xml [R=301,L]",
+             "  RewriteRule ^rss/index\\.md$ /feed.xml [R=301,L]",
+             "  RewriteRule ^start(/(index\\.html)?)?$ / [R=302,L]",
+             "  RewriteRule ^start/index\\.md$ /index.md [R=302,L]",
+             "  RewriteRule ^work(/(index\\.html)?)?$ /projects/cms/ [R=301,L]",
+             "  RewriteRule ^work/index\\.md$ /projects/cms/index.md [R=301,L]"
            ]
   end
 
@@ -77,7 +108,8 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
     redirect_fixture(scope, old_path: "/a$b(c)+d'e", target: "/x/")
 
     assert rules(htaccess(scope)) == [
-             "  RewriteRule ^a\\$b\\(c\\)\\+d'e(/(index\\.html)?)?$ /x/ [R=301,L]"
+             "  RewriteRule ^a\\$b\\(c\\)\\+d'e(/(index\\.html)?)?$ /x/ [R=301,L]",
+             "  RewriteRule ^a\\$b\\(c\\)\\+d'e/index\\.md$ /x/index.md [R=301,L]"
            ]
   end
 
@@ -91,7 +123,11 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
     refute htaccess =~ "RewriteEngine On\n</IfModule>"
 
     {:ok, _} = Content.publish(scope, page)
-    assert rules(htaccess(scope)) == ["  RewriteRule ^old(/(index\\.html)?)?$ /target/ [R=301,L]"]
+
+    assert rules(htaccess(scope)) == [
+             "  RewriteRule ^old(/(index\\.html)?)?$ /target/ [R=301,L]",
+             "  RewriteRule ^old/index\\.md$ /target/index.md [R=301,L]"
+           ]
   end
 
   test "renaming a published post twice redirects both old URLs to the current one in a single step",
@@ -107,7 +143,9 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
 
     assert rules(htaccess(scope)) == [
              "  RewriteRule ^install\\-ssh\\-key(/(index\\.html)?)?$ /ssh-key/ [R=301,L]",
-             "  RewriteRule ^ssh\\-copy\\-id(/(index\\.html)?)?$ /ssh-key/ [R=301,L]"
+             "  RewriteRule ^install\\-ssh\\-key/index\\.md$ /ssh-key/index.md [R=301,L]",
+             "  RewriteRule ^ssh\\-copy\\-id(/(index\\.html)?)?$ /ssh-key/ [R=301,L]",
+             "  RewriteRule ^ssh\\-copy\\-id/index\\.md$ /ssh-key/index.md [R=301,L]"
            ]
   end
 end

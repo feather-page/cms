@@ -3,6 +3,12 @@ defmodule Feather.Redirects do
   Redirects of a site: from an old path to a post, page or project, or to
   a path the site generates (ADR 0025).
 
+  A redirect from an old path without an extension also catches the
+  path's `index.html` and `index.md`, the latter leading to the target's
+  Markdown alternate (ADR 0030). A target is never the alternate of a
+  post, page or project, which moves with its record: the redirect leads
+  to the record instead.
+
   Every function takes a `%Scope{}` whose `site` is set and only sees that
   site's redirects, looked up by public id. Every change to a redirect
   moves the site's `updated_at`.
@@ -54,29 +60,38 @@ defmodule Feather.Redirects do
   @doc """
   Gets the active redirect of the scope's site whose old path a requested
   path (a string or path segments) matches, with or without a trailing
-  slash, or nil. The `index.html` of an old path without an extension
-  (`Redirect.catches_index_files?/1`) matches it too, unless an active
-  redirect from that file itself exists, as in the `.htaccess`. Unlike
-  `get_redirect/2` its target record is as it is and `target` its current
-  URL, where the preview shows it.
+  slash, or nil. The `index.html` and `index.md` of an old path without
+  an extension (`Redirect.catches_index_files?/1`) match it too, unless an
+  active redirect from that file itself exists, as in the `.htaccess`.
+  Unlike `get_redirect/2` its target record is as it is and `target` the
+  current URL the requested path leads to, where the preview shows it: for
+  such an `index.md`, the target's Markdown alternate
+  (`markdown_target_url/2`).
   """
   @spec find_active_redirect(Scope.t(), String.t() | [String.t()]) :: Redirect.t() | nil
   def find_active_redirect(%Scope{} = scope, segments) when is_list(segments),
     do: find_active_redirect(scope, Enum.join(segments, "/"))
 
   def find_active_redirect(%Scope{site: %Site{} = site} = scope, path) do
-    with old_path when is_binary(old_path) <- Slug.normalize(path) do
-      site
-      |> from_path(catching_paths(old_path))
-      |> Repo.all()
-      |> Enum.sort_by(&(&1.old_path != old_path))
-      |> Enum.map(&with_target(&1, site, :current))
-      |> Enum.find(&active?(scope, &1))
+    with old_path when is_binary(old_path) <- Slug.normalize(path),
+         %Redirect{} = redirect <- first_active(scope, old_path) do
+      if redirect.old_path != old_path and Path.basename(old_path) == "index.md",
+        do: %{redirect | target: markdown_target_url(Routes.new(site), target_of(redirect))},
+        else: redirect
     end
   end
 
+  defp first_active(%Scope{site: site} = scope, old_path) do
+    site
+    |> from_path(catching_paths(old_path))
+    |> Repo.all()
+    |> Enum.sort_by(&(&1.old_path != old_path))
+    |> Enum.map(&with_target(&1, site, :current))
+    |> Enum.find(&active?(scope, &1))
+  end
+
   defp catching_paths(old_path) do
-    with [_, path] <- Regex.run(~r{\A(/.+)/index\.html\z}, old_path),
+    with [_, path] <- Regex.run(~r{\A(/.+)/index\.(?:html|md)\z}, old_path),
          true <- Redirect.catches_index_files?(path) do
       [old_path, path]
     else
@@ -84,14 +99,33 @@ defmodule Feather.Redirects do
     end
   end
 
+  defp target_of(%Redirect{target_path: nil} = redirect), do: Redirect.target_record(redirect)
+  defp target_of(%Redirect{target_path: path}), do: path
+
+  @doc """
+  The URL a request for the `index.md` of a redirect's old path leads to,
+  given the redirect's target (a post, page or project, or a target path):
+  the target's Markdown alternate, the home page's for `/`; a target path
+  without one leads to itself.
+  """
+  @spec markdown_target_url(Routes.t(), Post.t() | Page.t() | Project.t() | String.t()) ::
+          String.t()
+  def markdown_target_url(%Routes{} = routes, "/"), do: Routes.markdown_url(routes, :home)
+
+  def markdown_target_url(%Routes{} = routes, path) when is_binary(path),
+    do: Routes.path_url(routes, path)
+
+  def markdown_target_url(%Routes{} = routes, record), do: Routes.markdown_url(routes, record)
+
   defp redirect_query(%Site{id: site_id}, public_id),
     do: from(r in Redirect, where: r.site_id == ^site_id and r.public_id == ^public_id)
 
   @doc """
   Creates a redirect for the scope's site. Its old path must be no URL
   the site serves, as it is or as published, and no other redirect's; its
-  target must resolve and is stored as the post, page, project or path it
-  leads to.
+  target must resolve, but not to the Markdown alternate of a post, page
+  or project, and is stored as the post, page, project or path it leads
+  to.
   """
   @spec create_redirect(Scope.t(), map()) :: {:ok, Redirect.t()} | {:error, Changeset.t()}
   def create_redirect(%Scope{site: %Site{id: site_id} = site} = scope, attrs) do
@@ -160,7 +194,8 @@ defmodule Feather.Redirects do
 
   @doc """
   Follows the publish of a post, page or project of the scope's site:
-  deletes the redirects from its URL and the URL's `index.html`, and
+  deletes the redirects from its URL, the URL's `index.html` and its
+  Markdown alternate, and
   redirects the URL it was last published at (`previous`, the record as
   published then, or nil) to it permanently, replacing a redirect from
   that path, unless another record holds that URL as it is or as
@@ -175,8 +210,10 @@ defmodule Feather.Redirects do
       ) do
     routes = Routes.new(site)
     path = url_path(routes, record)
-    # On Apache a redirect from the URL's index.html would loop; one from its .html form leads on.
-    {deleted, _} = Repo.delete_all(from_path(site, [path, Path.join(path, "index.html")]))
+
+    # On Apache a redirect from the URL's index files would loop; one from its .html form leads on.
+    index_paths = [Path.join(path, "index.html"), Path.join(path, "index.md")]
+    {deleted, _} = Repo.delete_all(from_path(site, [path | index_paths]))
     redirected? = redirect_previous_url(scope, routes, previous, path)
 
     if deleted > 0 or redirected?, do: Sites.touch_site(scope), else: :ok
@@ -304,6 +341,13 @@ defmodule Feather.Redirects do
       nil ->
         Changeset.add_error(changeset, :target, "does not lead to anything on the site")
 
+      {:markdown, %_{}} ->
+        Changeset.add_error(
+          changeset,
+          :target,
+          "is the Markdown alternate of a page: choose the page itself"
+        )
+
       {_kind, %schema{id: id}} ->
         put_targets(changeset, %{Redirect.target_field(schema) => id})
 
@@ -325,6 +369,8 @@ defmodule Feather.Redirects do
 
   defp route_path(routes, {:generated_image, name}),
     do: Routes.generated_image_url(routes, name)
+
+  defp route_path(routes, {:markdown, :home}), do: Routes.markdown_url(routes, :home)
 
   defp with_saved_target({:ok, redirect}, site), do: {:ok, with_target(redirect, site)}
   defp with_saved_target(error, _site), do: error
