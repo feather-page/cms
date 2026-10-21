@@ -509,7 +509,7 @@ Accepted, 2026-10-20
 
 Accepted, 2026-10-21
 
-- **Context:** Alt texts, descriptions and titles of short posts are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs `gemma4-26b`, which reads images, and holds one model in memory at a time.
+- **Context:** Alt texts, descriptions and titles of short posts are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs a Gemma 4 model that reads images (`OLLAMA_MODEL`, by default `gemma4:26b-a4b-it-qat`) and holds one model in memory at a time.
 - **Decision:** `Feather.Ollama` asks that model over `OLLAMA_URL` with `Req`: an image's alt text after upload or import, in the background; a post's or page's description when it is published or on "Suggest"; a short post's slug and meta title at its first publish. Results are stored on the record, can be overwritten, and a generated description is renewed at publish while it is unedited and the content changed. Rejected: Claude Haiku (better and faster, but drafts leave the house) and generating at export (exports would stop being reproducible and wait on the model).
 - **Consequences:** Without `OLLAMA_URL` or with the model down, fields stay empty and the export falls back to excerpts as before. Publishing, also over the API, waits up to 90 seconds for the model, and the CMS queues behind other clients of the same instance.
 

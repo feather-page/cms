@@ -1,10 +1,13 @@
 defmodule Feather.Ollama do
   @moduledoc """
   Asks the self-hosted Ollama model for suggestions (ADR 0026) over its
-  native chat API (`POST /api/chat`), with answers constrained to JSON.
+  native chat API (`POST /api/chat`), with answers constrained to JSON,
+  without thinking and at temperature 0.
 
   The URL comes from `config :feather, :ollama_url` (`OLLAMA_URL`); without
   one nothing is asked and every call returns `{:error, :not_configured}`.
+  The model comes from `config :feather, :ollama_model` (`OLLAMA_MODEL`),
+  by default Gemma 4 26B, which must read images.
   Tests stub the requests with `Req.Test` (`config :feather,
   :ollama_req_options, plug: {Req.Test, Feather.Ollama}`).
   """
@@ -13,7 +16,7 @@ defmodule Feather.Ollama do
 
   require Logger
 
-  @model "gemma4-26b"
+  @default_model "gemma4:26b-a4b-it-qat"
   @timeout 90_000
   @max_alt_length 250
   @max_description_length 300
@@ -153,7 +156,14 @@ defmodule Feather.Ollama do
       req()
       |> Req.post(
         url: "/api/chat",
-        json: %{model: @model, stream: false, format: format, messages: [message]}
+        json: %{
+          model: model(),
+          stream: false,
+          think: false,
+          options: %{temperature: 0},
+          format: format,
+          messages: [message]
+        }
       )
       |> decode_answer()
     else
@@ -188,4 +198,11 @@ defmodule Feather.Ollama do
   end
 
   defp url, do: Application.get_env(:feather, :ollama_url)
+
+  defp model do
+    case Application.get_env(:feather, :ollama_model) do
+      model when model in [nil, ""] -> @default_model
+      model -> model
+    end
+  end
 end
