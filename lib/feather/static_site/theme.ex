@@ -35,7 +35,8 @@ defmodule Feather.StaticSite.Theme do
       is the site title), `document_title`, `page_emoji`, `is_home`,
       `noindex`, the meta tags (`description`, `canonical_url`, `og_type`,
       `og_image_url`, a share card's for a page without an image;
-      `favicon_url`, nil where the page's own emoji is its icon; render
+      `favicon_url`, nil where the page's own emoji is its icon;
+      `structured_data`, see `Feather.StaticSite.StructuredData`; render
       them with `ThemeHelpers.head_meta/1`),
       `stylesheet_url` (`style.css` with a hash of its content)
     * `header_image`, `title_mascot`, `published_at`, `masthead_image`,

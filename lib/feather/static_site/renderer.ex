@@ -20,6 +20,7 @@ defmodule Feather.StaticSite.Renderer do
     Routes,
     SiteData,
     Sitemap,
+    StructuredData,
     ThemeHelpers,
     Themes
   }
@@ -278,6 +279,7 @@ defmodule Feather.StaticSite.Renderer do
       noindex: false,
       masthead_image: nil,
       rss_url: nil,
+      structured_data: nil,
       __changed__: nil
     }
   end
@@ -340,6 +342,7 @@ defmodule Feather.StaticSite.Renderer do
 
   defp render(view, assigns) do
     assigns = with_share_card(assigns)
+    assigns = %{assigns | structured_data: StructuredData.for_page(view, assigns)}
     theme = Themes.module(assigns.site)
 
     in_site_language(assigns.data, fn ->

@@ -23,7 +23,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
 
   @doc """
   The meta tags of a page (title, icon, robots, description, canonical URL,
-  Open Graph), from the assigns `Feather.StaticSite.Renderer` builds.
+  Open Graph, structured data), from the assigns `Feather.StaticSite.Renderer` builds.
   """
   EEx.function_from_file(
     :def,

@@ -29,3 +29,6 @@
     <meta name="twitter:card" content="summary_large_image" />
     <% end %>
     <% end %>
+    <%= if @structured_data do %>
+    <script type="application/ld+json"><%= Feather.StaticSite.StructuredData.encode(@structured_data) %></script>
+    <% end %>
