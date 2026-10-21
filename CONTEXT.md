@@ -137,8 +137,8 @@ _Avoid_: Summary, Excerpt, Teaser, Bio
 
 **Short Post** · _de:_ Kurzbeitrag:
 A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title,
-in link previews and in the feeds. At its first publish, when it has no slug, the self-hosted model writes the meta
-title and a slug in the site's language; afterwards the slug stays. While its text is shorter than 300 characters the
+in link previews and in the feeds. At its first publish, when it has no slug, the self-hosted model writes a slug
+and, unless a member typed one, the meta title in the site's language; afterwards the slug stays. While its text is shorter than 300 characters the
 form hides the title field. A review without a title is a short post too.
 _Avoid_: Note, Untitled Post, Micropost
 

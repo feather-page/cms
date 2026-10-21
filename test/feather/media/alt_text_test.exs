@@ -124,4 +124,34 @@ defmodule Feather.Media.AltTextTest do
 
     assert Repo.reload!(image).alt == "Mine"
   end
+
+  test "the backfill fills in the empty alt texts of the site's images", %{scope: scope} do
+    Application.delete_env(:feather, :ollama_url)
+    empty = image_fixture(scope)
+    written = image_fixture(scope)
+    {:ok, _image} = Media.update_image_alt(scope, written, %{"alt" => "Mine"})
+    other_site = image_fixture(site_scope_fixture())
+
+    scope.site
+    |> Ecto.Changeset.change(updated_at: ~U[2026-01-01 00:00:00.000000Z])
+    |> Repo.update!()
+
+    Application.put_env(:feather, :ollama_url, "http://ollama.test:11434")
+    stub_alt("Ein graues Bild")
+
+    assert Media.backfill_alt_texts(scope) == 1
+
+    assert Repo.reload!(empty).alt == "Ein graues Bild"
+    assert Repo.reload!(written).alt == "Mine"
+    assert Repo.reload!(other_site).alt == ""
+    assert DateTime.after?(Repo.reload!(scope.site).updated_at, ~U[2026-01-01 00:00:00Z])
+  end
+
+  test "the backfill without an answer changes nothing", %{scope: scope} do
+    Req.Test.stub(Feather.Ollama, &Req.Test.transport_error(&1, :econnrefused))
+    image = image_fixture(scope)
+
+    assert Media.backfill_alt_texts(scope) == 0
+    assert Repo.reload!(image).alt == ""
+  end
 end

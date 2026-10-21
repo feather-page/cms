@@ -51,6 +51,7 @@ defmodule Feather.Content do
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
+  alias Feather.Validations
 
   @lock_opts [stale_error_field: :lock_version, stale_error_message: "was changed elsewhere"]
 
@@ -663,33 +664,34 @@ defmodule Feather.Content do
     end
   end
 
-  # The changes the model suggests for the record as it would be published, asked concurrently.
+  # The changes the model suggests for the record as it would be published.
   defp publish_suggestions(scope, %schema{} = record) when schema in [Post, Page] do
     if publication_status(record) == :published do
       %{}
     else
-      scope
-      |> suggestion_requests(record, newest_version(scope, record))
-      |> Enum.map(&Task.async/1)
-      |> Task.await_many(:infinity)
-      |> Enum.reduce(%{}, &Map.merge/2)
+      newest_version = newest_version(scope, record)
+
+      ask_model(scope, record,
+        description?: Description.needed?(record, newest_version),
+        short_post?: ShortPost.needed?(record, newest_version)
+      )
     end
   end
 
   defp publish_suggestions(_scope, _project), do: %{}
 
-  defp suggestion_requests(scope, record, newest_version) do
+  # Asks for the wanted suggestions concurrently.
+  defp ask_model(scope, record, wanted) do
     language_code = scope.site.language_code
 
-    Enum.filter(
-      [
-        Description.needed?(record, newest_version) &&
-          fn -> description_suggestion(record, language_code) end,
-        ShortPost.needed?(record, newest_version) &&
-          fn -> short_post_suggestion(record, language_code) end
-      ],
-      & &1
-    )
+    [
+      wanted[:description?] && fn -> description_suggestion(record, language_code) end,
+      wanted[:short_post?] && fn -> short_post_suggestion(record, language_code) end
+    ]
+    |> Enum.filter(& &1)
+    |> Enum.map(&Task.async/1)
+    |> Task.await_many(:infinity)
+    |> Enum.reduce(%{}, &Map.merge/2)
   end
 
   defp description_suggestion(record, language_code) do
@@ -699,11 +701,17 @@ defmodule Feather.Content do
     end
   end
 
+  # A meta title or slug the post already has stays.
   defp short_post_suggestion(post, language_code) do
     case ShortPost.generate(post, language_code) do
-      {:ok, %{slug: ""} = suggestion} -> Map.delete(suggestion, :slug)
-      {:ok, suggestion} -> suggestion
-      {:error, _reason} -> %{}
+      {:ok, suggestion} ->
+        suggestion
+        |> Map.reject(fn {_field, value} -> value == "" end)
+        |> Map.drop(if Validations.blank?(post.meta_title), do: [], else: [:meta_title])
+        |> Map.drop(if is_nil(post.slug), do: [], else: [:slug])
+
+      {:error, _reason} ->
+        %{}
     end
   end
 
@@ -728,6 +736,53 @@ defmodule Feather.Content do
   end
 
   defp put_free_slug(_record, suggestions), do: suggestions
+
+  @doc """
+  Fills in what the model would have suggested at publish for the scope's
+  published posts and pages without unpublished changes, content
+  published before the suggestions existed: a missing description, and a
+  short post's missing meta title or slug.
+  Each record that gets a suggestion is published again, which redirects
+  its old URL to a new one (`publish/2`); records with unpublished
+  changes are skipped, so nothing unseen goes out. Returns the records
+  published again.
+  """
+  @spec backfill_suggestions(Scope.t()) :: [Post.t() | Page.t()]
+  def backfill_suggestions(%Scope{site: %Site{id: site_id}} = scope) do
+    for schema <- [Post, Page],
+        record <-
+          Repo.all(
+            from r in schema,
+              where: r.site_id == ^site_id and not is_nil(r.published_version_id),
+              order_by: r.inserted_at,
+              preload: :published_version
+          ),
+        publication_status(record) == :published,
+        {:ok, published} <- [backfill_record(scope, record)],
+        do: published
+  end
+
+  defp backfill_record(scope, record) do
+    suggestions =
+      ask_model(scope, record,
+        description?: Description.needed?(record, record.published_version),
+        short_post?: ShortPost.backfill?(record)
+      )
+
+    if suggestions == %{},
+      do: :unchanged,
+      else: Repo.transact(fn -> republish_stored(scope, record, suggestions) end)
+  end
+
+  defp republish_stored(scope, record, suggestions) do
+    with {:ok, current} <- stored(record) do
+      current = Repo.preload(current, :published_version)
+
+      if publication_status(current) == :published,
+        do: insert_version_following_url(scope, put_suggestions(current, suggestions)),
+        else: {:error, :unpublished_changes}
+    end
+  end
 
   @doc """
   Asks the model for a description of a post or page as it is (the

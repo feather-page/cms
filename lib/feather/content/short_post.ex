@@ -4,8 +4,9 @@ defmodule Feather.Content.ShortPost do
   names it in the document title, `og:title` and the feeds, but neither on
   the site nor in the CMS's post list.
 
-  At its first publish, when it has no slug, the model writes the meta
-  title and the slug (`needed?/2`); afterwards the slug never changes.
+  At its first publish, when it has no slug, the model writes the slug
+  and, unless a member typed one, the meta title (`needed?/2`); afterwards
+  the slug never changes.
   """
 
   alias Feather.Content.{Blocks, Post, Slug}
@@ -23,6 +24,16 @@ defmodule Feather.Content.ShortPost do
   @spec needed?(map(), map() | nil) :: boolean()
   def needed?(%Post{slug: nil, title: title}, nil), do: Validations.blank?(title)
   def needed?(_record, _newest_version), do: false
+
+  @doc """
+  Whether a short post published before meta titles existed lacks a meta
+  title or a slug (`Feather.Content.backfill_suggestions/1`).
+  """
+  @spec backfill?(map()) :: boolean()
+  def backfill?(%Post{title: title, meta_title: meta_title, slug: slug}),
+    do: Validations.blank?(title) and (Validations.blank?(meta_title) or is_nil(slug))
+
+  def backfill?(_page), do: false
 
   @doc """
   Asks the model for the meta title of a short post and the base of its

@@ -302,6 +302,27 @@ defmodule Feather.Media do
     end
   end
 
+  @doc """
+  Asks the model for the alt text of every image of the scope's site that
+  has none, one after another (`Feather.Media.AltText.suggest/2`), for
+  images uploaded before the suggestions existed. Moves the site's
+  `updated_at` if one was filled in. Returns how many were.
+  """
+  @spec backfill_alt_texts(Scope.t()) :: non_neg_integer()
+  def backfill_alt_texts(%Scope{site: %Site{} = site} = scope) do
+    images =
+      Repo.all(
+        from i in Image, where: i.site_id == ^site.id and i.alt == "", order_by: i.inserted_at
+      )
+
+    Enum.each(images, &AltText.suggest(site, &1))
+
+    ids = Enum.map(images, & &1.id)
+    filled = Repo.aggregate(from(i in Image, where: i.id in ^ids and i.alt != ""), :count)
+    if filled > 0, do: Feather.Sites.touch_site(scope)
+    filled
+  end
+
   ## Files
 
   @doc "The storage root directory."

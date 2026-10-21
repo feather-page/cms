@@ -125,6 +125,15 @@ defmodule Feather.Content.ShortPostTest do
     refute_received {:model_asked, ["title", "slug"]}
   end
 
+  test "keeps a meta title a member typed and still gets a slug", %{scope: scope} do
+    stub_model("Model title", "model-slug")
+
+    {:ok, post} = Content.publish(scope, short_post(scope, %{meta_title: "Mine"}))
+
+    assert %{meta_title: "Mine", slug: "/model-slug"} = Repo.reload!(post)
+    assert Repo.preload(post, :published_version).published_version.meta_title == "Mine"
+  end
+
   test "takes a free slug", %{scope: scope} do
     stub_model("E-Ink-Solar-Dashboard", "e-ink-solar-dashboard")
     post_fixture(scope, %{title: "Taken", slug: "/e-ink-solar-dashboard"})
