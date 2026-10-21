@@ -73,10 +73,24 @@ defmodule Feather.Ollama do
           {:ok, String.t()} | {:error, term()}
   def description(title, text, language_code) when is_binary(text) do
     prompt = """
-    Write the meta description of this web page in #{Languages.name(language_code)}.
-    Summarise what the page is about in one or two sentences of at most 155
-    characters, for search results and link previews. Do not start with
-    "This page" or "This post", and do not repeat the title.
+    Write the meta description of this web page in #{Languages.name(language_code)}: the
+    sentence search results and link previews show under its title.
+
+    Say plainly what the page is about, in the author's own voice and tone
+    (first person if the page is written in the first person), in one or two
+    sentences of at most 155 characters.
+    - Name the book, place or subject the page is about.
+    - No calls to action: never use "Explore", "Discover", "Learn", "Find out",
+      "Dive into" or "Delve", in any form, nor their equivalents in
+      #{Languages.name(language_code)}.
+    - No marketing words or praise the page itself does not use ("masterpiece",
+      "profound", "insightful", "gripping", "essential"), in any language.
+    - Use only what the page says. Never invent opinions, themes or details;
+      a short page gets a short description.
+    - If the page mainly quotes someone, say whom it quotes instead of speaking
+      as them.
+    - Do not start with "This page" or "This post", and do not repeat the title
+      word for word.
     Answer with JSON: {"description": "..."}
 
     Title: #{title}
