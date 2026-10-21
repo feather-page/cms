@@ -8,6 +8,30 @@ export const element = (tag, className, attrs = {}, children = []) => {
   return el
 }
 
+export const svgIcon = (paths, size = 18) => {
+  const ns = "http://www.w3.org/2000/svg"
+  const svg = document.createElementNS(ns, "svg")
+  for (const [name, value] of Object.entries({
+    viewBox: "0 0 24 24",
+    width: String(size),
+    height: String(size),
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": "2",
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true"
+  })) {
+    svg.setAttribute(name, value)
+  }
+  for (const d of paths) {
+    const path = document.createElementNS(ns, "path")
+    path.setAttribute("d", d)
+    svg.append(path)
+  }
+  return svg
+}
+
 // The controls of a node view (URL fields, file pickers, selects) are not
 // fields of the record form the editor sits in: their input and change
 // events stop at `el`, so the form's phx-change never sees them.
