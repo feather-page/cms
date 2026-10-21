@@ -29,8 +29,9 @@ defmodule Feather.StaticSite.Preview do
   path segments) of the site:
 
     * `{:html, iodata}` - a page
-    * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`,
-      `style.css`
+    * `{:content, content_type, iodata}` - `feed.xml`, `llms.txt`, `sitemap.xml`,
+      `robots.txt`, `style.css`, the Markdown alternate of the home page, a
+      post, page or project
     * `{:file, path, content_type}` - a stored image variant or one the
       image's roles need (generated then), a drawn favicon or share card, a
       font of the site's theme or a rendered diagram
@@ -102,6 +103,7 @@ defmodule Feather.StaticSite.Preview do
   end
 
   defp prerender?({:artifact, name}), do: name == "feed.xml"
+  defp prerender?({:markdown, _record}), do: false
   defp prerender?(_route), do: true
 
   # A scheduled post is not among the data's posts, but its diagrams and code render too.
@@ -122,6 +124,13 @@ defmodule Feather.StaticSite.Preview do
 
   defp render_route({:project, project}, data, routes),
     do: {:html, Renderer.render_project(data, routes, SiteData.preload(project))}
+
+  defp render_route({:markdown, :home}, data, routes),
+    do: {:content, "text/markdown", Renderer.render_markdown(data, routes, :home)}
+
+  defp render_route({:markdown, record}, data, routes) do
+    {:content, "text/markdown", Renderer.render_markdown(data, routes, SiteData.preload(record))}
+  end
 
   defp render_route({:artifact, name}, data, routes) do
     {:content, Renderer.artifact_content_type(name), Renderer.render_artifact(data, routes, name)}

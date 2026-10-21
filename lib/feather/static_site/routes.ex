@@ -4,26 +4,31 @@ defmodule Feather.StaticSite.Routes do
   URL and output path of the export and resolves a requested path back to
   a record (for the preview).
 
-  | Record            | URL                            | Output path                           |
-  |-------------------|--------------------------------|---------------------------------------|
-  | home, page 1      | `/`                            | `index.html`                          |
-  | home, page n > 1  | `/page/n/`                     | `page/n/index.html`                   |
-  | post with slug    | `/<slug>/`                     | `<slug>/index.html`                   |
-  | post without slug | `/posts/<public id, lower>/`   | `posts/<public id, lower>/index.html` |
-  | page              | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
-  | project           | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
-  | image variant     | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
-  | generated image   | `/images/<hash>.png`           | `images/<hash>.png`                   |
-  | theme font        | `/fonts/<file>?v=<hash>`       | `fonts/<file>`                        |
-  | diagram           | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
-  | artifact          | `/feed.xml`, `/style.css`, ... | `feed.xml`, `style.css`, ...          |
-  | not found page    | (any missing path)             | `404.html`                            |
-  | Apache rules      | (not served)                   | `.htaccess`                           |
+  | Record             | URL                            | Output path                           |
+  |--------------------|--------------------------------|---------------------------------------|
+  | home, page 1       | `/`                            | `index.html`                          |
+  | home, page n > 1   | `/page/n/`                     | `page/n/index.html`                   |
+  | post with slug     | `/<slug>/`                     | `<slug>/index.html`                   |
+  | post without slug  | `/posts/<public id, lower>/`   | `posts/<public id, lower>/index.html` |
+  | page               | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
+  | project            | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
+  | Markdown alternate | its page's URL + `index.md`    | `index.md` beside its `index.html`    |
+  | image variant      | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
+  | generated image    | `/images/<hash>.png`           | `images/<hash>.png`                   |
+  | theme font         | `/fonts/<file>?v=<hash>`       | `fonts/<file>`                        |
+  | diagram            | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
+  | artifact           | `/feed.xml`, `/llms.txt`, ...  | `feed.xml`, `llms.txt`, ...           |
+  | not found page     | (any missing path)             | `404.html`                            |
+  | Apache rules       | (not served)                   | `.htaccess`                           |
+
+  The home page (its first page), posts, projects and pages have a
+  Markdown alternate; the homepage's is the home page's.
 
   URLs are relative to `site_root`: `/` for a deployed site,
   `/preview/<site public id>/` for the preview. `canonical/1` returns the
   same routes against the site's public address (`https://<domain>/`),
-  used by the feed, the sitemap and robots.txt.
+  used by the feed, the sitemap, `robots.txt`, `llms.txt` and the Markdown
+  alternates.
   """
 
   import Ecto.Query, warn: false
@@ -50,6 +55,7 @@ defmodule Feather.StaticSite.Routes do
           | {:project, Project.t()}
           | {:post, Post.t()}
           | {:page, Page.t()}
+          | {:markdown, :home | Post.t() | Page.t() | Project.t()}
 
   @doc """
   Routes for a site. `site_root` defaults to `/`, `canonical_url` to the
@@ -114,15 +120,29 @@ defmodule Feather.StaticSite.Routes do
   def record_url(routes, %Project{} = project), do: project_url(routes, project)
 
   @doc """
-  The paths `resolve/2` finds a post, page or project at, relative to the
-  site root and without a trailing slash: its URL, the URL with
-  `/index.html` and, for a post or page, the URL with `.html`.
+  The URL of the Markdown alternate of the home page (`:home`), a post,
+  page or project (`Feather.StaticSite.MarkdownAlternate`), next to its
+  page.
+  """
+  @spec markdown_url(t(), :home | Post.t() | Page.t() | Project.t()) :: String.t()
+  def markdown_url(%__MODULE__{} = routes, :home), do: home_url(routes) <> "index.md"
+  def markdown_url(%__MODULE__{} = routes, record), do: record_url(routes, record) <> "index.md"
+
+  @doc """
+  The paths `resolve/2` finds a post, page or project or its Markdown
+  alternate at, relative to the site root and without a trailing slash:
+  its URL, the URL with `/index.html` and `/index.md` and, for a post or
+  page, the URL with `.html`.
   """
   @spec record_paths(t(), Post.t() | Page.t() | Project.t()) :: [String.t()]
   def record_paths(%__MODULE__{site_root: root} = routes, record) do
     case routes |> record_url(record) |> String.replace_prefix(root, "") |> strip_slug() do
-      "" -> ["/", "/index.html"]
-      segment -> ["/" <> segment, "/#{segment}/index.html" | html_path(record, segment)]
+      "" ->
+        ["/", "/index.html", "/index.md"]
+
+      segment ->
+        ["/" <> segment, "/#{segment}/index.html", "/#{segment}/index.md"] ++
+          html_path(record, segment)
     end
   end
 
@@ -209,6 +229,17 @@ defmodule Feather.StaticSite.Routes do
   @spec project_path(t(), Project.t()) :: String.t()
   def project_path(%__MODULE__{}, %Project{} = project),
     do: "#{project_segment(project)}/index.html"
+
+  @doc "The output path of the Markdown alternate of the home page (`:home`), a post, page or project."
+  @spec markdown_path(t(), :home | Post.t() | Page.t() | Project.t()) :: String.t()
+  def markdown_path(%__MODULE__{}, :home), do: "index.md"
+
+  def markdown_path(%__MODULE__{} = routes, record),
+    do: routes |> record_path(record) |> String.replace_suffix("index.html", "index.md")
+
+  defp record_path(routes, %Post{} = post), do: post_path(routes, post)
+  defp record_path(routes, %Page{} = page), do: page_path(routes, page)
+  defp record_path(routes, %Project{} = project), do: project_path(routes, project)
 
   @doc "The output path of an image variant."
   @spec image_path(t(), Image.t(), Variants.variant() | String.t()) :: String.t()
@@ -315,16 +346,29 @@ defmodule Feather.StaticSite.Routes do
 
   Precedence for ambiguous paths: home, artifact, generated image, image, font, diagram, project,
   post by public id, page, post by slug. A trailing `index.html`, `.html` or `/`
-  is ignored.
+  is ignored. `index.md` is the home page's Markdown alternate, a post, page
+  or project path followed by `/index.md` its Markdown alternate.
   """
   @spec resolve(t(), String.t() | [String.t()]) :: route() | nil
   def resolve(%__MODULE__{} = routes, segments) when is_list(segments),
     do: resolve(routes, Enum.join(segments, "/"))
 
-  def resolve(%__MODULE__{site: %Site{id: site_id} = site}, path) when is_binary(path) do
-    path = normalize_request_path(path)
-    Enum.find_value(resolvers(site), fn resolver -> resolver.(path, site_id) end)
+  def resolve(%__MODULE__{} = routes, path) when is_binary(path) do
+    case normalize_request_path(path) do
+      "index.md" -> {:markdown, :home}
+      path -> resolve_normalized(routes, path)
+    end
   end
+
+  defp resolve_normalized(%__MODULE__{site: %Site{id: site_id} = site} = routes, path) do
+    case String.split(path, "/index.md", parts: 2) do
+      [record_path, ""] -> resolve_markdown(routes, record_path, path)
+      _other -> resolve_with(resolvers(site), path, site_id)
+    end
+  end
+
+  defp resolve_with(resolvers, path, site_id),
+    do: Enum.find_value(resolvers, fn resolver -> resolver.(path, site_id) end)
 
   defp resolvers(site) do
     [
@@ -333,12 +377,27 @@ defmodule Feather.StaticSite.Routes do
       &resolve_generated_image/2,
       &resolve_image/2,
       fn path, _site_id -> resolve_font(path, site) end,
-      &resolve_diagram/2,
+      &resolve_diagram/2
+    ] ++ record_resolvers()
+  end
+
+  defp record_resolvers do
+    [
       &resolve_project/2,
       &resolve_post_by_public_id/2,
       &resolve_page/2,
       &resolve_post_by_slug/2
     ]
+  end
+
+  # Only the path the export writes: not the .html or upper case forms a page is found at.
+  defp resolve_markdown(%__MODULE__{site: site} = routes, record_path, path) do
+    with {_kind, record} <- resolve_with(record_resolvers(), record_path, site.id),
+         ^path <- markdown_path(routes, record) do
+      {:markdown, record}
+    else
+      _other -> nil
+    end
   end
 
   @doc """
@@ -373,11 +432,12 @@ defmodule Feather.StaticSite.Routes do
   The slug a requested path addresses a record by, read like `resolve/2`
   does: `{Project, slug}` under `projects/`, otherwise `{Post, slug}` (a
   post or page, see `Feather.Content.Slug.url_space/1`); nil for the site
-  root.
+  root. A trailing `index.md` (the Markdown alternate) is ignored like
+  `index.html`.
   """
   @spec addressed_slug(String.t()) :: {Post | Project, String.t()} | nil
   def addressed_slug(path) when is_binary(path) do
-    case normalize_request_path(path) do
+    case path |> normalize_request_path() |> String.replace(~r{(\A|/)index\.md\z}, "") do
       "" -> nil
       "projects/" <> slug -> {Project, "/" <> slug}
       path -> {Post, "/" <> String.replace_suffix(path, ".html", "")}

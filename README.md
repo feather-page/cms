@@ -88,8 +88,9 @@ Generate a `CONFIG_ENCRYPTION_KEY` with
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
     `Media`, `Publishing`, `Redirects`)
-*   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, the theme
-    registry `Themes`); each theme's EEx templates live in `themes/<theme>/`
+*   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, Markdown
+    alternates, `llms.txt`, the theme registry `Themes`); each theme's EEx templates live in
+    `themes/<theme>/`
 *   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
     (Tailwind CSS and daisyUI), and the content API controllers
 *   `priv/static_site/`: the stylesheets and fonts of the themes (`themes/<theme>/`) and the

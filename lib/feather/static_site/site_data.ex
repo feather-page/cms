@@ -54,11 +54,12 @@ defmodule Feather.StaticSite.SiteData do
   @post_preloads [:header_image, :thumbnail_image, book: [:cover_image, :post]]
   @page_preloads [:header_image]
   @project_preloads [:header_image, :thumbnail_image]
-  @book_preloads [:cover_image, :post]
+  @book_preloads [:cover_image]
 
   @doc """
   Loads the data of a site. `posts` are the posts whose `publish_at` has
-  passed, newest first; `pages` are all pages, the homepage included; the
+  passed, newest first; `pages` are all pages, the homepage included; a
+  book's `post` is its review among `posts`, nil if it is none of them; the
   navigation leaves out pages that are not among them; `now` is the time
   the site is exported at.
 
@@ -163,13 +164,9 @@ defmodule Feather.StaticSite.SiteData do
   defp project_order(%Project{started_at: started_at, title: title}),
     do: {0, -Date.to_gregorian_days(started_at), title}
 
-  # The review as the export shows it, if it is shown.
-  defp put_review(%Book{post_id: post_id} = book, posts) do
-    case Enum.find(posts, &(&1.id == post_id)) do
-      nil -> book
-      post -> %{book | post: post}
-    end
-  end
+  # The review as the data shows it, nil if it shows none.
+  defp put_review(%Book{post_id: post_id} = book, posts),
+    do: %{book | post: Enum.find(posts, &(&1.id == post_id))}
 
   defp put_pages(navigation, pages) do
     pages_by_id = Map.new(pages, &{&1.id, &1})
@@ -203,12 +200,6 @@ defmodule Feather.StaticSite.SiteData do
   def preload(%Post{} = post), do: Repo.preload(post, @post_preloads)
   def preload(%Page{} = page), do: Repo.preload(page, @page_preloads)
   def preload(%Project{} = project), do: Repo.preload(project, @project_preloads)
-
-  @doc """
-  Returns true if the post is one of the published posts of the data.
-  """
-  @spec published?(t(), Post.t()) :: boolean()
-  def published?(%__MODULE__{posts: posts}, %Post{id: id}), do: Enum.any?(posts, &(&1.id == id))
 
   @doc """
   The posts next to a post in the post list (newest first): `{newer, older}`,

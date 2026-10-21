@@ -1,5 +1,17 @@
 ErrorDocument 404 <%= @not_found_url %>
 
+<IfModule mod_headers.c>
+<%= for {name, value} <- @security_headers do %>  Header always set <%= name %> "<%= value %>"
+<% end %>  <FilesMatch "\.svg(\.br|\.gz)?$">
+    Header always set Content-Security-Policy "<%= @diagram_content_security_policy %>"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType text/markdown .md
+  AddCharset utf-8 .md .txt
+</IfModule>
+
 <%= if @redirects != [] do %><IfModule mod_rewrite.c>
   RewriteEngine On
 <%= for rule <- @redirects do %>  RewriteRule <%= rule.pattern %> <%= rule.url %> [R=<%= rule.status %>,L]
@@ -8,6 +20,10 @@ ErrorDocument 404 <%= @not_found_url %>
 <% end %><IfModule mod_rewrite.c>
   <IfModule mod_headers.c>
     RewriteEngine On
+
+    RewriteCond %{HTTP:Accept} \btext/markdown\b [NC]
+    RewriteCond %{REQUEST_FILENAME}/index.md -f
+    RewriteRule ^(.*/)?$ $1index.md [L]
 <%= for {encoding, suffix} <- @encodings do %>
     RewriteCond %{HTTP:Accept-Encoding} \b<%= encoding %>\b
     RewriteCond %{REQUEST_FILENAME}/index.html<%= suffix %> -f
@@ -28,6 +44,9 @@ ErrorDocument 404 <%= @not_found_url %>
 <% end %>
     <FilesMatch "\.(<%= @extensions %>)(\.br|\.gz)?$">
       Header always merge Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "^index\.(html|md)(\.br|\.gz)?$">
+      Header always merge Vary Accept
     </FilesMatch>
   </IfModule>
 </IfModule>

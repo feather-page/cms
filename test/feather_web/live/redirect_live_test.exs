@@ -146,7 +146,7 @@ defmodule FeatherWeb.RedirectLiveTest do
       site = Repo.reload!(site)
 
       assert Htaccess.render(Routes.new(site), SiteData.redirects(SiteData.load(site))) =~
-               "RewriteRule ^posts/rule\\-of\\-72/?$ /rule-of-72/ [R=301,L]"
+               "RewriteRule ^posts/rule\\-of\\-72(/(index\\.html)?)?$ /rule-of-72/ [R=301,L]"
     end
 
     test "a pasted list saves the valid lines and shows the invalid ones with their error",

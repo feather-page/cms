@@ -21,7 +21,7 @@ defmodule Feather.Content.SlugTest do
   describe "reserved?/1" do
     test "reserves generated prefixes and artifacts" do
       for slug <-
-            ~w(/images /images/x /page/2 /posts /posts/abc /projects/x /feed.xml /robots.txt /sitemap.xml /style.css) do
+            ~w(/images /images/x /page/2 /posts /posts/abc /projects/x /feed.xml /llms.txt /robots.txt /sitemap.xml /style.css) do
         assert Slug.reserved?(slug), "expected #{slug} to be reserved"
       end
     end

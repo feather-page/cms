@@ -9,11 +9,15 @@ defmodule Feather.Content.HTML do
       editor.
     * The static site inserts `sanitize(html)` unescaped into its pages.
 
-  In the default `:published` mode only `b`, `i`, `u`, `a` and `code`
-  survive, and only `href` on `a` (the allow list of the Rails renderers).
-  The `:editor` mode keeps what the admin editor writes on top of that and
-  is harmless: `br`, and `target="_blank"` and
-  `rel="nofollow"`/`"noopener"`/`"noreferrer"` on links. Other attributes
+  `to_markdown/2` converts the sanitized markup to Markdown for the
+  Markdown alternates of the static site.
+
+  In the default `:published` mode only `b`, `i`, `u`, `a`, `code` and
+  `br` survive, and only `href` on `a` (the allow list of the Rails
+  renderers, plus the line breaks the editor writes). The `:editor` mode
+  keeps what the admin editor writes on top of that and is harmless:
+  `target="_blank"` and `rel="nofollow"`/`"noopener"`/`"noreferrer"` on
+  links. Other attributes
   (such as the classes the former editor put on `code` and `u`) are
   dropped. Other elements are removed but their text is
   kept (like Loofah's strip scrubber Rails used); the content of `script`
@@ -40,10 +44,12 @@ defmodule Feather.Content.HTML do
   whitespace-only text, which would glue `<b>a</b> <i>b</i>` together.
   """
 
+  alias Feather.Content.Markdown
+
   @type mode :: :published | :editor
 
   @allowed_tags %{
-    published: ~w(b i u a code),
+    published: ~w(b i u a code br),
     editor: ~w(b i u a code br)
   }
   @void_tags ~w(br)
@@ -53,6 +59,8 @@ defmodule Feather.Content.HTML do
   # Link attributes the admin editor writes, kept in :editor mode with
   # these values only (besides href).
   @editor_rel_tokens ~w(nofollow noopener noreferrer)
+
+  @emphasis_delimiters %{"b" => "**", "i" => "*"}
 
   @doc """
   Returns the sanitized HTML of an inline HTML string. nil becomes `""`.
@@ -80,6 +88,112 @@ defmodule Feather.Content.HTML do
     {:ok, :floki_mochi_html.tokens(html)}
   rescue
     _exception -> :error
+  end
+
+  @doc """
+  Converts inline HTML to Markdown (see `Feather.Content.Markdown`). It is
+  sanitized in `:editor` mode first, so only the allowed markup remains:
+  `b` becomes `**…**`, `i` `*…*`, `code` a code span, a link `[…](href)`
+  (its URL as text when it has none) and `br` a hard line break; `u` keeps
+  only its text, as does a link inside a link. Neighbouring elements of the
+  same kind merge, whitespace collapses as a browser shows it and moves out
+  of the delimiters at the edges of an element, and text is escaped.
+  Relative hrefs are resolved against `base_url` when it is absolute.
+  """
+  @spec to_markdown(String.t() | nil, String.t() | nil) :: String.t()
+  def to_markdown(html, base_url \\ nil) do
+    html
+    |> sanitize(:editor)
+    |> :floki_mochi_html.tokens()
+    |> inline_nodes()
+    |> markdown(base_url, false)
+    |> IO.iodata_to_binary()
+    |> Markdown.inline()
+  end
+
+  # The sanitized markup is well-formed: every element is closed in order.
+  defp inline_nodes(tokens) do
+    {nodes, _rest} = inline_nodes(tokens, [])
+    nodes
+  end
+
+  defp inline_nodes([], acc), do: {merge_neighbours(acc), []}
+  defp inline_nodes([{:end_tag, _tag} | rest], acc), do: {merge_neighbours(acc), rest}
+
+  # Text arrives in pieces (`&amp;nbsp;` as `&` and `nbsp;`); it is escaped as a whole.
+  defp inline_nodes([{:data, text, _whitespace?} | rest], [{:text, previous} | acc]),
+    do: inline_nodes(rest, [{:text, previous <> text} | acc])
+
+  defp inline_nodes([{:data, text, _whitespace?} | rest], acc),
+    do: inline_nodes(rest, [{:text, text} | acc])
+
+  defp inline_nodes([{:start_tag, tag, _attributes, _self_closing?} | rest], acc)
+       when tag in @void_tags,
+       do: inline_nodes(rest, [:break | acc])
+
+  defp inline_nodes([{:start_tag, tag, attributes, _self_closing?} | rest], acc) do
+    {children, rest} = inline_nodes(rest, [])
+    inline_nodes(rest, [{tag, attributes, children} | acc])
+  end
+
+  defp inline_nodes([_token | rest], acc), do: inline_nodes(rest, acc)
+
+  # `<b>a</b><b>b</b>` would become `**a****b**`, which is no emphasis.
+  defp merge_neighbours(reversed) do
+    Enum.reduce(reversed, [], fn
+      {tag, [], children}, [{tag, [], more} | rest] -> [{tag, [], children ++ more} | rest]
+      node, acc -> [node | acc]
+    end)
+  end
+
+  defp markdown(nodes, base_url, in_link?),
+    do: Enum.map(nodes, &node_markdown(&1, base_url, in_link?))
+
+  defp node_markdown({:text, text}, _base_url, _in_link?),
+    do: text |> Markdown.collapse_whitespace() |> Markdown.escape_inline()
+
+  defp node_markdown(:break, _base_url, _in_link?), do: "\n"
+
+  defp node_markdown({tag, _attributes, children}, base_url, in_link?)
+       when is_map_key(@emphasis_delimiters, tag) do
+    children
+    |> markdown(base_url, in_link?)
+    |> IO.iodata_to_binary()
+    |> Markdown.emphasis(Map.fetch!(@emphasis_delimiters, tag))
+  end
+
+  defp node_markdown({"code", _attributes, children}, _base_url, _in_link?),
+    do: children |> plain_text() |> Markdown.code_span()
+
+  defp node_markdown({"a", attributes, children}, base_url, false) do
+    label = children |> markdown(base_url, true) |> IO.iodata_to_binary()
+
+    case List.keyfind(attributes, "href", 0) do
+      {"href", href} -> link_markdown(label, IO.iodata_to_binary(href), base_url)
+      nil -> label
+    end
+  end
+
+  defp node_markdown({_tag, _attributes, children}, base_url, in_link?),
+    do: markdown(children, base_url, in_link?)
+
+  defp link_markdown(label, href, base_url) do
+    case Markdown.edges(label) do
+      {_leading, "", _trailing} ->
+        url = Markdown.absolute_url(href, base_url)
+        Markdown.link(Markdown.escape(url), url)
+
+      {leading, core, trailing} ->
+        leading <> Markdown.link(core, href, base_url) <> trailing
+    end
+  end
+
+  defp plain_text(nodes) do
+    Enum.map_join(nodes, fn
+      {:text, text} -> text
+      :break -> " "
+      {_tag, _attributes, children} -> plain_text(children)
+    end)
   end
 
   @doc """

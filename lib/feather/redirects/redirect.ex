@@ -57,6 +57,14 @@ defmodule Feather.Redirects.Redirect do
   def target_record(%__MODULE__{} = redirect),
     do: Enum.find_value(target_assocs(), &Map.fetch!(redirect, &1))
 
+  @doc """
+  Returns true if a redirect from the old path also catches the
+  `index.html` and `index.md` of the directory the path names: the path
+  has no extension.
+  """
+  @spec catches_index_files?(String.t()) :: boolean()
+  def catches_index_files?(old_path), do: Path.extname(old_path) == ""
+
   @doc "Returns true if the path has the format of an old path (no query, fragment or space)."
   @spec valid_path?(String.t()) :: boolean()
   def valid_path?(path), do: Regex.match?(@path_format, path)
