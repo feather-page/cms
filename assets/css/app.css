@@ -321,9 +321,51 @@
   margin-top: 0.375rem;
 }
 
-.block-editor__document .pm-image__alt {
-  width: 100%;
-  margin-top: 0.375rem;
+.block-editor__document .pm-image__alt-tag {
+  z-index: 3;
+}
+
+.block-editor__document .pm-image__alt-badge {
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.block-editor__document .pm-image__alt-badge.is-set {
+  --badge-color: color-mix(in oklab, var(--color-neutral) 80%, transparent);
+  --badge-fg: var(--color-neutral-content);
+}
+
+.block-editor__document .pm-image__alt-badge:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.block-editor__document .pm-image__alt-tip {
+  position: absolute;
+  bottom: calc(100% + 0.375rem);
+  left: 0;
+  width: max-content;
+  max-width: min(20rem, 70vw);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-field);
+  background: var(--color-neutral);
+  color: var(--color-neutral-content);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.block-editor__document .pm-image__alt-badge:focus-visible:not([aria-expanded="true"]) + .pm-image__alt-tip {
+  visibility: visible;
+}
+
+/* Touch screens would spend the first tap on the hover tooltip */
+@media (hover: hover) {
+  .block-editor__document .pm-image__alt-badge:hover:not([aria-expanded="true"]) + .pm-image__alt-tip {
+    visibility: visible;
+  }
 }
 
 .block-editor__document .pm-image.is-placeholder .pm-image__picker {

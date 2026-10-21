@@ -1,10 +1,10 @@
 // Image blocks: an empty one offers an upload (file picker, camera on
 // phones) and a URL field; once the server has the image, the block shows
-// it with an editable caption (the node's content) and the image's alt
-// text, which belongs to the image record: the server suggests it in the
-// background after the upload and the field saves edits through the alt
-// endpoint (FeatherWeb.ImageController). Image files pasted or
-// dropped into the editor become image blocks and upload at once.
+// it with an editable caption (the node's content) and an ALT badge for the
+// image's alt text, which belongs to the image record: the server suggests it
+// in the background after the upload, and the badge opens a panel that saves
+// edits through the alt endpoint (FeatherWeb.ImageController). Image files
+// pasted or dropped into the editor become image blocks and upload at once.
 //
 // Uploads go to the site's image endpoints (FeatherWeb.ImageController),
 // which answer {id, url} or {error}. On success the block gets `image_id`
@@ -14,7 +14,7 @@
 import {Plugin, TextSelection} from "prosemirror-state"
 import {closeHistory} from "prosemirror-history"
 import {filled, schema} from "./schema"
-import {element, keepOutOfForm} from "./dom"
+import {element, keepOutOfForm, svgIcon} from "./dom"
 import {generateId} from "./block_ids"
 import {blockStart} from "./block_moves"
 import {gapAt} from "./block_handle"
@@ -22,6 +22,16 @@ import {registerSlashItem} from "./slash_items"
 
 const MAX_BYTES = 25 * 1024 * 1024
 const NETWORK_ERROR = "The image could not be uploaded. Check the connection and try again."
+// Common advice, not a limit: the counter only warns.
+const ALT_LIMIT = 125
+// Lucide "check" and "triangle-alert" (lucide.dev, ISC licence).
+const CHECK = ["M20 6 9 17l-5-5"]
+const TRIANGLE_ALERT = [
+  "m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3",
+  "M12 9v4",
+  "M12 17h.01"
+]
+let altTips = 0
 
 registerSlashItem({
   name: "image",
@@ -168,9 +178,26 @@ export class ImageView {
     this.node = node
     this.view = view
     this.uploads = uploads
+    this.altOpenings = 0
+    this.altSaves = 0
 
     this.img = element("img", "pm-image__img", {alt: ""})
-    this.picture = element("div", "pm-image__picture", {contenteditable: "false"}, [this.img])
+    this.altBadge = element("button", "badge text-xs pm-image__alt-badge", {
+      type: "button",
+      "aria-expanded": "false"
+    })
+    this.altBadge.addEventListener("click", () => {
+      if (this.altPanel.hidden) this.openAlt()
+      else if (this.altEdited) this.saveAlt()
+      else this.closeAlt()
+    })
+    this.altTip = element("span", "pm-image__alt-tip", {role: "tooltip", id: `pm-image-alt-tip-${++altTips}`})
+    this.altBadge.setAttribute("aria-describedby", this.altTip.id)
+    this.altTag = element("div", "pm-image__alt-tag absolute bottom-2 left-2", {}, [this.altBadge, this.altTip])
+    this.picture = element("div", "pm-image__picture relative w-fit max-w-full", {contenteditable: "false"}, [
+      this.img,
+      this.altTag
+    ])
 
     this.file = element("input", "pm-image__file", {type: "file", accept: "image/*"})
     this.file.addEventListener("change", () => this.chooseFile())
@@ -198,30 +225,56 @@ export class ImageView {
       ])
     )
 
-    this.alt = element("input", "input input-sm pm-image__alt", {
-      type: "text",
+    this.altText = element("textarea", "textarea textarea-sm w-full pm-image__alt-text", {
+      rows: "2",
       maxlength: "1000",
-      placeholder: "Alt text: what the image shows",
+      placeholder: "What the image shows",
       "aria-label": "Alt text"
     })
-    this.alt.addEventListener("focus", () => this.refreshAlt())
-    this.alt.addEventListener("input", () => {
+    this.altText.addEventListener("input", () => {
+      if (this.altText.value.includes("\n")) {
+        const at = this.altText.selectionStart
+        this.altText.value = this.altText.value.replace(/\r?\n/g, " ")
+        this.altText.setSelectionRange(at, at)
+      }
       this.altEdited = true
-      this.alt.setCustomValidity("")
+      this.altText.setCustomValidity("")
+      this.countAlt()
     })
-    this.alt.addEventListener("change", () => this.saveAlt())
-    this.alt.addEventListener("keydown", (event) => {
+    this.altText.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" || event.isComposing) return
       event.preventDefault()
-      this.alt.blur()
+      this.saveAlt()
     })
-    this.altField = keepOutOfForm(element("div", "pm-image__alt-field", {contenteditable: "false"}, [this.alt]))
+    this.altCount = element("span", "pm-image__alt-count mr-auto text-xs tabular-nums")
+    this.altCancel = element("button", "btn btn-xs btn-ghost pm-image__alt-cancel", {type: "button"}, ["Cancel"])
+    this.altCancel.addEventListener("click", () => this.closeAlt())
+    this.altSave = element("button", "btn btn-xs btn-primary pm-image__alt-save", {type: "button"}, ["Save"])
+    this.altSave.addEventListener("click", () => this.saveAlt())
+    this.altPanel = keepOutOfForm(
+      element("div", "pm-image__alt-panel mt-1.5", {contenteditable: "false", hidden: ""}, [
+        this.altText,
+        element("div", "mt-1.5 flex items-center gap-2", {}, [this.altCount, this.altCancel, this.altSave])
+      ])
+    )
+    this.altPanel.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape" || event.isComposing) return
+      event.preventDefault()
+      this.closeAlt()
+    })
+    // Keeps focus in the textarea, so pressing Cancel or Save is not leaving the panel.
+    this.altPanel.addEventListener("mousedown", (event) => {
+      if (event.target !== this.altText) event.preventDefault()
+    })
+    this.altPanel.addEventListener("focusout", (event) => {
+      if (this.altEdited && !this.altPanel.hidden && !this.altPanel.contains(event.relatedTarget)) this.saveAlt()
+    })
 
     this.contentDOM = element("figcaption", "pm-image__caption", {"data-placeholder": "Caption"})
     this.dom = element("figure", "pm-block pm-image", {}, [
       this.picture,
       this.picker,
-      this.altField,
+      this.altPanel,
       this.contentDOM
     ])
 
@@ -239,30 +292,92 @@ export class ImageView {
     this.unsubscribe = this.uploads.subscribe(this.blockId, () => this.render())
   }
 
-  // Shows the stored alt text (a suggestion may have arrived meanwhile)
-  // unless the member is editing it.
+  // Loads the stored alt text (a suggestion may have arrived meanwhile)
+  // without overwriting what the member is typing. A load overlapping a
+  // save may answer with the text from before it, so it is dropped.
   refreshAlt() {
     const imageId = this.node.attrs.image_id
-    if (!imageId || this.altEdited) return
+    if (!imageId) return
 
+    const saves = this.altSaves
     this.uploads.loadAlt(imageId).then((alt) => {
-      if (alt !== null && !this.altEdited && this.node.attrs.image_id === imageId) this.alt.value = alt
+      if (alt === null || this.node.attrs.image_id !== imageId || this.altSaves !== saves) return
+      this.showAlt(alt)
+      this.fillAlt()
     })
+  }
+
+  fillAlt() {
+    if (this.altPanel.hidden || this.altEdited) return
+    this.altText.value = this.altValue
+    this.countAlt()
+  }
+
+  showAlt(alt) {
+    const set = alt.trim() !== ""
+    this.altValue = alt
+    this.img.alt = alt
+    this.altBadge.classList.toggle("is-set", set)
+    this.altBadge.classList.toggle("badge-warning", !set)
+    this.altBadge.setAttribute("aria-label", set ? "Edit alt text" : "Add alt text")
+    this.altBadge.replaceChildren(svgIcon(set ? CHECK : TRIANGLE_ALERT, 12), "ALT")
+    this.altTip.textContent = alt
+    this.altTip.hidden = !set
+  }
+
+  countAlt() {
+    const length = this.altText.value.length
+    this.altCount.textContent = `${length} / ${ALT_LIMIT}`
+    this.altCount.classList.toggle("text-error-ink", length > ALT_LIMIT)
+    this.altCount.classList.toggle("text-base-content/70", length <= ALT_LIMIT)
+  }
+
+  openAlt() {
+    if (!this.node.attrs.image_id) return
+
+    this.altOpenings++
+    this.altEdited = false
+    this.altText.value = this.altValue
+    this.altText.setCustomValidity("")
+    this.countAlt()
+    this.altPanel.hidden = false
+    this.altBadge.setAttribute("aria-expanded", "true")
+    this.altText.focus()
+    this.refreshAlt()
+  }
+
+  closeAlt({focus = true} = {}) {
+    if (this.altPanel.hidden) return
+
+    this.altPanel.hidden = true
+    this.altEdited = false
+    this.altBadge.setAttribute("aria-expanded", "false")
+    if (focus) this.altBadge.focus()
   }
 
   saveAlt() {
     const imageId = this.node.attrs.image_id
-    if (!imageId) return
+    if (!imageId || this.altSave.disabled) return
 
-    this.uploads.saveAlt(imageId, this.alt.value).then(({alt, error}) => {
+    const value = this.altText.value
+    const opening = this.altOpenings
+    this.altSave.disabled = true
+    this.altSaves++
+    this.uploads.saveAlt(imageId, value).then(({alt, error}) => {
+      this.altSave.disabled = false
+      this.altSaves++
       if (this.node.attrs.image_id !== imageId) return
       if (error) {
-        this.alt.setCustomValidity(error)
-        this.alt.reportValidity()
+        this.altText.setCustomValidity(error)
+        this.altText.reportValidity()
         return
       }
-      this.altEdited = false
-      if (document.activeElement !== this.alt) this.alt.value = alt
+      this.showAlt(alt ?? value)
+      if (this.altOpenings === opening && this.altText.value === value) {
+        this.closeAlt({focus: this.altPanel.contains(document.activeElement)})
+      } else {
+        this.fillAlt()
+      }
     })
   }
 
@@ -284,13 +399,12 @@ export class ImageView {
     const uploading = state?.status === "uploading"
 
     if (src && this.img.getAttribute("src") !== src) this.img.src = src
-    this.img.alt = this.node.textContent
     this.picture.hidden = !src
-    this.altField.hidden = !this.node.attrs.image_id
+    this.altTag.hidden = !this.node.attrs.image_id
     if (this.node.attrs.image_id !== this.altImageId) {
       this.altImageId = this.node.attrs.image_id
-      this.altEdited = false
-      this.alt.value = ""
+      this.closeAlt({focus: false})
+      this.showAlt("")
       this.refreshAlt()
     }
     this.picker.hidden = filled(this.node)
@@ -316,7 +430,7 @@ export class ImageView {
   // The controls handle their own events; ProseMirror must not treat a
   // click or key there as editing.
   stopEvent(event) {
-    return this.picker.contains(event.target) || this.altField.contains(event.target)
+    return [this.picker, this.altTag, this.altPanel].some((controls) => controls.contains(event.target))
   }
 
   ignoreMutation(mutation) {
