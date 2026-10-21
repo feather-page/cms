@@ -45,7 +45,7 @@ defmodule Feather.Content.ShortPost do
   @spec generate(Post.t(), String.t()) ::
           {:ok, %{meta_title: String.t(), slug: String.t()}} | {:error, term()}
   def generate(%Post{content: content}, language_code) do
-    with text when text != "" <- Blocks.excerpt(content, @model_text_length),
+    with text when text != "" <- Blocks.model_text(content, @model_text_length),
          {:ok, %{title: title, slug: slug}} <- Ollama.short_post_title(text, language_code) do
       {:ok, %{meta_title: title, slug: slug_base(slug, title)}}
     else

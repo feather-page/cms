@@ -81,7 +81,7 @@ defmodule Feather.Content.DescriptionTest do
     assert meta(doc, "og:description") == "Wie Leuchttürme Schiffe sicher leiten."
   end
 
-  test "asks the model in the site's language with the title and text", %{scope: scope} do
+  test "asks the model in the site's language and the author's voice", %{scope: scope} do
     Req.Test.stub(Feather.Ollama, fn conn ->
       {:ok, body, conn} = Plug.Conn.read_body(conn)
       %{"messages" => [%{"content" => prompt}], "format" => format} = Jason.decode!(body)
@@ -89,12 +89,36 @@ defmodule Feather.Content.DescriptionTest do
       assert prompt =~ "German"
       assert prompt =~ "Lighthouses"
       assert prompt =~ "Lighthouses guide ships along the coast."
+      assert prompt =~ "first person"
+      assert prompt =~ ~s("Explore")
+      assert prompt =~ "Never invent"
       assert format["required"] == ["description"]
 
       Req.Test.json(conn, %{"message" => %{"content" => ~s({"description": "Leuchttürme"})}})
     end)
 
     assert {:ok, %{description: "Leuchttürme"}} = Content.publish(scope, draft_post(scope))
+  end
+
+  test "the model reads the books and quote sources of the content", %{scope: scope} do
+    Req.Test.stub(Feather.Ollama, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      %{"messages" => [%{"content" => prompt}]} = Jason.decode!(body)
+
+      assert prompt =~ "Book: The Passage by Justin Cronin"
+      assert prompt =~ ~s(Quote: "Light the way." \(Fresnel\))
+
+      Req.Test.json(conn, %{"message" => %{"content" => ~s({"description": "Gelesen"})}})
+    end)
+
+    content = [
+      %{"type" => "paragraph", "text" => "Finished reading:"},
+      %{"type" => "book", "title" => "The Passage", "author" => "Justin Cronin"},
+      %{"type" => "quote", "text" => "Light the way.", "caption" => "Fresnel"}
+    ]
+
+    assert {:ok, %{description: "Gelesen"}} =
+             Content.publish(scope, draft_post(scope, %{content: content}))
   end
 
   test "a generated description follows the content", %{scope: scope} do
