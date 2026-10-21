@@ -37,7 +37,8 @@ defmodule Feather.StaticSite.Renderer do
   def total_pages(%SiteData{posts: posts}), do: max(ceil(length(posts) / @posts_per_page), 1)
 
   @doc """
-  A page of the post list. Pages past the end list no posts.
+  A page of the post list. Pages past the end list no posts; pages after
+  the first carry their number in the document title.
   """
   @spec render_home(SiteData.t(), Routes.t(), pos_integer()) :: iodata()
   def render_home(%SiteData{} = data, %Routes{} = routes, page_number \\ 1) do
@@ -52,10 +53,18 @@ defmodule Feather.StaticSite.Renderer do
         rss_url: Routes.artifact_url(routes, "feed.xml"),
         posts: posts_on_page(data, page_number),
         current_page: page_number,
-        total_pages: total_pages(data)
+        total_pages: total_pages(data),
+        document_title: home_document_title(data, page_number)
       })
 
     render(:home, assigns)
+  end
+
+  defp home_document_title(data, 1), do: data.site.title
+
+  defp home_document_title(data, page_number) do
+    page = in_site_language(data, fn -> gettext("Page %{number}", number: page_number) end)
+    document_title(data.site.title, page, false)
   end
 
   defp posts_on_page(data, page_number),

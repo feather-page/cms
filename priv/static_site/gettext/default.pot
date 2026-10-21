@@ -92,6 +92,11 @@ msgstr ""
 msgid "Older post"
 msgstr ""
 
+#: lib/feather/static_site/renderer.ex:66
+#, elixir-autogen, elixir-format
+msgid "Page %{number}"
+msgstr ""
+
 #: lib/feather/static_site/renderer.ex:139
 #, elixir-autogen, elixir-format
 msgid "Page not found"

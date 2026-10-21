@@ -790,6 +790,23 @@ defmodule Feather.Content do
   end
 
   @doc """
+  When the post, page or project last changed on the site: when its
+  published version was published, for a post scheduled past that its
+  `publish_at`. Nil for a draft. Loads the published version unless
+  preloaded.
+  """
+  @spec last_changed_at(Post.t() | Page.t() | Project.t()) :: DateTime.t() | nil
+  def last_changed_at(%Post{published_version: %PostVersion{published_at: published_at}} = post),
+    do: [published_at, post.publish_at] |> Enum.reject(&is_nil/1) |> Enum.max(DateTime)
+
+  def last_changed_at(%{published_version: %{published_at: published_at}}), do: published_at
+
+  def last_changed_at(%{published_version: %Ecto.Association.NotLoaded{}} = record),
+    do: record |> preload_published_version() |> last_changed_at()
+
+  def last_changed_at(%{published_version: nil}), do: nil
+
+  @doc """
   Discards the unpublished changes of a published post, page or project:
   puts the fields of its published version back into it.
 

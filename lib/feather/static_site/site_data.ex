@@ -153,7 +153,7 @@ defmodule Feather.StaticSite.SiteData do
 
   defp load_images(scope), do: scope |> Media.list_images() |> Map.new(&{&1.public_id, &1})
 
-  defp in_state(records, :current), do: records
+  defp in_state(records, :current), do: Repo.preload(records, :published_version)
   defp in_state(records, :published), do: Content.as_published(records)
 
   # Like Content.list_projects/1, also for the published versions' fields:
