@@ -9,11 +9,12 @@ defmodule Feather.Content.HTML do
       editor.
     * The static site inserts `sanitize(html)` unescaped into its pages.
 
-  In the default `:published` mode only `b`, `i`, `u`, `a` and `code`
-  survive, and only `href` on `a` (the allow list of the Rails renderers).
-  The `:editor` mode keeps what the admin editor writes on top of that and
-  is harmless: `br`, and `target="_blank"` and
-  `rel="nofollow"`/`"noopener"`/`"noreferrer"` on links. Other attributes
+  In the default `:published` mode only `b`, `i`, `u`, `a`, `code` and
+  `br` survive, and only `href` on `a` (the allow list of the Rails
+  renderers, plus the line breaks the editor writes). The `:editor` mode
+  keeps what the admin editor writes on top of that and is harmless:
+  `target="_blank"` and `rel="nofollow"`/`"noopener"`/`"noreferrer"` on
+  links. Other attributes
   (such as the classes the former editor put on `code` and `u`) are
   dropped. Other elements are removed but their text is
   kept (like Loofah's strip scrubber Rails used); the content of `script`
@@ -43,7 +44,7 @@ defmodule Feather.Content.HTML do
   @type mode :: :published | :editor
 
   @allowed_tags %{
-    published: ~w(b i u a code),
+    published: ~w(b i u a code br),
     editor: ~w(b i u a code br)
   }
   @void_tags ~w(br)

@@ -10,7 +10,7 @@ defmodule Feather.Content.HTMLTest do
     {:ok, nodes} = Floki.parse_fragment(output)
 
     for {tag, attributes, _children} <- Floki.find(nodes, "*") do
-      assert tag in ~w(b i u a code), "unexpected <#{tag}> in #{inspect(output)}"
+      assert tag in ~w(b i u a code br), "unexpected <#{tag}> in #{inspect(output)}"
 
       for {name, value} <- attributes do
         assert {tag, name} == {"a", "href"}, "unexpected #{name} in #{inspect(output)}"
@@ -19,7 +19,7 @@ defmodule Feather.Content.HTMLTest do
     end
 
     # Text such as "onerror=" may remain, but only escaped: no raw tag.
-    refute output =~ ~r/<(?!\/?(b|i|u|a|code)\b)/i
+    refute output =~ ~r/<(?!\/?(b|i|u|a|code|br)\b)/i
     output
   end
 
@@ -29,6 +29,11 @@ defmodule Feather.Content.HTMLTest do
         ~S|Some <b>bold</b>, <i>it</i>, <u>u</u>, <code>x</code> and <a href="https://example.com">a link</a>.|
 
       assert sanitize(html) == html
+    end
+
+    test "keeps line breaks without attributes" do
+      assert sanitize("x<br>y<br/>z<BR>") == "x<br>y<br>z<br>"
+      assert sanitize(~S|<br class="c" onclick="x()">|) == "<br>"
     end
 
     test "keeps relative, fragment, mailto and tel links" do
@@ -58,7 +63,6 @@ defmodule Feather.Content.HTMLTest do
   describe "stripping" do
     test "removes other elements but keeps their text" do
       assert sanitize("<p>para</p><div>d<span>s</span></div>") == "parads"
-      assert sanitize("x<br>y") == "xy"
       assert sanitize(~S|<h1 class="c">Title</h1>|) == "Title"
     end
 
@@ -206,11 +210,11 @@ defmodule Feather.Content.HTMLTest do
                "<code>c</code> <u>u</u>"
     end
 
-    test "the published mode strips the editor extras" do
+    test "the published mode strips the editor's link extras" do
       html =
         ~S|a<br><code>c</code> <a href="/x" target="_blank" rel="nofollow">l</a>|
 
-      assert sanitize(html) == ~S|a<code>c</code> <a href="/x">l</a>|
+      assert sanitize(html) == ~S|a<br><code>c</code> <a href="/x">l</a>|
     end
 
     test "other attribute values and elements are removed" do

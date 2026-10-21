@@ -50,6 +50,11 @@ defmodule Feather.StaticSite.BlocksTest do
              "<p>Hi <b>you</b></p>"
   end
 
+  test "a paragraph keeps its line breaks", %{context: c} do
+    assert html(%{"type" => "paragraph", "text" => "Line one<br>line two"}, c) ==
+             "<p>Line one<br>line two</p>"
+  end
+
   test "a paragraph without text renders nothing", %{context: c} do
     for text <- ["", "  ", "<br>", "<b> </b>", "&nbsp;", nil] do
       assert html(%{"type" => "paragraph", "text" => text}, c) == "", inspect(text)
