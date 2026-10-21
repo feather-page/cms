@@ -367,8 +367,7 @@ defmodule FeatherWeb.PageLiveTest do
 
       lv |> form("#page-form", page: %{title: "Our services"}) |> render_change()
 
-      html =
-        lv |> element("#page-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+      html = publish_in_form(lv, "#page-content-editor")
 
       assert html =~ "Page was published."
       assert has_element?(lv, "#version-2", "Published")

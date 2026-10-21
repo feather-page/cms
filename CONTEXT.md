@@ -127,6 +127,14 @@ appears as content or as a cover. The self-hosted model suggests it in the site'
 can overwrite it in the image block and the image picker. A caption is shown under the image; the alt text describes it.
 _Avoid_: Caption, Description, Title
 
+**Description** · _de:_ Beschreibung:
+The sentence about a post or page that search results and link previews show, stored on the record and its versions.
+The self-hosted model writes it in the site's language when the record is published without one, and writes it anew
+while it is still the model's and the title or content changed; "Suggest" in the form's details asks for one at any
+time. A description a member typed stays. Without one the export takes the start of the text. Projects have their
+short description instead; the Bio is about the site owner, not a page.
+_Avoid_: Summary, Excerpt, Teaser, Bio
+
 **Redirect** · _de:_ Weiterleitung:
 An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,
 `/feed.xml`), permanently (301) or temporarily (302). Old paths share the site's URL space with the slugs, so a URL

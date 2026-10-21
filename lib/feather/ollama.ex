@@ -16,11 +16,18 @@ defmodule Feather.Ollama do
   @model "gemma4-26b"
   @timeout 90_000
   @max_alt_length 250
+  @max_description_length 300
 
   @alt_format %{
     "type" => "object",
     "properties" => %{"alt" => %{"type" => "string"}},
     "required" => ["alt"]
+  }
+
+  @description_format %{
+    "type" => "object",
+    "properties" => %{"description" => %{"type" => "string"}},
+    "required" => ["description"]
   }
 
   @doc "Returns true if an Ollama URL is configured."
@@ -42,8 +49,38 @@ defmodule Feather.Ollama do
 
     with {:ok, %{"alt" => alt}} when is_binary(alt) <-
            chat_json(prompt, @alt_format, images: [jpeg]),
-         alt when alt != "" <- alt |> String.trim() |> String.slice(0, @max_alt_length) do
+         alt when alt != "" <- trimmed(alt, @max_alt_length) do
       {:ok, alt}
+    else
+      {:error, reason} -> {:error, reason}
+      _empty -> {:error, :no_answer}
+    end
+  end
+
+  @doc """
+  Suggests the description of a post or page, given its title (nil for a
+  short post) and plain text, in the language with the given code: the
+  sentence search results and link previews show.
+  """
+  @spec description(String.t() | nil, String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def description(title, text, language_code) when is_binary(text) do
+    prompt = """
+    Write the meta description of this web page in #{Languages.name(language_code)}.
+    Summarise what the page is about in one or two sentences of at most 155
+    characters, for search results and link previews. Do not start with
+    "This page" or "This post", and do not repeat the title.
+    Answer with JSON: {"description": "..."}
+
+    Title: #{title}
+
+    #{text}
+    """
+
+    with {:ok, %{"description" => description}} when is_binary(description) <-
+           chat_json(prompt, @description_format),
+         description when description != "" <- trimmed(description, @max_description_length) do
+      {:ok, description}
     else
       {:error, reason} -> {:error, reason}
       _empty -> {:error, :no_answer}
@@ -73,6 +110,8 @@ defmodule Feather.Ollama do
       {:error, :not_configured}
     end
   end
+
+  defp trimmed(text, max_length), do: text |> String.trim() |> String.slice(0, max_length)
 
   defp decode_answer(
          {:ok, %Req.Response{status: 200, body: %{"message" => %{"content" => content}}}}

@@ -43,7 +43,7 @@ defmodule Feather.Content do
   alias Feather.Accounts.Scope
   alias Feather.Books
   alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
-  alias Feather.Content.{BlocksType, ProseMirror, Slug, Tags}
+  alias Feather.Content.{BlocksType, Description, ProseMirror, Slug, Tags}
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
@@ -631,24 +631,95 @@ defmodule Feather.Content do
 
   Publishing a record under a URL other than the one it was last
   published at redirects the old URL to it (`Feather.Redirects.follow_publish/3`).
+
+  Before a post or page is published, the model writes its description
+  where `Feather.Content.Description.needed?/2` says so, outside the
+  transaction, since that can take up to 90 seconds. Without an answer
+  it is published as it is.
   """
   @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()
   def publish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
-    Repo.transact(fn -> publish_stored(scope, record) end)
+    description =
+      case stored(record) do
+        {:ok, current} -> publish_description(scope, current)
+        {:error, :stale} -> %{}
+      end
+
+    Repo.transact(fn -> publish_stored(scope, record, description) end)
   end
 
-  defp publish_stored(scope, record) do
+  defp publish_stored(scope, record, description) do
     with {:ok, current} <- stored(record) do
       current = Repo.preload(current, :published_version)
 
       cond do
         publication_status(current) == :published -> {:ok, current}
         published_slug_taken?(current) -> {:error, :slug_taken}
-        true -> insert_version_following_url(scope, current)
+        true -> insert_version_following_url(scope, put_description(current, description))
       end
     end
+  end
+
+  # The changes a publish makes to the description of the record as it would be published.
+  defp publish_description(scope, %schema{} = record) when schema in [Post, Page] do
+    if publication_status(record) != :published and
+         Description.needed?(record, newest_version(scope, record)) do
+      case Description.generate(record, scope.site.language_code) do
+        {:ok, description} -> %{description: description, description_generated: true}
+        {:error, _reason} -> %{}
+      end
+    else
+      %{}
+    end
+  end
+
+  defp publish_description(_scope, _project), do: %{}
+
+  defp put_description(record, description) when description == %{}, do: record
+
+  # update_all keeps the record's updated_at and lock_version, like publishing does.
+  defp put_description(%schema{id: id} = record, description) do
+    Repo.update_all(from(r in schema, where: r.id == ^id), set: Map.to_list(description))
+    struct(record, description)
+  end
+
+  @doc """
+  Asks the model for a description of a post or page as it is (the
+  "Suggest" button). Returns `{:error, reason}` without a model, when it
+  fails or for a record without text.
+  """
+  @spec suggest_description(Scope.t(), Post.t() | Page.t()) ::
+          {:ok, String.t()} | {:error, term()}
+  def suggest_description(
+        %Scope{site: %Site{id: site_id} = site},
+        %schema{site_id: site_id} = record
+      )
+      when schema in [Post, Page],
+      do: Description.generate(record, site.language_code)
+
+  @doc """
+  Stores a suggested description in the unpublished changes of a post or
+  page, marked as generated. Fails with `{:error, :stale}` when the record
+  was changed elsewhere since the given one.
+  """
+  @spec put_suggested_description(Scope.t(), record, String.t()) ::
+          {:ok, record} | {:error, :stale}
+        when record: Post.t() | Page.t()
+  def put_suggested_description(
+        %Scope{site: %Site{id: site_id}},
+        %schema{site_id: site_id} = record,
+        description
+      )
+      when schema in [Post, Page] and is_binary(description) do
+    changeset =
+      record
+      |> Ecto.Changeset.change(description: description, description_generated: true)
+      |> lock()
+
+    with {:ok, saved} <- changeset |> Repo.update([force: true] ++ @lock_opts) |> stale_error(),
+         do: {:ok, put_navigation_flag(saved)}
   end
 
   defp insert_version_following_url(scope, record) do
@@ -661,9 +732,13 @@ defmodule Feather.Content do
   end
 
   defp as_newest_version(scope, record) do
-    newest = from v in versions_query(scope, record), order_by: [desc: v.number], limit: 1
+    if version = newest_version(scope, record), do: with_version_fields(record, version)
+  end
 
-    if version = Repo.one(newest), do: with_version_fields(record, version)
+  defp newest_version(_scope, %{id: nil}), do: nil
+
+  defp newest_version(scope, record) do
+    Repo.one(from v in versions_query(scope, record), order_by: [desc: v.number], limit: 1)
   end
 
   defp stored(%schema{id: id, lock_version: lock_version}) do
@@ -1025,6 +1100,7 @@ defmodule Feather.Content do
       changeset
       |> Media.validate_site_images([:header_image_id, :thumbnail_image_id])
       |> lock()
+      |> put_publish_description(scope, opts)
 
     Repo.transact(fn ->
       with {:ok, record} <- Repo.insert_or_update(changeset, @lock_opts) do
@@ -1040,9 +1116,20 @@ defmodule Feather.Content do
     end)
   end
 
+  # Asked before the save's transaction, like publish/2 does.
+  defp put_publish_description(%Ecto.Changeset{valid?: true} = changeset, scope, opts) do
+    if opts[:draft] == false,
+      do: Ecto.Changeset.change(changeset, publish_description(scope, apply_changes(changeset))),
+      else: changeset
+  end
+
+  defp put_publish_description(changeset, _scope, _opts), do: changeset
+
+  defp apply_changes(changeset), do: Ecto.Changeset.apply_changes(changeset)
+
   defp apply_draft_option(scope, record, changeset, opts) do
     case Keyword.fetch(opts, :draft) do
-      {:ok, false} -> scope |> publish(record) |> slug_taken_error(changeset)
+      {:ok, false} -> scope |> publish_stored(record, %{}) |> slug_taken_error(changeset)
       {:ok, true} -> unpublish(scope, record)
       :error -> {:ok, record}
     end

@@ -93,6 +93,12 @@ defmodule FeatherWeb.ReviewLive.Form do
             <.star_rating value={@book.rating} />
           </fieldset>
           <.slug_field field={@form[:slug]} form="review-form" hidden={!@show_title_and_slug?} />
+          <.description_field
+            field={@form[:description]}
+            form="review-form"
+            record={@post}
+            suggesting={@suggesting_description?}
+          />
           <.input
             field={@form[:publish_at]}
             type="datetime-local"
@@ -202,6 +208,9 @@ defmodule FeatherWeb.ReviewLive.Form do
 
   @impl true
   def handle_info(message, socket), do: ContentForm.handle_info(message, socket)
+
+  @impl true
+  def handle_async(name, result, socket), do: ContentForm.handle_async(name, result, socket)
 
   @impl ContentForm
   def record(socket), do: socket.assigns.post

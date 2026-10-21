@@ -1,8 +1,8 @@
 defmodule FeatherWeb.PostLive.Form do
   @moduledoc """
   Creates and edits posts: header image picker, title and slug (hidden for
-  short posts, slug suggested from the title), tags, block content and
-  publish date. Every change is saved into the unpublished changes at
+  short posts, slug suggested from the title), description (with
+  Suggest), tags, block content and publish date. Every change is saved into the unpublished changes at
   once, the first input creates the post as a draft (see "Autosave" in
   `FeatherWeb.ContentForm`). Publish publishes them; Discard puts the
   published version back; Restore puts an earlier version into the
@@ -84,6 +84,12 @@ defmodule FeatherWeb.PostLive.Form do
         </:main>
         <:details>
           <.slug_field field={@form[:slug]} form="post-form" hidden={!@show_title_and_slug?} />
+          <.description_field
+            field={@form[:description]}
+            form="post-form"
+            record={@post}
+            suggesting={@suggesting_description?}
+          />
           <.input
             field={@form[:tags]}
             label="Tags"
@@ -177,6 +183,9 @@ defmodule FeatherWeb.PostLive.Form do
 
   @impl true
   def handle_info(message, socket), do: ContentForm.handle_info(message, socket)
+
+  @impl true
+  def handle_async(name, result, socket), do: ContentForm.handle_async(name, result, socket)
 
   @impl ContentForm
   def record(socket), do: socket.assigns.post

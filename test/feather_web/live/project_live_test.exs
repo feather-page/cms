@@ -184,8 +184,7 @@ defmodule FeatherWeb.ProjectLiveTest do
 
     lv |> form("#project-form", project: %{title: "New project"}) |> render_change()
 
-    html =
-      lv |> element("#project-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    html = publish_in_form(lv, "#project-content-editor")
 
     assert html =~ "Project was published."
     assert has_element?(lv, "#version-2", "Published")

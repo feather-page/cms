@@ -66,9 +66,11 @@ defmodule FeatherWeb.ContentForm do
   """
 
   alias Feather.Content
-  alias Feather.Content.{Blocks, Project}
+  alias Feather.Content.{Blocks, Page, Post, Project}
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
+
+  require Phoenix.LiveView
 
   @short_post_length 300
   @changed_elsewhere "was changed elsewhere, reload the page to see the changes"
@@ -157,7 +159,10 @@ defmodule FeatherWeb.ContentForm do
   @doc """
   Handles the events the forms share: `autosave` (the form's
   `phx-change`), `recover` (its `phx-auto-recover`), `sync` (the editor), `publish`, `discard`, `restore`
-  (with the version's `number`) and `unpublish`.
+  (with the version's `number`), `unpublish` and `suggest_description`.
+  Publishing and suggesting a description run asynchronously, since the
+  model may take up to 90 seconds; the forms hand their results to
+  `handle_async/3`.
   """
   @spec handle_event(String.t(), map(), Socket.t()) ::
           {:noreply, Socket.t()} | {:reply, map(), Socket.t()}
@@ -176,6 +181,9 @@ defmodule FeatherWeb.ContentForm do
 
   def handle_event("sync", params, socket), do: sync(socket, params)
   def handle_event("publish", params, socket), do: {:noreply, publish(socket, params)}
+
+  def handle_event("suggest_description", _params, socket),
+    do: {:noreply, suggest_description(socket, socket.view.record(socket))}
 
   def handle_event(event, params, socket) when event in ~w(discard restore unpublish) do
     # Only a crafted event gets here for a new record.
@@ -274,6 +282,8 @@ defmodule FeatherWeb.ContentForm do
     Phoenix.Component.assign(socket,
       autosave_base: if(record.id, do: record.lock_version, else: 0),
       changed_elsewhere?: false,
+      publishing: nil,
+      suggesting_description?: false,
       slug_touched?: present?(record.slug)
     )
   end
@@ -424,27 +434,114 @@ defmodule FeatherWeb.ContentForm do
       params["editor"] == "unsaved" ->
         LiveView.put_flash(socket, :error, "Not published: the content is not saved yet.")
 
+      socket.assigns[:publishing] ->
+        socket
+
       true ->
-        case Content.publish(socket.assigns.current_scope, record) do
-          {:ok, published} ->
-            socket
-            |> put_record(published, versions: true)
-            |> FeatherWeb.SiteAuth.refresh_deploy_status()
-            |> LiveView.put_flash(:info, "#{socket.view.noun()} was published.")
+        scope = socket.assigns.current_scope
 
-          {:error, :stale} ->
-            socket
-            |> Phoenix.Component.assign(:changed_elsewhere?, true)
-            |> LiveView.put_flash(:error, "Not published: this #{@changed_elsewhere}.")
-
-          {:error, :slug_taken} ->
-            LiveView.put_flash(
-              socket,
-              :error,
-              "Not published: another #{slug_rivals(record)} is published with this slug."
-            )
-        end
+        socket
+        |> Phoenix.Component.assign(:publishing, record)
+        |> LiveView.put_flash(:info, "Publishing…")
+        |> LiveView.start_async(:publish, fn -> Content.publish(scope, record) end)
     end
+  end
+
+  @doc """
+  Handles the results of publishing (`:publish`) and of suggesting a
+  description (`:suggest_description`), see `handle_event/3`.
+  """
+  @spec handle_async(atom(), {:ok, term()} | {:exit, term()}, Socket.t()) ::
+          {:noreply, Socket.t()}
+  def handle_async(:publish, result, socket) do
+    publishing = socket.assigns.publishing
+    socket = Phoenix.Component.assign(socket, :publishing, nil)
+
+    {:noreply, published(socket, publishing, result)}
+  end
+
+  def handle_async(:suggest_description, result, socket) do
+    socket = Phoenix.Component.assign(socket, :suggesting_description?, false)
+    {:noreply, suggested_description(socket, result)}
+  end
+
+  defp published(socket, _publishing, {:ok, {:ok, published}}) do
+    socket
+    |> put_record(published, versions: true)
+    |> assign_form_from_record(:description)
+    |> FeatherWeb.SiteAuth.refresh_deploy_status()
+    |> LiveView.put_flash(:info, "#{socket.view.noun()} was published.")
+  end
+
+  defp published(socket, publishing, {:ok, {:error, :stale}}) do
+    if socket.view.record(socket).lock_version == publishing.lock_version do
+      socket
+      |> Phoenix.Component.assign(:changed_elsewhere?, true)
+      |> LiveView.put_flash(:error, "Not published: this #{@changed_elsewhere}.")
+    else
+      LiveView.put_flash(
+        socket,
+        :error,
+        "Not published: it changed while it was being published, publish again."
+      )
+    end
+  end
+
+  defp published(socket, publishing, {:ok, {:error, :slug_taken}}) do
+    LiveView.put_flash(
+      socket,
+      :error,
+      "Not published: another #{slug_rivals(publishing)} is published with this slug."
+    )
+  end
+
+  defp published(socket, _publishing, {:exit, _reason}),
+    do: LiveView.put_flash(socket, :error, "Not published: something went wrong, try again.")
+
+  defp suggest_description(socket, %schema{id: id} = record)
+       when schema in [Post, Page] and is_binary(id) do
+    if socket.assigns[:suggesting_description?] do
+      socket
+    else
+      scope = socket.assigns.current_scope
+
+      socket
+      |> Phoenix.Component.assign(:suggesting_description?, true)
+      |> LiveView.start_async(:suggest_description, fn ->
+        Content.suggest_description(scope, record)
+      end)
+    end
+  end
+
+  defp suggest_description(socket, _new_record_or_project), do: socket
+
+  defp suggested_description(socket, {:ok, {:ok, description}}) do
+    record = socket.view.record(socket)
+
+    case Content.put_suggested_description(socket.assigns.current_scope, record, description) do
+      {:ok, saved} ->
+        socket
+        |> put_record(saved)
+        |> push_lock_version(record, saved)
+        |> assign_form_from_record(:description)
+
+      {:error, :stale} ->
+        Phoenix.Component.assign(socket, :changed_elsewhere?, true)
+    end
+  end
+
+  defp suggested_description(socket, _no_description) do
+    LiveView.put_flash(
+      socket,
+      :error,
+      "No description could be suggested: the model did not answer or there is no text yet."
+    )
+  end
+
+  # The form shows the record's value of the field in place of what was typed before.
+  defp assign_form_from_record(socket, field) do
+    %{params: params, form: form} = socket.assigns
+    socket.view.assign_form(socket, Map.delete(params, Atom.to_string(field)), form.source.action)
   end
 
   defp slug_rivals(%Project{}), do: "project"

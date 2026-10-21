@@ -79,7 +79,7 @@ defmodule Feather.StaticSite.Renderer do
     sharing(
       routes,
       &Routes.home_url(&1, page_number),
-      ContentBlocks.excerpt(homepage.content),
+      summary(homepage),
       homepage.header_image || first_image(data, homepage.content)
     )
   end
@@ -111,7 +111,7 @@ defmodule Feather.StaticSite.Renderer do
     sharing(
       routes,
       &Routes.post_url(&1, post),
-      ContentBlocks.excerpt(post.content),
+      summary(post),
       post.header_image || post.thumbnail_image || first_image(data, post.content),
       "article"
     )
@@ -129,7 +129,7 @@ defmodule Feather.StaticSite.Renderer do
       sharing(
         routes,
         &Routes.page_url(&1, page),
-        ContentBlocks.excerpt(page.content),
+        summary(page),
         page.header_image || first_image(data, page.content)
       )
     )
@@ -163,6 +163,12 @@ defmodule Feather.StaticSite.Renderer do
       project_summary(project),
       project.header_image || project.thumbnail_image || first_image(data, project.content)
     )
+  end
+
+  defp summary(%{description: description} = post_or_page) do
+    if blank?(description),
+      do: ContentBlocks.excerpt(post_or_page.content),
+      else: description
   end
 
   defp project_summary(project) do

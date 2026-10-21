@@ -12,6 +12,8 @@ defmodule Feather.Content.PageVersion do
   @copied_fields [
     :title,
     :slug,
+    :description,
+    :description_generated,
     :emoji,
     :tags,
     :content,
@@ -29,6 +31,8 @@ defmodule Feather.Content.PageVersion do
     field :tags, :string
     field :content, BlocksType, default: []
     field :page_type, :string
+    field :description, :string
+    field :description_generated, :boolean, default: false
 
     belongs_to :page, Feather.Content.Page
     belongs_to :published_by, Feather.Accounts.User

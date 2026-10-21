@@ -239,6 +239,44 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
+  Renders the description input with its Suggest button
+  (`#suggest-description`, sends `suggest_description`), for the details
+  section of posts and pages (`form` names the record's form). The button
+  needs a saved record and waits while a suggestion is on its way.
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :form, :string, required: true
+  attr :record, :map, required: true
+  attr :suggesting, :boolean, default: false
+  attr :id, :string, default: "description-field"
+
+  def description_field(assigns) do
+    ~H"""
+    <div id={@id}>
+      <.input
+        field={@field}
+        type="textarea"
+        label="Description"
+        help="Shown in search results and link previews. Written for you when you publish while it is empty."
+        form={@form}
+        rows="3"
+        phx-debounce="300"
+      />
+      <.button
+        id="suggest-description"
+        type="button"
+        size={:sm}
+        loading={@suggesting}
+        disabled={is_nil(@record.id) or @suggesting}
+        phx-click="suggest_description"
+      >
+        Suggest
+      </.button>
+    </div>
+    """
+  end
+
+  @doc """
   Renders the record's counter as a hidden field of its form (empty for a
   new record), so the values LiveView recovers after a reconnect name the
   counter they were shown with (see "Autosave" in

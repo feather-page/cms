@@ -655,8 +655,7 @@ defmodule FeatherWeb.PostLiveTest do
 
       lv |> form("#post-form", post: %{title: "Version 4"}) |> render_change()
 
-      html =
-        lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+      html = publish_in_form(lv, "#post-content-editor")
 
       assert html =~ "Post was published."
       assert has_element?(lv, "#status-badge", "Published")
@@ -694,7 +693,7 @@ defmodule FeatherWeb.PostLiveTest do
 
       lv |> form("#post-form", post: %{slug: "/free"}) |> render_change()
       refute has_element?(lv, "#publish-post[disabled]")
-      lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+      publish_in_form(lv, "#post-content-editor")
 
       post = Content.get_post!(scope, post.public_id)
       assert post.slug == "/free"
@@ -783,7 +782,7 @@ defmodule FeatherWeb.PostLiveTest do
     end
 
     defp publish(lv),
-      do: lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+      do: publish_in_form(lv, "#post-content-editor")
 
     test "does not publish a slug another post is published with", %{
       conn: conn,
@@ -891,7 +890,7 @@ defmodule FeatherWeb.PostLiveTest do
       refute has_element?(lv, "#versions")
 
       lv |> form("#post-form", post: %{title: "Out now", slug: "/out-now"}) |> render_change()
-      lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+      publish_in_form(lv, "#post-content-editor")
 
       post = Content.get_post_by_slug(scope, "/out-now")
       assert Content.publication_status(post) == :published

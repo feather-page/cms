@@ -201,8 +201,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     post = Books.get_review_post(scope, Books.get_book!(scope, book.public_id))
     assert Content.draft?(post)
 
-    html =
-      lv |> element("#review-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    html = publish_in_form(lv, "#review-content-editor")
 
     assert html =~ "Review was published."
     assert Content.publication_status(Content.get_post!(scope, post.public_id)) == :published
@@ -223,7 +222,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     refute has_element?(lv, "#discard-review")
 
     lv |> form("#review-form", post: %{title: "Second take"}) |> render_change()
-    lv |> element("#review-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    publish_in_form(lv, "#review-content-editor")
 
     assert has_element?(lv, "#version-2", "Published")
 
