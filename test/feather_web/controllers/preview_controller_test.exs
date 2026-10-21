@@ -204,6 +204,38 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert response(get(fresh(user), "/preview/unknown00000/"), 404) == "Not Found"
   end
 
+  test "answers an old path with a redirect to the target inside the preview", %{
+    conn: conn,
+    scope: scope,
+    root: root,
+    user: user
+  } do
+    post = post_fixture(scope, %{slug: "/rule-of-72"})
+    redirect_fixture(scope, old_path: "/posts/rule-of-72", target: "/rule-of-72/")
+    redirect_fixture(scope, old_path: "/atom.xml", target: "/feed.xml", kind: "temporary")
+    {:ok, _} = Feather.Content.update_post(scope, post, %{slug: "/unpublished-slug"})
+
+    assert redirected_to(get(conn, root <> "/posts/rule-of-72"), 302) ==
+             root <> "/unpublished-slug/"
+
+    assert redirected_to(get(fresh(user), root <> "/posts/rule-of-72/"), 302) ==
+             root <> "/unpublished-slug/"
+
+    assert redirected_to(get(fresh(user), root <> "/atom.xml"), 302) == root <> "/feed.xml"
+  end
+
+  test "renders the 404 page for the old path of an inactive redirect", %{
+    conn: conn,
+    scope: scope,
+    root: root
+  } do
+    page = page_fixture(scope, %{slug: "/target"})
+    redirect_fixture(scope, old_path: "/old", target: "/target")
+    {:ok, _} = Feather.Content.unpublish(scope, page)
+
+    assert get(conn, root <> "/old").status == 404
+  end
+
   test "sites the user may not access are not found", %{conn: conn, user: user} do
     other = site_fixture()
     assert response(get(conn, "/preview/#{other.public_id}/"), 404) == "Not Found"

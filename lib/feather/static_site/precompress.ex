@@ -56,6 +56,10 @@ defmodule Feather.StaticSite.Precompress do
   @spec extensions() :: [String.t()]
   def extensions, do: @extensions
 
+  @doc "The suffixes of the precompressed copies."
+  @spec suffixes() :: [String.t()]
+  def suffixes, do: ~w(.br .gz)
+
   @doc "The files below `dir` that get precompressed."
   @spec text_files(Path.t()) :: [Path.t()]
   def text_files(dir) do

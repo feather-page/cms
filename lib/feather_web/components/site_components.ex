@@ -38,12 +38,12 @@ defmodule FeatherWeb.SiteComponents do
   screens in its compact form next to the user menu).
 
   `active` marks the current section: `:posts`, `:pages`, `:books`,
-  `:projects`, `:settings`, `:users` or `:deployments`. `deploy` is the
-  `site_deploy` assign of `FeatherWeb.SiteAuth`. Detail pages pass `bar`
-  (breadcrumbs and status), which takes the place of brand and site
-  switcher in the top bar, and `bar_actions` (their own actions); there the
-  deploy button shows as an icon with the count below `lg`, and on phones
-  setzkasten leaves the global actions out of the bar.
+  `:projects`, `:settings`, `:redirects`, `:users` or `:deployments`.
+  `deploy` is the `site_deploy` assign of `FeatherWeb.SiteAuth`. Detail
+  pages pass `bar` (breadcrumbs and status), which takes the place of
+  brand and site switcher in the top bar, and `bar_actions` (their own
+  actions); there the deploy button shows as an icon with the count below
+  `lg`, and on phones setzkasten leaves the global actions out of the bar.
   """
   attr :flash, :map, required: true
   attr :current_scope, :map, required: true
@@ -172,6 +172,13 @@ defmodule FeatherWeb.SiteComponents do
         icon: "settings",
         section: "Site",
         navigate: ~p"/sites/#{site.public_id}/settings"
+      },
+      %{
+        key: :redirects,
+        label: "Redirects",
+        icon: "signpost",
+        section: "Site",
+        navigate: ~p"/sites/#{site.public_id}/redirects"
       },
       %{
         key: :users,

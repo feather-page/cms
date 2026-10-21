@@ -30,7 +30,7 @@ dependencies, which CI checks with `mix deps.unlock --check-unused`. In Claude C
 
 - Everything is written in English: code, tests, docs, commit messages
 - Business logic lives in contexts (`lib/feather/*.ex`: `Accounts`, `Sites`, `Content`, `Books`,
-  `Media`, `Publishing`), never in LiveViews or controllers
+  `Media`, `Publishing`, `Redirects`), never in LiveViews or controllers
 - Contexts take a `%Feather.Accounts.Scope{}` as first argument. `scope.user` is the caller,
   `scope.site` the current site. Load a site only through `Feather.Sites.get_site!/2` (it enforces
   access) before `Scope.put_site/2`; content functions then trust `scope.site`

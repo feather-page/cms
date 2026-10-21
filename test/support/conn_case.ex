@@ -41,6 +41,7 @@ defmodule FeatherWeb.ConnCase do
       import Feather.BooksFixtures
       import Feather.MediaFixtures
       import Feather.PublishingFixtures
+      import Feather.RedirectsFixtures
     end
   end
 

@@ -23,6 +23,9 @@ defmodule FeatherWeb.PreviewController do
   defp respond(conn, {:html, html}), do: send_html(conn, :ok, html)
   defp respond(conn, {:not_found, html}), do: send_html(conn, :not_found, html)
 
+  # Always temporary: browsers would remember a 301 inside the CMS after the redirect changed.
+  defp respond(conn, {:redirect, url}), do: redirect(conn, to: url)
+
   defp respond(conn, {:content, content_type, body}) do
     conn
     |> put_resp_content_type(content_type)

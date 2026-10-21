@@ -136,6 +136,8 @@ defmodule FeatherWeb.Router do
       live "/books/:book_id/review/edit", ReviewLive.Form, :edit
 
       live "/settings", SiteLive.Settings, :edit
+      live "/redirects", RedirectLive.Index, :index
+      live "/redirects/:id/edit", RedirectLive.Index, :edit
       live "/users", MemberLive.Index, :index
       live "/deployments", DeploymentTargetLive.Index, :index
     end

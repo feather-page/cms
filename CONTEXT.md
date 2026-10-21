@@ -119,3 +119,11 @@ _Avoid_: Output, Target (a target is a deployment target)
 Live rendering of the same templates inside the CMS (`/preview/<site>/`), with no export and no deployment. Shows the
 records as they are, unpublished changes and drafts included.
 _Avoid_: Draft View, Staging
+
+**Redirect** · _de:_ Weiterleitung:
+An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,
+`/feed.xml`), permanently (301) or temporarily (302). Old paths share the site's URL space with the slugs, so a URL
+belongs to content or to one redirect. Publishing a record under a new URL redirects its old URL to it permanently. A
+redirect is active while its target record is published or its target path still resolves; the static export writes
+the active ones into the `.htaccess`, and the preview follows them.
+_Avoid_: Alias, Forward

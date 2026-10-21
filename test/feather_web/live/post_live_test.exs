@@ -760,8 +760,8 @@ defmodule FeatherWeb.PostLiveTest do
     test "shows why a version could not be restored", %{conn: conn, site: site, scope: scope} do
       post = post_fixture(scope, title: "Old", slug: "/taken")
       {:ok, post} = Content.update_post(scope, post, %{slug: "/moved"})
+      post_fixture(scope, slug: "/taken", draft: true)
       {:ok, post} = Content.publish(scope, post)
-      post_fixture(scope, slug: "/taken")
       {:ok, lv, _html} = live(conn, edit_path(site, post))
 
       html = confirm_click(lv, "#restore-version-1")

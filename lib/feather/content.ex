@@ -47,6 +47,7 @@ defmodule Feather.Content do
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
+  alias Feather.Redirects
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
@@ -627,6 +628,9 @@ defmodule Feather.Content do
   (`Feather.Content.Slug.url_space/1`, posts and pages share one) is
   published with the record's slug: the unique slug of the current
   records does not cover a published version whose record has moved on.
+
+  Publishing a record under a URL other than the one it was last
+  published at redirects the old URL to it (`Feather.Redirects.follow_publish/3`).
   """
   @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()
@@ -642,9 +646,24 @@ defmodule Feather.Content do
       cond do
         publication_status(current) == :published -> {:ok, current}
         published_slug_taken?(current) -> {:error, :slug_taken}
-        true -> insert_version(scope, current)
+        true -> insert_version_following_url(scope, current)
       end
     end
+  end
+
+  defp insert_version_following_url(scope, record) do
+    previous = as_newest_version(scope, record)
+
+    with {:ok, published} <- insert_version(scope, record),
+         :ok <- Redirects.follow_publish(scope, previous, published) do
+      {:ok, published}
+    end
+  end
+
+  defp as_newest_version(scope, record) do
+    newest = from v in versions_query(scope, record), order_by: [desc: v.number], limit: 1
+
+    if version = Repo.one(newest), do: with_version_fields(record, version)
   end
 
   defp stored(%schema{id: id, lock_version: lock_version}) do
@@ -656,16 +675,30 @@ defmodule Feather.Content do
 
   defp published_slug_taken?(%{slug: nil}), do: false
 
-  defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}) do
+  defp published_slug_taken?(%schema{id: id, site_id: site_id, slug: slug}),
+    do: published_with_slug?(schema, site_id, slug, id)
+
+  @doc """
+  Returns true if a record of the scope's site in the URL space of
+  `schema` (`Feather.Content.Slug.url_space/1`) is published with the
+  slug. The record with id `except_id` does not count.
+  """
+  @spec published_slug?(Scope.t(), module(), String.t(), Ecto.UUID.t() | nil) :: boolean()
+  def published_slug?(%Scope{site: %Site{id: site_id}}, schema, slug, except_id \\ nil),
+    do: published_with_slug?(schema, site_id, slug, except_id)
+
+  defp published_with_slug?(schema, site_id, slug, except_id) do
     Enum.any?(Slug.url_space(schema), fn other ->
       {version_schema, _owner_field} = Map.fetch!(@versions, other)
 
-      Repo.exists?(
+      query =
         from r in other,
           join: v in ^version_schema,
           on: v.id == r.published_version_id,
-          where: r.site_id == ^site_id and r.id != ^id and v.slug == ^slug
-      )
+          where: r.site_id == ^site_id and v.slug == ^slug
+
+      query = if except_id, do: where(query, [r], r.id != ^except_id), else: query
+      Repo.exists?(query)
     end)
   end
 
@@ -721,6 +754,14 @@ defmodule Feather.Content do
   """
   @spec draft?(Post.t() | Page.t() | Project.t()) :: boolean()
   def draft?(%{published_version_id: id}), do: is_nil(id)
+
+  @doc """
+  Returns true if the post is due at `now`: its `publish_at` has passed,
+  so the export shows it once it is published.
+  """
+  @spec due?(Post.t(), DateTime.t()) :: boolean()
+  def due?(%Post{publish_at: nil}, _now), do: false
+  def due?(%Post{publish_at: publish_at}, now), do: DateTime.compare(publish_at, now) != :gt
 
   @doc """
   Returns true if the stored post, page or project is published, whatever
@@ -853,11 +894,13 @@ defmodule Feather.Content do
   """
   @spec as_published([record]) :: [record] when record: Post.t() | Page.t() | Project.t()
   def as_published(records) do
-    for %{published_version: %version_schema{} = version} = record <-
-          Repo.preload(records, :published_version) do
-      struct(record, Map.take(version, version_schema.copied_fields()))
-    end
+    for %{published_version: %{} = version} = record <-
+          Repo.preload(records, :published_version),
+        do: with_version_fields(record, version)
   end
+
+  defp with_version_fields(record, %version_schema{} = version),
+    do: struct(record, Map.take(version, version_schema.copied_fields()))
 
   ## Admin listings
 
