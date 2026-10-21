@@ -1,7 +1,7 @@
 defmodule Feather.StaticSite.SiteDataTest do
   use Feather.DataCase
 
-  alias Feather.Media
+  alias Feather.{Books, Content, Media}
   alias Feather.Media.Image
   alias Feather.Sites
   alias Feather.StaticSite.{Export, RecordingSink, Routes, SiteData}
@@ -99,6 +99,29 @@ defmodule Feather.StaticSite.SiteDataTest do
              |> export()
              |> RecordingSink.paths()
              |> Enum.any?(&String.starts_with?(&1, "images/#{portrait.public_id}/"))
+    end
+  end
+
+  describe "books" do
+    test "a book's review is the post the data shows, nil where it shows none", %{scope: scope} do
+      shown = book_fixture(scope, %{title: "Shown"})
+      unpublished = book_fixture(scope, %{title: "Unpublished"})
+
+      {:ok, %{post: review}} =
+        Books.create_review(scope, shown, %{slug: "/shown", content: [paragraph("Yes.")]})
+
+      {:ok, review} = Content.publish(scope, review)
+
+      {:ok, %{post: draft}} =
+        Books.create_review(scope, unpublished, %{slug: "/draft", content: [paragraph("No.")]})
+
+      published = SiteData.load(scope.site)
+
+      assert published.books_by_public_id[shown.public_id].post.id == review.id
+      assert published.books_by_public_id[unpublished.public_id].post == nil
+
+      current = SiteData.load(scope.site, content: :current)
+      assert current.books_by_public_id[unpublished.public_id].post.id == draft.id
     end
   end
 

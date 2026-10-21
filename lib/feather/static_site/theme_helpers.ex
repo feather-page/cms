@@ -15,7 +15,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Content.{HTML, Project}
   alias Feather.Media.{Image, Variants}
   alias Feather.Sites.SocialMediaService
-  alias Feather.StaticSite.{Routes, SiteData}
+  alias Feather.StaticSite.Routes
 
   require EEx
 
@@ -243,20 +243,24 @@ defmodule Feather.StaticSite.ThemeHelpers do
   """
   @spec simple_format(String.t() | nil) :: Phoenix.HTML.safe()
   def simple_format(text) do
-    paragraphs =
-      (text || "")
-      |> String.replace(~r/\r\n?/, "\n")
-      |> String.split(~r/\n\n+/)
-      |> Enum.map(fn paragraph ->
-        html =
-          paragraph
-          |> HTML.sanitize()
-          |> String.replace(~r/([^\n]\n)(?=[^\n])/, "\\1<br />")
-
-        ["<p>", html, "</p>"]
-      end)
-
+    paragraphs = text |> simple_paragraphs() |> Enum.map(&["<p>", &1, "</p>"])
     {:safe, Enum.intersperse(paragraphs, "\n\n")}
+  end
+
+  @doc """
+  The paragraphs of `simple_format/1` as sanitized inline HTML, split at
+  blank lines, with a `<br />` after each single line break between text.
+  """
+  @spec simple_paragraphs(String.t() | nil) :: [String.t()]
+  def simple_paragraphs(text) do
+    (text || "")
+    |> String.replace(~r/\r\n?/, "\n")
+    |> String.split(~r/\n\n+/)
+    |> Enum.map(fn paragraph ->
+      paragraph
+      |> HTML.sanitize()
+      |> String.replace(~r/([^\n]\n)(?=[^\n])/, "\\1<br />")
+    end)
   end
 
   @doc "Returns true if the image is an Unsplash photo whose photographer can be credited."
@@ -347,12 +351,12 @@ defmodule Feather.StaticSite.ThemeHelpers do
   def book(%{book: %Book{} = book}), do: book
   def book(_post), do: nil
 
-  @doc "Returns true if the book's review is a post the exported site shows, titled or not."
-  @spec review_linked?(SiteData.t(), Book.t()) :: boolean()
-  def review_linked?(data, %Book{post: %Content.Post{} = post}),
-    do: SiteData.published?(data, post)
-
-  def review_linked?(_data, _book), do: false
+  @doc """
+  Returns true if the book's review is a post the exported site shows,
+  titled or not: `Feather.StaticSite.SiteData` loads only such a review.
+  """
+  @spec review_linked?(Book.t()) :: boolean()
+  def review_linked?(%Book{post: post}), do: match?(%Content.Post{}, post)
 
   @doc "The read books grouped by the year they were read, newest first: `[{year, books}]`."
   @spec books_by_year([Book.t()]) :: [{integer(), [Book.t()]}]
@@ -416,6 +420,33 @@ defmodule Feather.StaticSite.ThemeHelpers do
         else: []
 
     {:safe, [mark, escape(text)]}
+  end
+
+  @description_length 155
+
+  @doc """
+  The description of a post, page or project for sharing, as its page's
+  meta tags give it: a post's or page's stored description, a project's
+  short description, otherwise the excerpt of its content; on one line
+  and at most 155 characters, nil without text.
+  """
+  @spec description(Content.Post.t() | Content.Page.t() | Project.t()) :: String.t() | nil
+  def description(%Project{short_description: text} = project) do
+    if present?(text),
+      do: shorten(ContentBlocks.strip_tags(text)),
+      else: shorten(ContentBlocks.excerpt(project.content))
+  end
+
+  def description(%{description: text, content: content}) do
+    if present?(text),
+      do: shorten(text),
+      else: shorten(ContentBlocks.excerpt(content))
+  end
+
+  defp shorten(text) do
+    text = text |> String.replace(~r/\s+/u, " ") |> String.trim()
+
+    if text == "", do: nil, else: ContentBlocks.truncate(text, @description_length)
   end
 
   @label_words 7

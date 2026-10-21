@@ -11,7 +11,7 @@
     <% true -> %>
     <% end %>
     <div class="book-info">
-      <%= if review_linked?(@data, book) do %>
+      <%= if review_linked?(book) do %>
       <a href="<%= Routes.post_url(@routes, book.post) %>" class="book-title"><%= book.title %></a>
       <% else %>
       <span class="book-title"><%= book.title %></span>

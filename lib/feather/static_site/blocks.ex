@@ -42,9 +42,10 @@ defmodule Feather.StaticSite.Blocks do
   a book block (`c:Feather.StaticSite.Theme.book_cover_sizes/0`), the
   theme's variant sizes per image role
   (`c:Feather.StaticSite.Theme.image_variants/0`), the site's images
-  and books by public id (books with `cover_image` preloaded), the file
-  names of the rendered diagrams by source and the highlighted HTML of the
-  code blocks by `{code, language}`.
+  and books by public id (books with `cover_image` preloaded and their
+  review as `post` where the site shows it), the file names of the
+  rendered diagrams by source and the highlighted HTML of the code blocks
+  by `{code, language}`.
   """
   @type context :: %__MODULE__{
           routes: Routes.t(),
@@ -150,6 +151,20 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   def render_block(_block, _context), do: []
+
+  @doc """
+  The language a code block is labelled with: its name, nil for plain text
+  and for what is no name (imported content carries code fragments there).
+  """
+  @spec code_language(term()) :: String.t() | nil
+  def code_language(language) when is_binary(language) do
+    language = String.trim(language)
+
+    if language not in ["plaintext", "text"] and language =~ ~r/\A[A-Za-z0-9+#._-]{1,20}\z/,
+      do: language
+  end
+
+  def code_language(_language), do: nil
 
   defp code_block(code, nil), do: ["<pre><code>", code_html(code), "</code></pre>"]
 
@@ -308,16 +323,6 @@ defmodule Feather.StaticSite.Blocks do
   end
 
   defp size(_value), do: nil
-
-  # Imported content carries code fragments as languages; only names make a label.
-  defp code_language(language) when is_binary(language) do
-    language = String.trim(language)
-
-    if language not in ["plaintext", "text"] and language =~ ~r/\A[A-Za-z0-9+#._-]{1,20}\z/,
-      do: language
-  end
-
-  defp code_language(_language), do: nil
 
   defp optional_attribute(_name, nil), do: []
   defp optional_attribute(name, value), do: [" ", name, "=\"", escape(value), "\""]

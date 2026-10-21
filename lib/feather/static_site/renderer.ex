@@ -28,7 +28,6 @@ defmodule Feather.StaticSite.Renderer do
   alias Phoenix.HTML.Safe
 
   @posts_per_page 25
-  @description_length 155
 
   @type document ::
           {:home, pos_integer()} | {:post, Post.t()} | {:page, Page.t()} | {:project, Project.t()}
@@ -79,7 +78,7 @@ defmodule Feather.StaticSite.Renderer do
     sharing(
       routes,
       &Routes.home_url(&1, page_number),
-      summary(homepage),
+      ThemeHelpers.description(homepage),
       homepage.header_image || first_image(data, homepage.content)
     )
   end
@@ -122,7 +121,7 @@ defmodule Feather.StaticSite.Renderer do
     sharing(
       routes,
       &Routes.post_url(&1, post),
-      summary(post),
+      ThemeHelpers.description(post),
       post.header_image || post.thumbnail_image || first_image(data, post.content),
       "article"
     )
@@ -140,7 +139,7 @@ defmodule Feather.StaticSite.Renderer do
       sharing(
         routes,
         &Routes.page_url(&1, page),
-        summary(page),
+        ThemeHelpers.description(page),
         page.header_image || first_image(data, page.content)
       )
     )
@@ -171,21 +170,9 @@ defmodule Feather.StaticSite.Renderer do
     sharing(
       routes,
       &Routes.project_url(&1, project),
-      project_summary(project),
+      ThemeHelpers.description(project),
       project.header_image || project.thumbnail_image || first_image(data, project.content)
     )
-  end
-
-  defp summary(%{description: description} = post_or_page) do
-    if blank?(description),
-      do: ContentBlocks.excerpt(post_or_page.content),
-      else: description
-  end
-
-  defp project_summary(project) do
-    if blank?(project.short_description),
-      do: ContentBlocks.excerpt(project.content),
-      else: ContentBlocks.strip_tags(project.short_description)
   end
 
   @doc """
@@ -323,22 +310,16 @@ defmodule Feather.StaticSite.Renderer do
       else: "#{meta_title} · #{site_title}"
   end
 
-  defp sharing(routes, url, text, image, type \\ "website") do
+  defp sharing(routes, url, description, image, type \\ "website") do
     canonical = Routes.canonical(routes)
 
     %{
       canonical_url: url.(canonical),
-      description: description(text),
+      description: description,
       og_type: type,
       og_image_url:
         if(match?(%Image{}, image), do: Routes.image_url(canonical, image, Variants.sharing()))
     }
-  end
-
-  defp description(text) do
-    text = text |> String.replace(~r/\s+/u, " ") |> String.trim()
-
-    if text == "", do: nil, else: ContentBlocks.truncate(text, @description_length)
   end
 
   defp first_image(data, content),
