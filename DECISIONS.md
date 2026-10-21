@@ -504,3 +504,27 @@ Accepted, 2026-10-20
 - **Context:** Sites rename posts after publishing and carry URLs from earlier blog engines that still get visits. The CMS only uploads files ([0017](#0017-sites-are-delivered-only-to-external-hosts-by-ftps)), so it cannot configure a web server, and the sites' host runs Apache.
 - **Decision:** Redirects are stored per site, permanent or temporary, from an old path to a post, page or project, or to a path the export generates (`/`, `/feed.xml`), and the export writes them as rewrite rules into the `.htaccess`. Old paths share the site's URL space with slugs and targets reference records, so a URL belongs to content or to one redirect and chains or loops cannot arise; publishing a record whose URL changed stores a redirect from the old URL. Rejected: meta refresh pages at the old paths for every host (status 200, HTML only) and deriving automatic redirects from the version history (they could not be edited or deleted).
 - **Consequences:** Hosts other than Apache get no redirects until they get their own mechanism, such as edge rules set over the Bunny API or a Caddy snippet the server imports and reloads after each deploy. A slug whose URL a redirect occupies is refused until the redirect is deleted.
+
+## 0026. Suggestions come from a self-hosted model, made in the CMS, never at export
+
+Accepted, 2026-10-21
+
+- **Context:** Alt texts, descriptions and titles of notes are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs `gemma4-26b`, which reads images, and holds one model in memory at a time.
+- **Decision:** `Feather.Ollama` asks that model over `OLLAMA_URL` with `Req`: an image's alt text after upload or import, in the background; a post's or page's description when it is published or on "Suggest"; a note's slug and meta title at its first publish. Results are stored on the record, can be overwritten, and a generated description is renewed at publish while it is unedited and the content changed. Rejected: Claude Haiku (better and faster, but drafts leave the house) and generating at export (exports would stop being reproducible and wait on the model).
+- **Consequences:** Without `OLLAMA_URL` or with the model down, fields stay empty and the export falls back to excerpts as before. Publishing, also over the API, waits up to 90 seconds for the model, and the CMS queues behind other clients of the same instance.
+
+## 0027. Deploys notify IndexNow and archive.org
+
+Accepted, 2026-10-21
+
+- **Context:** Search engines and the Wayback Machine find new posts only when they next crawl. Google has no notification API for ordinary pages (the sitemap ping is gone, the Indexing API is limited to job postings and livestreams), but Bing, whose index also feeds ChatGPT and Copilot search, and the other IndexNow engines take one.
+- **Decision:** After a successful deploy, in the background, the CMS sends the home page and every post, page and project published or changed since the previous deploy to `api.indexnow.org`, for every site, with a key file the export writes per site; and to archive.org's Save Page Now 2, one URL after another, for sites whose members entered archive.org keys in the site settings (encrypted like the deployment target's credentials). Failures are only logged.
+- **Consequences:** Every site's public URLs are shared with all IndexNow engines, Yandex included, and archive.org keeps copies until their owner asks for removal. "Changed" relies on the published versions' times, so the sitemap's `lastmod` must come from them too.
+
+## 0028. Favicons and share cards are rendered with libvips at export
+
+Accepted, 2026-10-21
+
+- **Context:** Search results show only favicons served as files, while sites declare their emoji as a `data:` SVG. Pages without an image have no `og:image`, so links to them, notes above all, are shared without a preview.
+- **Decision:** The export renders the site's emoji into a PNG favicon and, for pages without an image, a share card with the title and emoji in the theme's look, both with libvips (already used for image variants) and Noto Color Emoji installed in the Docker image. Pages with their own emoji keep it as an inline icon. Rejected: an uploaded favicon (one more thing to maintain per site) and the portrait as the only fallback (most sites have none).
+- **Consequences:** The Docker image grows by the emoji font, and emoji rendering depends on the libvips and Pango versions it ships. Cards are generated images that each theme has to design and that are cached like other variants.
