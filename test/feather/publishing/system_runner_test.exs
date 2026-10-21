@@ -52,6 +52,6 @@ defmodule Feather.Publishing.Rclone.SystemRunnerTest do
   test "obscured passwords reveal to the original with the real rclone" do
     assert {:ok, obscured} = Rclone.obscure(SystemRunner, "pa ss:wörd")
     assert obscured != "pa ss:wörd"
-    assert {:ok, "pa ss:wörd\n"} = SystemRunner.run(["reveal", obscured])
+    assert {:ok, "pa ss:wörd\n"} = SystemRunner.run(["reveal", "--", obscured])
   end
 end
