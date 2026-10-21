@@ -90,11 +90,16 @@ defmodule Feather.StaticSite.Renderer do
     do: render(:post, post_assigns(data, routes, post))
 
   defp post_assigns(data, routes, post) do
-    label = in_site_language(data, fn -> ThemeHelpers.post_label(post) end)
     {newer, older} = SiteData.neighbours(data, post)
 
     data
-    |> base_assigns(routes, post_heading(data, post), post.emoji, false, label)
+    |> base_assigns(
+      routes,
+      post_heading(data, post),
+      post.emoji,
+      false,
+      post_meta_title(data, post)
+    )
     |> Map.merge(post_sharing(data, routes, post))
     |> Map.merge(%{
       post: post,
@@ -106,6 +111,12 @@ defmodule Feather.StaticSite.Renderer do
   end
 
   defp post_heading(data, post), do: if(blank?(post.title), do: data.site.title, else: post.title)
+
+  defp post_meta_title(data, post) do
+    if blank?(post.title) and not blank?(post.meta_title),
+      do: post.meta_title,
+      else: in_site_language(data, fn -> ThemeHelpers.post_label(post) end)
+  end
 
   defp post_sharing(data, routes, post) do
     sharing(

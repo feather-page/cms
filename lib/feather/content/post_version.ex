@@ -13,6 +13,7 @@ defmodule Feather.Content.PostVersion do
     :slug,
     :description,
     :description_generated,
+    :meta_title,
     :emoji,
     :tags,
     :content,
@@ -32,6 +33,7 @@ defmodule Feather.Content.PostVersion do
     field :publish_at, :utc_datetime_usec
     field :description, :string
     field :description_generated, :boolean, default: false
+    field :meta_title, :string
 
     belongs_to :post, Feather.Content.Post
     belongs_to :published_by, Feather.Accounts.User

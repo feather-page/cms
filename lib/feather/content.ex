@@ -43,7 +43,7 @@ defmodule Feather.Content do
   alias Feather.Accounts.Scope
   alias Feather.Books
   alias Feather.Content.{Blocks, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
-  alias Feather.Content.{BlocksType, Description, ProseMirror, Slug, Tags}
+  alias Feather.Content.{BlocksType, Description, ProseMirror, ShortPost, Slug, Tags}
   alias Feather.Media
   alias Feather.Media.Cleanup
   alias Feather.Pagination
@@ -633,57 +633,101 @@ defmodule Feather.Content do
   published at redirects the old URL to it (`Feather.Redirects.follow_publish/3`).
 
   Before a post or page is published, the model writes its description
-  where `Feather.Content.Description.needed?/2` says so, outside the
-  transaction, since that can take up to 90 seconds. Without an answer
-  it is published as it is.
+  where `Feather.Content.Description.needed?/2` says so, and a short
+  post's meta title and slug where `Feather.Content.ShortPost.needed?/2`
+  does, outside the transaction, since that can take up to 90 seconds.
+  Without an answer it is published as it is.
   """
   @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()
   def publish(%Scope{site: %Site{id: site_id}} = scope, %schema{site_id: site_id} = record)
       when is_map_key(@versions, schema) do
-    description =
+    suggestions =
       case stored(record) do
-        {:ok, current} -> publish_description(scope, current)
+        {:ok, current} -> publish_suggestions(scope, current)
         {:error, :stale} -> %{}
       end
 
-    Repo.transact(fn -> publish_stored(scope, record, description) end)
+    Repo.transact(fn -> publish_stored(scope, record, suggestions) end)
   end
 
-  defp publish_stored(scope, record, description) do
+  defp publish_stored(scope, record, suggestions) do
     with {:ok, current} <- stored(record) do
       current = Repo.preload(current, :published_version)
 
       cond do
         publication_status(current) == :published -> {:ok, current}
         published_slug_taken?(current) -> {:error, :slug_taken}
-        true -> insert_version_following_url(scope, put_description(current, description))
+        true -> insert_version_following_url(scope, put_suggestions(current, suggestions))
       end
     end
   end
 
-  # The changes a publish makes to the description of the record as it would be published.
-  defp publish_description(scope, %schema{} = record) when schema in [Post, Page] do
-    if publication_status(record) != :published and
-         Description.needed?(record, newest_version(scope, record)) do
-      case Description.generate(record, scope.site.language_code) do
-        {:ok, description} -> %{description: description, description_generated: true}
-        {:error, _reason} -> %{}
-      end
-    else
+  # The changes the model suggests for the record as it would be published, asked concurrently.
+  defp publish_suggestions(scope, %schema{} = record) when schema in [Post, Page] do
+    if publication_status(record) == :published do
       %{}
+    else
+      scope
+      |> suggestion_requests(record, newest_version(scope, record))
+      |> Enum.map(&Task.async/1)
+      |> Task.await_many(:infinity)
+      |> Enum.reduce(%{}, &Map.merge/2)
     end
   end
 
-  defp publish_description(_scope, _project), do: %{}
+  defp publish_suggestions(_scope, _project), do: %{}
 
-  defp put_description(record, description) when description == %{}, do: record
+  defp suggestion_requests(scope, record, newest_version) do
+    language_code = scope.site.language_code
+
+    Enum.filter(
+      [
+        Description.needed?(record, newest_version) &&
+          fn -> description_suggestion(record, language_code) end,
+        ShortPost.needed?(record, newest_version) &&
+          fn -> short_post_suggestion(record, language_code) end
+      ],
+      & &1
+    )
+  end
+
+  defp description_suggestion(record, language_code) do
+    case Description.generate(record, language_code) do
+      {:ok, description} -> %{description: description, description_generated: true}
+      {:error, _reason} -> %{}
+    end
+  end
+
+  defp short_post_suggestion(post, language_code) do
+    case ShortPost.generate(post, language_code) do
+      {:ok, %{slug: ""} = suggestion} -> Map.delete(suggestion, :slug)
+      {:ok, suggestion} -> suggestion
+      {:error, _reason} -> %{}
+    end
+  end
+
+  defp put_suggestions(record, suggestions) when suggestions == %{}, do: record
 
   # update_all keeps the record's updated_at and lock_version, like publishing does.
-  defp put_description(%schema{id: id} = record, description) do
-    Repo.update_all(from(r in schema, where: r.id == ^id), set: Map.to_list(description))
-    struct(record, description)
+  defp put_suggestions(%schema{id: id} = record, suggestions) do
+    suggestions = put_free_slug(record, suggestions)
+    Repo.update_all(from(r in schema, where: r.id == ^id), set: Map.to_list(suggestions))
+    struct(record, suggestions)
   end
+
+  # The suggested slug base becomes a slug no record, redirect or published version holds.
+  defp put_free_slug(%schema{id: id, site_id: site_id}, %{slug: base} = suggestions) do
+    taken? =
+      &(Slug.taken?(schema, site_id, &1, id) or published_with_slug?(schema, site_id, &1, id))
+
+    case Slug.suggest(base, taken?) do
+      "" -> Map.delete(suggestions, :slug)
+      slug -> %{suggestions | slug: slug}
+    end
+  end
+
+  defp put_free_slug(_record, suggestions), do: suggestions
 
   @doc """
   Asks the model for a description of a post or page as it is (the
@@ -1100,7 +1144,8 @@ defmodule Feather.Content do
       changeset
       |> Media.validate_site_images([:header_image_id, :thumbnail_image_id])
       |> lock()
-      |> put_publish_description(scope, opts)
+
+    suggestions = save_publish_suggestions(changeset, scope, opts)
 
     Repo.transact(fn ->
       with {:ok, record} <- Repo.insert_or_update(changeset, @lock_opts) do
@@ -1111,27 +1156,30 @@ defmodule Feather.Content do
           Blocks.image_ids(record.content)
         )
 
-        apply_draft_option(scope, record, changeset, opts)
+        apply_draft_option(scope, record, changeset, opts, suggestions)
       end
     end)
   end
 
   # Asked before the save's transaction, like publish/2 does.
-  defp put_publish_description(%Ecto.Changeset{valid?: true} = changeset, scope, opts) do
+  defp save_publish_suggestions(%Ecto.Changeset{valid?: true} = changeset, scope, opts) do
     if opts[:draft] == false,
-      do: Ecto.Changeset.change(changeset, publish_description(scope, apply_changes(changeset))),
-      else: changeset
+      do: publish_suggestions(scope, Ecto.Changeset.apply_changes(changeset)),
+      else: %{}
   end
 
-  defp put_publish_description(changeset, _scope, _opts), do: changeset
+  defp save_publish_suggestions(_changeset, _scope, _opts), do: %{}
 
-  defp apply_changes(changeset), do: Ecto.Changeset.apply_changes(changeset)
-
-  defp apply_draft_option(scope, record, changeset, opts) do
+  defp apply_draft_option(scope, record, changeset, opts, suggestions) do
     case Keyword.fetch(opts, :draft) do
-      {:ok, false} -> scope |> publish_stored(record, %{}) |> slug_taken_error(changeset)
-      {:ok, true} -> unpublish(scope, record)
-      :error -> {:ok, record}
+      {:ok, false} ->
+        scope |> publish_stored(record, suggestions) |> slug_taken_error(changeset)
+
+      {:ok, true} ->
+        unpublish(scope, record)
+
+      :error ->
+        {:ok, record}
     end
   end
 

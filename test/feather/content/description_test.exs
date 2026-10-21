@@ -15,8 +15,10 @@ defmodule Feather.Content.DescriptionTest do
   end
 
   defp stub_description(description) do
+    test = self()
+
     Req.Test.stub(Feather.Ollama, fn conn ->
-      send(self(), :model_asked)
+      send(test, :model_asked)
       content = Jason.encode!(%{"description" => description})
       Req.Test.json(conn, %{"message" => %{"content" => content}})
     end)

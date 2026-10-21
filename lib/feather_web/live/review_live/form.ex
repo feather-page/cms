@@ -1,8 +1,9 @@
 defmodule FeatherWeb.ReviewLive.Form do
   @moduledoc """
   Writes, edits and deletes the review of a book: a post linked from the
-  book plus the book's star rating. Like posts, short reviews hide title
-  and slug; once they show, the title defaults to "Review: <book title>".
+  book plus the book's star rating. Like posts, short reviews hide the
+  title and show the meta title; once the title shows, it defaults to
+  "Review: <book title>".
   Every change is saved into the unpublished changes at once; the first
   input creates the review as a draft (see "Autosave" in
   `FeatherWeb.ContentForm`). Publish publishes it, Discard puts the
@@ -72,7 +73,7 @@ defmodule FeatherWeb.ReviewLive.Form do
           >
             <.lock_version_field record={@post} />
             <.header_image_fields form={@form} />
-            <.title_field field={@form[:title]} hidden={!@show_title_and_slug?} />
+            <.title_field field={@form[:title]} hidden={!@show_title?} />
             <.editor
               id="review-content-editor"
               site={@current_scope.site}
@@ -92,7 +93,12 @@ defmodule FeatherWeb.ReviewLive.Form do
             <legend class="fieldset-legend">Rating</legend>
             <.star_rating value={@book.rating} />
           </fieldset>
-          <.slug_field field={@form[:slug]} form="review-form" hidden={!@show_title_and_slug?} />
+          <.slug_field field={@form[:slug]} form="review-form" />
+          <.meta_title_field
+            :if={ContentForm.untitled?(@form)}
+            field={@form[:meta_title]}
+            form="review-form"
+          />
           <.description_field
             field={@form[:description]}
             form="review-form"
@@ -235,7 +241,7 @@ defmodule FeatherWeb.ReviewLive.Form do
     form = build_form(scope, post, params, action)
 
     {params, form} =
-      if ContentForm.show_title_and_slug?(form, length) and
+      if ContentForm.show_title?(form, length) and
            not ContentForm.present?(form[:title].value) do
         params = Map.put(params, "title", Book.review_title_suggestion(book))
         {params, build_form(scope, post, params, action)}
@@ -247,7 +253,7 @@ defmodule FeatherWeb.ReviewLive.Form do
     |> assign(:params, params)
     |> assign(:form, form)
     |> assign(:content_length, length)
-    |> assign(:show_title_and_slug?, ContentForm.show_title_and_slug?(form, length))
+    |> assign(:show_title?, ContentForm.show_title?(form, length))
   end
 
   @impl ContentForm

@@ -1,8 +1,8 @@
 defmodule FeatherWeb.PostLive.Form do
   @moduledoc """
-  Creates and edits posts: header image picker, title and slug (hidden for
-  short posts, slug suggested from the title), description (with
-  Suggest), tags, block content and publish date. Every change is saved into the unpublished changes at
+  Creates and edits posts: header image picker, title (hidden for short
+  posts), slug (suggested from the title), meta title (short posts only),
+  description (with Suggest), tags, block content and publish date. Every change is saved into the unpublished changes at
   once, the first input creates the post as a draft (see "Autosave" in
   `FeatherWeb.ContentForm`). Publish publishes them; Discard puts the
   published version back; Restore puts an earlier version into the
@@ -67,7 +67,7 @@ defmodule FeatherWeb.PostLive.Form do
           >
             <.lock_version_field record={@post} />
             <.header_image_fields form={@form} />
-            <.title_field field={@form[:title]} hidden={!@show_title_and_slug?} />
+            <.title_field field={@form[:title]} hidden={!@show_title?} />
             <.editor
               id="post-content-editor"
               site={@current_scope.site}
@@ -83,7 +83,12 @@ defmodule FeatherWeb.PostLive.Form do
           </.form>
         </:main>
         <:details>
-          <.slug_field field={@form[:slug]} form="post-form" hidden={!@show_title_and_slug?} />
+          <.slug_field field={@form[:slug]} form="post-form" />
+          <.meta_title_field
+            :if={ContentForm.untitled?(@form)}
+            field={@form[:meta_title]}
+            form="post-form"
+          />
           <.description_field
             field={@form[:description]}
             form="post-form"
@@ -223,6 +228,6 @@ defmodule FeatherWeb.PostLive.Form do
     |> assign(:params, params)
     |> assign(:form, form)
     |> assign(:content_length, length)
-    |> assign(:show_title_and_slug?, ContentForm.show_title_and_slug?(form, length))
+    |> assign(:show_title?, ContentForm.show_title?(form, length))
   end
 end

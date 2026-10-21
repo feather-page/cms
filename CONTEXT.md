@@ -135,6 +135,13 @@ time. A description a member typed stays. Without one the export takes the start
 short description instead; the Bio is about the site owner, not a page.
 _Avoid_: Summary, Excerpt, Teaser, Bio
 
+**Short Post** · _de:_ Kurzbeitrag:
+A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title,
+in link previews and in the feeds. At its first publish, when it has no slug, the self-hosted model writes the meta
+title and a slug in the site's language; afterwards the slug stays. While its text is shorter than 300 characters the
+form hides the title field. A review without a title is a short post too.
+_Avoid_: Note, Untitled Post, Micropost
+
 **Redirect** · _de:_ Weiterleitung:
 An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,
 `/feed.xml`), permanently (301) or temporarily (302). Old paths share the site's URL space with the slugs, so a URL

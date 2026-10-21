@@ -34,7 +34,8 @@ defmodule FeatherWeb.ReviewLiveTest do
   } do
     {:ok, lv, _html} = live(conn, review_path(site, book, "new"))
     assert has_element?(lv, "#title-field.hidden")
-    assert has_element?(lv, "#slug-field.hidden")
+    refute has_element?(lv, "#slug-field.hidden")
+    assert has_element?(lv, "#meta-title-field")
 
     sync_new(lv, "Great book, highly recommended!")
 
@@ -73,7 +74,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     sync_new(lv, String.duplicate("A", 350))
 
     refute has_element?(lv, "#title-field.hidden")
-    refute has_element?(lv, "#slug-field.hidden")
+    refute has_element?(lv, "#meta-title-field")
     assert has_element?(lv, "#post_title", "Review: Clean Code")
 
     lv

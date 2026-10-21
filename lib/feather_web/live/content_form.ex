@@ -59,10 +59,11 @@ defmodule FeatherWeb.ContentForm do
 
   ## Short posts
 
-  Like the Rails `post_form` controller: a post (or review) whose content is
-  shorter than #{300} characters and that has neither title nor slug hides
-  the title and slug fields. The length is the saved content's
-  (`content_length/1`), so it follows the editor's syncs.
+  A post (or review) without a title is a short post
+  (`Feather.Content.ShortPost`): its details show the meta title, and while
+  its content is shorter than #{300} characters the title field is hidden.
+  The length is the saved content's (`content_length/1`), so it follows
+  the editor's syncs. The slug field is always shown.
   """
 
   alias Feather.Content
@@ -101,7 +102,7 @@ defmodule FeatherWeb.ContentForm do
   @doc ~s(What the form edits, for flash messages, e.g. "Post".)
   @callback noun() :: String.t()
 
-  @doc "Content shorter than this many characters makes a short post."
+  @doc "While a short post's content is shorter than this many characters, its title field is hidden."
   @spec short_post_length() :: pos_integer()
   def short_post_length, do: @short_post_length
 
@@ -162,7 +163,7 @@ defmodule FeatherWeb.ContentForm do
   (with the version's `number`), `unpublish` and `suggest_description`.
   Publishing and suggesting a description run asynchronously, since the
   model may take up to 90 seconds; the forms hand their results to
-  `handle_async/3`.
+  `handle_async/3`. A publish finishes even when the form is left.
   """
   @spec handle_event(String.t(), map(), Socket.t()) ::
           {:noreply, Socket.t()} | {:reply, map(), Socket.t()}
@@ -443,8 +444,15 @@ defmodule FeatherWeb.ContentForm do
         socket
         |> Phoenix.Component.assign(:publishing, record)
         |> LiveView.put_flash(:info, "Publishing…")
-        |> LiveView.start_async(:publish, fn -> Content.publish(scope, record) end)
+        |> LiveView.start_async(:publish, fn -> publish_unlinked(scope, record) end)
     end
+  end
+
+  # Finishes even when the form is left while it waits for the model.
+  defp publish_unlinked(scope, record) do
+    Feather.TaskSupervisor
+    |> Task.Supervisor.async_nolink(fn -> Content.publish(scope, record) end)
+    |> Task.await(:infinity)
   end
 
   @doc """
@@ -468,7 +476,8 @@ defmodule FeatherWeb.ContentForm do
   defp published(socket, _publishing, {:ok, {:ok, published}}) do
     socket
     |> put_record(published, versions: true)
-    |> assign_form_from_record(:description)
+    |> Phoenix.Component.assign(:slug_touched?, present?(published.slug))
+    |> assign_form_from_record(~w(description meta_title slug))
     |> FeatherWeb.SiteAuth.refresh_deploy_status()
     |> LiveView.put_flash(:info, "#{socket.view.noun()} was published.")
   end
@@ -523,7 +532,7 @@ defmodule FeatherWeb.ContentForm do
         socket
         |> put_record(saved)
         |> push_lock_version(record, saved)
-        |> assign_form_from_record(:description)
+        |> assign_form_from_record(~w(description))
 
       {:error, :stale} ->
         Phoenix.Component.assign(socket, :changed_elsewhere?, true)
@@ -538,10 +547,10 @@ defmodule FeatherWeb.ContentForm do
     )
   end
 
-  # The form shows the record's value of the field in place of what was typed before.
-  defp assign_form_from_record(socket, field) do
+  # The form shows the record's values of the fields in place of what was typed before.
+  defp assign_form_from_record(socket, fields) do
     %{params: params, form: form} = socket.assigns
-    socket.view.assign_form(socket, Map.delete(params, Atom.to_string(field)), form.source.action)
+    socket.view.assign_form(socket, Map.drop(params, fields), form.source.action)
   end
 
   defp slug_rivals(%Project{}), do: "project"
@@ -572,16 +581,13 @@ defmodule FeatherWeb.ContentForm do
   @spec content_length(map()) :: non_neg_integer()
   def content_length(%{content: content}), do: Blocks.content_length(content)
 
-  @doc "Whether the form has neither title nor slug, so the short post rule applies."
+  @doc "Whether the form has no title, so it edits a short post."
   @spec untitled?(Phoenix.HTML.Form.t()) :: boolean()
-  def untitled?(form), do: not present?(form[:title].value) and not present?(form[:slug].value)
+  def untitled?(form), do: not present?(form[:title].value)
 
-  @doc """
-  Whether the title and slug fields are shown: when either has a value or
-  the content is not short.
-  """
-  @spec show_title_and_slug?(Phoenix.HTML.Form.t(), non_neg_integer()) :: boolean()
-  def show_title_and_slug?(form, content_length) do
+  @doc "Whether the title field is shown: when it has a value or the content is not short."
+  @spec show_title?(Phoenix.HTML.Form.t(), non_neg_integer()) :: boolean()
+  def show_title?(form, content_length) do
     not untitled?(form) or content_length >= @short_post_length
   end
 

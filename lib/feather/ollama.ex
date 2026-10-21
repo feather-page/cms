@@ -17,6 +17,7 @@ defmodule Feather.Ollama do
   @timeout 90_000
   @max_alt_length 250
   @max_description_length 300
+  @max_title_length 100
 
   @alt_format %{
     "type" => "object",
@@ -28,6 +29,12 @@ defmodule Feather.Ollama do
     "type" => "object",
     "properties" => %{"description" => %{"type" => "string"}},
     "required" => ["description"]
+  }
+
+  @short_post_format %{
+    "type" => "object",
+    "properties" => %{"title" => %{"type" => "string"}, "slug" => %{"type" => "string"}},
+    "required" => ["title", "slug"]
   }
 
   @doc "Returns true if an Ollama URL is configured."
@@ -81,6 +88,35 @@ defmodule Feather.Ollama do
            chat_json(prompt, @description_format),
          description when description != "" <- trimmed(description, @max_description_length) do
       {:ok, description}
+    else
+      {:error, reason} -> {:error, reason}
+      _empty -> {:error, :no_answer}
+    end
+  end
+
+  @doc """
+  Suggests the meta title and the slug of a short post, given its plain
+  text, in the language with the given code. The slug is returned as the
+  model wrote it.
+  """
+  @spec short_post_title(String.t(), String.t()) ::
+          {:ok, %{title: String.t(), slug: String.t()}} | {:error, term()}
+  def short_post_title(text, language_code) when is_binary(text) do
+    prompt = """
+    This short post on a website has no title. Write a title for it in
+    #{Languages.name(language_code)}, for search results and feed readers: at most
+    60 characters, saying what the post is about, without quotation marks.
+    Also write the slug of its URL: two to five words of the title in lowercase
+    ASCII letters and digits, separated by dashes, e.g. "e-ink-solar-dashboard".
+    Answer with JSON: {"title": "...", "slug": "..."}
+
+    #{text}
+    """
+
+    with {:ok, %{"title" => title, "slug" => slug}} when is_binary(title) and is_binary(slug) <-
+           chat_json(prompt, @short_post_format),
+         title when title != "" <- trimmed(title, @max_title_length) do
+      {:ok, %{title: title, slug: String.trim(slug)}}
     else
       {:error, reason} -> {:error, reason}
       _empty -> {:error, :no_answer}

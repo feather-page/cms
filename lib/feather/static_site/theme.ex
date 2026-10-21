@@ -31,8 +31,8 @@ defmodule Feather.StaticSite.Theme do
       portrait preloaded), `routes`, `ctx` (for `Feather.StaticSite.Blocks`),
       `social_links` (only those with a safe URL)
     * `page_title` (the visible heading), `meta_title` (the name in
-      `<title>` and `og:title`; an untitled post's label where `page_title`
-      is the site title), `document_title`, `page_emoji`, `is_home`,
+      `<title>` and `og:title`; a short post's meta title, else its label,
+      where `page_title` is the site title), `document_title`, `page_emoji`, `is_home`,
       `noindex`, the meta tags (`description`, `canonical_url`, `og_type`,
       `og_image_url`, a share card's for a page without an image;
       `favicon_url`, nil where the page's own emoji is its icon;
