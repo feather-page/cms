@@ -49,7 +49,7 @@ defmodule Feather.Content.Description do
   """
   @spec generate(map(), String.t()) :: {:ok, String.t()} | {:error, term()}
   def generate(%{title: title, content: content}, language_code) do
-    case Blocks.excerpt(content, @model_text_length) do
+    case Blocks.model_text(content, @model_text_length) do
       "" -> {:error, :no_text}
       text -> Ollama.description(title, text, language_code)
     end

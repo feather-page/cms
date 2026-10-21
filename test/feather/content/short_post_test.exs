@@ -207,5 +207,20 @@ defmodule Feather.Content.ShortPostTest do
     test "fails for a post without text" do
       assert {:error, :no_text} = ShortPost.generate(%Content.Post{content: []}, "en")
     end
+
+    test "a post of only a book asks about the book" do
+      Req.Test.stub(Feather.Ollama, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        %{"messages" => [%{"content" => prompt}]} = Jason.decode!(body)
+        assert prompt =~ "Book: The Passage by Justin Cronin"
+
+        answer = %{"title" => "The Passage", "slug" => "the-passage"}
+        Req.Test.json(conn, %{"message" => %{"content" => Jason.encode!(answer)}})
+      end)
+
+      book = %{"type" => "book", "title" => "The Passage", "author" => "Justin Cronin"}
+      post = %Content.Post{content: [book]}
+      assert {:ok, %{meta_title: "The Passage"}} = ShortPost.generate(post, "en")
+    end
   end
 end

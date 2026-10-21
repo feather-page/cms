@@ -250,5 +250,28 @@ defmodule Feather.Content.BlocksTest do
       blocks = [%{"type" => "paragraph", "text" => "<b>Bold</b> <i>italic</i> words"}]
       assert Blocks.excerpt(blocks) == "Bold italic words"
     end
+
+    test "model_text/2 keeps quote attributions, list items and books" do
+      blocks = [
+        %{"type" => "paragraph", "text" => "Finished <b>reading</b>:"},
+        %{"type" => "book", "title" => "The Passage", "author" => "Justin Cronin"},
+        %{"type" => "quote", "text" => "I have a dream.", "caption" => "Martin Luther King"},
+        %{
+          "type" => "list",
+          "style" => "ul",
+          "items" => [%{"content" => "One", "items" => [%{"content" => "Two", "items" => []}]}]
+        },
+        %{"type" => "code", "code" => "IO.puts(1)"}
+      ]
+
+      assert Blocks.model_text(blocks, 1000) ==
+               "Finished reading:\n\nBook: The Passage by Justin Cronin\n\n" <>
+                 "Quote: \"I have a dream.\" (Martin Luther King)\n\n- One\n- Two"
+    end
+
+    test "model_text/2 ends at a whole word" do
+      blocks = [%{"type" => "paragraph", "text" => "Lighthouses guide ships."}]
+      assert Blocks.model_text(blocks, 15) == "Lighthouses…"
+    end
   end
 end

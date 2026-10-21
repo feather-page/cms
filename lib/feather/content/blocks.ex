@@ -207,6 +207,49 @@ defmodule Feather.Content.Blocks do
   end
 
   @doc """
+  The plain text a language model reads to describe the content: text
+  blocks one per paragraph, quotes with their attribution, list items and
+  books by title and author, truncated to `length` characters.
+  """
+  @spec model_text([block()] | nil, pos_integer()) :: String.t()
+  def model_text(blocks, length) do
+    blocks
+    |> normalize()
+    |> Enum.map(&model_text_of_block/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join("\n\n")
+    |> truncate(length)
+  end
+
+  defp model_text_of_block(%{"type" => type, "text" => text}) when type in ~w(paragraph header),
+    do: plain(text)
+
+  defp model_text_of_block(%{"type" => "quote", "text" => text, "caption" => caption}) do
+    case plain(caption) do
+      "" -> ~s(Quote: "#{plain(text)}")
+      source -> ~s(Quote: "#{plain(text)}" \(#{source}\))
+    end
+  end
+
+  defp model_text_of_block(%{"type" => "list", "items" => items}),
+    do: items |> list_lines() |> Enum.join("\n")
+
+  defp model_text_of_block(%{"type" => "book", "title" => title} = book) do
+    case plain(book["author"]) do
+      "" -> "Book: #{title}"
+      author -> "Book: #{title} by #{author}"
+    end
+  end
+
+  defp model_text_of_block(_block), do: ""
+
+  defp list_lines(items),
+    do: Enum.flat_map(items, &["- #{plain(&1["content"])}" | list_lines(&1["items"])])
+
+  defp plain(nil), do: ""
+  defp plain(html), do: html |> strip_tags() |> String.trim()
+
+  @doc """
   The length of the content as the admin counts it to tell short posts
   (no title needed) from long ones, ported from Rails'
   `EditorJsContentLengthCalculator`: the raw text (HTML included) of

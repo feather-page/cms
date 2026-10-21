@@ -97,6 +97,27 @@ defmodule Feather.Content.DescriptionTest do
     assert {:ok, %{description: "Leuchttürme"}} = Content.publish(scope, draft_post(scope))
   end
 
+  test "the model reads the books and quote sources of the content", %{scope: scope} do
+    Req.Test.stub(Feather.Ollama, fn conn ->
+      {:ok, body, conn} = Plug.Conn.read_body(conn)
+      %{"messages" => [%{"content" => prompt}]} = Jason.decode!(body)
+
+      assert prompt =~ "Book: The Passage by Justin Cronin"
+      assert prompt =~ ~s(Quote: "Light the way." \(Fresnel\))
+
+      Req.Test.json(conn, %{"message" => %{"content" => ~s({"description": "Gelesen"})}})
+    end)
+
+    content = [
+      %{"type" => "paragraph", "text" => "Finished reading:"},
+      %{"type" => "book", "title" => "The Passage", "author" => "Justin Cronin"},
+      %{"type" => "quote", "text" => "Light the way.", "caption" => "Fresnel"}
+    ]
+
+    assert {:ok, %{description: "Gelesen"}} =
+             Content.publish(scope, draft_post(scope, %{content: content}))
+  end
+
   test "a generated description follows the content", %{scope: scope} do
     stub_description("First summary.")
     {:ok, post} = Content.publish(scope, draft_post(scope))
