@@ -9,6 +9,10 @@ defmodule FeatherWeb.HeaderImagePicker do
   `Feather.Media.create_image_from_url/4`, attribution stored in
   `unsplash_data`) or from an upload (`Feather.Media.create_image_from_upload/5`).
 
+  Below the slots, the cover's alt text can be edited; it belongs to the
+  image (`Feather.Media.update_image_alt/3`) and is saved when the field
+  loses focus.
+
   It is rendered outside the record's form (it has forms of its own) and
   tells the parent LiveView about every change by sending
   `{FeatherWeb.HeaderImagePicker, change}` to it, where `change` is
@@ -19,6 +23,7 @@ defmodule FeatherWeb.HeaderImagePicker do
   use FeatherWeb, :live_component
 
   alias Feather.{Media, Unsplash}
+  alias Feather.Media.Image
   alias Feather.StaticSite.ImageVariants
   alias FeatherWeb.EmojiList
 
@@ -51,7 +56,25 @@ defmodule FeatherWeb.HeaderImagePicker do
      socket
      |> assign(assigns)
      |> assign_new(:emoji, fn -> nil end)
-     |> assign_new(:roles, fn -> %{cover: :header, thumbnail: :thumbnail} end)}
+     |> assign_new(:roles, fn -> %{cover: :header, thumbnail: :thumbnail} end)
+     |> assign_cover_alt()}
+  end
+
+  # Loaded afresh for a new cover: its alt text may have been suggested meanwhile.
+  defp assign_cover_alt(%{assigns: %{header_image: %Image{id: id}, cover_alt_id: id}} = socket),
+    do: socket
+
+  defp assign_cover_alt(%{assigns: %{header_image: %Image{} = image}} = socket) do
+    image = Media.get_image(socket.assigns.current_scope, image.public_id) || image
+    assign(socket, cover_alt_id: image.id, cover_alt_form: cover_alt_form(image, %{}))
+  end
+
+  defp assign_cover_alt(socket), do: assign(socket, cover_alt_id: nil, cover_alt_form: nil)
+
+  defp cover_alt_form(image, params) do
+    image
+    |> Image.alt_changeset(params)
+    |> to_form(as: :cover_alt)
   end
 
   # Assigns: id, current_scope (with site), header_image, thumbnail_image
@@ -119,6 +142,26 @@ defmodule FeatherWeb.HeaderImagePicker do
           myself={@myself}
         />
       </div>
+
+      <.form
+        :if={@cover_alt_form}
+        for={@cover_alt_form}
+        id={"#{@id}-cover-alt-form"}
+        class="mt-3"
+        phx-change="save_cover_alt"
+        phx-submit="save_cover_alt"
+        phx-target={@myself}
+      >
+        <.input
+          field={@cover_alt_form[:alt]}
+          id={"#{@id}-cover-alt"}
+          type="text"
+          label="Cover alt text"
+          placeholder="What the cover image shows"
+          maxlength="1000"
+          phx-debounce="blur"
+        />
+      </.form>
 
       <div
         :if={@emoji_open?}
@@ -351,6 +394,26 @@ defmodule FeatherWeb.HeaderImagePicker do
   end
 
   def handle_event("validate_upload", _params, socket), do: {:noreply, socket}
+
+  def handle_event(
+        "save_cover_alt",
+        %{"cover_alt" => params},
+        %{
+          assigns: %{header_image: %Image{public_id: public_id}}
+        } = socket
+      ) do
+    scope = socket.assigns.current_scope
+    image = Media.get_image!(scope, public_id)
+
+    case Media.update_image_alt(scope, image, Map.take(params, ["alt"])) do
+      {:ok, image} ->
+        {:noreply, assign(socket, :cover_alt_form, cover_alt_form(image, %{}))}
+
+      {:error, changeset} ->
+        {:noreply,
+         assign(socket, :cover_alt_form, to_form(changeset, as: :cover_alt, action: :validate))}
+    end
+  end
 
   def handle_event("remove", %{"target" => target}, socket)
       when target in ~w(cover thumbnail emoji) do

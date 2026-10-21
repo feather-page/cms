@@ -250,6 +250,49 @@ defmodule Feather.MediaTest do
     end
   end
 
+  describe "update_image_alt/3" do
+    test "stores the trimmed alt text and moves the site's updated_at", %{scope: scope} do
+      image = image_fixture(scope)
+      Repo.update_all(Feather.Sites.Site, set: [updated_at: ~U[2020-01-01 00:00:00.000000Z]])
+
+      assert {:ok, image} = Media.update_image_alt(scope, image, %{"alt" => "  A grey square "})
+      assert Repo.reload!(image).alt == "A grey square"
+
+      assert DateTime.after?(
+               Repo.reload!(scope.site).updated_at,
+               ~U[2020-01-01 00:00:00.000000Z]
+             )
+
+      assert {:ok, image} = Media.update_image_alt(scope, image, %{"alt" => ""})
+      assert image.alt == ""
+    end
+
+    test "leaves the site untouched when the alt text stays", %{scope: scope} do
+      image = image_fixture(scope)
+      Repo.update_all(Feather.Sites.Site, set: [updated_at: ~U[2020-01-01 00:00:00.000000Z]])
+
+      assert {:ok, _image} = Media.update_image_alt(scope, image, %{"alt" => " "})
+      assert Repo.reload!(scope.site).updated_at == ~U[2020-01-01 00:00:00.000000Z]
+    end
+
+    test "rejects an alt text over 1000 characters", %{scope: scope} do
+      image = image_fixture(scope)
+
+      assert {:error, changeset} =
+               Media.update_image_alt(scope, image, %{"alt" => String.duplicate("a", 1001)})
+
+      assert "should be at most 1000 character(s)" in errors_on(changeset).alt
+    end
+
+    test "refuses an image of another site", %{scope: scope} do
+      other = image_fixture(site_scope_fixture())
+
+      assert_raise FunctionClauseError, fn ->
+        Media.update_image_alt(scope, other, %{"alt" => "Mine"})
+      end
+    end
+  end
+
   describe "delete_image/1" do
     test "removes the record and the files", %{scope: scope} do
       image = image_fixture(scope)

@@ -24,7 +24,7 @@
       <div class="header-image-container">
         <img<%= image_sources(@routes, @header_image, variants(header_role(assigns)), "(min-width: 38rem) 38rem, 100vw") %><%= dimensions(@header_image) %>
              fetchpriority="high"
-             alt=""
+             alt="<%= @header_image.alt %>"
              class="header-image">
         <%= if unsplash_credit?(@header_image) do %>
         <p class="photo-credit"><%= photo_credit(@header_image) %></p>

@@ -8,7 +8,7 @@
   <% nil -> %>
   <% {image, role} -> %>
   <figure class="project-image">
-    <img<%= image_sources(@routes, image, variants(role), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(image) %> fetchpriority="high" alt="">
+    <img<%= image_sources(@routes, image, variants(role), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(image) %> fetchpriority="high" alt="<%= image.alt %>">
     <%= if unsplash_credit?(image) do %>
     <figcaption class="photo-credit"><%= photo_credit(image) %></figcaption>
     <% end %>

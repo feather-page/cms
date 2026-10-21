@@ -91,6 +91,18 @@ defmodule Feather.Media.Processor do
     end
   end
 
+  @doc """
+  A JPEG of `source` that fits within size×size, without upscaling, EXIF
+  orientation applied and metadata stripped.
+  """
+  @spec jpeg(Path.t(), pos_integer()) :: {:ok, binary()} | {:error, term()}
+  def jpeg(source, size) do
+    with {:ok, thumbnail} <-
+           Operation.thumbnail(source, size, height: size, size: :VIPS_SIZE_DOWN) do
+      Image.write_to_buffer(thumbnail, ".jpg", Q: 85, keep: [])
+    end
+  end
+
   defp save(image, target, :webp), do: Operation.webpsave(image, target, keep: [], Q: 80)
   defp save(image, target, :jpg), do: Operation.jpegsave(image, target, keep: [], Q: 85)
 end

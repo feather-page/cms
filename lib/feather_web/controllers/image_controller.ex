@@ -9,6 +9,9 @@ defmodule FeatherWeb.ImageController do
     * `GET /sites/:site_id/images/:id` - the original file (or a stored
       variant with `?variant=640.webp`; the admin preview `480.webp` is
       generated if missing), cached for a year
+    * `GET /sites/:site_id/images/:id/alt` - the alt text (`{"alt": ...}`)
+    * `PUT /sites/:site_id/images/:id/alt` - sets the alt text
+      (`{"alt": ...}`), answers `{"alt": ...}` or `422 {"error": message}`
 
   The two POST endpoints answer `201 {"id": public_id, "url": admin_url}`
   (the image block's `image_id` and `src`) or `422 {"error": message}`,
@@ -57,6 +60,22 @@ defmodule FeatherWeb.ImageController do
       send_resp(conn, 404, "Not found")
     end
   end
+
+  def alt(conn, %{"id" => id}) do
+    image = Media.get_image!(conn.assigns.current_scope, id)
+    json(conn, %{alt: image.alt})
+  end
+
+  def update_alt(conn, %{"id" => id, "alt" => alt}) when is_binary(alt) do
+    scope = conn.assigns.current_scope
+
+    case Media.update_image_alt(scope, Media.get_image!(scope, id), %{"alt" => alt}) do
+      {:ok, image} -> json(conn, %{alt: image.alt})
+      {:error, _changeset} -> refuse(conn, "The alt text is too long (at most 1000 characters).")
+    end
+  end
+
+  def update_alt(conn, _params), do: refuse(conn, "Enter an alt text.")
 
   defp file(image, nil), do: {Media.original_path(image), image.content_type}
 

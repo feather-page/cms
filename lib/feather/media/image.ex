@@ -20,6 +20,7 @@ defmodule Feather.Media.Image do
     field :height, :integer
     field :source_url, :string
     field :unsplash_data, :map
+    field :alt, :string, default: ""
 
     belongs_to :site, Feather.Sites.Site
     belongs_to :post, Feather.Content.Post
@@ -51,6 +52,16 @@ defmodule Feather.Media.Image do
       message: "is too big (at most 25 MB)"
     )
     |> unique_constraint(:public_id)
+  end
+
+  @max_alt_length 1000
+
+  @doc "Changes the alt text."
+  def alt_changeset(image, attrs) do
+    image
+    |> cast(attrs, [:alt], empty_values: [])
+    |> update_change(:alt, &String.trim/1)
+    |> validate_length(:alt, max: @max_alt_length)
   end
 
   @doc "Returns true if the image came from Unsplash."

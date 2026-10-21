@@ -160,4 +160,39 @@ defmodule FeatherWeb.ImageControllerTest do
       end
     end
   end
+
+  describe "the alt text endpoints" do
+    test "read and set an image's alt text", %{conn: conn, site: site, scope: scope} do
+      image = image_fixture(scope)
+      path = ~p"/sites/#{site.public_id}/images/#{image.public_id}/alt"
+
+      assert json_response(get(conn, path), 200) == %{"alt" => ""}
+
+      assert json_response(put(conn, path, %{alt: " A grey square "}), 200) == %{
+               "alt" => "A grey square"
+             }
+
+      assert json_response(get(conn, path), 200) == %{"alt" => "A grey square"}
+      assert Media.get_image!(scope, image.public_id).alt == "A grey square"
+    end
+
+    test "refuse a too long alt text with the reason", %{conn: conn, site: site, scope: scope} do
+      image = image_fixture(scope)
+      path = ~p"/sites/#{site.public_id}/images/#{image.public_id}/alt"
+
+      assert %{"error" => "The alt text is too long" <> _} =
+               json_response(put(conn, path, %{alt: String.duplicate("a", 1001)}), 422)
+
+      assert %{"error" => _} = json_response(put(conn, path, %{}), 422)
+    end
+
+    test "are not found for images of another site", %{conn: conn, site: site} do
+      other_image = image_fixture(site_scope_fixture())
+      path = ~p"/sites/#{site.public_id}/images/#{other_image.public_id}/alt"
+
+      assert_error_sent 404, fn -> get(conn, path) end
+      assert_error_sent 404, fn -> put(conn, path, %{alt: "Mine"}) end
+      assert Feather.Repo.reload!(other_image).alt == ""
+    end
+  end
 end

@@ -75,6 +75,7 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `HARDCOVER_TOKEN` | Hardcover API key for the book search (optional; without it books are searched on OpenLibrary) | |
+| `OLLAMA_URL` | Base URL of an Ollama instance running `gemma4-26b` (e.g. `http://ollama:11434`), which suggests alt texts (optional; without it no suggestions are made) | |
 | `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
 

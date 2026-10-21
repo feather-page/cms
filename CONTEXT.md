@@ -120,6 +120,12 @@ Live rendering of the same templates inside the CMS (`/preview/<site>/`), with n
 records as they are, unpublished changes and drafts included.
 _Avoid_: Draft View, Staging
 
+**Alt Text** · _de:_ Alternativtext:
+The text that stands in for an image for screen readers and image search, stored on the image and shown wherever it
+appears as content or as a cover. The self-hosted model suggests it in the site's language after an upload; members
+can overwrite it in the image block and the image picker. A caption is shown under the image; the alt text describes it.
+_Avoid_: Caption, Description, Title
+
 **Redirect** · _de:_ Weiterleitung:
 An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,
 `/feed.xml`), permanently (301) or temporarily (302). Old paths share the site's URL space with the slugs, so a URL

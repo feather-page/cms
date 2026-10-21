@@ -23,6 +23,7 @@ config :feather,
   storage_root: Path.expand("../tmp/test_storage", __DIR__),
   backfill_image_variants: false,
   image_variant_sync: :inline,
+  alt_text_suggestions: :inline,
   config_encryption_key: "TNNvQkxC2kCFMB1wciLl7rHKXNTwz4kCIREO7dEvVKA="
 
 config :feather, Feather.Mailer, adapter: Swoosh.Adapters.Test
@@ -48,3 +49,4 @@ config :feather, Feather.Publishing.ScheduledDeploys, enabled: false
 config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}
 config :feather, :hardcover_req_options, plug: {Req.Test, Feather.Hardcover}
 config :feather, :open_library_req_options, plug: {Req.Test, Feather.OpenLibrary}
+config :feather, :ollama_req_options, plug: {Req.Test, Feather.Ollama}
