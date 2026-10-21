@@ -24,11 +24,14 @@ defmodule Feather.StaticSite.Sitemap do
 
   defp entries(data, routes) do
     [{Routes.home_url(routes), home_lastmod(data)}] ++
-      Enum.map(data.posts, &{Routes.post_url(routes, &1), changed_at(&1)}) ++
+      Enum.map(data.posts, &{Routes.post_url(routes, &1), Content.last_changed_or_updated_at(&1)}) ++
       (data.pages
        |> Enum.reject(&Page.homepage?/1)
-       |> Enum.map(&{Routes.page_url(routes, &1), changed_at(&1)})) ++
-      Enum.map(data.projects, &{Routes.project_url(routes, &1), changed_at(&1)})
+       |> Enum.map(&{Routes.page_url(routes, &1), Content.last_changed_or_updated_at(&1)})) ++
+      Enum.map(
+        data.projects,
+        &{Routes.project_url(routes, &1), Content.last_changed_or_updated_at(&1)}
+      )
   end
 
   defp url_element({loc, lastmod}) do
@@ -41,11 +44,8 @@ defmodule Feather.StaticSite.Sitemap do
   # The home page lists the published posts, so it changes with the most
   # recently changed one; the site's own timestamp does not move then.
   defp home_lastmod(%SiteData{site: site, posts: posts}) do
-    Enum.max([site.updated_at | Enum.map(posts, &changed_at/1)], DateTime)
+    Enum.max([site.updated_at | Enum.map(posts, &Content.last_changed_or_updated_at/1)], DateTime)
   end
-
-  # The preview also lists drafts, which have no published version.
-  defp changed_at(record), do: Content.last_changed_at(record) || record.updated_at
 
   defp iso8601(%DateTime{} = datetime) do
     datetime

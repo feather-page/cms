@@ -116,19 +116,13 @@ defmodule Feather.StaticSite.StructuredData do
       "url" => assigns.canonical_url,
       "mainEntityOfPage" => assigns.canonical_url,
       "datePublished" => iso8601(post.publish_at),
-      "dateModified" => iso8601(last_changed_at(post)),
+      "dateModified" => iso8601(Content.last_changed_or_updated_at(post)),
       "description" => assigns.description,
       "image" => assigns.og_image_url,
       "inLanguage" => language(assigns),
       "author" => author(assigns)
     })
   end
-
-  # A record of the preview may lack its published version; loading it would touch the database.
-  defp last_changed_at(%Post{published_version: %{}} = post),
-    do: Content.last_changed_at(post) || post.updated_at
-
-  defp last_changed_at(%Post{} = post), do: post.updated_at
 
   defp review(assigns, %Post{book: %Book{} = book} = post) do
     [
