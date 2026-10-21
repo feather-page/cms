@@ -15,7 +15,7 @@ import {keydownHandler} from "prosemirror-keymap"
 import {AllSelection, Plugin, TextSelection} from "prosemirror-state"
 import {generateId} from "./block_ids"
 import {safeHref, schema} from "./schema"
-import {element} from "./dom"
+import {element, svgIcon} from "./dom"
 
 const {marks} = schema
 
@@ -89,30 +89,6 @@ export const removeLink = (state, dispatch) => {
   const {from, to} = state.selection
   dispatch?.(state.tr.removeMark(from, to, marks.link).scrollIntoView())
   return true
-}
-
-const svgIcon = (paths) => {
-  const ns = "http://www.w3.org/2000/svg"
-  const svg = document.createElementNS(ns, "svg")
-  for (const [name, value] of Object.entries({
-    viewBox: "0 0 24 24",
-    width: "18",
-    height: "18",
-    fill: "none",
-    stroke: "currentColor",
-    "stroke-width": "2",
-    "stroke-linecap": "round",
-    "stroke-linejoin": "round",
-    "aria-hidden": "true"
-  })) {
-    svg.setAttribute(name, value)
-  }
-  for (const d of paths) {
-    const path = document.createElementNS(ns, "path")
-    path.setAttribute("d", d)
-    svg.append(path)
-  }
-  return svg
 }
 
 const docked = () => Boolean(window.matchMedia?.("(pointer: coarse)").matches)
