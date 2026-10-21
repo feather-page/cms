@@ -28,6 +28,8 @@ to the site owner's own hosting.
     code blocks stay plain
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
+*   Noto Color Emoji (optional, `fonts-noto-color-emoji` on Debian) for colour emoji in the
+    favicons and share cards the export draws; without it emoji come out in whatever font has them
 *   `inotify-tools` (optional, Linux) for live reload in development
 *   Node.js with npm: the asset build installs the editor's packages from `assets/package-lock.json`
     (`npm ci`); `mix setup` downloads the standalone `tailwind` and `esbuild` binaries

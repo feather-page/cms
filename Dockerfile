@@ -68,12 +68,13 @@ FROM ${RUNNER_IMAGE}
 
 # libstdc++6: needed by vix's libvips and lazy_html. rclone: deployments. brotli:
 # precompressed static output. sqlite3: for ops (inspecting and backing up
-# /data/feather.db). curl: the health check. d2 and chroma (static
-# binaries): diagrams and code highlighting.
+# /data/feather.db). curl: the health check. fontconfig and
+# fonts-noto-color-emoji: emoji in the favicons and share cards libvips draws
+# (ADR 0028). d2 and chroma (static binaries): diagrams and code highlighting.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     libstdc++6 openssl libncurses6 locales ca-certificates \
-    rclone brotli sqlite3 curl \
+    rclone brotli sqlite3 curl fontconfig fonts-noto-color-emoji \
   && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen

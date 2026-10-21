@@ -83,6 +83,17 @@ defmodule Feather.StaticSite.RoutesTest do
       assert_raise ArgumentError, fn -> Routes.diagram_path(r, "../feather.db") end
     end
 
+    test "generated images by file name, other names raise", %{routes: r} do
+      name = String.duplicate("ab", 32) <> ".png"
+      assert Routes.generated_image_url(r, name) == "/images/#{name}"
+
+      assert Routes.generated_image_url(Routes.canonical(r), name) ==
+               "https://example.com/images/#{name}"
+
+      assert Routes.generated_image_path(r, name) == "images/#{name}"
+      assert_raise ArgumentError, fn -> Routes.generated_image_path(r, "../feather.db") end
+    end
+
     test "canonical routes", %{routes: r, scope: scope} do
       canonical = Routes.canonical(r)
       assert Routes.post_url(canonical, %Post{slug: "/hello"}) == "https://example.com/hello/"
@@ -123,6 +134,12 @@ defmodule Feather.StaticSite.RoutesTest do
       assert Routes.resolve(r, "diagrams/#{name}") == {:diagram, name}
       assert Routes.resolve(r, "diagrams/#{String.upcase(name)}") == nil
       assert Routes.resolve(r, "diagrams/x.svg") == nil
+    end
+
+    test "generated images by file name", %{routes: r} do
+      name = String.duplicate("ab", 32) <> ".png"
+      assert Routes.resolve(r, "images/#{name}") == {:generated_image, name}
+      assert Routes.resolve(r, "images/x.png") == nil
     end
 
     test "image variants of the site only", %{routes: r, scope: scope} do

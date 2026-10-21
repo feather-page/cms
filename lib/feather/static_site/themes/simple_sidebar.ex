@@ -89,6 +89,19 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   @impl true
   def site_image_fields, do: [:portrait_image_id]
 
+  # Ground, ink and quiet of the light scheme, and the signal colour.
+  @impl true
+  def share_card_look(_site) do
+    %{
+      background: "#fafaf8",
+      text: "#161616",
+      muted: "#5e5e5b",
+      accent: "#cc4a12",
+      font: "Schibsted Grotesk Bold",
+      font_file: font_path(@font_file)
+    }
+  end
+
   defp font_url(routes), do: Routes.font_url(routes, @font_file)
 
   defp show_domain?(site) do

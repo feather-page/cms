@@ -82,8 +82,8 @@ defmodule Feather.StaticSite.MetaTest do
     assert meta(home, "og:url") == "https://example.com/"
     assert meta(home, "og:site_name") == "Site"
     assert meta(home, "og:locale") == "en_US"
-    assert meta(home, "og:image") == nil
-    assert meta(home, "twitter:card") == nil
+    assert meta(home, "og:image") =~ ~r"\Ahttps://example\.com/images/[0-9a-f]{64}\.png\z"
+    assert meta(home, "twitter:card") == "summary_large_image"
 
     assert Floki.attribute(home, ~s(link[rel="alternate"][type="application/rss+xml"]), "href") ==
              ["/feed.xml"]

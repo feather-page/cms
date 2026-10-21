@@ -15,7 +15,7 @@ defmodule Feather.StaticSite.Preview do
   alias Feather.{Diagrams, Media, Redirects}
   alias Feather.Media.Variants
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{ImageVariants, Renderer, Routes, SiteData, Themes}
+  alias Feather.StaticSite.{GeneratedImages, ImageVariants, Renderer, Routes, SiteData, Themes}
 
   @type result ::
           {:html, iodata()}
@@ -32,8 +32,8 @@ defmodule Feather.StaticSite.Preview do
     * `{:content, content_type, iodata}` - `feed.xml`, `sitemap.xml`, `robots.txt`,
       `style.css`
     * `{:file, path, content_type}` - a stored image variant or one the
-      image's roles need (generated then), a font of the site's theme or a
-      rendered diagram
+      image's roles need (generated then), a drawn favicon or share card, a
+      font of the site's theme or a rendered diagram
     * `{:redirect, url}` - the preview URL an active redirect from the path
       leads to
     * `{:not_found, iodata}` - the site's 404 page
@@ -73,10 +73,24 @@ defmodule Feather.StaticSite.Preview do
     {:file, theme.font_path(name), Map.fetch!(theme.fonts(), name)}
   end
 
+  defp serve({:generated_image, name}, site, routes),
+    do: existing_file(GeneratedImages.path(name), "image/png", site, routes)
+
   defp serve({:diagram, name}, site, routes),
     do: existing_file(Diagrams.path(name), "image/svg+xml", site, routes)
 
-  defp serve(route, site, routes), do: render_route(route, load(site, route), routes)
+  defp serve(route, site, routes) do
+    draw_favicon(site)
+    render_route(route, load(site, route), routes)
+  end
+
+  # Share cards are left to the export: drafts would leave one behind for every title they had.
+  defp draw_favicon(site) do
+    case GeneratedImages.favicon(site) do
+      nil -> :ok
+      favicon -> GeneratedImages.ensure(favicon)
+    end
+  end
 
   defp existing_file(file, content_type, site, routes) do
     if File.regular?(file), do: {:file, file, content_type}, else: not_found(site, routes)

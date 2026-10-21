@@ -28,4 +28,11 @@ defmodule Feather.StaticSite.Themes.FeatherPage.HueTest do
     assert Hue.for_emoji("") == Hue.default()
     assert Hue.for_emoji("  ") == Hue.default()
   end
+
+  test "OKLCH colours convert to sRGB hex, clipped to its gamut" do
+    assert Hue.oklch_hex(1, 0, 0) == "#ffffff"
+    assert Hue.oklch_hex(0, 0, 0) == "#000000"
+    assert Hue.oklch_hex(0.6279554, 0.2576833, 29.2338851) == "#ff0000"
+    assert Hue.oklch_hex(0.9, 0.4, 145) =~ ~r/\A#[0-9a-f]{6}\z/
+  end
 end

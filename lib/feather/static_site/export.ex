@@ -4,7 +4,8 @@ defmodule Feather.StaticSite.Export do
   of the post list, the posts that are due, projects, pages (the homepage
   is the first page of the post list), the variants of the images in use
   that their roles need in the theme (`Feather.StaticSite.ImageVariants`,
-  missing ones are generated first), the fonts of the site's theme, the rendered diagrams, `feed.xml`,
+  missing ones are generated first), the favicon and share cards the pages
+  link (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of the site's theme, the rendered diagrams, `feed.xml`,
   `robots.txt`, `sitemap.xml`, `style.css`, `404.html` and the
   `.htaccess` for Apache hosts, with the active redirects.
 
@@ -17,7 +18,17 @@ defmodule Feather.StaticSite.Export do
   alias Feather.Content.{Page, Slug}
   alias Feather.{Diagrams, Media}
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Htaccess, ImageVariants, Renderer, Routes, Sink, SiteData, Themes}
+
+  alias Feather.StaticSite.{
+    GeneratedImages,
+    Htaccess,
+    ImageVariants,
+    Renderer,
+    Routes,
+    Sink,
+    SiteData,
+    Themes
+  }
 
   require Logger
 
@@ -33,16 +44,28 @@ defmodule Feather.StaticSite.Export do
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
     data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
     redirects = SiteData.redirects(data)
-    jobs = [:not_found, {:htaccess, redirects} | document_jobs(data)] ++ asset_jobs(data, site)
+    documents = documents(data)
+
+    jobs =
+      [:not_found, {:htaccess, redirects} | documents] ++
+        Enum.map(Slug.artifacts(), &{:artifact, &1}) ++
+        asset_jobs(data, site) ++ generated_image_jobs(data, routes, documents)
+
     run_jobs(jobs, data, routes, sink, opts)
   end
 
-  defp document_jobs(data) do
+  defp documents(data) do
     Enum.map(1..Renderer.total_pages(data), &{:home, &1}) ++
       Enum.map(data.posts, &{:post, &1}) ++
       Enum.map(data.projects, &{:project, &1}) ++
-      (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1})) ++
-      Enum.map(Slug.artifacts(), &{:artifact, &1})
+      (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1}))
+  end
+
+  defp generated_image_jobs(data, routes, documents) do
+    documents
+    |> Enum.flat_map(&Renderer.generated_images(data, routes, &1))
+    |> Enum.uniq_by(&GeneratedImages.file_name/1)
+    |> Enum.map(&{:generated_image, &1})
   end
 
   defp asset_jobs(data, site) do
@@ -85,6 +108,10 @@ defmodule Feather.StaticSite.Export do
   defp describe(:not_found), do: "404 page"
   defp describe({:htaccess, _redirects}), do: ".htaccess"
   defp describe({:image, image, variant}), do: "image #{image.public_id} #{variant.filename}"
+
+  defp describe({:generated_image, image}),
+    do: "generated image #{GeneratedImages.file_name(image)}"
+
   defp describe({kind, %{public_id: public_id}}), do: "#{kind} #{public_id}"
   defp describe({:font, _theme, name}), do: "font #{name}"
   defp describe({kind, name}), do: "#{kind} #{name}"
@@ -135,6 +162,22 @@ defmodule Feather.StaticSite.Export do
       {:error, reason} ->
         Logger.warning(
           "Image variant #{image.public_id}/#{variant.filename} missing, not exported: #{inspect(reason)}"
+        )
+    end
+  end
+
+  defp run_job({:generated_image, image}, _data, routes, sink) do
+    name = GeneratedImages.file_name(image)
+
+    case GeneratedImages.ensure(image) do
+      :ok ->
+        Sink.copy(sink, Routes.generated_image_path(routes, name),
+          from: GeneratedImages.path(name)
+        )
+
+      {:error, reason} ->
+        Logger.warning(
+          "Generated image #{name} could not be drawn, not exported: #{inspect(reason)}"
         )
     end
   end

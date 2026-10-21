@@ -4,7 +4,8 @@ defmodule Feather.StaticSite.Theme do
   page views, its stylesheet and its fonts. Themes are listed in
   `Feather.StaticSite.Themes`; block rendering, routes, Gettext, meta
   tags, feed, sitemap and the image files are shared;
-  the theme declares which variants each image role gets.
+  the theme declares which variants each image role gets and how share
+  cards look.
 
   What does not depend on the look is shared in
   `Feather.StaticSite.ThemeHelpers`: localised text, domain data and its
@@ -33,7 +34,9 @@ defmodule Feather.StaticSite.Theme do
       `<title>` and `og:title`; an untitled post's label where `page_title`
       is the site title), `document_title`, `page_emoji`, `is_home`,
       `noindex`, the meta tags (`description`, `canonical_url`, `og_type`,
-      `og_image_url`; render them with `ThemeHelpers.head_meta/1`),
+      `og_image_url`, a share card's for a page without an image;
+      `favicon_url`, nil where the page's own emoji is its icon; render
+      them with `ThemeHelpers.head_meta/1`),
       `stylesheet_url` (`style.css` with a hash of its content)
     * `header_image`, `title_mascot`, `published_at`, `masthead_image`,
       `rss_url`, `trail` (breadcrumb entries `%{title, emoji, url}`), all
@@ -97,6 +100,14 @@ defmodule Feather.StaticSite.Theme do
   theme renders; the export copies only their images.
   """
   @callback site_image_fields() :: [atom()]
+
+  @doc """
+  The look of the site's share cards (`Feather.StaticSite.GeneratedImages`):
+  `#rrggbb` colours for the background, the title, the site title and the
+  accent band, and a Pango font description (`"Nunito ExtraBold"`) with the
+  path of its file, one of `c:fonts/0`.
+  """
+  @callback share_card_look(Feather.Sites.Site.t()) :: Feather.Media.Drawing.look()
 
   defmacro __using__(_opts) do
     quote do
