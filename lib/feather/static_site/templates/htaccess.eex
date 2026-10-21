@@ -36,7 +36,7 @@ ErrorDocument 404 <%= @not_found_url %>
   <FilesMatch "^style\.css(\.br|\.gz)?$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
-  <FilesMatch "\.(webp|jpg|woff2)$">
+  <FilesMatch "\.(webp|jpg|png|woff2)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
 </IfModule>

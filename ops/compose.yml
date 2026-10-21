@@ -15,7 +15,11 @@ services:
     networks:
       # The reverse proxy reaches the app as featherpage:4000.
       - frontend
+      # The Ollama instance that suggests alt texts, descriptions and short post titles (OLLAMA_URL).
+      - ollama
 
 networks:
   frontend:
+    external: true
+  ollama:
     external: true

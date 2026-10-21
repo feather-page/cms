@@ -1,6 +1,9 @@
 // Image blocks: an empty one offers an upload (file picker, camera on
 // phones) and a URL field; once the server has the image, the block shows
-// it with an editable caption (the node's content). Image files pasted or
+// it with an editable caption (the node's content) and the image's alt
+// text, which belongs to the image record: the server suggests it in the
+// background after the upload and the field saves edits through the alt
+// endpoint (FeatherWeb.ImageController). Image files pasted or
 // dropped into the editor become image blocks and upload at once.
 //
 // Uploads go to the site's image endpoints (FeatherWeb.ImageController),
@@ -99,6 +102,44 @@ export class ImageUploads {
     return placeImage(view, blockId, data)
   }
 
+  altUrl(imageId) {
+    return this.uploadUrl && `${this.uploadUrl}/${encodeURIComponent(imageId)}/alt`
+  }
+
+  // The image's alt text, or null if it could not be loaded.
+  async loadAlt(imageId) {
+    try {
+      const response = await this.fetch(this.altUrl(imageId), {
+        credentials: "same-origin",
+        headers: {accept: "application/json"}
+      })
+      const data = await response.json()
+      return response.ok && typeof data.alt === "string" ? data.alt : null
+    } catch (_error) {
+      return null
+    }
+  }
+
+  // {alt} as stored, or {error}.
+  async saveAlt(imageId, alt) {
+    try {
+      const response = await this.fetch(this.altUrl(imageId), {
+        method: "PUT",
+        body: JSON.stringify({alt}),
+        credentials: "same-origin",
+        headers: {
+          accept: "application/json",
+          "content-type": "application/json",
+          "x-csrf-token": this.csrfToken || ""
+        }
+      })
+      const data = await response.json().catch(() => ({}))
+      return response.ok ? {alt: data.alt} : {error: data.error || "The alt text could not be saved."}
+    } catch (_error) {
+      return {error: "The alt text could not be saved. Check the connection and try again."}
+    }
+  }
+
   set(blockId, state) {
     if (state) this.states.set(blockId, state)
     else this.states.delete(blockId)
@@ -157,8 +198,32 @@ export class ImageView {
       ])
     )
 
+    this.alt = element("input", "input input-sm pm-image__alt", {
+      type: "text",
+      maxlength: "1000",
+      placeholder: "Alt text: what the image shows",
+      "aria-label": "Alt text"
+    })
+    this.alt.addEventListener("focus", () => this.refreshAlt())
+    this.alt.addEventListener("input", () => {
+      this.altEdited = true
+      this.alt.setCustomValidity("")
+    })
+    this.alt.addEventListener("change", () => this.saveAlt())
+    this.alt.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.isComposing) return
+      event.preventDefault()
+      this.alt.blur()
+    })
+    this.altField = keepOutOfForm(element("div", "pm-image__alt-field", {contenteditable: "false"}, [this.alt]))
+
     this.contentDOM = element("figcaption", "pm-image__caption", {"data-placeholder": "Caption"})
-    this.dom = element("figure", "pm-block pm-image", {}, [this.picture, this.picker, this.contentDOM])
+    this.dom = element("figure", "pm-block pm-image", {}, [
+      this.picture,
+      this.picker,
+      this.altField,
+      this.contentDOM
+    ])
 
     this.listen()
     this.render()
@@ -172,6 +237,33 @@ export class ImageView {
     this.unsubscribe?.()
     this.listenedId = this.blockId
     this.unsubscribe = this.uploads.subscribe(this.blockId, () => this.render())
+  }
+
+  // Shows the stored alt text (a suggestion may have arrived meanwhile)
+  // unless the member is editing it.
+  refreshAlt() {
+    const imageId = this.node.attrs.image_id
+    if (!imageId || this.altEdited) return
+
+    this.uploads.loadAlt(imageId).then((alt) => {
+      if (alt !== null && !this.altEdited && this.node.attrs.image_id === imageId) this.alt.value = alt
+    })
+  }
+
+  saveAlt() {
+    const imageId = this.node.attrs.image_id
+    if (!imageId) return
+
+    this.uploads.saveAlt(imageId, this.alt.value).then(({alt, error}) => {
+      if (this.node.attrs.image_id !== imageId) return
+      if (error) {
+        this.alt.setCustomValidity(error)
+        this.alt.reportValidity()
+        return
+      }
+      this.altEdited = false
+      if (document.activeElement !== this.alt) this.alt.value = alt
+    })
   }
 
   chooseFile() {
@@ -194,6 +286,13 @@ export class ImageView {
     if (src && this.img.getAttribute("src") !== src) this.img.src = src
     this.img.alt = this.node.textContent
     this.picture.hidden = !src
+    this.altField.hidden = !this.node.attrs.image_id
+    if (this.node.attrs.image_id !== this.altImageId) {
+      this.altImageId = this.node.attrs.image_id
+      this.altEdited = false
+      this.alt.value = ""
+      this.refreshAlt()
+    }
     this.picker.hidden = filled(this.node)
     this.dom.classList.toggle("is-uploading", uploading)
     this.dom.classList.toggle("is-placeholder", !filled(this.node))
@@ -217,7 +316,7 @@ export class ImageView {
   // The controls handle their own events; ProseMirror must not treat a
   // click or key there as editing.
   stopEvent(event) {
-    return this.picker.contains(event.target)
+    return this.picker.contains(event.target) || this.altField.contains(event.target)
   }
 
   ignoreMutation(mutation) {

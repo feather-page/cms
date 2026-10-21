@@ -38,7 +38,14 @@ defmodule Feather.RedirectsTest do
     end
 
     test "stores any other target as its path", %{scope: scope} do
-      for {given, stored} <- [{"/", "/"}, {"/page/2", "/page/2/"}, {"feed.xml", "/feed.xml"}] do
+      generated_image = "/images/#{String.duplicate("a", 64)}.png"
+
+      for {given, stored} <- [
+            {"/", "/"},
+            {"/page/2", "/page/2/"},
+            {"feed.xml", "/feed.xml"},
+            {generated_image, generated_image}
+          ] do
         assert {:ok, %Redirect{target_path: ^stored, post_id: nil, page_id: nil}} =
                  Redirects.create_redirect(scope, %{
                    old_path: "/old#{System.unique_integer([:positive])}",
@@ -81,7 +88,9 @@ defmodule Feather.RedirectsTest do
             "/index.html.br",
             "/x/index.html.gz",
             "/style.css.br",
-            "/feed.xml.gz"
+            "/feed.xml.gz",
+            "/#{scope.site.indexnow_key}.txt",
+            "/#{scope.site.indexnow_key}.txt.gz"
           ] do
         assert {:error, changeset} =
                  Redirects.create_redirect(scope, %{old_path: old_path, target: "/"})

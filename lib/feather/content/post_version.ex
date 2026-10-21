@@ -11,6 +11,9 @@ defmodule Feather.Content.PostVersion do
   @copied_fields [
     :title,
     :slug,
+    :description,
+    :description_generated,
+    :meta_title,
     :emoji,
     :tags,
     :content,
@@ -28,6 +31,9 @@ defmodule Feather.Content.PostVersion do
     field :tags, :string
     field :content, BlocksType, default: []
     field :publish_at, :utc_datetime_usec
+    field :description, :string
+    field :description_generated, :boolean, default: false
+    field :meta_title, :string
 
     belongs_to :post, Feather.Content.Post
     belongs_to :published_by, Feather.Accounts.User

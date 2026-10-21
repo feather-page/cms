@@ -84,6 +84,77 @@ defmodule Feather.SitesTest do
     end
   end
 
+  describe "IndexNow key" do
+    test "every new site gets its own" do
+      one = site_fixture()
+      two = site_fixture()
+
+      assert one.indexnow_key =~ ~r/\A[0-9a-f]{32}\z/
+      assert one.indexnow_key != two.indexnow_key
+    end
+
+    test "is not changed by updating the site" do
+      scope = site_scope_fixture()
+      {:ok, site} = Sites.update_site(scope, scope.site, %{"indexnow_key" => "mine"})
+      assert site.indexnow_key == scope.site.indexnow_key
+    end
+  end
+
+  describe "archive.org keys" do
+    setup do
+      %{scope: site_scope_fixture()}
+    end
+
+    test "are stored encrypted and only loaded on request", %{scope: scope} do
+      updated_at = Repo.reload!(scope.site).updated_at
+
+      assert Sites.archive_org_keys(scope) == nil
+      refute Sites.archive_org_keys?(scope)
+
+      assert :ok =
+               Sites.put_archive_org_keys(scope, %{
+                 "access_key" => " access-key-4711 ",
+                 "secret_key" => "secret-key-0815"
+               })
+
+      assert Sites.archive_org_keys(scope) ==
+               %{access_key: "access-key-4711", secret_key: "secret-key-0815"}
+
+      assert Sites.archive_org_keys?(scope)
+
+      site = Repo.reload!(scope.site)
+      assert site.archive_org_keys == nil
+      assert site.updated_at == updated_at
+
+      [[stored]] =
+        Repo.query!("SELECT archive_org_keys FROM sites WHERE id = ?1", [scope.site.id]).rows
+
+      refute stored =~ "access-key-4711"
+      refute stored =~ "secret-key-0815"
+    end
+
+    test "need both keys", %{scope: scope} do
+      assert {:error, changeset} = Sites.put_archive_org_keys(scope, %{"access_key" => "ak"})
+      assert "can't be blank" in errors_on(changeset).secret_key
+      assert Sites.archive_org_keys(scope) == nil
+    end
+
+    test "can be deleted", %{scope: scope} do
+      :ok = Sites.put_archive_org_keys(scope, %{access_key: "ak", secret_key: "sk"})
+
+      assert Sites.delete_archive_org_keys(scope) == :ok
+      assert Sites.archive_org_keys(scope) == nil
+      refute Sites.archive_org_keys?(scope)
+    end
+
+    test "belong to the scope's site alone", %{scope: scope} do
+      other = site_scope_fixture()
+      :ok = Sites.put_archive_org_keys(scope, %{access_key: "ak", secret_key: "sk"})
+
+      assert Sites.archive_org_keys(other) == nil
+    end
+  end
+
   describe "access" do
     setup do
       owner = user_fixture()

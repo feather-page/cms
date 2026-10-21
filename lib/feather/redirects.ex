@@ -311,6 +311,9 @@ defmodule Feather.Redirects do
   defp route_path(routes, {:font, name}), do: "/" <> Routes.font_path(routes, name)
   defp route_path(routes, {:diagram, name}), do: Routes.diagram_url(routes, name)
 
+  defp route_path(routes, {:generated_image, name}),
+    do: Routes.generated_image_url(routes, name)
+
   defp with_saved_target({:ok, redirect}, site), do: {:ok, with_target(redirect, site)}
   defp with_saved_target(error, _site), do: error
 

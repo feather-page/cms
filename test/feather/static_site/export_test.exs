@@ -451,7 +451,9 @@ defmodule Feather.StaticSite.ExportTest do
     refute xml =~ "draft"
     refute xml =~ "future"
 
-    lastmod = c.about.updated_at |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+    lastmod =
+      c.about |> Content.last_changed_at() |> DateTime.truncate(:second) |> DateTime.to_iso8601()
+
     assert xml =~ "<loc>https://example.com/about/</loc>\n    <lastmod>#{lastmod}</lastmod>"
     assert length(Regex.scan(~r/<loc>https:\/\/example.com\/<\/loc>/, xml)) == 1
   end
@@ -470,6 +472,11 @@ defmodule Feather.StaticSite.ExportTest do
     assert html =~ ~s(<a class="not-found-posts" href="/#posts">All posts</a>)
     assert html =~ ~s(<a class="not-found-projects" href="/work/">Work</a>)
     refute file(c.sink, "sitemap.xml") =~ "404"
+  end
+
+  test "writes the IndexNow key file at the site root", c do
+    key = c.scope.site.indexnow_key
+    assert file(c.sink, "#{key}.txt") == key
   end
 
   test "robots.txt points at the canonical sitemap", c do
@@ -511,4 +518,28 @@ defmodule Feather.StaticSite.ExportPaginationTest do
 
     refute RecordingSink.exists?(sink, "page/3/index.html")
   end
+
+  test "numbers the titles of the post list pages after the first, in the site's language" do
+    for {language_code, page_two} <- [{"en", "Page 2 · Blog"}, {"de", "Seite 2 · Blog"}] do
+      scope = site_scope_fixture(%{title: "Blog", language_code: language_code})
+
+      for i <- 1..26 do
+        post_fixture(scope, %{publish_at: DateTime.add(~U[2024-01-01 00:00:00.000000Z], i, :day)})
+      end
+
+      sink = RecordingSink.new(start_supervised!(RecordingSink, id: language_code))
+      :ok = Export.run(scope.site, Routes.new(scope.site), sink)
+
+      assert title(sink, "index.html") == "Blog"
+      assert title(sink, "page/2/index.html") == page_two
+    end
+  end
+
+  defp title(sink, path),
+    do:
+      sink
+      |> RecordingSink.get(path)
+      |> Floki.parse_document!()
+      |> Floki.find("title")
+      |> Floki.text()
 end

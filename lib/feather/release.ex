@@ -5,6 +5,7 @@ defmodule Feather.Release do
       bin/feather eval "Feather.Release.migrate()"
       bin/feather eval 'Feather.Release.create_user("me@example.com", true)'
       bin/feather eval 'Feather.Release.create_api_token("me@example.com", "laptop")'
+      bin/feather eval "Feather.Release.backfill_suggestions()"
 
   `bin/migrate` and `bin/server` (in `rel/overlays/bin`) wrap the first.
   """
@@ -119,6 +120,37 @@ defmodule Feather.Release do
       IO.puts("Config of #{target.site.domain} (#{updated.provider}) set.")
       {:ok, updated}
     end
+  end
+
+  @doc """
+  Fills in the model's suggestions (ADR 0026) for content from before they
+  existed, site by site: the alt texts of all images
+  (`Feather.Media.backfill_alt_texts/1`), and descriptions and short
+  posts' meta titles and slugs of published records without unpublished
+  changes, by publishing them again (`Feather.Content.backfill_suggestions/1`).
+  Needs `OLLAMA_URL`. Deploy the sites by hand afterwards.
+  """
+  def backfill_suggestions do
+    with_app(fn ->
+      {:ok, _} = Application.ensure_all_started(:req)
+
+      if Feather.Ollama.configured?() do
+        Enum.each(Feather.Repo.all(Site), &backfill_site/1)
+      else
+        IO.puts(:stderr, "OLLAMA_URL is not set.")
+        {:error, :not_configured}
+      end
+    end)
+  end
+
+  defp backfill_site(site) do
+    scope = Scope.for_site(site)
+    alt_texts = Feather.Media.backfill_alt_texts(scope)
+    republished = scope |> Feather.Content.backfill_suggestions() |> length()
+
+    IO.puts(
+      "#{site.domain}: alt texts filled in: #{alt_texts}, records published again: #{republished}"
+    )
   end
 
   defp with_app(fun) do

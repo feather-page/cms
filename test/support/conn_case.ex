@@ -96,6 +96,19 @@ defmodule FeatherWeb.ConnCase do
     |> Plug.Conn.put_session(:user_token, token)
   end
 
+  @doc """
+  Publishes the record of a content form through its editor (`editor`, a
+  selector) as the Publish button does, waits for the asynchronous publish
+  and returns the rendered view.
+  """
+  def publish_in_form(view, editor) do
+    view
+    |> Phoenix.LiveViewTest.element(editor)
+    |> Phoenix.LiveViewTest.render_hook("publish", %{"editor" => "saved"})
+
+    Phoenix.LiveViewTest.render_async(view)
+  end
+
   defp maybe_set_token_authenticated_at(_token, nil), do: nil
 
   defp maybe_set_token_authenticated_at(token, authenticated_at) do

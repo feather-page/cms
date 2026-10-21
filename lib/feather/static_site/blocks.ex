@@ -7,9 +7,10 @@ defmodule Feather.StaticSite.Blocks do
   cells) goes through `Feather.Content.HTML.sanitize/1`; everything else is
   escaped. Image and book blocks look their records up in the maps given
   in the context (by public id) and render nothing when the record is
-  missing. Diagram blocks look their SVG file up by their source (see
-  `Feather.Diagrams.render_all/2`) and show the source as d2 code when
-  the diagram was not rendered. Code blocks look their highlighted HTML up
+  missing; an image's alt text is its own, else its caption. Diagram
+  blocks look their SVG file up by their source (see
+  `Feather.Diagrams.render_all/2`) and show the source as d2 code when the
+  diagram was not rendered. Code blocks look their highlighted HTML up
   by code and language (see `Feather.Highlighting.highlight_all/2`) and
   show the escaped code when there is none.
   """
@@ -229,11 +230,15 @@ defmodule Feather.StaticSite.Blocks do
       optional_attribute("width", image.width),
       sources(image, :content, context.content_image_sizes, context),
       " alt=\"",
-      escape(ContentBlocks.strip_tags(caption)),
+      escape(image_alt(image, caption)),
       "\" />",
       figcaption(caption),
       "</figure>"
     ]
+  end
+
+  defp image_alt(%Image{alt: alt}, caption) do
+    if present?(alt), do: alt, else: ContentBlocks.strip_tags(caption)
   end
 
   defp sources(image, role, sizes, %{routes: routes, image_variants: variants}) do

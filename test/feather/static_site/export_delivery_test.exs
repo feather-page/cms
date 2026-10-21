@@ -96,14 +96,14 @@ defmodule Feather.StaticSite.ExportDeliveryTest do
       assert compression =~ "Header always merge Vary Accept-Encoding"
     end
 
-    test "lets browsers cache style.css, images and fonts for a year, with mod_headers",
+    test "lets browsers cache style.css, images, drawn images and fonts for a year, with mod_headers",
          %{htaccess: htaccess} do
       assert htaccess =~ """
              <IfModule mod_headers.c>
                <FilesMatch "^style\\.css(\\.br|\\.gz)?$">
                  Header set Cache-Control "public, max-age=31536000, immutable"
                </FilesMatch>
-               <FilesMatch "\\.(webp|jpg|woff2)$">
+               <FilesMatch "\\.(webp|jpg|png|woff2)$">
                  Header set Cache-Control "public, max-age=31536000, immutable"
                </FilesMatch>
              </IfModule>

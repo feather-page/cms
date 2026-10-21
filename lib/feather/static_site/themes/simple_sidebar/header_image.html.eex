@@ -1,6 +1,6 @@
 <%= if match?(%Image{}, @image) do %>
 <figure class="header-image">
-  <img<%= image_sources(@routes, @image, variants(:header), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(@image) %> fetchpriority="high" alt="">
+  <img<%= image_sources(@routes, @image, variants(:header), "(min-width: 52rem) 36rem, calc(100vw - 2rem)") %><%= dimensions(@image) %> fetchpriority="high" alt="<%= @image.alt %>">
   <%= if unsplash_credit?(@image) do %>
   <figcaption class="photo-credit"><%= photo_credit(@image) %></figcaption>
   <% end %>

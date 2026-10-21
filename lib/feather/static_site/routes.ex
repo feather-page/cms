@@ -13,6 +13,7 @@ defmodule Feather.StaticSite.Routes do
   | page              | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
   | project           | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
   | image variant     | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
+  | generated image   | `/images/<hash>.png`           | `images/<hash>.png`                   |
   | theme font        | `/fonts/<file>?v=<hash>`       | `fonts/<file>`                        |
   | diagram           | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
   | artifact          | `/feed.xml`, `/style.css`, ... | `feed.xml`, `style.css`, ...          |
@@ -32,7 +33,7 @@ defmodule Feather.StaticSite.Routes do
   alias Feather.Media.{Image, Variants}
   alias Feather.Repo
   alias Feather.Sites.Site
-  alias Feather.StaticSite.{Precompress, Themes}
+  alias Feather.StaticSite.{GeneratedImages, Precompress, Themes}
 
   @enforce_keys [:site, :site_root, :canonical_url]
   defstruct [:site, :site_root, :canonical_url]
@@ -43,6 +44,7 @@ defmodule Feather.StaticSite.Routes do
           {:home, pos_integer()}
           | {:artifact, String.t()}
           | {:image, Image.t(), Variants.variant()}
+          | {:generated_image, String.t()}
           | {:font, String.t()}
           | {:diagram, String.t()}
           | {:project, Project.t()}
@@ -136,6 +138,14 @@ defmodule Feather.StaticSite.Routes do
     do: root <> image_segment(image, variant)
 
   @doc """
+  The URL of a favicon or share card by its file name (see
+  `Feather.StaticSite.GeneratedImages`).
+  """
+  @spec generated_image_url(t(), String.t()) :: String.t()
+  def generated_image_url(%__MODULE__{site_root: root}, name),
+    do: root <> generated_image_segment(name)
+
+  @doc """
   The `srcset` of an image shown with the webp variants of the given
   sizes: narrowest first, with their real widths (see
   `Feather.Media.Variants.srcset_widths/3`).
@@ -204,6 +214,10 @@ defmodule Feather.StaticSite.Routes do
   @spec image_path(t(), Image.t(), Variants.variant() | String.t()) :: String.t()
   def image_path(%__MODULE__{}, %Image{} = image, variant), do: image_segment(image, variant)
 
+  @doc "The output path of a favicon or share card."
+  @spec generated_image_path(t(), String.t()) :: String.t()
+  def generated_image_path(%__MODULE__{}, name), do: generated_image_segment(name)
+
   @doc "The output path of a theme font file."
   @spec font_path(t(), String.t()) :: String.t()
   def font_path(%__MODULE__{} = routes, name), do: font_segment(routes, name)
@@ -223,6 +237,14 @@ defmodule Feather.StaticSite.Routes do
   @doc "The output path of the rules for Apache hosts (see `Feather.StaticSite.Htaccess`)."
   @spec htaccess_path(t()) :: String.t()
   def htaccess_path(%__MODULE__{}), do: ".htaccess"
+
+  @doc """
+  The output path of the site's IndexNow key file (`<key>.txt`, holding
+  the key), or nil for a site without a key.
+  """
+  @spec indexnow_key_path(t()) :: String.t() | nil
+  def indexnow_key_path(%__MODULE__{site: %Site{indexnow_key: nil}}), do: nil
+  def indexnow_key_path(%__MODULE__{site: %Site{indexnow_key: key}}), do: key <> ".txt"
 
   defp artifact(name) do
     name = to_string(name)
@@ -273,6 +295,12 @@ defmodule Feather.StaticSite.Routes do
     end
   end
 
+  defp generated_image_segment(name) do
+    if GeneratedImages.file_name?(name),
+      do: "images/" <> name,
+      else: raise(ArgumentError, "unknown generated image #{inspect(name)}")
+  end
+
   defp strip_slug(nil), do: ""
 
   defp strip_slug(slug),
@@ -285,7 +313,7 @@ defmodule Feather.StaticSite.Routes do
   there, or nil. Content of other sites is never found; drafts are (the
   preview shows them).
 
-  Precedence for ambiguous paths: home, artifact, image, font, diagram, project,
+  Precedence for ambiguous paths: home, artifact, generated image, image, font, diagram, project,
   post by public id, page, post by slug. A trailing `index.html`, `.html` or `/`
   is ignored.
   """
@@ -302,6 +330,7 @@ defmodule Feather.StaticSite.Routes do
     [
       &resolve_home/2,
       &resolve_artifact/2,
+      &resolve_generated_image/2,
       &resolve_image/2,
       fn path, _site_id -> resolve_font(path, site) end,
       &resolve_diagram/2,
@@ -315,13 +344,15 @@ defmodule Feather.StaticSite.Routes do
   @doc """
   Returns true if the export writes a file at the path (relative to the
   site root) that `resolve/2` does not serve: the 404 page, the
-  `.htaccess` and the precompressed copies of the text files
-  (`Feather.StaticSite.Precompress`).
+  `.htaccess`, the IndexNow key file and the precompressed copies of the
+  text files (`Feather.StaticSite.Precompress`).
   """
   @spec unserved_file?(t(), String.t()) :: boolean()
   def unserved_file?(%__MODULE__{} = routes, path) when is_binary(path) do
     path = String.trim_leading(path, "/")
-    path in [not_found_path(routes), htaccess_path(routes)] or precompressed_copy?(routes, path)
+
+    path in [not_found_path(routes), htaccess_path(routes), indexnow_key_path(routes)] or
+      precompressed_copy?(routes, path)
   end
 
   defp precompressed_copy?(routes, path) do
@@ -333,7 +364,8 @@ defmodule Feather.StaticSite.Routes do
         source = String.replace_suffix(path, suffix, "")
 
         Path.extname(source) in Precompress.extensions() and
-          (source == not_found_path(routes) or resolve(routes, source) != nil)
+          (source in [not_found_path(routes), indexnow_key_path(routes)] or
+             resolve(routes, source) != nil)
     end
   end
 
@@ -373,6 +405,11 @@ defmodule Feather.StaticSite.Routes do
   end
 
   defp resolve_artifact(path, _site_id), do: if(path in Slug.artifacts(), do: {:artifact, path})
+
+  defp resolve_generated_image("images/" <> name, _site_id),
+    do: if(GeneratedImages.file_name?(name), do: {:generated_image, name})
+
+  defp resolve_generated_image(_path, _site_id), do: nil
 
   defp resolve_image(path, site_id) do
     with [_, public_id, filename] <- Regex.run(~r{\Aimages/([^/]+)/([^/]+)\z}, path),

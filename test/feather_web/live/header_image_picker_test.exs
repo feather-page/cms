@@ -235,4 +235,43 @@ defmodule FeatherWeb.HeaderImagePickerTest do
     assert post.header_image_id == cover.id
     assert post.emoji == nil
   end
+
+  describe "cover alt text" do
+    test "shows the cover's alt text and saves an edit", %{conn: conn, site: site, scope: scope} do
+      cover = image_fixture(scope)
+      {:ok, _cover} = Media.update_image_alt(scope, cover, %{"alt" => "A lighthouse"})
+      post = post_fixture(scope, header_image_id: cover.id)
+
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts/#{post.public_id}/edit")
+
+      assert has_element?(lv, ~s(#{@picker}-cover-alt-form input[value="A lighthouse"]))
+
+      lv
+      |> form("#{@picker}-cover-alt-form", cover_alt: %{alt: " A lighthouse in fog "})
+      |> render_change()
+
+      assert Media.get_image!(scope, cover.public_id).alt == "A lighthouse in fog"
+      assert has_element?(lv, ~s(#{@picker}-cover-alt-form input[value="A lighthouse in fog"]))
+    end
+
+    test "shows the error of a too long alt text", %{conn: conn, site: site, scope: scope} do
+      cover = image_fixture(scope)
+      post = post_fixture(scope, header_image_id: cover.id)
+
+      {:ok, lv, _html} = live(conn, ~p"/sites/#{site.public_id}/posts/#{post.public_id}/edit")
+
+      lv
+      |> form("#{@picker}-cover-alt-form", cover_alt: %{alt: String.duplicate("a", 1001)})
+      |> render_change()
+
+      assert has_element?(lv, ~s(#{@picker}-cover-alt[aria-invalid="true"]))
+      assert Media.get_image!(scope, cover.public_id).alt == ""
+    end
+
+    test "is not shown without a cover", %{conn: conn, site: site} do
+      {:ok, lv, _html} = new_post(conn, site)
+
+      refute has_element?(lv, "#{@picker}-cover-alt-form")
+    end
+  end
 end

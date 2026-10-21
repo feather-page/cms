@@ -317,6 +317,9 @@ defmodule FeatherWeb.ProjectLive.Form do
   @impl true
   def handle_info(message, socket), do: ContentForm.handle_info(message, socket)
 
+  @impl true
+  def handle_async(name, result, socket), do: ContentForm.handle_async(name, result, socket)
+
   @impl ContentForm
   def record(socket), do: socket.assigns.project
 

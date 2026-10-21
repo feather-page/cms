@@ -1,4 +1,11 @@
     <title><%= @document_title %></title>
+    <%= cond do %>
+    <% @favicon_url -> %>
+    <link rel="icon" type="image/png" sizes="192x192" href="<%= @favicon_url %>" />
+    <% @page_emoji -> %>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E<%= @page_emoji %>%3C/text%3E%3C/svg%3E" />
+    <% true -> %>
+    <% end %>
     <%= if @noindex do %>
     <meta name="robots" content="noindex" />
     <% end %>
@@ -21,4 +28,7 @@
     <meta property="og:image" content="<%= @og_image_url %>" />
     <meta name="twitter:card" content="summary_large_image" />
     <% end %>
+    <% end %>
+    <%= if @structured_data do %>
+    <script type="application/ld+json"><%= Feather.StaticSite.StructuredData.encode(@structured_data) %></script>
     <% end %>

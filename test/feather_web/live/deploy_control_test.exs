@@ -30,7 +30,7 @@ defmodule FeatherWeb.DeployControlTest do
     assert has_element?(lv, @panel, "Live")
 
     lv |> form("#post-form", post: %{title: "Today"}) |> render_change()
-    lv |> element("#post-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    publish_in_form(lv, "#post-content-editor")
 
     assert has_element?(lv, @panel, "1 change not live")
     assert has_element?(lv, "#deploy-site-sidebar", ~r/^\s*Deploy\s*$/)

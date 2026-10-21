@@ -2,9 +2,12 @@ defmodule Feather.StaticSite.Sitemap do
   @moduledoc """
   The sitemap (`sitemap.xml`): the home page, published posts, pages
   (except the homepage, which is the home page) and projects, addressed by
-  the site's canonical URL, never a preview path.
+  the site's canonical URL, never a preview path. Each is dated by when it
+  last changed on the site (`Feather.Content.last_changed_at/1`), so
+  unpublished changes do not move its `lastmod`.
   """
 
+  alias Feather.Content
   alias Feather.Content.Page
   alias Feather.StaticSite.{Routes, SiteData, Xml}
 
@@ -21,11 +24,14 @@ defmodule Feather.StaticSite.Sitemap do
 
   defp entries(data, routes) do
     [{Routes.home_url(routes), home_lastmod(data)}] ++
-      Enum.map(data.posts, &{Routes.post_url(routes, &1), &1.updated_at}) ++
+      Enum.map(data.posts, &{Routes.post_url(routes, &1), Content.last_changed_or_updated_at(&1)}) ++
       (data.pages
        |> Enum.reject(&Page.homepage?/1)
-       |> Enum.map(&{Routes.page_url(routes, &1), &1.updated_at})) ++
-      Enum.map(data.projects, &{Routes.project_url(routes, &1), &1.updated_at})
+       |> Enum.map(&{Routes.page_url(routes, &1), Content.last_changed_or_updated_at(&1)})) ++
+      Enum.map(
+        data.projects,
+        &{Routes.project_url(routes, &1), Content.last_changed_or_updated_at(&1)}
+      )
   end
 
   defp url_element({loc, lastmod}) do
@@ -38,7 +44,7 @@ defmodule Feather.StaticSite.Sitemap do
   # The home page lists the published posts, so it changes with the most
   # recently changed one; the site's own timestamp does not move then.
   defp home_lastmod(%SiteData{site: site, posts: posts}) do
-    Enum.max([site.updated_at | Enum.map(posts, & &1.updated_at)], DateTime)
+    Enum.max([site.updated_at | Enum.map(posts, &Content.last_changed_or_updated_at/1)], DateTime)
   end
 
   defp iso8601(%DateTime{} = datetime) do

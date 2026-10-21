@@ -28,6 +28,8 @@ to the site owner's own hosting.
     code blocks stay plain
 *   `brotli` (optional) to precompress exported sites as `.br`; without it only `.gz` is written
 *   No system libvips needed: `vix` downloads a precompiled libvips on first compile
+*   Noto Color Emoji (optional, `fonts-noto-color-emoji` on Debian) for colour emoji in the
+    favicons and share cards the export draws; without it emoji come out in whatever font has them
 *   `inotify-tools` (optional, Linux) for live reload in development
 *   Node.js with npm: the asset build installs the editor's packages from `assets/package-lock.json`
     (`npm ci`); `mix setup` downloads the standalone `tailwind` and `esbuild` binaries
@@ -59,6 +61,8 @@ Uploaded images are stored in `storage/` (git-ignored).
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`
 (`migrate/0`, `create_user/2`, `create_api_token/2`). `bin/server` migrates and starts the app.
+`Feather.Release.backfill_suggestions/0` fills in the model's alt texts, descriptions and short
+post titles for content from before `OLLAMA_URL` was set; deploy the sites by hand afterwards.
 
 ### Environment variables
 
@@ -70,9 +74,10 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `DATABASE_PATH` | SQLite database file (prod, required) | |
 | `POOL_SIZE` | Database connections (prod) | `5` |
 | `STORAGE_PATH` | Images, rendered diagrams and build output (prod, required) | dev: `storage/` |
-| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
+| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials and archive.org keys (prod, required) | fixed dev/test keys |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `HARDCOVER_TOKEN` | Hardcover API key for the book search (optional; without it books are searched on OpenLibrary) | |
+| `OLLAMA_URL` | Base URL of an Ollama instance running `gemma4-26b` (e.g. `http://ollama:11434`), which suggests alt texts, descriptions and titles of short posts (optional; without it no suggestions are made) | |
 | `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
 

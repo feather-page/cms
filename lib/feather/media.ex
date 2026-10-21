@@ -12,13 +12,14 @@ defmodule Feather.Media do
 
   Variants (`Feather.Media.Variants`) are generated synchronously on create:
   the admin preview and those the caller asks for, which follow from the
-  image's role (`Feather.StaticSite.ImageVariants`).
+  image's role (`Feather.StaticSite.ImageVariants`). The alt text is
+  suggested afterwards in the background (`Feather.Media.AltText`).
   """
 
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.Media.{Cleanup, Fetcher, Image, Processor, Variants}
+  alias Feather.Media.{AltText, Cleanup, Fetcher, Image, Processor, Variants}
   alias Feather.Repo
   alias Feather.Sites.Site
 
@@ -123,6 +124,7 @@ defmodule Feather.Media do
   `:page_id` and `:project_id`.
 
   Returns `{:error, changeset}` if the file is not an image or too big.
+  A created image gets its alt text suggested in the background.
   """
   @spec create_image_from_upload(Scope.t() | Site.t(), Path.t(), String.t(), map(), keyword()) ::
           {:ok, Image.t()} | {:error, Ecto.Changeset.t()}
@@ -142,7 +144,11 @@ defmodule Feather.Media do
     if byte_size > @max_byte_size do
       file_error(site, attrs, "is too big (at most 25 MB)")
     else
-      create_image_from_file(site, path, attrs, Keyword.get(opts, :variants, []))
+      with {:ok, image} <-
+             create_image_from_file(site, path, attrs, Keyword.get(opts, :variants, [])) do
+        AltText.start(site, image)
+        {:ok, image}
+      end
     end
   end
 
@@ -272,6 +278,49 @@ defmodule Feather.Media do
       "" -> "image"
       name -> String.slice(name, 0, 255)
     end
+  end
+
+  ## Updating
+
+  @doc """
+  Sets the alt text of an image of the scope's site. A changed alt text
+  moves the site's `updated_at`, as the export shows it
+  (`Feather.Sites.touch_site/1`).
+  """
+  @spec update_image_alt(Scope.t(), Image.t(), map()) ::
+          {:ok, Image.t()} | {:error, Ecto.Changeset.t()}
+  def update_image_alt(
+        %Scope{site: %Site{id: site_id}} = scope,
+        %Image{site_id: site_id} = image,
+        attrs
+      ) do
+    changeset = Image.alt_changeset(image, attrs)
+
+    with {:ok, image} <- Repo.update(changeset) do
+      if Ecto.Changeset.changed?(changeset, :alt), do: Feather.Sites.touch_site(scope)
+      {:ok, image}
+    end
+  end
+
+  @doc """
+  Asks the model for the alt text of every image of the scope's site that
+  has none, one after another (`Feather.Media.AltText.suggest/2`), for
+  images uploaded before the suggestions existed. Moves the site's
+  `updated_at` if one was filled in. Returns how many were.
+  """
+  @spec backfill_alt_texts(Scope.t()) :: non_neg_integer()
+  def backfill_alt_texts(%Scope{site: %Site{} = site} = scope) do
+    images =
+      Repo.all(
+        from i in Image, where: i.site_id == ^site.id and i.alt == "", order_by: i.inserted_at
+      )
+
+    Enum.each(images, &AltText.suggest(site, &1))
+
+    ids = Enum.map(images, & &1.id)
+    filled = Repo.aggregate(from(i in Image, where: i.id in ^ids and i.alt != ""), :count)
+    if filled > 0, do: Feather.Sites.touch_site(scope)
+    filled
   end
 
   ## Files

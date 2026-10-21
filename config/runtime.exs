@@ -17,6 +17,10 @@ if config_env() != :test do
     config :feather, :hardcover_token, hardcover_token
   end
 
+  if ollama_url = System.get_env("OLLAMA_URL") do
+    config :feather, :ollama_url, ollama_url
+  end
+
   if System.get_env("IMAGE_CLEANUP") == "false" do
     config :feather, Feather.Media.CleanupScheduler, enabled: false
   end

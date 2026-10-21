@@ -448,6 +448,32 @@ defmodule Feather.ContentTest do
       assert Repo.get!(PostVersion, first.id).title == "First"
     end
 
+    test "last_changed_at/1 is when the published version was published, for posts not before their publish_at",
+         %{scope: scope} do
+      published_at = ~U[2026-10-01 09:00:00.000000Z]
+
+      post = fn publish_at ->
+        %Post{publish_at: publish_at, published_version: %PostVersion{published_at: published_at}}
+      end
+
+      assert Content.last_changed_at(post.(~U[2026-09-30 08:00:00.000000Z])) == published_at
+
+      assert Content.last_changed_at(post.(~U[2026-10-10 07:00:00.000000Z])) ==
+               ~U[2026-10-10 07:00:00.000000Z]
+
+      assert Content.last_changed_at(%Page{
+               published_version: %PageVersion{published_at: published_at}
+             }) ==
+               published_at
+
+      assert Content.last_changed_at(%Project{
+               published_version: %ProjectVersion{published_at: published_at}
+             }) == published_at
+
+      draft = post_fixture(scope, draft: true)
+      assert Content.last_changed_at(draft) == nil
+    end
+
     test "turns pages and projects into versions", %{scope: scope} do
       page = page_fixture(scope, page_type: "books", draft: true)
       assert {:ok, page} = Content.publish(scope, page)

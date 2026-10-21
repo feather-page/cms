@@ -34,7 +34,8 @@ defmodule FeatherWeb.ReviewLiveTest do
   } do
     {:ok, lv, _html} = live(conn, review_path(site, book, "new"))
     assert has_element?(lv, "#title-field.hidden")
-    assert has_element?(lv, "#slug-field.hidden")
+    refute has_element?(lv, "#slug-field.hidden")
+    assert has_element?(lv, "#meta-title-field")
 
     sync_new(lv, "Great book, highly recommended!")
 
@@ -73,7 +74,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     sync_new(lv, String.duplicate("A", 350))
 
     refute has_element?(lv, "#title-field.hidden")
-    refute has_element?(lv, "#slug-field.hidden")
+    refute has_element?(lv, "#meta-title-field")
     assert has_element?(lv, "#post_title", "Review: Clean Code")
 
     lv
@@ -201,8 +202,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     post = Books.get_review_post(scope, Books.get_book!(scope, book.public_id))
     assert Content.draft?(post)
 
-    html =
-      lv |> element("#review-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    html = publish_in_form(lv, "#review-content-editor")
 
     assert html =~ "Review was published."
     assert Content.publication_status(Content.get_post!(scope, post.public_id)) == :published
@@ -223,7 +223,7 @@ defmodule FeatherWeb.ReviewLiveTest do
     refute has_element?(lv, "#discard-review")
 
     lv |> form("#review-form", post: %{title: "Second take"}) |> render_change()
-    lv |> element("#review-content-editor") |> render_hook("publish", %{"editor" => "saved"})
+    publish_in_form(lv, "#review-content-editor")
 
     assert has_element?(lv, "#version-2", "Published")
 

@@ -45,4 +45,48 @@ defmodule Feather.StaticSite.Themes.FeatherPage.Hue do
       key -> Map.get_lazy(@lookup, key, fn -> :erlang.phash2(key, 360) end)
     end
   end
+
+  @doc """
+  The sRGB hex colour (`"#rrggbb"`) of an OKLCH colour, clipped to the sRGB
+  gamut, for images that cannot use CSS: lightness 0–1, chroma, hue in degrees.
+  """
+  @spec oklch_hex(number(), number(), number()) :: String.t()
+  def oklch_hex(lightness, chroma, hue) do
+    radians = hue * :math.pi() / 180
+
+    lightness
+    |> oklab_to_lms(chroma * :math.cos(radians), chroma * :math.sin(radians))
+    |> lms_to_linear_srgb()
+    |> Enum.map_join(&hex_channel/1)
+    |> then(&("#" <> &1))
+  end
+
+  defp oklab_to_lms(lightness, a, b) do
+    {
+      :math.pow(lightness + 0.3963377774 * a + 0.2158037573 * b, 3),
+      :math.pow(lightness - 0.1055613458 * a - 0.0638541728 * b, 3),
+      :math.pow(lightness - 0.0894841775 * a - 1.2914855480 * b, 3)
+    }
+  end
+
+  defp lms_to_linear_srgb({l, m, s}) do
+    [
+      4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+      -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+      -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    ]
+  end
+
+  defp hex_channel(linear) do
+    linear = linear |> max(0.0) |> min(1.0)
+
+    encoded =
+      if linear <= 0.0031308, do: 12.92 * linear, else: 1.055 * :math.pow(linear, 1 / 2.4) - 0.055
+
+    (encoded * 255)
+    |> round()
+    |> Integer.to_string(16)
+    |> String.pad_leading(2, "0")
+    |> String.downcase()
+  end
 end

@@ -10,7 +10,7 @@ defmodule Feather.Content.Page do
   """
   use Feather.Schema
 
-  alias Feather.Content.{BlocksType, Slug, Tags}
+  alias Feather.Content.{BlocksType, Description, Slug, Tags}
 
   @type t :: %__MODULE__{}
 
@@ -26,6 +26,8 @@ defmodule Feather.Content.Page do
     field :lock_version, :integer, default: 1
     field :page_type, :string, default: "default"
     field :add_to_navigation, :boolean, virtual: true, default: false
+    field :description, :string
+    field :description_generated, :boolean, default: false
 
     belongs_to :site, Feather.Sites.Site
     belongs_to :header_image, Feather.Media.Image
@@ -46,6 +48,7 @@ defmodule Feather.Content.Page do
     |> cast(attrs, [
       :title,
       :slug,
+      :description,
       :emoji,
       :tags,
       :content,
@@ -55,6 +58,7 @@ defmodule Feather.Content.Page do
       :thumbnail_image_id
     ])
     |> Feather.Validations.trim_to_nil(:emoji)
+    |> Description.cast_description()
     # Any page may claim "/", the unique index on (site_id, slug) makes sure
     # only one does: that page is the homepage.
     |> Slug.cast_slug(required: true, allow_root: true)

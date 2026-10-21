@@ -162,6 +162,67 @@ defmodule Feather.Sites do
     Site.changeset(site, attrs)
   end
 
+  ## archive.org keys
+
+  @archive_org_key_types %{access_key: :string, secret_key: :string}
+
+  @doc """
+  The archive.org keys of the scope's site (`%{access_key: _, secret_key:
+  _}`), which deploys use to ask archive.org to save the changed pages
+  (ADR 0027), or nil. Raises `ArgumentError` when they do not decrypt.
+  """
+  @spec archive_org_keys(Scope.t()) :: %{access_key: String.t(), secret_key: String.t()} | nil
+  def archive_org_keys(%Scope{site: %Site{id: site_id}}) do
+    case Repo.one(from s in Site, where: s.id == ^site_id, select: s.archive_org_keys) do
+      %{"access_key" => access_key, "secret_key" => secret_key} ->
+        %{access_key: access_key, secret_key: secret_key}
+
+      _none ->
+        nil
+    end
+  end
+
+  @doc "Returns true if the scope's site has archive.org keys, without decrypting them."
+  @spec archive_org_keys?(Scope.t()) :: boolean()
+  def archive_org_keys?(%Scope{site: %Site{id: site_id}}) do
+    Repo.exists?(from s in Site, where: s.id == ^site_id and not is_nil(s.archive_org_keys))
+  end
+
+  @doc "A changeset for entering archive.org keys (`access_key`, `secret_key`)."
+  @spec change_archive_org_keys(map()) :: Ecto.Changeset.t()
+  def change_archive_org_keys(attrs \\ %{}) do
+    {%{}, @archive_org_key_types}
+    |> Ecto.Changeset.cast(attrs, Map.keys(@archive_org_key_types))
+    |> Feather.Validations.trim_to_nil(:access_key)
+    |> Feather.Validations.trim_to_nil(:secret_key)
+    |> Ecto.Changeset.validate_required(Map.keys(@archive_org_key_types))
+    |> Ecto.Changeset.validate_length(:access_key, max: 200)
+    |> Ecto.Changeset.validate_length(:secret_key, max: 200)
+  end
+
+  @doc """
+  Stores the archive.org keys of the scope's site, encrypted. They are not
+  part of the export, so the site's `updated_at` stays.
+  """
+  @spec put_archive_org_keys(Scope.t(), map()) :: :ok | {:error, Ecto.Changeset.t()}
+  def put_archive_org_keys(%Scope{} = scope, attrs) do
+    changeset = change_archive_org_keys(attrs)
+
+    case Ecto.Changeset.apply_action(changeset, :insert) do
+      {:ok, keys} -> set_archive_org_keys(scope, keys)
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  @doc "Removes the archive.org keys of the scope's site."
+  @spec delete_archive_org_keys(Scope.t()) :: :ok
+  def delete_archive_org_keys(%Scope{} = scope), do: set_archive_org_keys(scope, nil)
+
+  defp set_archive_org_keys(%Scope{site: %Site{id: site_id}}, keys) do
+    Repo.update_all(from(s in Site, where: s.id == ^site_id), set: [archive_org_keys: keys])
+    :ok
+  end
+
   ## Mascots and portrait
 
   @doc "The mascot slots of a site: `:footer`, `:post_end` and `:projects`."

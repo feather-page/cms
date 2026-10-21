@@ -170,6 +170,32 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert String.ends_with?(conn.resp_body, FeatherPage.css())
   end
 
+  test "serves the favicon the pages link, drawn from the site's emoji", %{
+    conn: conn,
+    scope: scope,
+    root: root,
+    user: user
+  } do
+    {:ok, _site} = Feather.Sites.update_site(scope, scope.site, %{emoji: "🦊"})
+
+    [href] =
+      get(conn, root <> "/")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(~s(link[rel="icon"]))
+      |> LazyHTML.attribute("href")
+
+    assert href =~ ~r"\A#{root}/images/[0-9a-f]{64}\.png\z"
+
+    conn = get(fresh(user), href)
+
+    assert conn.status == 200
+    assert get_resp_header(conn, "content-type") == ["image/png"]
+    assert <<137, "PNG", _rest::binary>> = conn.resp_body
+
+    assert get(fresh(user), root <> "/images/#{String.duplicate("0", 64)}.png").status == 404
+  end
+
   test "serves only the fonts of the site's theme", %{conn: conn, scope: scope, root: root} do
     scope.site |> Ecto.Changeset.change(theme: "simple_sidebar") |> Feather.Repo.update!()
 

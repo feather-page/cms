@@ -321,6 +321,11 @@
   margin-top: 0.375rem;
 }
 
+.block-editor__document .pm-image__alt {
+  width: 100%;
+  margin-top: 0.375rem;
+}
+
 .block-editor__document .pm-image.is-placeholder .pm-image__picker {
   padding: 0.75rem;
   border: 1px dashed var(--fp-border);

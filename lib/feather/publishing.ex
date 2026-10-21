@@ -124,6 +124,12 @@ defmodule Feather.Publishing do
     :ok
   end
 
+  @doc "When the export of the target's last successful deploy started, as stored, or nil."
+  @spec last_deployed_at(DeploymentTarget.t()) :: DateTime.t() | nil
+  def last_deployed_at(%DeploymentTarget{id: id}) do
+    Repo.one(from t in DeploymentTarget, where: t.id == ^id, select: t.last_deployed_at)
+  end
+
   @doc "Returns true while a deploy of the target holds the lock."
   @spec deploying?(DeploymentTarget.t()) :: boolean()
   def deploying?(%DeploymentTarget{id: id}) do

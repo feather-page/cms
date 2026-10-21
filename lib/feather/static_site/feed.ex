@@ -1,7 +1,8 @@
 defmodule Feather.StaticSite.Feed do
   @moduledoc """
   The RSS 2.0 feed (`feed.xml`): the 20 latest published posts with their
-  rendered content, addressed by the site's canonical URL.
+  rendered content, addressed by the site's canonical URL. Items take the
+  post's title, else its meta title, else "Post".
   """
 
   alias Feather.StaticSite.{Blocks, Routes, SiteData, Xml}
@@ -48,17 +49,24 @@ defmodule Feather.StaticSite.Feed do
   defp item(post, routes, block_context) do
     url = Routes.post_url(routes, post)
 
-    title =
-      if is_binary(post.title) and String.trim(post.title) != "", do: post.title, else: "Post"
-
     Xml.element(3, "item", [], [
-      Xml.element(4, "title", title),
+      Xml.element(4, "title", item_title(post)),
       Xml.element(4, "link", url),
       Xml.element(4, "pubDate", rfc2822(post.publish_at)),
       Xml.element(4, "guid", [{"isPermaLink", "true"}], url),
       Xml.element(4, "description", Blocks.to_html(post.content, block_context))
     ])
   end
+
+  defp item_title(post) do
+    cond do
+      present?(post.title) -> post.title
+      present?(post.meta_title) -> post.meta_title
+      true -> "Post"
+    end
+  end
+
+  defp present?(text), do: is_binary(text) and String.trim(text) != ""
 
   @doc ~S'A UTC datetime in RFC 2822 format: `"Tue, 06 Oct 2026 12:00:00 +0000"`.'
   @spec rfc2822(DateTime.t()) :: String.t()

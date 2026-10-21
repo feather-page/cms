@@ -225,7 +225,7 @@ defmodule Feather.StaticSite.Themes.FeatherPageTest do
     assert scope.site.bio == "I build websites since 2001."
 
     for path <- @pages do
-      refute RecordingSink.get(sink, path) =~ "since 2001", path
+      refute sink |> doc(path) |> Floki.find("body") |> Floki.raw_html() =~ "since 2001", path
     end
   end
 

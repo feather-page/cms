@@ -22,8 +22,8 @@ defmodule Feather.StaticSite.ThemeHelpers do
   @jetbrains_mono_faces [{400, "normal"}, {700, "normal"}, {400, "italic"}]
 
   @doc """
-  The meta tags of a page (title, robots, description, canonical URL,
-  Open Graph), from the assigns `Feather.StaticSite.Renderer` builds.
+  The meta tags of a page (title, icon, robots, description, canonical URL,
+  Open Graph, structured data), from the assigns `Feather.StaticSite.Renderer` builds.
   """
   EEx.function_from_file(
     :def,

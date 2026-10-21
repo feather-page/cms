@@ -149,6 +149,8 @@ defmodule FeatherWeb.Router do
     post "/images", ImageController, :create
     post "/images/from-url", ImageController, :from_url
     get "/images/:id", ImageController, :show
+    get "/images/:id/alt", ImageController, :alt
+    put "/images/:id/alt", ImageController, :update_alt
     get "/books/lookup", BookLookupController, :index
     post "/diagrams/preview", DiagramPreviewController, :create
     post "/code/highlight", CodeHighlightController, :create

@@ -52,7 +52,7 @@ defmodule Feather.StaticSite.SiteDataTest do
       site = site |> Ecto.Changeset.change(theme: "simple_sidebar") |> Repo.update!()
 
       assert SiteData.images_in_use(SiteData.load(site)) == []
-      refute site |> export() |> RecordingSink.paths() |> Enum.any?(&(&1 =~ ~r{^images/}))
+      refute site |> export() |> RecordingSink.paths() |> Enum.any?(&(&1 =~ ~r{^images/.+/}))
     end
   end
 

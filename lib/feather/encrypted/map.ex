@@ -45,7 +45,7 @@ defmodule Feather.Encrypted.Map do
     else
       _ ->
         Logger.error(
-          "Could not decrypt an encrypted map (deployment target config). " <>
+          "Could not decrypt an encrypted map (deployment target config or archive.org keys). " <>
             "Was CONFIG_ENCRYPTION_KEY changed?"
         )
 

@@ -104,6 +104,7 @@ _Avoid_: Host, Server, Environment, Staging
 **Deploy**:
 A static export synced to the site's deployment target. What changed since the last deploy (published versions, the
 site's own changes, books, deleting or unpublishing a published record) counts as not deployed until the next one.
+After a deploy the CMS tells IndexNow and, with the site's archive.org keys, archive.org which URLs changed.
 
 **Static Export**:
 Rendering a site to static files through a sink. Syncing them to a deployment target is a separate step; both
@@ -119,6 +120,27 @@ _Avoid_: Output, Target (a target is a deployment target)
 Live rendering of the same templates inside the CMS (`/preview/<site>/`), with no export and no deployment. Shows the
 records as they are, unpublished changes and drafts included.
 _Avoid_: Draft View, Staging
+
+**Alt Text** · _de:_ Alternativtext:
+The text that stands in for an image for screen readers and image search, stored on the image and shown wherever it
+appears as content or as a cover. The self-hosted model suggests it in the site's language after an upload; members
+can overwrite it in the image block and the image picker. A caption is shown under the image; the alt text describes it.
+_Avoid_: Caption, Description, Title
+
+**Description** · _de:_ Beschreibung:
+The sentence about a post or page that search results and link previews show, stored on the record and its versions.
+The self-hosted model writes it in the site's language when the record is published without one, and writes it anew
+while it is still the model's and the title or content changed; "Suggest" in the form's details asks for one at any
+time. A description a member typed stays. Without one the export takes the start of the text. Projects have their
+short description instead; the Bio is about the site owner, not a page.
+_Avoid_: Summary, Excerpt, Teaser, Bio
+
+**Short Post** · _de:_ Kurzbeitrag:
+A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title,
+in link previews and in the feeds. At its first publish, when it has no slug, the self-hosted model writes a slug
+and, unless a member typed one, the meta title in the site's language; afterwards the slug stays. While its text is shorter than 300 characters the
+form hides the title field. A review without a title is a short post too.
+_Avoid_: Note, Untitled Post, Micropost
 
 **Redirect** · _de:_ Weiterleitung:
 An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,

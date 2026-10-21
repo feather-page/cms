@@ -95,6 +95,19 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   @impl true
   def site_image_fields, do: Site.mascot_fields()
 
+  # Paper, text and muted ink of the light scheme, and its --accent.
+  @impl true
+  def share_card_look(%Site{} = site) do
+    %{
+      background: "#fffcf7",
+      text: "#3a322c",
+      muted: "#6c6258",
+      accent: Hue.oklch_hex(0.78, 0.1, hue(site)),
+      font: "Nunito ExtraBold",
+      font_file: font_path("nunito-latin-800.woff2")
+    }
+  end
+
   defp hue(site), do: Hue.for_emoji(site.emoji)
 
   defp rating(rating, class) do

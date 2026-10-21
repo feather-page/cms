@@ -4,11 +4,13 @@ defmodule Feather.Content.Post do
   published version and its `publish_at` has passed. Posts without a slug
   are exported under `posts/<public_id>/`.
 
-  Whether a post is a draft is `Feather.Content.draft?/1`.
+  Whether a post is a draft is `Feather.Content.draft?/1`. Its
+  description is described in `Feather.Content.Description`, the meta
+  title of a short post in `Feather.Content.ShortPost`.
   """
   use Feather.Schema
 
-  alias Feather.Content.{BlocksType, Slug, Tags}
+  alias Feather.Content.{BlocksType, Description, Slug, Tags}
 
   @type t :: %__MODULE__{}
 
@@ -21,6 +23,9 @@ defmodule Feather.Content.Post do
     field :content, BlocksType, default: []
     field :lock_version, :integer, default: 1
     field :publish_at, :utc_datetime_usec
+    field :description, :string
+    field :description_generated, :boolean, default: false
+    field :meta_title, :string
 
     belongs_to :site, Feather.Sites.Site
     belongs_to :header_image, Feather.Media.Image
@@ -38,6 +43,8 @@ defmodule Feather.Content.Post do
     |> cast(attrs, [
       :title,
       :slug,
+      :description,
+      :meta_title,
       :emoji,
       :tags,
       :content,
@@ -46,6 +53,8 @@ defmodule Feather.Content.Post do
       :thumbnail_image_id
     ])
     |> Feather.Validations.trim_to_nil(:emoji)
+    |> Feather.Validations.trim_to_nil(:meta_title)
+    |> Description.cast_description()
     |> Slug.cast_slug()
     |> Tags.cast_tags()
     |> Feather.Validations.validate_emoji(:emoji)

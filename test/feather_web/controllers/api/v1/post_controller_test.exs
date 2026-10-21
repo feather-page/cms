@@ -412,6 +412,28 @@ defmodule FeatherWeb.Api.V1.PostControllerTest do
       end
     end
 
+    test "publishing writes a description the API neither shows nor takes",
+         %{conn: conn, path: path, scope: scope} do
+      previous = Application.get_env(:feather, :ollama_url)
+      Application.put_env(:feather, :ollama_url, "http://ollama.test:11434")
+      on_exit(fn -> Application.put_env(:feather, :ollama_url, previous) end)
+
+      Req.Test.stub(Feather.Ollama, fn conn ->
+        Req.Test.json(conn, %{"message" => %{"content" => ~s({"description": "Summary."})}})
+      end)
+
+      post = %{title: "T", slug: "/t", description: "Mine.", content: [paragraph("Text.")]}
+      conn = json_request(conn, :post, path, %{post: post})
+
+      body = assert_openapi_response(conn, "post", "/sites/{site_id}/posts", 201)
+      refute Map.has_key?(body["data"], "description")
+
+      stored = Content.get_post(scope, body["data"]["id"])
+      assert stored.description == "Summary."
+      assert stored.description_generated
+      assert Content.publication_status(stored) == :published
+    end
+
     test "create with draft: true stores a draft", %{conn: conn, path: path, scope: scope} do
       conn = json_request(conn, :post, path, %{post: %{title: "T", slug: "/t", draft: true}})
 

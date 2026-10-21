@@ -155,6 +155,8 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
 
   defp attr(doc, selector, name), do: doc |> find(selector) |> LazyHTML.attribute(name)
 
+  @runnable_script ~s{script:not([type="application/ld+json"])}
+
   defp present?(doc, selector), do: doc |> find(selector) |> Enum.any?()
 
   @pages ~w(index.html ai-economics/index.html winter-ride/index.html about/index.html
@@ -190,7 +192,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
                path
 
         assert texts(page, "header.sidebar .social-links a") == ["GitHub"], path
-        refute present?(page, "script"), path
+        refute present?(page, @runnable_script), path
       end
     end
 
@@ -838,9 +840,9 @@ defmodule Feather.StaticSite.Themes.SimpleSidebarTest do
       html = RecordingSink.get(sink, path)
       page = LazyHTML.from_document(html)
 
-      refute html =~ "<script", path
+      refute html =~ ~r{<script(?! type="application/ld\+json">)}, path
       refute html =~ ~r/javascript:/i, path
-      refute present?(page, "script"), path
+      refute present?(page, @runnable_script), path
       assert text(page, "header.sidebar .site-name") == "<script>alert(1)</script>", path
     end
 

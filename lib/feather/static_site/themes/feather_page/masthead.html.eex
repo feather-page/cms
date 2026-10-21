@@ -1,7 +1,7 @@
 <header class="masthead">
   <%= cond do %>
   <% match?(%Image{}, @image) -> %>
-  <img class="masthead-art"<%= image_sources(@routes, @image, variants(:homepage_header), "(min-width: 39rem) 36rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)") %><%= dimensions(@image) %> fetchpriority="high" alt="">
+  <img class="masthead-art"<%= image_sources(@routes, @image, variants(:homepage_header), "(min-width: 39rem) 36rem, (min-width: 25rem) 92vw, calc(100vw - 2rem)") %><%= dimensions(@image) %> fetchpriority="high" alt="<%= @image.alt %>">
   <%= if unsplash_credit?(@image) do %>
   <p class="photo-credit"><%= photo_credit(@image) %></p>
   <% end %>

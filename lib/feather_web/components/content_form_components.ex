@@ -216,16 +216,15 @@ defmodule FeatherWeb.ContentFormComponents do
 
   @doc """
   Renders the slug input, for the details section (`form` names the record's
-  form). `hidden` hides it (short posts) but keeps it in the form.
+  form).
   """
   attr :field, Phoenix.HTML.FormField, required: true
   attr :form, :string, required: true
-  attr :hidden, :boolean, default: false
   attr :id, :string, default: "slug-field"
 
   def slug_field(assigns) do
     ~H"""
-    <div id={@id} class={@hidden && "hidden"}>
+    <div id={@id}>
       <.input
         field={@field}
         label="Slug"
@@ -234,6 +233,67 @@ defmodule FeatherWeb.ContentFormComponents do
         phx-debounce="300"
         autocomplete="off"
       />
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the meta title input of a short post, for the details section
+  (`form` names the record's form).
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :form, :string, required: true
+  attr :id, :string, default: "meta-title-field"
+
+  def meta_title_field(assigns) do
+    ~H"""
+    <div id={@id}>
+      <.input
+        field={@field}
+        label="Meta title"
+        help="Names this short post in search results and feed readers, not on the site. Written for you when you first publish it."
+        form={@form}
+        phx-debounce="300"
+        autocomplete="off"
+      />
+    </div>
+    """
+  end
+
+  @doc """
+  Renders the description input with its Suggest button
+  (`#suggest-description`, sends `suggest_description`), for the details
+  section of posts and pages (`form` names the record's form). The button
+  needs a saved record and waits while a suggestion is on its way.
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :form, :string, required: true
+  attr :record, :map, required: true
+  attr :suggesting, :boolean, default: false
+  attr :id, :string, default: "description-field"
+
+  def description_field(assigns) do
+    ~H"""
+    <div id={@id}>
+      <.input
+        field={@field}
+        type="textarea"
+        label="Description"
+        help="Shown in search results and link previews. Written for you when you publish while it is empty."
+        form={@form}
+        rows="3"
+        phx-debounce="300"
+      />
+      <.button
+        id="suggest-description"
+        type="button"
+        size={:sm}
+        loading={@suggesting}
+        disabled={is_nil(@record.id) or @suggesting}
+        phx-click="suggest_description"
+      >
+        Suggest
+      </.button>
     </div>
     """
   end
@@ -470,10 +530,11 @@ defmodule FeatherWeb.ContentFormComponents do
   end
 
   @doc """
-  Renders how the content length stands against the short post rule (see
-  "Short posts" in `FeatherWeb.ContentForm`): `Short post · 123 / 300
-  characters`, from 300 characters that it is no longer a short post. For
-  posts without title and slug, where the rule applies.
+  Renders the content length of a short post against the length from
+  which its title field is shown (see "Short posts" in
+  `FeatherWeb.ContentForm`): `Short post · 123 / 300 characters`, from 300
+  characters `300 characters · title field shown`. For posts without title
+  and slug.
   """
   attr :length, :integer, required: true
   attr :id, :string, default: "content-length"
@@ -486,7 +547,7 @@ defmodule FeatherWeb.ContentFormComponents do
       <%= if @length < @max do %>
         Short post · {@length} / {@max} characters
       <% else %>
-        {@length} characters · no longer a short post
+        {@length} characters · title field shown
       <% end %>
     </p>
     """

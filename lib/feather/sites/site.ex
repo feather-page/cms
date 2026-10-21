@@ -1,6 +1,12 @@
 defmodule Feather.Sites.Site do
   @moduledoc """
   A managed website with its own domain; the container for all content.
+
+  After each deploy the CMS tells IndexNow and, with the site's
+  `archive_org_keys`, archive.org what changed (ADR 0027). The keys are
+  stored encrypted and not loaded with the site (see
+  `Feather.Sites.archive_org_keys/1`), so a wrong encryption key does not
+  break loading sites.
   """
   use Feather.Schema
 
@@ -22,6 +28,9 @@ defmodule Feather.Sites.Site do
     field :copyright, :string, default: "© All rights reserved."
     field :theme, :string, default: "feather"
     field :bio, :string
+    field :indexnow_key, :string
+
+    field :archive_org_keys, Feather.Encrypted.Map, load_in_query: false
 
     has_many :site_users, Feather.Sites.SiteUser
     has_many :users, through: [:site_users, :user]
@@ -114,6 +123,11 @@ defmodule Feather.Sites.Site do
   def create_changeset(site, attrs) do
     site
     |> changeset(attrs)
+    |> put_change(:indexnow_key, generate_indexnow_key())
     |> Feather.PublicId.put()
   end
+
+  @doc "A new IndexNow key: 32 lowercase hexadecimal characters."
+  @spec generate_indexnow_key() :: String.t()
+  def generate_indexnow_key, do: 16 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
 end
