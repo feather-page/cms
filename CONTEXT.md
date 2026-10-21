@@ -136,15 +136,26 @@ short description instead; the Bio is about the site owner, not a page.
 _Avoid_: Summary, Excerpt, Teaser, Bio
 
 **Short Post** · _de:_ Kurzbeitrag:
-A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title,
-in link previews and in the feeds. At its first publish, when it has no slug, the self-hosted model writes a slug
-and, unless a member typed one, the meta title in the site's language; afterwards the slug stays. While its text is shorter than 300 characters the
-form hides the title field. A review without a title is a short post too.
+A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title, in
+link previews, in the feeds and in its Markdown alternate. At its first publish, when it has no slug, the self-hosted
+model writes a slug and, unless a member typed one, the meta title in the site's language; afterwards the slug stays.
+While its text is shorter than 300 characters the form hides the title field. A review without a title is a short post
+too.
 _Avoid_: Note, Untitled Post, Micropost
+
+**Markdown Alternate** · _de:_ Markdown-Fassung:
+The home page, a post, page or project as Markdown, without the theme's markup: front matter with its title (a short
+post's meta title, as in the page title), canonical URL, publish date (posts) and tags, then the title and the content;
+the home page's holds all posts, a books or projects page's its list. The static export writes it as `index.md` next
+to the page's `index.html`; the `.htaccess` serves it at the page's URL to clients that ask for `text/markdown`, the
+page links it in its head, `llms.txt` lists them with the description of each page, and the preview shows it too.
+_Avoid_: Markdown version (a version is a published state), Markdown variant (variants are image sizes)
 
 **Redirect** · _de:_ Weiterleitung:
 An old path of a site that sends visitors on to a post, page or project, or to a path the export generates (`/`,
-`/feed.xml`), permanently (301) or temporarily (302). Old paths share the site's URL space with the slugs, so a URL
+`/feed.xml`), permanently (301) or temporarily (302); never to the Markdown alternate of a record, which moves with
+it. An old path without an extension also catches its `index.html` and its `index.md`; the latter leads to the
+target's Markdown alternate where the target has one. Old paths share the site's URL space with the slugs, so a URL
 belongs to content or to one redirect. Publishing a record under a new URL redirects its old URL to it permanently. A
 redirect is active while its target record is published or its target path still resolves; the static export writes
 the active ones into the `.htaccess`, and the preview follows them.
