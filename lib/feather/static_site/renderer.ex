@@ -222,7 +222,14 @@ defmodule Feather.StaticSite.Renderer do
 
   def render_artifact(%SiteData{}, %Routes{} = routes, "robots.txt") do
     sitemap = routes |> Routes.canonical() |> Routes.artifact_url("sitemap.xml")
-    "User-agent: *\nAllow: /\n\nSitemap: #{sitemap}\n"
+
+    """
+    User-agent: *
+    Content-Signal: search=yes, ai-input=yes, ai-train=yes
+    Allow: /
+
+    Sitemap: #{sitemap}
+    """
   end
 
   def render_artifact(%SiteData{} = data, %Routes{} = routes, "style.css"),

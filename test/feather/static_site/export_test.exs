@@ -479,9 +479,15 @@ defmodule Feather.StaticSite.ExportTest do
     assert file(c.sink, "#{key}.txt") == key
   end
 
-  test "robots.txt points at the canonical sitemap", c do
-    assert file(c.sink, "robots.txt") ==
-             "User-agent: *\nAllow: /\n\nSitemap: https://example.com/sitemap.xml\n"
+  test "robots.txt lets every crawler in, allows every use of the content and points at the canonical sitemap",
+       c do
+    assert file(c.sink, "robots.txt") == """
+           User-agent: *
+           Content-Signal: search=yes, ai-input=yes, ai-train=yes
+           Allow: /
+
+           Sitemap: https://example.com/sitemap.xml
+           """
   end
 end
 

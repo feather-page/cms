@@ -1,12 +1,20 @@
 defmodule Feather.StaticSite.Htaccess do
   @moduledoc """
   The `.htaccess` the export writes for Apache hosts: the 404 page, the
-  site's redirects (ADR 0025), the precompressed files and a year-long
-  immutable cache for `style.css`, the image variants and the fonts: their
-  URLs change whenever their content does (a hash in the query, or a
-  variant's file name that always means the same file). Rules sit in
-  module guards, so a host without a module serves plain files instead of
-  failing.
+  security headers (ADR 0029), the site's redirects (ADR 0025), the
+  precompressed files and a year-long immutable cache for `style.css`, the
+  image variants and the fonts: their URLs change whenever their content
+  does (a hash in the query, or a variant's file name that always means the
+  same file). Rules sit in module guards, so a host without a module serves
+  plain files instead of failing.
+
+  The content security policy allows only what the themes load: the site's
+  own images (the drawn favicon among them), stylesheet and fonts, the
+  icon of a page with an emoji of its own as a data URI, inline style
+  attributes and HTTPS frames for embeds. No script runs: the structured
+  data is a JSON-LD data block, which browsers do not execute. Diagrams
+  get a policy of their own for their inline styles, fonts and icons,
+  which keeps the framing rule.
   """
 
   alias Feather.Content.{Page, Post, Project}
@@ -23,6 +31,34 @@ defmodule Feather.StaticSite.Htaccess do
     ".xml" => "application/xml",
     ".svg" => "image/svg+xml"
   }
+
+  @content_security_policy [
+    "default-src 'none'",
+    "img-src 'self' data:",
+    "style-src 'self'",
+    "style-src-attr 'unsafe-inline'",
+    "font-src 'self'",
+    "frame-src https:",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'self'"
+  ]
+
+  @security_headers [
+    {"Strict-Transport-Security", "max-age=31536000"},
+    {"X-Content-Type-Options", "nosniff"},
+    {"Referrer-Policy", "strict-origin-when-cross-origin"},
+    {"Content-Security-Policy", Enum.join(@content_security_policy, "; ")}
+  ]
+
+  # Firefox applies an SVG's own policy even where a page shows it as an image.
+  @diagram_content_security_policy [
+    "default-src 'none'",
+    "img-src data:",
+    "style-src 'unsafe-inline'",
+    "font-src data:",
+    "frame-ancestors 'self'"
+  ]
 
   EEx.function_from_file(
     :defp,
@@ -51,6 +87,8 @@ defmodule Feather.StaticSite.Htaccess do
 
     template(%{
       not_found_url: Routes.not_found_url(routes),
+      security_headers: @security_headers,
+      diagram_content_security_policy: Enum.join(@diagram_content_security_policy, "; "),
       redirects: Enum.map(with_extension_first(redirects), &redirect_rule(routes, &1)),
       encodings: [{"br", ".br"}, {"gzip", ".gz"}],
       extensions: Enum.map_join(content_types, "|", &elem(&1, 0)),

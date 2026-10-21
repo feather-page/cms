@@ -8,7 +8,8 @@ defmodule Feather.StaticSite.Export do
   link (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of
   the site's theme, the rendered diagrams, `feed.xml`, `robots.txt`,
   `sitemap.xml`, `style.css`, `404.html`, the IndexNow key file (ADR 0027)
-  and the `.htaccess` for Apache hosts, with the active redirects.
+  and the `.htaccess` for Apache hosts, with the security headers and the
+  active redirects.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
