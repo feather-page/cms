@@ -247,6 +247,9 @@ defmodule FeatherWeb.PreviewControllerTest do
     assert redirected_to(get(fresh(user), root <> "/posts/rule-of-72/"), 302) ==
              root <> "/unpublished-slug/"
 
+    assert redirected_to(get(fresh(user), root <> "/posts/rule-of-72/index.html"), 302) ==
+             root <> "/unpublished-slug/"
+
     assert redirected_to(get(fresh(user), root <> "/atom.xml"), 302) == root <> "/feed.xml"
   end
 

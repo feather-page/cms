@@ -35,7 +35,10 @@ defmodule Feather.StaticSite.Htaccess do
   The content of the `.htaccess` of the site the routes address, with a
   rewrite rule for each of the redirects, given with the record or path
   they lead to (see `Feather.StaticSite.SiteData`). An old path without
-  an extension matches with and without a trailing slash.
+  an extension also matches with a trailing slash and as its `index.html`
+  (`Feather.Redirects.Redirect.catches_index_files?/1`). The rules of old
+  paths with an extension come first, so a redirect from such an
+  `index.html` itself wins.
   """
   @spec render(Routes.t(), [{Redirect.t(), Post.t() | Page.t() | Project.t() | String.t()}]) ::
           String.t()
@@ -48,11 +51,17 @@ defmodule Feather.StaticSite.Htaccess do
 
     template(%{
       not_found_url: Routes.not_found_url(routes),
-      redirects: Enum.map(redirects, &redirect_rule(routes, &1)),
+      redirects: Enum.map(with_extension_first(redirects), &redirect_rule(routes, &1)),
       encodings: [{"br", ".br"}, {"gzip", ".gz"}],
       extensions: Enum.map_join(content_types, "|", &elem(&1, 0)),
       content_types: content_types
     })
+  end
+
+  defp with_extension_first(redirects) do
+    Enum.sort_by(redirects, fn {%Redirect{old_path: old_path}, _target} ->
+      Redirect.catches_index_files?(old_path)
+    end)
   end
 
   defp redirect_rule(routes, {%Redirect{old_path: old_path} = redirect, target}) do
@@ -65,7 +74,10 @@ defmodule Feather.StaticSite.Htaccess do
 
   defp old_path_pattern(old_path) do
     path = old_path |> String.trim_leading("/") |> Regex.escape()
-    if Path.extname(old_path) == "", do: "^#{path}/?$", else: "^#{path}$"
+
+    if Redirect.catches_index_files?(old_path),
+      do: "^#{path}(/(index\\.html)?)?$",
+      else: "^#{path}$"
   end
 
   defp target_url(routes, path) when is_binary(path), do: Routes.path_url(routes, path)

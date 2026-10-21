@@ -54,21 +54,33 @@ defmodule Feather.Redirects do
   @doc """
   Gets the active redirect of the scope's site whose old path a requested
   path (a string or path segments) matches, with or without a trailing
-  slash, or nil. Unlike `get_redirect/2` its target record is as it is
-  and `target` its current URL, where the preview shows it.
+  slash, or nil. The `index.html` of an old path without an extension
+  (`Redirect.catches_index_files?/1`) matches it too, unless an active
+  redirect from that file itself exists, as in the `.htaccess`. Unlike
+  `get_redirect/2` its target record is as it is and `target` its current
+  URL, where the preview shows it.
   """
   @spec find_active_redirect(Scope.t(), String.t() | [String.t()]) :: Redirect.t() | nil
   def find_active_redirect(%Scope{} = scope, segments) when is_list(segments),
     do: find_active_redirect(scope, Enum.join(segments, "/"))
 
   def find_active_redirect(%Scope{site: %Site{} = site} = scope, path) do
-    with old_path when is_binary(old_path) <- Slug.normalize(path),
-         %Redirect{} = redirect <- Repo.one(from_path(site, old_path)),
-         redirect = with_target(redirect, site, :current),
-         true <- active?(scope, redirect) do
-      redirect
+    with old_path when is_binary(old_path) <- Slug.normalize(path) do
+      site
+      |> from_path(catching_paths(old_path))
+      |> Repo.all()
+      |> Enum.sort_by(&(&1.old_path != old_path))
+      |> Enum.map(&with_target(&1, site, :current))
+      |> Enum.find(&active?(scope, &1))
+    end
+  end
+
+  defp catching_paths(old_path) do
+    with [_, path] <- Regex.run(~r{\A(/.+)/index\.html\z}, old_path),
+         true <- Redirect.catches_index_files?(path) do
+      [old_path, path]
     else
-      _ -> nil
+      _other -> [old_path]
     end
   end
 

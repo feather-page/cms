@@ -261,6 +261,32 @@ defmodule Feather.RedirectsTest do
       assert Redirects.find_active_redirect(site_scope_fixture(), "/posts/rule-of-72") == nil
     end
 
+    test "finds the redirect of an old path without an extension at its index.html, after an active one from that file",
+         %{scope: scope} do
+      post_fixture(scope, %{slug: "/neu"})
+      page = page_fixture(scope, %{slug: "/other"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/alt", target: "/neu"})
+      {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/b.html", target: "/neu"})
+
+      assert %Redirect{old_path: "/alt", target: "/neu/"} =
+               Redirects.find_active_redirect(scope, ["alt", "index.html"])
+
+      assert Redirects.find_active_redirect(scope, "/b.html/index.html") == nil
+
+      {:ok, _} =
+        Redirects.create_redirect(scope, %{old_path: "/alt/index.html", target: "/other"})
+
+      assert %Redirect{old_path: "/alt/index.html", target: "/other/"} =
+               Redirects.find_active_redirect(scope, "/alt/index.html")
+
+      assert %Redirect{old_path: "/alt"} = Redirects.find_active_redirect(scope, "/alt/")
+
+      {:ok, _} = Content.unpublish(scope, page)
+
+      assert %Redirect{old_path: "/alt"} =
+               Redirects.find_active_redirect(scope, "/alt/index.html")
+    end
+
     test "leaves out an inactive redirect", %{scope: scope} do
       page = page_fixture(scope, %{slug: "/target"})
       {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/old", target: "/target"})
