@@ -509,8 +509,8 @@ Accepted, 2026-10-20
 
 Accepted, 2026-10-21
 
-- **Context:** Alt texts, descriptions and titles of notes are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs `gemma4-26b`, which reads images, and holds one model in memory at a time.
-- **Decision:** `Feather.Ollama` asks that model over `OLLAMA_URL` with `Req`: an image's alt text after upload or import, in the background; a post's or page's description when it is published or on "Suggest"; a note's slug and meta title at its first publish. Results are stored on the record, can be overwritten, and a generated description is renewed at publish while it is unedited and the content changed. Rejected: Claude Haiku (better and faster, but drafts leave the house) and generating at export (exports would stop being reproducible and wait on the model).
+- **Context:** Alt texts, descriptions and titles of short posts are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs `gemma4-26b`, which reads images, and holds one model in memory at a time.
+- **Decision:** `Feather.Ollama` asks that model over `OLLAMA_URL` with `Req`: an image's alt text after upload or import, in the background; a post's or page's description when it is published or on "Suggest"; a short post's slug and meta title at its first publish. Results are stored on the record, can be overwritten, and a generated description is renewed at publish while it is unedited and the content changed. Rejected: Claude Haiku (better and faster, but drafts leave the house) and generating at export (exports would stop being reproducible and wait on the model).
 - **Consequences:** Without `OLLAMA_URL` or with the model down, fields stay empty and the export falls back to excerpts as before. Publishing, also over the API, waits up to 90 seconds for the model, and the CMS queues behind other clients of the same instance.
 
 ## 0027. Deploys notify IndexNow and archive.org
@@ -525,6 +525,6 @@ Accepted, 2026-10-21
 
 Accepted, 2026-10-21
 
-- **Context:** Search results show only favicons served as files, while sites declare their emoji as a `data:` SVG. Pages without an image have no `og:image`, so links to them, notes above all, are shared without a preview.
+- **Context:** Search results show only favicons served as files, while sites declare their emoji as a `data:` SVG. Pages without an image have no `og:image`, so links to them, short posts above all, are shared without a preview.
 - **Decision:** The export renders the site's emoji into a PNG favicon and, for pages without an image, a share card with the title and emoji in the theme's look, both with libvips (already used for image variants) and Noto Color Emoji installed in the Docker image. Pages with their own emoji keep it as an inline icon. Rejected: an uploaded favicon (one more thing to maintain per site) and the portrait as the only fallback (most sites have none).
 - **Consequences:** The Docker image grows by the emoji font, and emoji rendering depends on the libvips and Pango versions it ships. Cards are generated images that each theme has to design and that are cached like other variants.
