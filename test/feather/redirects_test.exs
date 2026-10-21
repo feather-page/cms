@@ -88,7 +88,9 @@ defmodule Feather.RedirectsTest do
             "/index.html.br",
             "/x/index.html.gz",
             "/style.css.br",
-            "/feed.xml.gz"
+            "/feed.xml.gz",
+            "/#{scope.site.indexnow_key}.txt",
+            "/#{scope.site.indexnow_key}.txt.gz"
           ] do
         assert {:error, changeset} =
                  Redirects.create_redirect(scope, %{old_path: old_path, target: "/"})

@@ -1,7 +1,7 @@
 defmodule Feather.Publishing.DeployTest do
   use Feather.DataCase
 
-  alias Feather.{Media, Publishing}
+  alias Feather.{Media, Publishing, Sites}
   alias Feather.Publishing.Deploy
 
   @moduletag :tmp_dir
@@ -251,6 +251,83 @@ defmodule Feather.Publishing.DeployTest do
 
     assert Deploy.remove_stale_exports() == :ok
     assert exports_left() == []
+  end
+
+  describe "notifications" do
+    setup c do
+      test = self()
+
+      Req.Test.stub(Feather.IndexNow, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        send(test, {:indexnow, Jason.decode!(body)})
+        Plug.Conn.send_resp(conn, 202, "")
+      end)
+
+      Req.Test.stub(Feather.ArchiveOrg, fn conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        [authorization] = Plug.Conn.get_req_header(conn, "authorization")
+        send(test, {:archive_org, URI.decode_query(body)["url"], authorization})
+        Req.Test.json(conn, %{"url" => "x", "job_id" => "spn2-1"})
+      end)
+
+      opts = Keyword.put(c.opts, :notifications, mode: :inline, archive_org_interval: 0)
+      %{opts: opts, host: c.scope.site.domain}
+    end
+
+    test "a deploy sends the URLs changed since the previous deploy to IndexNow", c do
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+
+      key = Repo.reload!(c.scope.site).indexnow_key
+      home = "https://#{c.host}/"
+
+      assert_received {:indexnow,
+                       %{
+                         "host" => host,
+                         "key" => ^key,
+                         "keyLocation" => location,
+                         "urlList" => urls
+                       }}
+
+      assert host == c.host
+      assert location == "https://#{c.host}/#{key}.txt"
+      assert urls == [home, "https://#{c.host}/hello/"]
+
+      post_fixture(c.scope, %{title: "New", slug: "/new"})
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+      assert_received {:indexnow, %{"urlList" => [^home, new]}}
+      assert new == "https://#{c.host}/new/"
+
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+      refute_received {:indexnow, _body}
+      refute_received {:archive_org, _url, _authorization}
+    end
+
+    test "a site with archive.org keys has each changed URL saved", c do
+      :ok = Sites.put_archive_org_keys(c.scope, %{access_key: "ak", secret_key: "sk"})
+
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+
+      assert_received {:indexnow, _body}
+      assert_received {:archive_org, home, "LOW ak:sk"}
+      assert_received {:archive_org, post, "LOW ak:sk"}
+      assert [home, post] == ["https://#{c.host}/", "https://#{c.host}/hello/"]
+    end
+
+    test "failing notifications leave the deploy successful", c do
+      :ok = Sites.put_archive_org_keys(c.scope, %{access_key: "ak", secret_key: "sk"})
+      Req.Test.stub(Feather.IndexNow, &Plug.Conn.send_resp(&1, 500, "down"))
+      Req.Test.stub(Feather.ArchiveOrg, &Req.Test.transport_error(&1, :econnrefused))
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+        end)
+
+      assert log =~ "IndexNow refused #{c.host}"
+      assert log =~ "archive.org did not save https://#{c.host}/hello/"
+      assert_received {:site_notice, %{kind: :success}}
+      assert Repo.reload!(c.target).last_deployed_at
+    end
   end
 
   describe "Feather.Publishing entry points" do

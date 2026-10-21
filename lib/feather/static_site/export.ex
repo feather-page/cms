@@ -5,9 +5,10 @@ defmodule Feather.StaticSite.Export do
   is the first page of the post list), the variants of the images in use
   that their roles need in the theme (`Feather.StaticSite.ImageVariants`,
   missing ones are generated first), the favicon and share cards the pages
-  link (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of the site's theme, the rendered diagrams, `feed.xml`,
-  `robots.txt`, `sitemap.xml`, `style.css`, `404.html` and the
-  `.htaccess` for Apache hosts, with the active redirects.
+  link (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of
+  the site's theme, the rendered diagrams, `feed.xml`, `robots.txt`,
+  `sitemap.xml`, `style.css`, `404.html`, the IndexNow key file (ADR 0027)
+  and the `.htaccess` for Apache hosts, with the active redirects.
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -48,6 +49,7 @@ defmodule Feather.StaticSite.Export do
 
     jobs =
       [:not_found, {:htaccess, redirects} | documents] ++
+        indexnow_key_jobs(site) ++
         Enum.map(Slug.artifacts(), &{:artifact, &1}) ++
         asset_jobs(data, site) ++ generated_image_jobs(data, routes, documents)
 
@@ -60,6 +62,9 @@ defmodule Feather.StaticSite.Export do
       Enum.map(data.projects, &{:project, &1}) ++
       (data.pages |> Enum.reject(&Page.homepage?/1) |> Enum.map(&{:page, &1}))
   end
+
+  defp indexnow_key_jobs(%Site{indexnow_key: nil}), do: []
+  defp indexnow_key_jobs(%Site{indexnow_key: key}), do: [{:indexnow_key, key}]
 
   defp generated_image_jobs(data, routes, documents) do
     documents
@@ -107,6 +112,7 @@ defmodule Feather.StaticSite.Export do
 
   defp describe(:not_found), do: "404 page"
   defp describe({:htaccess, _redirects}), do: ".htaccess"
+  defp describe({:indexnow_key, _key}), do: "IndexNow key file"
   defp describe({:image, image, variant}), do: "image #{image.public_id} #{variant.filename}"
 
   defp describe({:generated_image, image}),
@@ -138,6 +144,9 @@ defmodule Feather.StaticSite.Export do
 
   defp run_job({:htaccess, redirects}, _data, routes, sink),
     do: Sink.write(sink, Routes.htaccess_path(routes), Htaccess.render(routes, redirects))
+
+  defp run_job({:indexnow_key, key}, _data, routes, sink),
+    do: Sink.write(sink, Routes.indexnow_key_path(routes), key)
 
   defp run_job({:artifact, name}, data, routes, sink) do
     Sink.write(

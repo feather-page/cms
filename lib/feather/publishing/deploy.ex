@@ -14,7 +14,9 @@ defmodule Feather.Publishing.Deploy do
     5. record the time the export started as the target's `last_deployed_at`
        (`Feather.Publishing.record_deploy/2`): what was published or
        changed later is not in this deploy
-    6. remove the directory and release the lock (both always), broadcast
+    6. tell IndexNow and archive.org what changed since the previous
+       deploy, in the background (`Feather.Publishing.Notifications`)
+    7. remove the directory and release the lock (both always), broadcast
        a notice
 
   A failure before step 4 leaves the site online untouched.
@@ -38,7 +40,7 @@ defmodule Feather.Publishing.Deploy do
   alias Feather.Content.Blocks
   alias Feather.Media
   alias Feather.Publishing
-  alias Feather.Publishing.{DeploymentTarget, Rclone}
+  alias Feather.Publishing.{DeploymentTarget, Notifications, Rclone}
   alias Feather.Repo
   alias Feather.StaticSite.{Export, FileSink, Precompress, Routes}
 
@@ -58,6 +60,7 @@ defmodule Feather.Publishing.Deploy do
     * `:lock_retries`, `:lock_retry_interval` - waiting for the lock
       (default 60 times every 5000 ms)
     * `:brotli` - passed to `Feather.StaticSite.Precompress.run/2`
+    * `:notifications` - options of `Feather.Publishing.Notifications.start/4`
   """
   @spec run(DeploymentTarget.t(), keyword()) ::
           {:ok, :deployed | :coalesced} | {:error, String.t()}
@@ -171,7 +174,15 @@ defmodule Feather.Publishing.Deploy do
     {:ok, export_started_at} = Repo.transact(fn -> {:ok, DateTime.utc_now()} end)
     # The request may have waited for the lock.
     target = Repo.preload(target, :site, force: true)
-    {export_and_sync(target, export_started_at, started_at, opts), target.site}
+    previous_deploy_at = Publishing.last_deployed_at(target)
+    result = export_and_sync(target, export_started_at, started_at, opts)
+
+    if result == {:ok, :deployed} do
+      notification_opts = Keyword.get(opts, :notifications, [])
+      Notifications.start(target.site, previous_deploy_at, export_started_at, notification_opts)
+    end
+
+    {result, target.site}
   end
 
   defp export_and_sync(target, export_started_at, started_at, opts) do

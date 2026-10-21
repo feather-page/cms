@@ -238,6 +238,14 @@ defmodule Feather.StaticSite.Routes do
   @spec htaccess_path(t()) :: String.t()
   def htaccess_path(%__MODULE__{}), do: ".htaccess"
 
+  @doc """
+  The output path of the site's IndexNow key file (`<key>.txt`, holding
+  the key), or nil for a site without a key.
+  """
+  @spec indexnow_key_path(t()) :: String.t() | nil
+  def indexnow_key_path(%__MODULE__{site: %Site{indexnow_key: nil}}), do: nil
+  def indexnow_key_path(%__MODULE__{site: %Site{indexnow_key: key}}), do: key <> ".txt"
+
   defp artifact(name) do
     name = to_string(name)
 
@@ -336,13 +344,15 @@ defmodule Feather.StaticSite.Routes do
   @doc """
   Returns true if the export writes a file at the path (relative to the
   site root) that `resolve/2` does not serve: the 404 page, the
-  `.htaccess` and the precompressed copies of the text files
-  (`Feather.StaticSite.Precompress`).
+  `.htaccess`, the IndexNow key file and the precompressed copies of the
+  text files (`Feather.StaticSite.Precompress`).
   """
   @spec unserved_file?(t(), String.t()) :: boolean()
   def unserved_file?(%__MODULE__{} = routes, path) when is_binary(path) do
     path = String.trim_leading(path, "/")
-    path in [not_found_path(routes), htaccess_path(routes)] or precompressed_copy?(routes, path)
+
+    path in [not_found_path(routes), htaccess_path(routes), indexnow_key_path(routes)] or
+      precompressed_copy?(routes, path)
   end
 
   defp precompressed_copy?(routes, path) do
@@ -354,7 +364,8 @@ defmodule Feather.StaticSite.Routes do
         source = String.replace_suffix(path, suffix, "")
 
         Path.extname(source) in Precompress.extensions() and
-          (source == not_found_path(routes) or resolve(routes, source) != nil)
+          (source in [not_found_path(routes), indexnow_key_path(routes)] or
+             resolve(routes, source) != nil)
     end
   end
 

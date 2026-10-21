@@ -474,6 +474,11 @@ defmodule Feather.StaticSite.ExportTest do
     refute file(c.sink, "sitemap.xml") =~ "404"
   end
 
+  test "writes the IndexNow key file at the site root", c do
+    key = c.scope.site.indexnow_key
+    assert file(c.sink, "#{key}.txt") == key
+  end
+
   test "robots.txt points at the canonical sitemap", c do
     assert file(c.sink, "robots.txt") ==
              "User-agent: *\nAllow: /\n\nSitemap: https://example.com/sitemap.xml\n"

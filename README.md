@@ -72,7 +72,7 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 | `DATABASE_PATH` | SQLite database file (prod, required) | |
 | `POOL_SIZE` | Database connections (prod) | `5` |
 | `STORAGE_PATH` | Images, rendered diagrams and build output (prod, required) | dev: `storage/` |
-| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials (prod, required) | fixed dev/test keys |
+| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials and archive.org keys (prod, required) | fixed dev/test keys |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `HARDCOVER_TOKEN` | Hardcover API key for the book search (optional; without it books are searched on OpenLibrary) | |
 | `OLLAMA_URL` | Base URL of an Ollama instance running `gemma4-26b` (e.g. `http://ollama:11434`), which suggests alt texts (optional; without it no suggestions are made) | |

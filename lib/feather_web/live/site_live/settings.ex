@@ -2,7 +2,7 @@ defmodule FeatherWeb.SiteLive.Settings do
   @moduledoc """
   The settings of a site: emoji, title, domain, language, theme and
   copyright notice, the site's social media links, its mascots, its
-  portrait and its bio.
+  portrait, its bio and the archive.org keys deploys use (ADR 0027).
 
   Each change counts as not deployed yet in the site shell's deploy
   control (`FeatherWeb.SiteAuth.refresh_deploy_status/1`).
@@ -260,6 +260,71 @@ defmodule FeatherWeb.SiteLive.Settings do
             </.action_bar>
           </.form>
         </section>
+
+        <section id="notifications" aria-labelledby="notifications-heading" class="mt-10">
+          <.section_heading id="notifications-heading">
+            Search engines and archive.org
+          </.section_heading>
+          <p id="notifications-hint" class="mb-4 text-sm text-base-content/70">
+            After each deploy, the search engines that take IndexNow, such as Bing, are told which
+            pages changed. With your archive.org keys, the Wayback Machine also saves them. You find
+            the keys at <a
+              href="https://archive.org/account/s3.php"
+              target="_blank"
+              rel="noopener"
+              class="link"
+            >archive.org/account/s3.php</a>.
+          </p>
+
+          <.list :if={@archive_org_keys?} id="archive-org-keys">
+            <.list_row
+              id="archive-org-keys-saved"
+              title="archive.org keys saved"
+              actions_label="Actions"
+              menu={:always}
+            >
+              <:leading>
+                <.tile><.icon name="search" class="size-5" /></.tile>
+              </:leading>
+              <:meta>Deploys ask archive.org to save the changed pages.</:meta>
+              <:action
+                id="remove-archive-org-keys"
+                icon="trash-2"
+                label="Remove"
+                on_click="remove_archive_org_keys"
+                confirm="Remove the archive.org keys?"
+                confirm_text="Deploys no longer ask archive.org to save changed pages."
+                confirm_label="Remove"
+                danger
+              />
+            </.list_row>
+          </.list>
+
+          <.form
+            :if={!@archive_org_keys?}
+            for={@archive_org_form}
+            id="archive-org-form"
+            phx-submit="save_archive_org_keys"
+          >
+            <div class="grid gap-x-4 sm:grid-cols-2">
+              <.input
+                field={@archive_org_form[:access_key]}
+                type="text"
+                label="Access key"
+                autocomplete="off"
+              />
+              <.input
+                field={@archive_org_form[:secret_key]}
+                type="password"
+                label="Secret key"
+                autocomplete="off"
+              />
+            </div>
+            <.action_bar class="mt-4">
+              <.button type="submit" variant={:primary} phx-disable-with="Saving…">Save</.button>
+            </.action_bar>
+          </.form>
+        </section>
       </div>
     </.site_shell>
     """
@@ -352,6 +417,7 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> assign(:services, SocialMediaService.all())
      |> assign(:form, to_form(Sites.change_site(scope.site)))
      |> assign(:bio_form, to_form(Sites.change_site(scope.site)))
+     |> assign_archive_org_keys()
      |> assign(:links_empty?, links == [])
      |> stream(:social_media_links, links)
      |> reset_link_form()}
@@ -372,6 +438,31 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   def handle_event("save_bio", %{"site" => params}, socket),
     do: save_site(socket, :bio_form, params)
+
+  def handle_event("save_archive_org_keys", %{"archive_org_keys" => params}, socket) do
+    case Sites.put_archive_org_keys(socket.assigns.current_scope, params) do
+      :ok ->
+        {:noreply,
+         socket
+         |> assign_archive_org_keys()
+         |> put_flash(:info, "The archive.org keys were saved.")}
+
+      {:error, changeset} ->
+        changeset = without_secret_key(changeset)
+
+        {:noreply,
+         assign(socket, :archive_org_form, archive_org_form(changeset, action: :insert))}
+    end
+  end
+
+  def handle_event("remove_archive_org_keys", _params, socket) do
+    :ok = Sites.delete_archive_org_keys(socket.assigns.current_scope)
+
+    {:noreply,
+     socket
+     |> assign_archive_org_keys()
+     |> put_flash(:info, "The archive.org keys were removed.")}
+  end
 
   def handle_event("add_link", _params, socket) do
     {:noreply, assign(socket, :adding_link?, true)}
@@ -539,6 +630,21 @@ defmodule FeatherWeb.SiteLive.Settings do
         {:noreply, assign(socket, form, to_form(changeset, action: :update))}
     end
   end
+
+  defp assign_archive_org_keys(socket) do
+    socket
+    |> assign(:archive_org_keys?, Sites.archive_org_keys?(socket.assigns.current_scope))
+    |> assign(:archive_org_form, archive_org_form(Sites.change_archive_org_keys()))
+  end
+
+  defp without_secret_key(changeset) do
+    changeset
+    |> Ecto.Changeset.delete_change(:secret_key)
+    |> Map.update!(:params, &Map.put(&1, "secret_key", ""))
+  end
+
+  defp archive_org_form(changeset, opts \\ []),
+    do: to_form(changeset, Keyword.put(opts, :as, :archive_org_keys))
 
   defp image_error_message({message, _opts}), do: "The file #{message}."
   defp image_error_message(nil), do: "The image could not be saved."
