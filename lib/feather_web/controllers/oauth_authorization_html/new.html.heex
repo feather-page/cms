@@ -1,0 +1,34 @@
+<Layouts.app flash={@flash} current_scope={@current_scope} bare>
+  <div class="mx-auto max-w-md">
+    <div class="mb-6 flex flex-col items-center text-center">
+      <.plush name="feather" size={:xxl} />
+      <h1 class="mt-4 text-2xl font-semibold">Connect {@request.client_name}?</h1>
+    </div>
+
+    <div id="consent-info" class="space-y-3">
+      <p>
+        <strong id="consent-client">{@request.client_name}</strong>
+        asks to work on your sites as {@current_scope.user.email}: it can read and change posts, pages, books and images, publish them and deploy your sites.
+      </p>
+      <p>
+        Afterwards you go back to <strong id="consent-redirect-host">{@redirect_host}</strong>.
+      </p>
+      <.alert :if={@loopback?} id="consent-loopback-warning" tone={:warning}>
+        This address is a program on your own computer. Allow only if you started connecting it yourself just now.
+      </.alert>
+      <p class="text-sm text-base-content/70">
+        You can revoke the access at any time in your account settings.
+      </p>
+    </div>
+
+    <.form for={%{}} id="consent-form" action={~p"/oauth/authorize"}>
+      <input :for={{name, value} <- @request_params} type="hidden" name={name} value={value} />
+      <.action_bar class="mt-6">
+        <.button id="consent-deny" type="submit" name="decision" value="deny">Deny</.button>
+        <.button id="consent-allow" type="submit" name="decision" value="allow" variant={:primary}>
+          Allow
+        </.button>
+      </.action_bar>
+    </.form>
+  </div>
+</Layouts.app>

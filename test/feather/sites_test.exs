@@ -196,6 +196,21 @@ defmodule Feather.SitesTest do
       assert Sites.can_access_site?(scope, site)
     end
 
+    test "member sites leave out the sites a super admin is not a member of", %{
+      owner: owner,
+      site: site
+    } do
+      admin = super_admin_fixture()
+      zebra = site_fixture(admin, title: "zebra", domain: "zebra.example")
+      anton = site_fixture(admin, title: "Anton", domain: "anton.example")
+      scope = Scope.for_user(admin)
+
+      assert scope |> Sites.list_member_sites() |> Enum.map(& &1.id) == [anton.id, zebra.id]
+      assert Sites.get_member_site_by_domain(scope, site.domain) == nil
+      assert Sites.get_member_site_by_domain(scope, " HTTPS://Zebra.example/ ").id == zebra.id
+      assert Sites.get_member_site_by_domain(Scope.for_user(owner), site.domain).id == site.id
+    end
+
     test "update_site/3 refuses non-members", %{site: site} do
       assert_raise MatchError, fn ->
         Sites.update_site(user_scope_fixture(), site, %{title: "Hijacked"})

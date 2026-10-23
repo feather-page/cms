@@ -191,24 +191,6 @@ defmodule Feather.Content.DescriptionTest do
     assert {:ok, _post} = Content.publish(scope, Repo.reload!(post))
   end
 
-  test "saving with draft: false generates the description, as the content API does",
-       %{scope: scope} do
-    stub_description("API summary.")
-
-    {:ok, post} =
-      Content.create_post(
-        scope,
-        %{title: "Via API", content: [paragraph("Sent over the API.")]},
-        draft: false
-      )
-
-    assert_received :model_asked
-    stored = Repo.reload!(post)
-    assert stored.description == "API summary."
-    assert stored.description_generated
-    assert Content.publication_status(stored) == :published
-  end
-
   test "pages get descriptions too, projects keep their short description", %{scope: scope} do
     stub_description("About the author.")
 

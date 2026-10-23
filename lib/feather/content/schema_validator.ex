@@ -1,16 +1,17 @@
 defmodule Feather.Content.SchemaValidator do
   @moduledoc """
-  A small JSON Schema validator for the subset of JSON Schema used in
-  `docs/api/openapi.yml` (port of Rails' `SchemaValidator`).
+  A small JSON Schema validator for the subset of JSON Schema the block
+  schemas use (`Feather.Content.BlockValidator`, port of Rails'
+  `SchemaValidator`).
 
   Supported keywords: `type` (a name or a list of names), `const`, `enum`,
   `required`, `properties`, `additionalProperties` (`false` or a schema),
-  `items`, `oneOf` (with an optional `discriminator`) and `$ref` to
-  `#/components/schemas/<Name>`, resolved against the `definitions` map
-  passed in. Everything else (`description`, `default`, `format`,
-  `pattern`, ...) is ignored.
+  `items`, `oneOf` and `$ref` to `#/$defs/<Name>`, resolved against the
+  `definitions` map passed in. `oneOf` passes when any alternative
+  matches, not exactly one as JSON Schema demands. Everything else
+  (`description`, `default`, `format`, `pattern`, ...) is ignored.
 
-  Schemas are maps with string keys, like decoded JSON or YAML. Data is
+  Schemas are maps with string keys, like decoded JSON. Data is
   decoded JSON: maps with string keys, lists, strings, numbers, booleans
   and nil.
 
@@ -29,7 +30,7 @@ defmodule Feather.Content.SchemaValidator do
           optional(:enum) => list()
         }
 
-  @ref_prefix "#/components/schemas/"
+  @ref_prefix "#/$defs/"
 
   @doc """
   Validates `data` against `schema` and returns the list of errors (empty
@@ -177,33 +178,13 @@ defmodule Feather.Content.SchemaValidator do
 
   defp validate_array(_data, _schema, _path, _defs), do: []
 
-  defp validate_one_of(data, %{"oneOf" => schemas} = schema, path, defs) do
-    schemas = Enum.map(schemas, &resolve_top(&1, defs))
-
-    case discriminated_schema(data, schema, schemas) do
-      nil ->
-        if Enum.any?(schemas, &(validate(data, &1, path, defs) == [])) do
-          []
-        else
-          [error(path, "oneOf", "does not match any schema")]
-        end
-
-      matched ->
-        validate(data, matched, path, defs)
+  defp validate_one_of(data, %{"oneOf" => schemas}, path, defs) do
+    if Enum.any?(schemas, &(validate(data, &1, path, defs) == [])) do
+      []
+    else
+      [error(path, "oneOf", "does not match any schema")]
     end
   end
-
-  defp resolve_top(%{"$ref" => ref}, defs), do: resolve_top(resolve(ref, defs), defs)
-  defp resolve_top(schema, _defs), do: schema
-
-  defp discriminated_schema(%{} = data, %{"discriminator" => %{"propertyName" => prop}}, schemas) do
-    case Map.get(data, prop) do
-      nil -> nil
-      value -> Enum.find(schemas, &(get_in(&1, ["properties", prop, "const"]) == value))
-    end
-  end
-
-  defp discriminated_schema(_data, _schema, _schemas), do: nil
 
   defp error(path, type, message), do: %{pointer: path, type: type, message: message}
 end

@@ -1,7 +1,8 @@
 defmodule Feather.Hardcover do
   @moduledoc """
-  A small client for Hardcover's GraphQL book search, used by the admin's
-  book form when a token is configured (ADR 0023).
+  A small client for Hardcover's GraphQL book search, which the book search
+  (`Feather.Books.search_books/2`) asks when a token is configured
+  (ADR 0023).
 
   The token comes from `config :feather, :hardcover_token`
   (`HARDCOVER_TOKEN`) and acts as its owner's Hardcover account, so it is

@@ -1,11 +1,8 @@
 defmodule Feather.Pagination do
   @moduledoc """
   Offset pagination for the admin listings (the Rails admin used Pagy with
-  20 items per page) and the content API.
-
-  A page beyond the last one is clamped to the last page by default (the
-  admin); `out_of_range: :empty` returns it empty with the requested page
-  number instead (the content API, which documents that behaviour).
+  20 items per page). A page beyond the last one is clamped to the last
+  page.
   """
 
   import Ecto.Query, warn: false
@@ -32,8 +29,7 @@ defmodule Feather.Pagination do
   Loads one page of the query. Pages are 1-based; `page` may be a string
   (from params), anything that is not a positive integer is page 1.
 
-  Options: `per_page` (default 20) and `out_of_range` (`:clamp`, the
-  default, or `:empty`).
+  Options: `per_page` (default 20).
   """
   @spec paginate(Ecto.Queryable.t(), pos_integer() | String.t() | nil, keyword()) :: t()
   def paginate(query, page, opts \\ []) do
@@ -41,11 +37,7 @@ defmodule Feather.Pagination do
     total_entries = Repo.aggregate(exclude(query, :preload), :count)
     total_pages = max(div(total_entries + per_page - 1, per_page), 1)
 
-    page =
-      case Keyword.get(opts, :out_of_range, :clamp) do
-        :clamp -> page |> to_page() |> min(total_pages)
-        :empty -> to_page(page)
-      end
+    page = page |> to_page() |> min(total_pages)
 
     entries =
       query

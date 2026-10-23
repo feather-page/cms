@@ -346,7 +346,11 @@ defmodule FeatherWeb.BookLiveTest do
       assert book.cover_image.filename == "own.png"
     end
 
-    test "an uploaded cover replaces the previous one", %{conn: conn, site: site, scope: scope} do
+    test "an uploaded cover replaces the previous one, which stays for the image cleanup", %{
+      conn: conn,
+      site: site,
+      scope: scope
+    } do
       {:ok, old_cover} = Media.create_image_from_upload(scope, test_image_path(), "old.png")
       book = book_fixture(scope, title: "Refactoring")
       {:ok, book} = Books.update_book(scope, book, %{cover_image_id: old_cover.id})
@@ -363,7 +367,7 @@ defmodule FeatherWeb.BookLiveTest do
 
       book = Books.preload_cover_image(Books.get_book!(scope, book.public_id))
       assert book.cover_image.filename == "new.png"
-      assert Repo.get(Media.Image, old_cover.id) == nil
+      assert Repo.get(Media.Image, old_cover.id)
     end
 
     test "shows validation errors", %{conn: conn, site: site} do

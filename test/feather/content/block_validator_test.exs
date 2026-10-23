@@ -3,36 +3,6 @@ defmodule Feather.Content.BlockValidatorTest do
 
   alias Feather.Content.BlockValidator
 
-  describe "schemas" do
-    test "are the block schemas of docs/api/openapi.yml" do
-      schemas = FeatherWeb.ApiHelpers.openapi_schemas()
-      mapping = get_in(schemas, ["Block", "discriminator", "mapping"])
-
-      openapi_blocks =
-        Map.new(mapping, fn {type, "#/components/schemas/" <> name} ->
-          {type, strip_descriptions(Map.fetch!(schemas, name))}
-        end)
-
-      assert BlockValidator.schemas() == openapi_blocks
-      assert BlockValidator.types() == Enum.map(schemas["Block"]["oneOf"], &type_of(&1, schemas))
-    end
-
-    test "resolve their references like docs/api/openapi.yml" do
-      schemas = FeatherWeb.ApiHelpers.openapi_schemas()
-
-      for {name, schema} <- BlockValidator.definitions() do
-        assert schema == strip_descriptions(Map.fetch!(schemas, name)), "#{name} differs"
-      end
-
-      referenced =
-        BlockValidator.schemas()
-        |> references()
-        |> MapSet.new(fn "#/components/schemas/" <> name -> name end)
-
-      assert referenced == MapSet.new(Map.keys(BlockValidator.definitions()))
-    end
-  end
-
   describe "validate/1" do
     test "accepts every block type" do
       content = [
@@ -172,18 +142,21 @@ defmodule Feather.Content.BlockValidatorTest do
     end
   end
 
-  defp strip_descriptions(%{} = schema) do
-    schema |> Map.delete("description") |> Map.new(fn {k, v} -> {k, strip_descriptions(v)} end)
+  describe "content_schema/0" do
+    test "is an array of blocks of the validated types" do
+      %{"type" => "array", "items" => %{"anyOf" => schemas}} = BlockValidator.content_schema()
+
+      types = for schema <- schemas, do: schema["properties"]["type"]["const"]
+      assert types == BlockValidator.types()
+      assert schemas == Enum.map(types, &Map.fetch!(BlockValidator.schemas(), &1))
+    end
+
+    test "describes every field" do
+      schemas = Map.values(BlockValidator.schemas()) ++ Map.values(BlockValidator.definitions())
+
+      for schema <- schemas, {field, property} <- schema["properties"], field != "type" do
+        assert is_binary(property["description"]), "#{field} has no description"
+      end
+    end
   end
-
-  defp strip_descriptions(list) when is_list(list), do: Enum.map(list, &strip_descriptions/1)
-  defp strip_descriptions(value), do: value
-
-  defp type_of(%{"$ref" => "#/components/schemas/" <> name}, schemas),
-    do: get_in(schemas, [name, "properties", "type", "const"])
-
-  defp references(%{"$ref" => ref}), do: [ref]
-  defp references(%{} = map), do: Enum.flat_map(Map.values(map), &references/1)
-  defp references(list) when is_list(list), do: Enum.flat_map(list, &references/1)
-  defp references(_value), do: []
 end

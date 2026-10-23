@@ -525,18 +525,6 @@ defmodule Feather.ContentTest do
       assert Content.publish(scope, page) == {:error, :slug_taken}
     end
 
-    test "saving with draft: false refuses a slug another record is published with",
-         %{scope: scope} do
-      published = post_fixture(scope, slug: "/taken")
-      {:ok, _moved} = Content.update_post(scope, published, %{slug: "/moved"})
-
-      assert {:error, changeset} =
-               Content.create_post(scope, %{title: "x", slug: "/taken"}, draft: false)
-
-      assert "has already been taken" in errors_on(changeset).slug
-      assert Content.get_post_by_slug(scope, "/taken") == nil
-    end
-
     test "only publishes records of the scope's site", %{scope: scope} do
       post = post_fixture(scope)
       assert_raise FunctionClauseError, fn -> Content.publish(site_scope_fixture(), post) end
@@ -587,50 +575,6 @@ defmodule Feather.ContentTest do
       project = project_fixture(scope, title: "Project")
       {:ok, project} = Content.update_project(scope, project, %{title: "Project 2"})
       assert Repo.get!(ProjectVersion, project.published_version_id).title == "Project"
-    end
-
-    test "saving with draft: false publishes in the same step", %{scope: scope} do
-      {:ok, post} = Content.create_post(scope, %{title: "First", slug: "/first"}, draft: false)
-      assert Repo.get!(PostVersion, post.published_version_id).title == "First"
-
-      {:ok, post} = Content.update_post(scope, post, %{title: "Second"}, draft: false)
-      version = Repo.get!(PostVersion, post.published_version_id)
-      assert {version.number, version.title} == {2, "Second"}
-
-      {:ok, saved} = Content.update_post(scope, post, %{title: "Second"}, draft: false)
-      assert saved.published_version_id == post.published_version_id
-
-      {:ok, draft} = Content.unpublish(scope, page_fixture(scope, title: "Page"))
-      {:ok, page} = Content.update_page(scope, draft, %{title: "Page 2"}, draft: false)
-      assert Repo.get!(PageVersion, page.published_version_id).title == "Page 2"
-
-      {:ok, page} = Content.create_page(scope, %{title: "New", slug: "/new-page"}, draft: false)
-      refute Content.draft?(page)
-    end
-
-    test "saving with draft: true stores the changes and unpublishes", %{scope: scope} do
-      {:ok, draft} = Content.create_post(scope, %{title: "D", slug: "/d"}, draft: true)
-      assert Content.draft?(draft)
-      refute Repo.exists?(from v in PostVersion, where: v.post_id == ^draft.id)
-
-      post = post_fixture(scope, title: "Shown")
-      {:ok, post} = Content.update_post(scope, post, %{title: "Hidden"}, draft: true)
-      assert Content.draft?(post)
-      assert Content.get_post!(scope, post.public_id).title == "Hidden"
-      assert Repo.aggregate(from(v in PostVersion, where: v.post_id == ^post.id), :count) == 1
-
-      {:ok, page} = Content.update_page(scope, page_fixture(scope), %{title: "P"}, draft: true)
-      assert Content.draft?(page)
-    end
-
-    test "a failed save with draft: false publishes nothing", %{scope: scope} do
-      post_fixture(scope, slug: "/taken")
-      post = post_fixture(scope, slug: "/mine")
-
-      assert {:error, _changeset} =
-               Content.update_post(scope, post, %{slug: "/taken"}, draft: false)
-
-      assert Repo.aggregate(from(v in PostVersion, where: v.post_id == ^post.id), :count) == 1
     end
 
     test "publication_status/1 tells drafts, published records and unpublished changes apart",

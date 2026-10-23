@@ -4,7 +4,6 @@ defmodule Feather.Release do
 
       bin/feather eval "Feather.Release.migrate()"
       bin/feather eval 'Feather.Release.create_user("me@example.com", true)'
-      bin/feather eval 'Feather.Release.create_api_token("me@example.com", "laptop")'
       bin/feather eval "Feather.Release.backfill_suggestions()"
 
   `bin/migrate` and `bin/server` (in `rel/overlays/bin`) wrap the first.
@@ -59,25 +58,6 @@ defmodule Feather.Release do
       IO.puts("User #{user.email} ready#{if super_admin?, do: " (super admin)", else: ""}.")
       {:ok, user}
     end
-  end
-
-  @doc """
-  Creates an API token for the user with the given email and prints it.
-  The token is shown only this once.
-  """
-  def create_api_token(email, name \\ nil) do
-    with_app(fn ->
-      case Feather.Accounts.get_user_by_email(String.downcase(String.trim(email))) do
-        nil ->
-          IO.puts(:stderr, "No user with email #{email}.")
-          {:error, :not_found}
-
-        user ->
-          {:ok, token, _api_token} = Feather.Accounts.create_api_token(user, name)
-          IO.puts(token)
-          {:ok, token}
-      end
-    end)
   end
 
   @doc """

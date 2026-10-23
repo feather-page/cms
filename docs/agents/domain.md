@@ -18,9 +18,8 @@ This repo is single-context:
 /
 ├── CONTEXT.md
 ├── DECISIONS.md       ← all ADRs, numbered, newest last
-├── docs/api/          ← content API (openapi.yml)
 ├── lib/feather/       ← contexts (domain logic)
-├── lib/feather_web/   ← Phoenix web layer (LiveView admin)
+├── lib/feather_web/   ← Phoenix web layer (LiveView admin, MCP server)
 └── test/              ← ExUnit tests, the executable specification
 ```
 

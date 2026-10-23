@@ -3,7 +3,7 @@ defmodule FeatherWeb.UserLive.Settings do
 
   on_mount {FeatherWeb.UserAuth, :require_sudo_mode}
 
-  alias Feather.Accounts
+  alias Feather.{Accounts, OAuth}
 
   @impl true
   def render(assigns) do
@@ -11,7 +11,7 @@ defmodule FeatherWeb.UserLive.Settings do
     <Layouts.app flash={@flash} current_scope={@current_scope}>
       <.header>
         Account settings
-        <:subtitle>Your email address and API tokens</:subtitle>
+        <:subtitle>Your email address and connected apps</:subtitle>
       </.header>
 
       <div class="max-w-3xl">
@@ -39,59 +39,45 @@ defmodule FeatherWeb.UserLive.Settings do
           </.action_bar>
         </.form>
 
-        <section id="api-tokens" aria-labelledby="api-tokens-heading" class="mt-8">
-          <.section_heading id="api-tokens-heading">API tokens</.section_heading>
+        <section id="connected-apps" aria-labelledby="connected-apps-heading" class="mt-8">
+          <.section_heading id="connected-apps-heading">Connected apps</.section_heading>
           <p class="text-sm text-base-content/70">
-            Tokens give programs access to the content API as you.
+            Apps such as Claude that you allowed to work on your sites as you.
+            An app unused for 90 days loses access.
           </p>
 
-          <.alert :if={@new_api_token} id="new-api-token" tone={:success} class="mt-4">
-            Copy your new token now. It will not be shown again.
-            <code class="mt-1 block break-all font-mono">{@new_api_token}</code>
-          </.alert>
-
-          <p :if={@api_tokens == []} id="no-api-tokens" class="mt-4 text-sm text-base-content/70">
-            No tokens yet.
+          <p
+            :if={@connected_apps == []}
+            id="no-connected-apps"
+            class="mt-4 text-sm text-base-content/70"
+          >
+            No connected apps.
           </p>
 
-          <.list :if={@api_tokens != []} id="api-token-list" class="mt-4">
+          <.list :if={@connected_apps != []} id="connected-app-list" class="mt-4">
             <.list_row
-              :for={token <- @api_tokens}
-              id={"api-token-#{token.id}"}
-              title={token.name || "Unnamed token"}
+              :for={app <- @connected_apps}
+              id={"connected-app-#{app.id}"}
+              title={app.client_name}
               actions_label="Actions"
               menu={:always}
             >
-              <:leading><.tile icon="key-round" /></:leading>
+              <:leading><.tile icon="bot" /></:leading>
               <:meta>
-                <code class="font-mono">{token.token_prefix}…</code>
-                · Created {Calendar.strftime(token.inserted_at, "%d/%m/%Y")}
+                Connected {format_date(app.inserted_at)} · Last used {format_date(app.last_used_at)}
               </:meta>
               <:action
-                id={"delete-api-token-#{token.id}"}
-                icon="trash-2"
-                label="Delete"
-                on_click={JS.push("delete_api_token", value: %{id: token.id})}
-                confirm={"Delete the token “#{token.name || "Unnamed token"}”?"}
-                confirm_text="Programs using this token lose access. This cannot be undone."
+                id={"revoke-connected-app-#{app.id}"}
+                icon="unplug"
+                label="Revoke"
+                on_click={JS.push("revoke_connected_app", value: %{id: app.id})}
+                confirm={"Revoke access for “#{app.client_name}”?"}
+                confirm_text="The app can no longer work on your sites. To use it again, connect it anew."
+                confirm_label="Revoke"
                 danger
               />
             </.list_row>
           </.list>
-
-          <.form
-            for={@api_token_form}
-            id="api_token_form"
-            phx-submit="create_api_token"
-            class="mt-4 max-w-md"
-          >
-            <.input field={@api_token_form[:name]} type="text" label="Name" placeholder="Importer" />
-            <.action_bar id="api-token-actions" class="mt-4">
-              <.button type="submit" phx-disable-with="Creating…" icon="plus">
-                Create token
-              </.button>
-            </.action_bar>
-          </.form>
         </section>
       </div>
     </Layouts.app>
@@ -120,8 +106,7 @@ defmodule FeatherWeb.UserLive.Settings do
       socket
       |> assign(:current_email, user.email)
       |> assign(:email_form, to_form(email_changeset))
-      |> assign(:new_api_token, nil)
-      |> assign_api_tokens()
+      |> assign_connected_apps()
 
     {:ok, socket}
   end
@@ -160,35 +145,18 @@ defmodule FeatherWeb.UserLive.Settings do
     end
   end
 
-  def handle_event("create_api_token", %{"api_token" => %{"name" => name}}, socket) do
-    user = socket.assigns.current_scope.user
-    name = if String.trim(name) == "", do: nil, else: String.trim(name)
-
-    case Accounts.create_api_token(user, name) do
-      {:ok, plain_token, _api_token} ->
-        {:noreply,
-         socket
-         |> assign(:new_api_token, plain_token)
-         |> assign_api_tokens()}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "The token could not be created.")}
-    end
-  end
-
-  def handle_event("delete_api_token", %{"id" => id}, socket) do
-    :ok = Accounts.delete_api_token(socket.assigns.current_scope.user, id)
+  def handle_event("revoke_connected_app", %{"id" => id}, socket) do
+    :ok = OAuth.revoke_connected_app(socket.assigns.current_scope, id)
 
     {:noreply,
      socket
-     |> assign(:new_api_token, nil)
-     |> assign_api_tokens()
-     |> put_flash(:info, "The API token was deleted.")}
+     |> assign_connected_apps()
+     |> put_flash(:info, "The app no longer has access.")}
   end
 
-  defp assign_api_tokens(socket) do
-    socket
-    |> assign(:api_tokens, Accounts.list_api_tokens(socket.assigns.current_scope.user))
-    |> assign(:api_token_form, to_form(%{"name" => ""}, as: :api_token))
+  defp assign_connected_apps(socket) do
+    assign(socket, :connected_apps, OAuth.list_connected_apps(socket.assigns.current_scope))
   end
+
+  defp format_date(datetime), do: Calendar.strftime(datetime, "%d/%m/%Y")
 end

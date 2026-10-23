@@ -2,7 +2,7 @@ defmodule Mix.Tasks.FeatherTasksTest do
   use Feather.DataCase
 
   alias Feather.Accounts
-  alias Mix.Tasks.Feather.{ApiToken, CreateUser}
+  alias Mix.Tasks.Feather.CreateUser
 
   setup do
     Mix.shell(Mix.Shell.Process)
@@ -26,17 +26,5 @@ defmodule Mix.Tasks.FeatherTasksTest do
 
   test "feather.create_user without an email raises" do
     assert_raise Mix.Error, fn -> CreateUser.run([]) end
-  end
-
-  test "feather.api_token prints a token that authenticates" do
-    user = user_fixture()
-    ApiToken.run([user.email, "laptop"])
-    assert_received {:mix_shell, :info, [token]}
-    assert Accounts.get_user_by_api_token(token).id == user.id
-    assert [%{name: "laptop"}] = Accounts.list_api_tokens(user)
-  end
-
-  test "feather.api_token for an unknown user raises" do
-    assert_raise Mix.Error, fn -> ApiToken.run(["nobody@example.com"]) end
   end
 end

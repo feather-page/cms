@@ -36,21 +36,6 @@ defmodule Feather.Content.Posts do
   end
 
   @doc """
-  One page of the scope's posts, newest `publish_at` first, with header
-  and thumbnail images preloaded. Pages beyond the last one are empty (the content API).
-  """
-  @spec paginate_posts(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
-  def paginate_posts(%Scope{site: %Site{id: site_id}}, page) do
-    query =
-      from p in Post,
-        where: p.site_id == ^site_id,
-        order_by: [desc: p.publish_at, asc: p.id],
-        preload: [:header_image, :thumbnail_image]
-
-    Pagination.paginate(query, page, out_of_range: :empty)
-  end
-
-  @doc """
   One page of the scope's posts for the admin, newest `publish_at` first,
   with the thumbnail image, the reviewed book and the published version
   preloaded.
@@ -76,32 +61,25 @@ defmodule Feather.Content.Posts do
   end
 
   @doc """
-  Creates a post in the scope's site, as a draft unless `draft: false` is
-  given (see "Saving" in the `Feather.Content` module doc).
+  Creates a post in the scope's site, as a draft (see "Saving" in the
+  `Feather.Content` module doc).
   """
-  @spec create_post(Scope.t(), map(), keyword()) ::
-          {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
-  def create_post(%Scope{site: %Site{id: site_id}} = scope, attrs, opts \\ []) do
+  @spec create_post(Scope.t(), map()) :: {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
+  def create_post(%Scope{site: %Site{id: site_id}}, attrs) do
     %Post{site_id: site_id}
     |> Post.create_changeset(attrs)
-    |> Saving.save_with_images(scope, :post_id, opts)
+    |> Saving.save_with_images(:post_id)
   end
 
   @doc """
-  Updates a post: stores the changes as its unpublished changes (`draft:`,
-  see "Saving" in the `Feather.Content` module doc).
+  Updates a post: stores the changes as its unpublished changes (see
+  "Saving" in the `Feather.Content` module doc).
   """
-  @spec update_post(Scope.t(), Post.t(), map(), keyword()) ::
-          {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
-  def update_post(
-        %Scope{site: %Site{id: site_id}} = scope,
-        %Post{site_id: site_id} = post,
-        attrs,
-        opts \\ []
-      ) do
+  @spec update_post(Scope.t(), Post.t(), map()) :: {:ok, Post.t()} | {:error, Ecto.Changeset.t()}
+  def update_post(%Scope{site: %Site{id: site_id}}, %Post{site_id: site_id} = post, attrs) do
     post
     |> Post.changeset(attrs)
-    |> Saving.save_with_images(scope, :post_id, opts)
+    |> Saving.save_with_images(:post_id)
   end
 
   @doc """
@@ -112,6 +90,15 @@ defmodule Feather.Content.Posts do
   def delete_post(%Scope{site: %Site{id: site_id}} = scope, %Post{site_id: site_id} = post) do
     Saving.delete_with_images(scope, post, :post_id)
   end
+
+  @doc """
+  Preloads what a post shows besides its fields: its header and thumbnail
+  image, the book it reviews and its published version. Takes a post or a
+  list of posts.
+  """
+  @spec preload_details(posts) :: posts when posts: Post.t() | [Post.t()]
+  def preload_details(posts),
+    do: Repo.preload(posts, [:header_image, :thumbnail_image, :book, :published_version])
 
   @doc "Returns a changeset for a post form."
   @spec change_post(Scope.t(), Post.t(), map()) :: Ecto.Changeset.t()

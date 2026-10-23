@@ -54,13 +54,12 @@ Uploaded images are stored in `storage/` (git-ignored).
 | Task | Purpose |
 |------|---------|
 | `mix feather.create_user EMAIL [--super-admin]` | Create (or update) a user who can log in by magic link |
-| `mix feather.api_token EMAIL [NAME]` | Create an API token for a user; it is printed once |
 | `mix test` | Run the test suite |
 | `mix precommit` | Compile with warnings as errors, unlock unused deps, format, run Credo, run the tests |
 | `mix ecto.reset` | Drop, migrate and seed the development database |
 
 In a release the same is available through `bin/feather eval`, see `Feather.Release`
-(`migrate/0`, `create_user/2`, `create_api_token/2`). `bin/server` migrates and starts the app.
+(`migrate/0`, `create_user/2`). `bin/server` migrates and starts the app.
 `Feather.Release.backfill_suggestions/0` fills in the model's alt texts, descriptions and short
 post titles for content from before `OLLAMA_URL` was set; deploy the sites by hand afterwards.
 
@@ -85,19 +84,24 @@ post titles for content from before `OLLAMA_URL` was set; deploy the sites by ha
 Generate a `CONFIG_ENCRYPTION_KEY` with
 `elixir -e 'IO.puts(Base.encode64(:crypto.strong_rand_bytes(32)))'`.
 
+## Connecting an agent
+
+Add `https://<PHX_HOST>/mcp` as a custom connector in Claude (or as the MCP server of another
+client) and allow it on the consent page. Tokens are bound to this URL, built from `PHX_HOST`.
+
 ## Project structure
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
-    `Media`, `Publishing`, `Redirects`)
+    `Media`, `Publishing`, `Redirects`, `OAuth`)
 *   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, Markdown
     alternates, `llms.txt`, the theme registry `Themes`); each theme's EEx templates live in
     `themes/<theme>/`
 *   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
-    (Tailwind CSS and daisyUI), and the content API controllers
+    (Tailwind CSS and daisyUI), and the MCP server at `/mcp` (`FeatherWeb.MCP`, its tools in
+    `mcp/tools/`)
 *   `priv/static_site/`: the stylesheets and fonts of the themes (`themes/<theme>/`) and the
     translations of the generated static sites
 *   `test/`: ExUnit tests, the executable specification (`DECISIONS.md`, 0008)
-*   `docs/api/`: the content API (`openapi.yml`)
 *   `ops/`: production setup (`compose.yml`, `stack.env.example`); CI
     pushes the image to `ghcr.io/feather-page/cms` on every push to `main`
 *   `CONTEXT.md`, `DECISIONS.md`: domain language and architecture decisions

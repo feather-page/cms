@@ -76,8 +76,8 @@ config :phoenix, :json_library, Jason
 
 # Magic link, email confirmation and invitation tokens are path parameters:
 # filter them from logged parameters. FeatherWeb.Endpoint.log_level/1 keeps
-# them out of the request lines.
-config :phoenix, :filter_parameters, ["password", "token", "secret"]
+# them out of the request lines. "code" covers OAuth codes and PKCE verifiers.
+config :phoenix, :filter_parameters, ["password", "token", "secret", "code"]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

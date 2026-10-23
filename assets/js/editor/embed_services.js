@@ -195,7 +195,7 @@ const previewHosts = new Set(Object.values(EMBED_SERVICES).map(({embedUrl}) => h
 
 // The URL the editor shows an embed's preview from: only https URLs of the
 // services' own embed hosts, so a stored embed of anything else (another
-// service, content from the API) loads nothing in the admin. YouTube
+// service, content from an agent) loads nothing in the admin. YouTube
 // without cookies, like the exported site.
 export function previewUrl(embed) {
   if (typeof embed !== "string" || !embed.startsWith("https://") || !previewHosts.has(host(embed))) return null

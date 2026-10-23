@@ -1,6 +1,6 @@
 defmodule Feather.PublicId do
   @moduledoc """
-  Public ids identify records in URLs, exported paths and the API.
+  Public ids identify records in URLs and exported paths.
 
   They are 12 characters from `0-9a-zA-Z` (no `_` or `-`, for nicer URLs).
   """

@@ -48,8 +48,35 @@ defmodule Feather.Sites do
   def list_sites(%Scope{} = scope) do
     scope
     |> accessible_sites_query()
-    |> order_by([s], asc: fragment("? COLLATE NOCASE", s.title))
+    |> order_by_title()
     |> Repo.all()
+  end
+
+  @doc """
+  Lists the sites the scope's user is a member of, ordered by title
+  (ignoring case). Unlike `list_sites/1` it leaves out the other sites of
+  a super admin: connected apps reach only the member's sites (ADR 0031).
+  """
+  @spec list_member_sites(Scope.t()) :: [Site.t()]
+  def list_member_sites(%Scope{user: %User{id: user_id}}) do
+    user_id
+    |> member_sites_query()
+    |> order_by_title()
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets a site the scope's user is a member of by its domain, normalized
+  like the site form does, or nil. Super admin rights do not apply, as in
+  `list_member_sites/1`.
+  """
+  @spec get_member_site_by_domain(Scope.t(), String.t()) :: Site.t() | nil
+  def get_member_site_by_domain(%Scope{user: %User{id: user_id}}, domain)
+      when is_binary(domain) do
+    user_id
+    |> member_sites_query()
+    |> where([s], s.domain == ^Site.normalize_domain(domain))
+    |> Repo.one()
   end
 
   @doc """
@@ -91,13 +118,16 @@ defmodule Feather.Sites do
 
   defp accessible_sites_query(%Scope{user: %User{super_admin: true}}), do: Site
 
-  defp accessible_sites_query(%Scope{user: %User{id: user_id}}) do
+  defp accessible_sites_query(%Scope{user: %User{id: user_id}}), do: member_sites_query(user_id)
+  defp accessible_sites_query(%Scope{}), do: where(Site, false)
+
+  defp member_sites_query(user_id) do
     from s in Site,
       join: su in SiteUser,
       on: su.site_id == s.id and su.user_id == ^user_id
   end
 
-  defp accessible_sites_query(%Scope{}), do: where(Site, false)
+  defp order_by_title(query), do: order_by(query, [s], asc: fragment("? COLLATE NOCASE", s.title))
 
   @doc """
   Creates a site for the scope's user.

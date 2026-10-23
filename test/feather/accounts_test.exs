@@ -93,59 +93,6 @@ defmodule Feather.AccountsTest do
     end
   end
 
-  describe "API tokens" do
-    test "create_api_token/2 returns a 64 character hex token once and stores its digest" do
-      user = user_fixture()
-      {:ok, token, api_token} = Accounts.create_api_token(user, "laptop")
-
-      assert token =~ ~r/\A[0-9a-f]{64}\z/
-      assert api_token.name == "laptop"
-      assert api_token.token_prefix == binary_part(token, 0, 8)
-      assert api_token.token_digest == Base.encode16(:crypto.hash(:sha256, token), case: :lower)
-      refute api_token.token_digest == token
-    end
-
-    test "get_user_by_api_token/1 authenticates with the plain token" do
-      %{id: id} = user = user_fixture()
-      {:ok, token, _api_token} = Accounts.create_api_token(user)
-
-      assert %User{id: ^id} = Accounts.get_user_by_api_token(token)
-      refute Accounts.get_user_by_api_token("wrong")
-      refute Accounts.get_user_by_api_token("")
-      refute Accounts.get_user_by_api_token(nil)
-    end
-
-    test "a digest imported from Rails keeps working" do
-      user = user_fixture()
-      plain = String.duplicate("ab", 32)
-      digest = Base.encode16(:crypto.hash(:sha256, plain), case: :lower)
-
-      Repo.insert!(%Accounts.ApiToken{
-        user_id: user.id,
-        token_digest: digest,
-        token_prefix: binary_part(plain, 0, 8)
-      })
-
-      assert Accounts.get_user_by_api_token(plain).id == user.id
-    end
-
-    test "list_api_tokens/1 and delete_api_token/2" do
-      user = user_fixture()
-      other = user_fixture()
-      {:ok, _token, api_token} = Accounts.create_api_token(user, "one")
-
-      assert [%{id: id}] = Accounts.list_api_tokens(user)
-      assert id == api_token.id
-
-      # Users cannot delete other users' tokens.
-      :ok = Accounts.delete_api_token(other, api_token.id)
-      assert [_] = Accounts.list_api_tokens(user)
-
-      :ok = Accounts.delete_api_token(user, api_token.id)
-      assert [] = Accounts.list_api_tokens(user)
-    end
-  end
-
   describe "sudo_mode?/2" do
     test "validates the authenticated_at time" do
       now = DateTime.utc_now()

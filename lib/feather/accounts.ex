@@ -6,7 +6,7 @@ defmodule Feather.Accounts do
   import Ecto.Query, warn: false
   alias Feather.Repo
 
-  alias Feather.Accounts.{ApiToken, User, UserNotifier, UserToken}
+  alias Feather.Accounts.{User, UserNotifier, UserToken}
 
   ## Database getters
 
@@ -216,51 +216,6 @@ defmodule Feather.Accounts do
   """
   def delete_user_session_token(token) do
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
-    :ok
-  end
-
-  ## API tokens
-
-  @doc """
-  Creates an API token for the user.
-
-  Returns the plain token once; only its SHA-256 digest is stored.
-  """
-  def create_api_token(%User{} = user, name \\ nil) do
-    {plain_token, changeset} = ApiToken.build(user, name)
-
-    with {:ok, api_token} <- Repo.insert(changeset) do
-      {:ok, plain_token, api_token}
-    end
-  end
-
-  @doc """
-  Returns the user owning the given plain API token, or nil.
-  """
-  def get_user_by_api_token(plain_token) when is_binary(plain_token) and plain_token != "" do
-    query =
-      from t in ApiToken,
-        join: u in assoc(t, :user),
-        where: t.token_digest == ^ApiToken.digest(plain_token),
-        select: u
-
-    Repo.one(query)
-  end
-
-  def get_user_by_api_token(_plain_token), do: nil
-
-  @doc """
-  Lists the API tokens of a user.
-  """
-  def list_api_tokens(%User{} = user) do
-    Repo.all(from t in ApiToken, where: t.user_id == ^user.id, order_by: [desc: t.inserted_at])
-  end
-
-  @doc """
-  Deletes an API token of the user.
-  """
-  def delete_api_token(%User{} = user, id) do
-    Repo.delete_all(from t in ApiToken, where: t.user_id == ^user.id and t.id == ^id)
     :ok
   end
 

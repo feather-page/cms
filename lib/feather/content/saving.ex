@@ -52,21 +52,19 @@ defmodule Feather.Content.Saving do
         {:error, :stale} -> %{}
       end
 
-    Repo.transact(fn -> publish_stored(scope, record, suggestions) end)
-  end
-
-  defp publish_stored(scope, record, suggestions) do
-    Versions.publish_stored(scope, record, prepare: &Suggestions.put_suggestions(&1, suggestions))
+    Repo.transact(fn ->
+      Versions.publish_stored(scope, record,
+        prepare: &Suggestions.put_suggestions(&1, suggestions)
+      )
+    end)
   end
 
   @doc false
-  def save_with_images(%Ecto.Changeset{} = changeset, scope, owner_field, opts) do
+  def save_with_images(%Ecto.Changeset{} = changeset, owner_field) do
     changeset =
       changeset
       |> Media.validate_site_images([:header_image_id, :thumbnail_image_id])
       |> lock()
-
-    suggestions = Suggestions.save_publish_suggestions(changeset, scope, opts)
 
     Repo.transact(fn ->
       with {:ok, record} <- Repo.insert_or_update(changeset, @lock_opts) do
@@ -77,31 +75,10 @@ defmodule Feather.Content.Saving do
           Blocks.image_ids(record.content)
         )
 
-        apply_draft_option(scope, record, changeset, opts, suggestions)
+        {:ok, record}
       end
     end)
   end
-
-  defp apply_draft_option(scope, record, changeset, opts, suggestions) do
-    case Keyword.fetch(opts, :draft) do
-      {:ok, false} ->
-        scope |> publish_stored(record, suggestions) |> slug_taken_error(changeset)
-
-      {:ok, true} ->
-        Versions.unpublish(scope, record)
-
-      :error ->
-        {:ok, record}
-    end
-  end
-
-  defp slug_taken_error({:error, :slug_taken}, changeset) do
-    action = if changeset.data.__meta__.state == :loaded, do: :update, else: :insert
-    changeset = Ecto.Changeset.add_error(changeset, :slug, "has already been taken")
-    {:error, %{changeset | action: action}}
-  end
-
-  defp slug_taken_error(result, _changeset), do: result
 
   @doc false
   def delete_with_images(scope, record, owner_field) do

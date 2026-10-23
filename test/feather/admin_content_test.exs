@@ -75,7 +75,9 @@ defmodule Feather.AdminContentTest do
       assert [%{author: "Y"}] = Books.lookup_books(scope, "y")
     end
 
-    test "attach_cover_from_url/3 downloads the cover and replaces the old one", %{scope: scope} do
+    test "attach_cover_from_url/3 downloads the cover and leaves the old one to the cleanup", %{
+      scope: scope
+    } do
       image = File.read!(test_image_path())
       Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 200, image))
 
@@ -86,7 +88,9 @@ defmodule Feather.AdminContentTest do
 
       {:ok, book} = Books.attach_cover_from_url(scope, book, "https://example.com/2.png")
       assert book.cover_image_id != first_cover_id
-      assert [%{source_url: "https://example.com/2.png"}] = Media.list_images(scope)
+
+      assert %{unreferenced: [%{id: ^first_cover_id}]} =
+               Media.orphaned_images(DateTime.add(DateTime.utc_now(), 3, :day))
     end
 
     test "attach_cover_from_url/3 reports failed downloads", %{scope: scope} do

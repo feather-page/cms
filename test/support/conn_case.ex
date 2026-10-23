@@ -34,12 +34,14 @@ defmodule FeatherWeb.ConnCase do
       import Phoenix.ConnTest
       import FeatherWeb.ConnCase
       import FeatherWeb.ConfirmHelpers
+      import FeatherWeb.MCPHelpers
 
       import Feather.AccountsFixtures
       import Feather.SitesFixtures
       import Feather.ContentFixtures
       import Feather.BooksFixtures
       import Feather.MediaFixtures
+      import Feather.OAuthFixtures
       import Feather.PublishingFixtures
       import Feather.RedirectsFixtures
     end

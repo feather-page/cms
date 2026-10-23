@@ -4,22 +4,9 @@ defmodule FeatherWeb.Router do
   import FeatherWeb.UserAuth
   import FeatherWeb.SiteAuth, only: [fetch_current_site: 2]
 
-  # Own scripts only, so injected markup cannot run; the block editor needs inline styles.
-  @csp_directives [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "font-src 'self' data:",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self'",
-    "frame-src 'self' https:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'self'"
-  ]
-
-  @browser_headers %{"content-security-policy" => Enum.join(@csp_directives, "; ")}
+  @browser_headers %{
+    "content-security-policy" => FeatherWeb.ContentSecurityPolicy.header()
+  }
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -31,10 +18,6 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   pipeline :browser_json do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -44,8 +27,13 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  pipeline :api_token do
-    plug FeatherWeb.Plugs.ApiAuth
+  pipeline :oauth do
+    plug :accepts, ["json"]
+  end
+
+  pipeline :mcp do
+    plug :refuse_other_origins
+    plug FeatherWeb.Plugs.RequireAccessToken
   end
 
   # No pipeline: no session, no CSRF; excluded from force_ssl in config/prod.exs.
@@ -53,12 +41,22 @@ defmodule FeatherWeb.Router do
     get "/up", HealthController, :show
   end
 
-  scope "/api/v1/sites/:site_id", FeatherWeb.Api.V1 do
-    pipe_through [:api, :api_token]
+  # MCP clients discover and call these without a session (ADR 0032).
+  scope "/", FeatherWeb do
+    pipe_through :oauth
 
-    resources "/posts", PostController, except: [:new, :edit]
-    resources "/pages", PageController, except: [:new, :edit]
-    resources "/images", ImageController, only: [:show, :create]
+    get "/.well-known/oauth-protected-resource", OAuthMetadataController, :protected_resource
+    get "/.well-known/oauth-protected-resource/mcp", OAuthMetadataController, :protected_resource
+    get "/.well-known/oauth-authorization-server", OAuthMetadataController, :authorization_server
+    post "/oauth/token", OAuthTokenController, :create
+  end
+
+  scope "/", FeatherWeb do
+    pipe_through :mcp
+
+    post "/mcp", MCPController, :create
+    get "/mcp", MCPController, :method_not_allowed
+    delete "/mcp", MCPController, :method_not_allowed
   end
 
   if Application.compile_env(:feather, :dev_routes) do
@@ -89,6 +87,14 @@ defmodule FeatherWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
+  end
+
+  # A logged-out member comes back here after the magic link (user_return_to).
+  scope "/oauth", FeatherWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/authorize", OAuthAuthorizationController, :new
+    post "/authorize", OAuthAuthorizationController, :create
   end
 
   # Logged out: the invitee may not have an account yet.
@@ -167,6 +173,13 @@ defmodule FeatherWeb.Router do
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  # The MCP transport requires this against DNS rebinding.
+  defp refuse_other_origins(conn, _opts) do
+    if conn |> get_req_header("origin") |> Enum.all?(&(&1 == FeatherWeb.Endpoint.url())),
+      do: conn,
+      else: conn |> send_resp(:forbidden, "") |> halt()
   end
 
   if Application.compile_env(:feather, :dev_routes) do

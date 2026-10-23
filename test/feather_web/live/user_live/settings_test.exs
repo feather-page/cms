@@ -17,7 +17,6 @@ defmodule FeatherWeb.UserLive.SettingsTest do
       assert has_element?(lv, "#email-heading", "Email address")
       assert has_element?(lv, ~s(#email_form label.sr-only[for="user_email"]))
       assert has_element?(lv, "#email-actions button[type=submit]", "Change email")
-      assert has_element?(lv, "#api-token-actions button[type=submit]", "Create token")
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -143,53 +142,56 @@ defmodule FeatherWeb.UserLive.SettingsTest do
     end
   end
 
-  describe "API tokens" do
+  describe "connected apps" do
     setup %{conn: conn} do
       user = user_fixture()
       %{conn: log_in_user(conn, user), user: user}
     end
 
-    test "creates a token and shows it once", %{conn: conn, user: user} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
-      refute has_element?(lv, "#new-api-token")
-
-      lv |> form("#api_token_form", api_token: %{name: "Importer"}) |> render_submit()
-
-      assert [token] = Accounts.list_api_tokens(user)
-      assert token.name == "Importer"
-      assert has_element?(lv, "#api-token-#{token.id}", "Importer")
-
-      plain = lv |> element("#new-api-token code") |> render() |> LazyHTML.from_fragment()
-      plain = LazyHTML.text(plain)
-      assert Accounts.get_user_by_api_token(plain).id == user.id
+    test "lists the user's connected apps", %{conn: conn, user: user} do
+      %{connected_app: app} = connected_app_fixture(user)
+      %{connected_app: other} = connected_app_fixture(user_fixture(), client_name: "Not mine")
 
       {:ok, lv, _html} = live(conn, ~p"/users/settings")
-      refute has_element?(lv, "#new-api-token")
-      assert has_element?(lv, "#api-token-#{token.id}")
+
+      assert has_element?(lv, "#connected-app-#{app.id}", "Claude")
+      refute has_element?(lv, "#connected-app-#{other.id}")
+      refute has_element?(lv, "#no-connected-apps")
     end
 
-    test "lists only own tokens and deletes them", %{conn: conn, user: user} do
-      {:ok, _plain, own} = Accounts.create_api_token(user, "Mine")
-      {:ok, _plain, other} = Accounts.create_api_token(user_fixture(), "Not mine")
-
+    test "says when no app is connected", %{conn: conn} do
       {:ok, lv, _html} = live(conn, ~p"/users/settings")
-      assert has_element?(lv, "#api-token-#{own.id}")
-      refute has_element?(lv, "#api-token-#{other.id}")
 
-      confirm_click(lv, "#delete-api-token-#{own.id}-menu-item")
-
-      refute has_element?(lv, "#api-token-#{own.id}")
-      assert Accounts.list_api_tokens(user) == []
+      assert has_element?(lv, "#no-connected-apps")
     end
 
-    test "cannot delete another user's token", %{conn: conn} do
-      other_user = user_fixture()
-      {:ok, _plain, other} = Accounts.create_api_token(other_user, "Not mine")
-
+    test "revoking an app cuts it off from /mcp at once", %{conn: conn, user: user} do
+      %{connected_app: app, access_token: access_token} = connected_app_fixture(user)
       {:ok, lv, _html} = live(conn, ~p"/users/settings")
-      render_hook(lv, "delete_api_token", %{"id" => other.id})
 
-      assert [_] = Accounts.list_api_tokens(other_user)
+      confirm_click(
+        lv,
+        "#revoke-connected-app-#{app.id}-menu-item",
+        "Revoke access for “Claude”?"
+      )
+
+      refute has_element?(lv, "#connected-app-#{app.id}")
+
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> post(~p"/mcp", %{})
+
+      assert conn.status == 401
+    end
+
+    test "cannot revoke another user's app", %{conn: conn} do
+      %{connected_app: other, access_token: access_token} = connected_app_fixture(user_fixture())
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      render_hook(lv, "revoke_connected_app", %{"id" => other.id})
+
+      assert {:ok, _user} = Feather.OAuth.authenticate(access_token)
     end
   end
 end

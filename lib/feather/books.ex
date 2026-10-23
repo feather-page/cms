@@ -1,6 +1,6 @@
 defmodule Feather.Books do
   @moduledoc """
-  The bookshelf of a site and book reviews.
+  The bookshelf of a site, the book search and book reviews.
 
   A review is a post linked from the book (`book.post_id`). Deleting a
   review deletes the post and clears the rating; deleting a book deletes
@@ -17,7 +17,9 @@ defmodule Feather.Books do
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Post
+  alias Feather.Hardcover
   alias Feather.Media
+  alias Feather.OpenLibrary
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
@@ -85,8 +87,27 @@ defmodule Feather.Books do
   defp escape_like(text), do: String.replace(text, ~r/([\\%_])/, "\\\\\\1")
 
   @doc """
+  The service the book search asks: Hardcover with a token, OpenLibrary
+  without one (ADR 0023).
+  """
+  @spec search_service() :: Hardcover | OpenLibrary
+  def search_service, do: if(Hardcover.configured?(), do: Hardcover, else: OpenLibrary)
+
+  @doc """
+  Searches books by title or author on the search service
+  (`search_service/0`), for the book form and for agents. Queries shorter
+  than 3 characters find nothing. Errors are the service's, never answered
+  from the other one.
+  """
+  @spec search_books(Scope.t(), String.t() | nil) ::
+          {:ok, [Hardcover.result() | OpenLibrary.result()]} | {:error, String.t()}
+  def search_books(%Scope{}, query), do: search_service().search(query)
+
+  @doc """
   Downloads a cover image (e.g. of a book search result) and makes it the
-  book's cover. A previous cover image is deleted.
+  book's cover. A previous cover image stays, for the daily image cleanup
+  (`Feather.Media.cleanup_orphaned_images/1`) to delete once nothing uses
+  it.
   """
   @spec attach_cover_from_url(Scope.t(), Book.t(), String.t()) ::
           {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -101,8 +122,8 @@ defmodule Feather.Books do
   end
 
   @doc """
-  Makes an uploaded file the book's cover. A previous cover image is
-  deleted.
+  Makes an uploaded file the book's cover. A previous cover image stays,
+  as with `attach_cover_from_url/3`.
   """
   @spec attach_cover_from_upload(Scope.t(), Book.t(), Path.t(), String.t()) ::
           {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -122,27 +143,10 @@ defmodule Feather.Books do
     do: [variants: ImageVariants.for_role(scope.site, :book_cover)]
 
   defp attach_cover(scope, book, image) do
-    case update_book(scope, book, %{cover_image_id: image.id}) do
-      {:ok, updated} ->
-        delete_previous_cover(book.cover_image_id, image.id)
-        {:ok, updated}
-
-      {:error, changeset} ->
-        Media.delete_image(image)
-        {:error, changeset}
+    with {:error, changeset} <- update_book(scope, book, %{cover_image_id: image.id}) do
+      Media.delete_image(image)
+      {:error, changeset}
     end
-  end
-
-  defp delete_previous_cover(nil, _new_id), do: :ok
-  defp delete_previous_cover(same, same), do: :ok
-
-  defp delete_previous_cover(old_id, _new_id) do
-    case Repo.get(Feather.Media.Image, old_id) do
-      nil -> :ok
-      image -> Media.delete_image(image)
-    end
-
-    :ok
   end
 
   @doc "Gets a book of the scope's site by public id. Raises if not found."

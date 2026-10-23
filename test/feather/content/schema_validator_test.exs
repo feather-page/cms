@@ -13,26 +13,19 @@ defmodule Feather.Content.SchemaValidatorTest do
     "Node" => %{
       "type" => "object",
       "properties" => %{
-        "children" => %{"type" => "array", "items" => %{"$ref" => "#/components/schemas/Node"}}
+        "children" => %{"type" => "array", "items" => %{"$ref" => "#/$defs/Node"}}
       }
     }
   }
 
-  @one_of %{
-    "oneOf" => [%{"$ref" => "#/components/schemas/A"}, %{"$ref" => "#/components/schemas/B"}],
-    "discriminator" => %{"propertyName" => "kind"}
-  }
+  @one_of %{"oneOf" => [%{"$ref" => "#/$defs/A"}, %{"$ref" => "#/$defs/B"}]}
 
-  test "validates against the schema the discriminator picks" do
+  test "oneOf accepts data that matches any of its schemas" do
     assert SchemaValidator.validate(%{"kind" => "a", "n" => 1}, @one_of, @definitions) == []
+    assert SchemaValidator.validate(%{"kind" => "b"}, @one_of, @definitions) == []
 
-    assert [%{pointer: "/n", type: "type", message: "expected integer, got string"}] =
-             SchemaValidator.validate(%{"kind" => "a", "n" => "1"}, @one_of, @definitions)
-  end
-
-  test "without a matching discriminator any matching schema will do" do
     assert [%{type: "oneOf", message: "does not match any schema"}] =
-             SchemaValidator.validate(%{"kind" => "c"}, @one_of, @definitions)
+             SchemaValidator.validate(%{"kind" => "a", "n" => "1"}, @one_of, @definitions)
 
     assert [%{type: "oneOf"}] = SchemaValidator.validate("x", @one_of, @definitions)
   end
@@ -43,7 +36,7 @@ defmodule Feather.Content.SchemaValidatorTest do
     assert [%{pointer: "/children/0/children/0/children", type: "type"}] =
              SchemaValidator.validate(
                tree,
-               %{"$ref" => "#/components/schemas/Node"},
+               %{"$ref" => "#/$defs/Node"},
                @definitions
              )
   end
@@ -57,7 +50,7 @@ defmodule Feather.Content.SchemaValidatorTest do
 
   test "raises on unknown references" do
     assert_raise ArgumentError, fn ->
-      SchemaValidator.validate(%{}, %{"$ref" => "#/components/schemas/Missing"})
+      SchemaValidator.validate(%{}, %{"$ref" => "#/$defs/Missing"})
     end
   end
 end

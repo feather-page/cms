@@ -5,7 +5,7 @@ defmodule Feather.Content.Blocks do
 
   Content is a list of blocks. Each block is a map with string keys, an
   `"id"`, a `"type"` and the fields of its type. This is the stored format
-  and the format of the content API (the Rails internal format):
+  (the Rails internal format):
 
     * `paragraph` - `text`
     * `header` - `level` (2, 3 or 4; anything else becomes 2), `text`
@@ -22,8 +22,7 @@ defmodule Feather.Content.Blocks do
   diagram captions, list items, table cells) is sanitized with
   `Feather.Content.HTML.sanitize(html, :editor)` and embed URLs that are
   not safe link targets are dropped whenever content is normalized: before
-  it is stored (admin editor, content API, import) and before it is handed
-  to the admin editor. Content stored before this was in place is
+  it is stored and before it is handed to the admin editor. Content stored before this was in place is
   therefore sanitized on its way to the editor as well.
 
   Blocks of unknown types are dropped. `Feather.Content.ProseMirror`
@@ -61,16 +60,23 @@ defmodule Feather.Content.Blocks do
     end)
   end
 
-  defp normalize_block("paragraph", b), do: %{"type" => "paragraph", "text" => inline(b["text"])}
+  defp normalize_block("paragraph", b),
+    do: %{"type" => "paragraph", "text" => inline(b["text"]) || ""}
 
-  defp normalize_block("header", b),
-    do: %{"type" => "header", "level" => header_level(b["level"]), "text" => inline(b["text"])}
+  defp normalize_block("header", b) do
+    %{"type" => "header", "level" => header_level(b["level"]), "text" => inline(b["text"]) || ""}
+  end
 
   defp normalize_block("list", b),
     do: %{"type" => "list", "style" => list_style(b["style"]), "items" => list_items(b["items"])}
 
-  defp normalize_block("quote", b),
-    do: %{"type" => "quote", "text" => inline(b["text"]), "caption" => inline(b["caption"])}
+  defp normalize_block("quote", b) do
+    %{
+      "type" => "quote",
+      "text" => inline(b["text"]) || "",
+      "caption" => inline(b["caption"]) || ""
+    }
+  end
 
   defp normalize_block("code", b),
     do: %{"type" => "code", "code" => code(b["code"]), "language" => code_language(b["language"])}

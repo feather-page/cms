@@ -1,11 +1,10 @@
 defmodule FeatherWeb.BookLive.Form do
   @moduledoc """
-  Creates and edits books. A book search (server-side, debounced) on
-  Hardcover, or on OpenLibrary without a Hardcover token (ADR 0023), fills
-  title, author and ISBN of a new book and only the ISBN of an existing
-  one. The cover of the chosen result, or an uploaded cover, becomes the
-  book's cover on save. The edit page links to the book's review and
-  deletes the book.
+  Creates and edits books. A book search (server-side, debounced,
+  `Feather.Books.search_books/2`) fills title, author and ISBN of a new
+  book and only the ISBN of an existing one. The cover of the chosen
+  result, or an uploaded cover, becomes the book's cover on save. The edit
+  page links to the book's review and deletes the book.
   """
   use FeatherWeb, :live_view
 
@@ -210,7 +209,7 @@ defmodule FeatherWeb.BookLive.Form do
      |> assign(:reading_statuses, @reading_statuses)
      |> assign(:book, book)
      |> assign(query: "", results: [], search_error: nil, cover_url: nil, cover_error: nil)
-     |> assign(:search_service, if(Hardcover.configured?(), do: Hardcover, else: OpenLibrary))
+     |> assign(:search_service, Books.search_service())
      |> allow_upload(:cover,
        accept: @cover_extensions,
        max_entries: 1,
@@ -221,7 +220,7 @@ defmodule FeatherWeb.BookLive.Form do
 
   @impl true
   def handle_event("search", %{"query" => query}, socket) do
-    case socket.assigns.search_service.search(query) do
+    case Books.search_books(socket.assigns.current_scope, query) do
       {:ok, results} ->
         {:noreply, assign(socket, query: query, results: results, search_error: nil)}
 

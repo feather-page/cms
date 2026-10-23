@@ -42,23 +42,23 @@ defmodule Feather.Content.Projects do
 
   @doc "Creates a project in the scope's site."
   @spec create_project(Scope.t(), map()) :: {:ok, Project.t()} | {:error, Ecto.Changeset.t()}
-  def create_project(%Scope{site: %Site{id: site_id}} = scope, attrs) do
+  def create_project(%Scope{site: %Site{id: site_id}}, attrs) do
     %Project{site_id: site_id}
     |> Project.create_changeset(attrs)
-    |> Saving.save_with_images(scope, :project_id, [])
+    |> Saving.save_with_images(:project_id)
   end
 
   @doc "Updates a project."
   @spec update_project(Scope.t(), Project.t(), map()) ::
           {:ok, Project.t()} | {:error, Ecto.Changeset.t()}
   def update_project(
-        %Scope{site: %Site{id: site_id}} = scope,
+        %Scope{site: %Site{id: site_id}},
         %Project{site_id: site_id} = project,
         attrs
       ) do
     project
     |> Project.changeset(attrs)
-    |> Saving.save_with_images(scope, :project_id, [])
+    |> Saving.save_with_images(:project_id)
   end
 
   @doc "Deletes a project and the images it owns that nothing else uses."
