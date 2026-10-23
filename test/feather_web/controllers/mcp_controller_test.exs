@@ -2,7 +2,8 @@ defmodule FeatherWeb.MCPControllerTest do
   use FeatherWeb.ConnCase
 
   alias Feather.Accounts.Scope
-  alias Feather.Books
+  alias Feather.{Books, Content}
+  alias Feather.Content.BlockValidator
 
   setup do
     user = user_fixture()
@@ -10,7 +11,8 @@ defmodule FeatherWeb.MCPControllerTest do
     %{user: user, access_token: access_token}
   end
 
-  @tools ~w(list_sites deploy_site search_books list_books add_book update_book)
+  @tools ~w(list_sites deploy_site search_books list_books add_book update_book
+            list_posts get_post create_post update_post publish_post)
 
   defp tool_names(conn),
     do: for(tool <- json_response(conn, 200)["result"]["tools"], do: tool["name"])
@@ -168,6 +170,125 @@ defmodule FeatherWeb.MCPControllerTest do
       [saved] = Books.list_books(scope, preload: [:cover_image])
       assert saved.public_id == book["id"]
       assert saved.cover_image.source_url == "https://covers.openlibrary.org/b/id/11481354-M.jpg"
+    end
+  end
+
+  describe "posts" do
+    setup %{user: user} do
+      site = site_fixture(user, domain: "notes.example")
+      %{site: site, scope: user |> Scope.for_user() |> Scope.put_site(site)}
+    end
+
+    test "are created, updated and published, and the site deployed", %{
+      site: site,
+      scope: scope,
+      access_token: access_token
+    } do
+      target = deployment_target_fixture(scope)
+
+      assert %{"isError" => false, "structuredContent" => created} =
+               call_tool(access_token, "create_post", %{
+                 "site" => "notes.example",
+                 "title" => "Hello",
+                 "content" => [%{"type" => "paragraph", "text" => "A first draft."}]
+               })
+
+      assert %{"status" => "draft", "slug" => "/hello", "lock_version" => 1} = created
+
+      assert created["editor_url"] ==
+               "#{FeatherWeb.Endpoint.url()}/sites/#{site.public_id}/posts/#{created["id"]}/edit"
+
+      assert created["preview_url"] ==
+               "#{FeatherWeb.Endpoint.url()}/preview/#{site.public_id}/hello/"
+
+      assert %{"isError" => false, "structuredContent" => updated} =
+               call_tool(access_token, "update_post", %{
+                 "site" => "notes.example",
+                 "post" => created["id"],
+                 "lock_version" => created["lock_version"],
+                 "content" => [%{"type" => "paragraph", "text" => "The final text."}]
+               })
+
+      assert %{"status" => "draft", "lock_version" => 2} = updated
+
+      assert %{"isError" => false, "structuredContent" => %{"status" => "published"}} =
+               call_tool(access_token, "publish_post", %{
+                 "site" => "notes.example",
+                 "post" => created["id"],
+                 "lock_version" => updated["lock_version"]
+               })
+
+      assert %{"isError" => false} =
+               call_tool(access_token, "deploy_site", %{"site" => "notes.example"})
+
+      assert_received {:deploy_requested, %{id: target_id}}
+      assert target_id == target.id
+
+      [published] = scope |> Content.list_posts() |> Content.as_published()
+      assert [%{"text" => "The final text."}] = published.content
+    end
+
+    test "a post becomes the review of a book", %{scope: scope, access_token: access_token} do
+      book = book_fixture(scope, title: "Dune")
+
+      assert %{"isError" => false, "structuredContent" => review} =
+               call_tool(access_token, "create_post", %{
+                 "site" => "notes.example",
+                 "book" => book.public_id,
+                 "title" => "Review: Dune"
+               })
+
+      assert review["book"] == book.public_id
+      book = Books.get_book!(scope, book.public_id)
+      assert Books.get_review_post(scope, book).public_id == review["id"]
+    end
+
+    test "invalid blocks come back as the block validator's messages", %{
+      scope: scope,
+      access_token: access_token
+    } do
+      assert %{"isError" => true, "content" => [%{"type" => "text", "text" => text}]} =
+               call_tool(access_token, "create_post", %{
+                 "site" => "notes.example",
+                 "title" => "Hello",
+                 "content" => [%{"type" => "header", "text" => "Hi"}, %{"type" => "fancy"}]
+               })
+
+      assert text ==
+               "Invalid content: Block 0 (header): missing required fields: level; " <>
+                 "Block 1: unknown or missing type 'fancy'. " <>
+                 "Valid types: #{Enum.join(BlockValidator.types(), ", ")}"
+
+      assert Content.list_posts(scope) == []
+    end
+
+    test "an update based on an older lock version keeps the change made in the editor", %{
+      scope: scope,
+      access_token: access_token
+    } do
+      post = post_fixture(scope, title: "Hello", draft: true)
+      {:ok, post} = Content.update_post(scope, post, %{title: "Hello again"})
+      {:ok, _post} = Content.update_post(scope, post, %{title: "Hello"})
+
+      assert %{"structuredContent" => %{"lock_version" => 3}} =
+               call_tool(access_token, "get_post", %{
+                 "site" => "notes.example",
+                 "post" => post.public_id
+               })
+
+      post = Content.get_post!(scope, post.public_id)
+      {:ok, %{lock_version: 4}} = Content.autosave(scope, post, %{"title" => "Hello, editor"})
+
+      assert %{"isError" => true, "content" => [%{"text" => text}]} =
+               call_tool(access_token, "update_post", %{
+                 "site" => "notes.example",
+                 "post" => post.public_id,
+                 "lock_version" => 3,
+                 "title" => "Hello, Claude"
+               })
+
+      assert text =~ "was changed elsewhere"
+      assert Content.get_post!(scope, post.public_id).title == "Hello, editor"
     end
   end
 

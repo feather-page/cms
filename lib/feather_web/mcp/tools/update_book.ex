@@ -34,21 +34,11 @@ defmodule FeatherWeb.MCP.Tools.UpdateBook do
   @impl true
   def call(scope, %{"site" => domain, "book" => id} = arguments) do
     with {:ok, scope} <- Tool.site_scope(scope, domain),
-         {:ok, book} <- fetch_book(scope, id) do
+         {:ok, book} <- BookFields.fetch_book(scope, id) do
       case Books.update_book(scope, book, BookFields.attrs(arguments)) do
         {:ok, book} -> {:ok, BookFields.with_cover(scope, book, arguments["cover_url"])}
         {:error, changeset} -> {:error, "Invalid book: " <> Tool.errors(changeset)}
       end
-    end
-  end
-
-  defp fetch_book(scope, id) do
-    case Books.get_book(scope, id) do
-      nil ->
-        {:error, "There is no book #{id} on #{scope.site.domain}. list_books lists its books."}
-
-      book ->
-        {:ok, book}
     end
   end
 end

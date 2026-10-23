@@ -55,6 +55,7 @@ defmodule Feather.Content do
   defdelegate update_post(scope, post, attrs), to: Posts
   defdelegate delete_post(scope, post), to: Posts
   defdelegate change_post(scope, post, attrs \\ %{}), to: Posts
+  defdelegate preload_post_details(posts), to: Posts, as: :preload_details
 
   ## Pages
 

@@ -48,6 +48,18 @@ defmodule FeatherWeb.MCP.BookFields do
   @spec attrs(map()) :: map()
   def attrs(arguments), do: Map.take(arguments, @fields)
 
+  @doc "The book of the site with the public id `id`."
+  @spec fetch_book(Scope.t(), String.t()) :: {:ok, Book.t()} | {:error, String.t()}
+  def fetch_book(%Scope{} = scope, id) do
+    case Books.get_book(scope, id) do
+      nil ->
+        {:error, "There is no book #{id} on #{scope.site.domain}. list_books lists its books."}
+
+      book ->
+        {:ok, book}
+    end
+  end
+
   @doc """
   The result of a saved book, after downloading its cover from
   `cover_url` if one is given. A failed download leaves the book as saved

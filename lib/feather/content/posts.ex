@@ -91,6 +91,15 @@ defmodule Feather.Content.Posts do
     Saving.delete_with_images(scope, post, :post_id)
   end
 
+  @doc """
+  Preloads what a post shows besides its fields: its header and thumbnail
+  image, the book it reviews and its published version. Takes a post or a
+  list of posts.
+  """
+  @spec preload_details(posts) :: posts when posts: Post.t() | [Post.t()]
+  def preload_details(posts),
+    do: Repo.preload(posts, [:header_image, :thumbnail_image, :book, :published_version])
+
   @doc "Returns a changeset for a post form."
   @spec change_post(Scope.t(), Post.t(), map()) :: Ecto.Changeset.t()
   def change_post(%Scope{}, %Post{} = post, attrs \\ %{}) do

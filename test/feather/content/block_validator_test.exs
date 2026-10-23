@@ -141,4 +141,22 @@ defmodule Feather.Content.BlockValidatorTest do
       end
     end
   end
+
+  describe "content_schema/0" do
+    test "is an array of blocks of the validated types" do
+      %{"type" => "array", "items" => %{"anyOf" => schemas}} = BlockValidator.content_schema()
+
+      types = for schema <- schemas, do: schema["properties"]["type"]["const"]
+      assert types == BlockValidator.types()
+      assert schemas == Enum.map(types, &Map.fetch!(BlockValidator.schemas(), &1))
+    end
+
+    test "describes every field" do
+      schemas = Map.values(BlockValidator.schemas()) ++ Map.values(BlockValidator.definitions())
+
+      for schema <- schemas, {field, property} <- schema["properties"], field != "type" do
+        assert is_binary(property["description"]), "#{field} has no description"
+      end
+    end
+  end
 end

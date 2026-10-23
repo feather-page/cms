@@ -22,7 +22,8 @@ defmodule Feather.Content.BlockValidator do
   @ref_list_item %{"$ref" => "#/$defs/ListItem"}
   @list_item_entry %{"oneOf" => [@ref_list_item, %{"type" => "string"}]}
 
-  @id %{"type" => "string"}
+  @id %{"type" => "string", "description" => "Unique block identifier, generated if left out"}
+  @inline "inline HTML with only <b>, <i>, <u>, <code>, <br> and <a href>"
 
   @block_schemas [
     {"paragraph",
@@ -33,7 +34,7 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "paragraph"},
-         "text" => %{"type" => "string"}
+         "text" => %{"type" => "string", "description" => "The paragraph's text, " <> @inline}
        }
      }},
     {"header",
@@ -44,8 +45,12 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "header"},
-         "text" => %{"type" => "string"},
-         "level" => %{"type" => "integer", "enum" => [2, 3, 4]}
+         "text" => %{"type" => "string", "description" => "The header's text, " <> @inline},
+         "level" => %{
+           "type" => "integer",
+           "enum" => [2, 3, 4],
+           "description" => "Header level (H2, H3 or H4)"
+         }
        }
      }},
     {"code",
@@ -56,8 +61,12 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "code"},
-         "code" => %{"type" => "string"},
-         "language" => %{"type" => "string", "default" => "plaintext"}
+         "code" => %{"type" => "string", "description" => "Source code"},
+         "language" => %{
+           "type" => "string",
+           "default" => "plaintext",
+           "description" => "Programming language for syntax highlighting"
+         }
        }
      }},
     {"image",
@@ -68,8 +77,15 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "image"},
-         "image_id" => %{"type" => "string"},
-         "caption" => %{"type" => "string", "default" => ""}
+         "image_id" => %{
+           "type" => "string",
+           "description" => "The id of one of the site's images"
+         },
+         "caption" => %{
+           "type" => "string",
+           "default" => "",
+           "description" => "Optional caption, " <> @inline
+         }
        }
      }},
     {"quote",
@@ -80,8 +96,11 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "quote"},
-         "text" => %{"type" => "string"},
-         "caption" => %{"type" => "string"}
+         "text" => %{"type" => "string", "description" => "The quote, " <> @inline},
+         "caption" => %{
+           "type" => "string",
+           "description" => "Attribution or source, " <> @inline <> "; empty for none"
+         }
        }
      }},
     {"list",
@@ -92,8 +111,19 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "list"},
-         "style" => %{"type" => "string", "enum" => ["ul", "ol"], "default" => "ul"},
-         "items" => %{"type" => "array", "items" => @list_item_entry}
+         "style" => %{
+           "type" => "string",
+           "enum" => ["ul", "ol"],
+           "default" => "ul",
+           "description" => "List style: unordered (ul) or ordered (ol)"
+         },
+         "items" => %{
+           "type" => "array",
+           "items" => @list_item_entry,
+           "description" =>
+             "Nested list items, each with its own sub-items. A plain string is shorthand " <>
+               "for an item without sub-items; results always give ListItem objects."
+         }
        }
      }},
     {"table",
@@ -106,9 +136,14 @@ defmodule Feather.Content.BlockValidator do
          "type" => %{"type" => "string", "const" => "table"},
          "content" => %{
            "type" => "array",
-           "items" => %{"type" => "array", "items" => %{"type" => "string"}}
+           "items" => %{"type" => "array", "items" => %{"type" => "string"}},
+           "description" => "Rows of cells, each " <> @inline
          },
-         "with_headings" => %{"type" => "boolean", "default" => false}
+         "with_headings" => %{
+           "type" => "boolean",
+           "default" => false,
+           "description" => "Whether the first row of content holds the headings"
+         }
        }
      }},
     {"embed",
@@ -119,12 +154,28 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "embed"},
-         "service" => %{"type" => "string"},
-         "source" => %{"type" => "string"},
-         "embed" => %{"type" => "string"},
-         "width" => %{"type" => ["integer", "null"]},
-         "height" => %{"type" => ["integer", "null"]},
-         "caption" => %{"type" => "string", "default" => ""}
+         "service" => %{
+           "type" => "string",
+           "description" => "Embed service name, such as youtube or vimeo"
+         },
+         "source" => %{
+           "type" => "string",
+           "description" => "Original URL of the embedded content"
+         },
+         "embed" => %{"type" => "string", "description" => "Embed URL for the iframe"},
+         "width" => %{
+           "type" => ["integer", "null"],
+           "description" => "Embed width in pixels; the theme decides if left out"
+         },
+         "height" => %{
+           "type" => ["integer", "null"],
+           "description" => "Embed height in pixels; the theme decides if left out"
+         },
+         "caption" => %{
+           "type" => "string",
+           "default" => "",
+           "description" => "Optional caption, " <> @inline
+         }
        }
      }},
     {"book",
@@ -135,11 +186,14 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "book"},
-         "book_public_id" => %{"type" => "string"},
-         "title" => %{"type" => "string"},
-         "author" => %{"type" => "string"},
-         "cover_url" => %{"type" => "string"},
-         "emoji" => %{"type" => "string"}
+         "book_public_id" => %{
+           "type" => "string",
+           "description" => "The id of a book on the site's bookshelf"
+         },
+         "title" => %{"type" => "string", "description" => "Filled from the bookshelf"},
+         "author" => %{"type" => "string", "description" => "Filled from the bookshelf"},
+         "cover_url" => %{"type" => "string", "description" => "Filled from the bookshelf"},
+         "emoji" => %{"type" => "string", "description" => "Filled from the bookshelf"}
        }
      }},
     {"diagram",
@@ -150,8 +204,17 @@ defmodule Feather.Content.BlockValidator do
        "properties" => %{
          "id" => @id,
          "type" => %{"type" => "string", "const" => "diagram"},
-         "code" => %{"type" => "string"},
-         "caption" => %{"type" => "string", "default" => ""}
+         "code" => %{
+           "type" => "string",
+           "description" =>
+             "Diagram source in D2 (https://d2lang.com) without icons, links or imports, " <>
+               "rendered to an SVG image on the published site"
+         },
+         "caption" => %{
+           "type" => "string",
+           "default" => "",
+           "description" => "Optional caption, also the image's alternative text"
+         }
        }
      }}
   ]
@@ -161,8 +224,13 @@ defmodule Feather.Content.BlockValidator do
       "type" => "object",
       "required" => ["content", "items"],
       "properties" => %{
-        "content" => %{"type" => "string"},
-        "items" => %{"type" => "array", "items" => @list_item_entry}
+        "content" => %{"type" => "string", "description" => "The item's text, " <> @inline},
+        "items" => %{
+          "type" => "array",
+          "items" => @list_item_entry,
+          "description" =>
+            "Nested sub-items; a plain string is shorthand for an item without sub-items"
+        }
       }
     }
   }
@@ -181,6 +249,16 @@ defmodule Feather.Content.BlockValidator do
   @doc "The schemas the block schemas refer to with `$ref`, by name."
   @spec definitions() :: %{String.t() => map()}
   def definitions, do: @definitions
+
+  @doc """
+  The JSON Schema of content for clients: an array of blocks, each
+  matching the schema of its type. Its `$ref`s point into `definitions/0`
+  as `#/$defs/<name>`.
+  """
+  @spec content_schema() :: map()
+  def content_schema do
+    %{"type" => "array", "items" => %{"anyOf" => Enum.map(@types, &Map.fetch!(@schemas, &1))}}
+  end
 
   @doc """
   Validates content (a list of blocks with string keys, as decoded from
