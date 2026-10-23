@@ -32,6 +32,7 @@ defmodule FeatherWeb.Router do
   end
 
   pipeline :mcp do
+    plug :refuse_other_origins
     plug FeatherWeb.Plugs.RequireAccessToken
   end
 
@@ -53,7 +54,9 @@ defmodule FeatherWeb.Router do
   scope "/", FeatherWeb do
     pipe_through :mcp
 
-    post "/mcp", McpController, :create
+    post "/mcp", MCPController, :create
+    get "/mcp", MCPController, :method_not_allowed
+    delete "/mcp", MCPController, :method_not_allowed
   end
 
   if Application.compile_env(:feather, :dev_routes) do
@@ -170,6 +173,13 @@ defmodule FeatherWeb.Router do
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
+  end
+
+  # The MCP transport requires this against DNS rebinding.
+  defp refuse_other_origins(conn, _opts) do
+    if conn |> get_req_header("origin") |> Enum.all?(&(&1 == FeatherWeb.Endpoint.url())),
+      do: conn,
+      else: conn |> send_resp(:forbidden, "") |> halt()
   end
 
   if Application.compile_env(:feather, :dev_routes) do

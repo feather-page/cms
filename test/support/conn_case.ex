@@ -34,6 +34,7 @@ defmodule FeatherWeb.ConnCase do
       import Phoenix.ConnTest
       import FeatherWeb.ConnCase
       import FeatherWeb.ConfirmHelpers
+      import FeatherWeb.MCPHelpers
 
       import Feather.AccountsFixtures
       import Feather.SitesFixtures

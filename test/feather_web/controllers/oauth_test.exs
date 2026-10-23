@@ -43,11 +43,7 @@ defmodule FeatherWeb.OAuthTest do
     })
   end
 
-  defp call_mcp(access_token) do
-    build_conn()
-    |> put_req_header("authorization", "Bearer #{access_token}")
-    |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list"})
-  end
+  defp call_mcp(access_token), do: mcp_request(access_token, "tools/list")
 
   defp callback_params(conn) do
     location = redirected_to(conn)
@@ -72,6 +68,7 @@ defmodule FeatherWeb.OAuthTest do
       verifier: verifier
     } do
       user = user_fixture()
+      site_fixture(user, domain: "notes.example")
 
       conn = post(conn, ~p"/mcp", %{})
       assert conn.status == 401
@@ -114,7 +111,13 @@ defmodule FeatherWeb.OAuthTest do
       tokens = code |> exchange(verifier) |> json_response(200)
       assert %{"token_type" => "Bearer", "expires_in" => 3600, "refresh_token" => _} = tokens
 
-      assert call_mcp(tokens["access_token"]).status == 200
+      assert %{"structuredContent" => %{"sites" => [%{"domain" => "notes.example"}]}} =
+               call_tool(tokens["access_token"], "list_sites")
+
+      settings =
+        conn |> get(~p"/users/settings") |> html_response(200) |> LazyHTML.from_document()
+
+      assert settings |> LazyHTML.query("#connected-app-list") |> LazyHTML.text() =~ "Claude"
     end
 
     test "the consent page lets the member deny", %{conn: conn, verifier: verifier} do
@@ -333,10 +336,10 @@ defmodule FeatherWeb.OAuthTest do
       conn =
         conn
         |> put_req_header("authorization", "bearer #{access_token}")
-        |> post(~p"/mcp", %{"jsonrpc" => "2.0", "id" => 7, "method" => "tools/list"})
+        |> mcp_request("tools/list")
 
       assert conn.assigns.current_scope.user.id == user.id
-      assert json_response(conn, 200)["id"] == 7
+      assert json_response(conn, 200)["result"]["tools"]
     end
   end
 
