@@ -14,6 +14,11 @@ A user who may manage a site (`site_users`). Super admins may access every site 
 members by accepting an invitation.
 _Avoid_: Collaborator, Owner
 
+**Connected App** · _de:_ Verbundene App:
+An MCP client, such as Claude, that a member allowed to work on their sites. It keeps access until the member revokes
+it in the user settings or it goes unused for 90 days.
+_Avoid_: Integration, Connector, Token
+
 **Post**:
 A dated entry, listed chronologically.
 _Avoid_: Article, Entry, Blogpost
@@ -124,7 +129,8 @@ _Avoid_: Draft View, Staging
 **Alt Text** · _de:_ Alternativtext:
 The text that stands in for an image for screen readers and image search, stored on the image and shown wherever it
 appears as content or as a cover. The self-hosted model suggests it in the site's language after an upload; members
-can overwrite it in the image block and the image picker. A caption is shown under the image; the alt text describes it.
+can overwrite it in the image block and the image picker, and a connected app can set it too. A caption is shown under
+the image; the alt text describes it.
 _Avoid_: Caption, Description, Title
 
 **Description** · _de:_ Beschreibung:

@@ -30,12 +30,17 @@ dependencies, which CI checks with `mix deps.unlock --check-unused`. In Claude C
 
 - Everything is written in English: code, tests, docs, commit messages
 - Business logic lives in contexts (`lib/feather/*.ex`: `Accounts`, `Sites`, `Content`, `Books`,
-  `Media`, `Publishing`, `Redirects`), never in LiveViews or controllers
+  `Media`, `Publishing`, `Redirects`, `OAuth`), never in LiveViews or controllers
 - Contexts take a `%Feather.Accounts.Scope{}` as first argument. `scope.user` is the caller,
   `scope.site` the current site. Load a site only through `Feather.Sites.get_site!/2` (it enforces
-  access) before `Scope.put_site/2`; content functions then trust `scope.site`
+  access), in MCP tools through `Feather.Sites.get_member_site_by_domain/2` (members only, by
+  domain), before `Scope.put_site/2`; content functions then trust `scope.site`
 - Authorisation rule: a user may access a site if they are a super admin or a member
   (`site_users`). Inaccessible records behave like missing ones (`Ecto.NoResultsError` / `nil`)
+- The MCP server (`FeatherWeb.MCP`, ADR 0031) has one module per tool in
+  `lib/feather_web/mcp/tools/`, listed in `FeatherWeb.MCP.Tools`. Tools name a site by its domain
+  and load it with `FeatherWeb.MCP.Tool.site_scope/2`: connected apps reach only the member's
+  sites, super admin rights do not apply
 - Schemas `use Feather.Schema` (binary ids, `:utc_datetime_usec` timestamps). Records that appear
   in URLs get a 12 character `public_id` (`Feather.PublicId`); look them up by it
 - The admin UI is LiveView. Use the shared components of `setzkasten` (`<.button>`, `<.input>`,
@@ -60,8 +65,8 @@ dependencies, which CI checks with `mix deps.unlock --check-unused`. In Claude C
 
 ## Ask first
 
-New dependencies, migrations, changes to authentication/authorisation or the API, and any push,
-PR or deployment.
+New dependencies, migrations, changes to authentication/authorisation or the MCP tools, and any
+push, PR or deployment.
 
 ## Agent skills
 

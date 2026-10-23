@@ -33,8 +33,7 @@ covered by RSpec, but the scenarios never got step definitions.
 With the port to Phoenix ([0007](#0007-port-to-phoenix-and-sqlite)) `features/` and its index
 `features/README.md` are gone: the executable specification is the ExUnit suite in `test/`
 ([0008](#0008-behaviour-is-specified-in-exunit)). The structure is otherwise unchanged. Next to
-the files above there are `docs/api/` (the content API: `openapi.yml` and a README) and
-`docs/agents/` (how agent skills use the issue tracker and these docs).
+the files above there is `docs/agents/` (how agent skills use the issue tracker and these docs).
 
 ## 0003. Code coverage policy
 
@@ -247,8 +246,7 @@ Phoenix 1.8 application on SQLite rather than translating Rails idioms one to on
   Node nor npm is needed. (Superseded for the admin's styling by
   [0013](#0013-the-admin-uses-setzkasten-tailwind-and-daisyui).)
 - **Magic-link-only authentication** from `phx.gen.auth` with passwords and registration removed.
-  Users come in through an invitation or `mix feather.create_user`. API tokens keep the Rails
-  SHA-256 digest format.
+  Users come in through an invitation or `mix feather.create_user`.
 - **A one-time move of the data** instead of a compatibility layer: no shared schema, no dual
   writes, no Rails-shaped tables kept for the sake of the move. Ids, public ids and timestamps
   are preserved.
@@ -270,17 +268,11 @@ Deliberately dropped or changed in the port:
   `thumbnail_image_id`, `cover_image_id`).
 - **Slug endpoint**: `POST /api/sites/:site_id/slugs`, which the Stimulus slug controller called,
   is gone. The LiveView forms suggest slugs server-side (`Feather.Content`).
-- **Content API** (`docs/api/openapi.yml`) is stricter in a few places: an unknown
-  `header_image_id` or `thumbnail_image_id` is a 422 instead of being silently cleared, `content`
-  that is not an array is a 422 instead of being ignored, and sites the token cannot access answer
-  404 (the documented 403 was unreachable). The other direction: plain strings are accepted as list
-  item shorthand. The pagination `meta` and the `?p=` parameter, which Rails already had, are now
-  documented.
 - **Invitations** are signed `Phoenix.Token`s valid for seven days; Rails invitation links stopped
   working with the move.
 - Smaller things: the Unsplash endpoints of the Rails admin became part of the header image
-  picker LiveComponent, the page form has no "created at" field, and the Jekyll importer (`lib/jekyll_importer`, a
-  client of the content API) and Lookbook were not ported.
+  picker LiveComponent, the page form has no "created at" field, and the Jekyll importer
+  (`lib/jekyll_importer`) and Lookbook were not ported.
 
 The ADRs written for Rails were revisited in the same change: behaviour is now specified in
 ExUnit ([0008](#0008-behaviour-is-specified-in-exunit)), the static site is rendered from EEx
@@ -323,9 +315,9 @@ Where a test goes depends on what it specifies:
 - **Context tests** in `test/feather/` specify domain rules through the public context functions
   (`Feather.Content`, `Feather.Sites`, ...): validations, authorisation through the scope, what a
   static export contains (against a `RecordingSink`).
-- **LiveView and controller tests** in `test/feather_web/` specify what a user or API client
-  does and sees: `Phoenix.LiveViewTest` drives forms and buttons by their DOM ids; API tests check
-  responses against `docs/api/openapi.yml`. These take the place of the Cucumber scenarios.
+- **LiveView and controller tests** in `test/feather_web/` specify what a user does and sees:
+  `Phoenix.LiveViewTest` drives forms and buttons by their DOM ids. These take the place of the
+  Cucumber scenarios.
 
 Test names read as scenarios ("creating a post with block content"), so the test file stays the
 readable record of the intended behaviour.
@@ -333,19 +325,19 @@ readable record of the intended behaviour.
 ### Consequences
 
 The Cucumber scenarios of the Rails app were ported into these tests; the test modules name the
-feature file they replace (for example `FeatherWeb.PostLiveTest` for `posts.feature`,
-`FeatherWeb.Api.V1.ContentApiTest` for `content_api.feature`). `features/`, its step definitions,
-`config/cucumber.yml` and the feature index are gone.
+feature file they replace (for example `FeatherWeb.PostLiveTest` for `posts.feature`).
+`features/`, its step definitions, `config/cucumber.yml` and the feature index are gone.
 
 What is lost is a specification a non-developer can read without knowing Elixir. For a
 one-person project that reader does not exist; the scenario is confirmed in conversation (or in
 the issue) before the test is written.
+
 ## 0009. Decisions live in DECISIONS.md
 
 Accepted, 2026-10-09
 
 - **Context:** [0002](#0002-flat-documentation-structure) kept ADRs as separate files in `docs/adr/`; read in order and searched as a whole, one file serves better.
-- **Decision:** All ADRs live in `DECISIONS.md` at the root, the older ones moved word for word; the rest of the flat structure of 0002 holds (`CONTEXT.md`, `AGENTS.md`, `docs/api/`, `docs/agents/`).
+- **Decision:** All ADRs live in `DECISIONS.md` at the root, the older ones moved word for word; the rest of the flat structure of 0002 holds (`CONTEXT.md`, `AGENTS.md`, `docs/agents/`).
 - **Consequences:** ADRs link to each other by anchor instead of file name, and new ones follow the format of the newest entries; `docs/adr/TEMPLATE.md` is gone.
 
 ## 0010. ProseMirror replaces Editor.js
@@ -362,7 +354,7 @@ Accepted, 2026-10-09
 
 - **Context:** With autosave ([0012](#0012-autosave-with-a-per-block-delta-sync)) every edit is stored at once, so a deploy would ship half-finished changes, and there was no way back to an earlier state.
 - **Decision:** A post, page or project holds its unpublished changes; publishing copies all its columns into a version table and points `published_version_id` at the copy, and a record without a published version is a draft, replacing the `draft` column. Production and backup targets export published versions; preview and staging show the records as they are.
-- **Consequences:** Every record gets version 1 in a migration and the content API's `draft` changes meaning; there is no history between two publishes except the editor's undo, and publishing does not deploy (a site notice shows published changes not yet deployed).
+- **Consequences:** Every record gets version 1 in a migration; there is no history between two publishes except the editor's undo, and publishing does not deploy (a site notice shows published changes not yet deployed).
 
 ### Update (2026-10-11)
 
@@ -511,7 +503,7 @@ Accepted, 2026-10-21
 
 - **Context:** Alt texts, descriptions and titles of short posts are rarely written by hand, so images go out with `alt=""` and search results show the truncated first sentence. A self-hosted Ollama instance runs a Gemma 4 model that reads images (`OLLAMA_MODEL`, by default `gemma4:26b-a4b-it-qat`) and holds one model in memory at a time.
 - **Decision:** `Feather.Ollama` asks that model over `OLLAMA_URL` with `Req`: an image's alt text after upload or import, in the background; a post's or page's description when it is published or on "Suggest"; a short post's slug and meta title at its first publish. Results are stored on the record, can be overwritten, and a generated description is renewed at publish while it is unedited and the content changed. Rejected: Claude Haiku (better and faster, but drafts leave the house) and generating at export (exports would stop being reproducible and wait on the model).
-- **Consequences:** Without `OLLAMA_URL` or with the model down, fields stay empty and the export falls back to excerpts as before. Publishing, also over the API, waits up to 90 seconds for the model, and the CMS queues behind other clients of the same instance.
+- **Consequences:** Without `OLLAMA_URL` or with the model down, fields stay empty and the export falls back to excerpts as before. Publishing waits up to 90 seconds for the model, and the CMS queues behind other clients of the same instance.
 
 ## 0027. Deploys notify IndexNow and archive.org
 
