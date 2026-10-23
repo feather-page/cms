@@ -36,16 +36,6 @@ defmodule Feather.Content.Suggestions do
   def publish_suggestions(_scope, _project), do: %{}
 
   @doc false
-  # Asked before the save's transaction, like publish/2 does.
-  def save_publish_suggestions(%Ecto.Changeset{valid?: true} = changeset, scope, opts) do
-    if opts[:draft] == false,
-      do: publish_suggestions(scope, Ecto.Changeset.apply_changes(changeset)),
-      else: %{}
-  end
-
-  def save_publish_suggestions(_changeset, _scope, _opts), do: %{}
-
-  @doc false
   # Asks for the wanted suggestions concurrently.
   def ask_model(scope, record, wanted) do
     language_code = scope.site.language_code

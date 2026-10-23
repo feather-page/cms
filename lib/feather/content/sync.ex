@@ -168,7 +168,7 @@ defmodule Feather.Content.Sync do
     cond do
       stale?(current, record, lock_version, base) -> {:error, :stale}
       content == current.content -> {:ok, put_navigation_flag(current)}
-      true -> save_synced_content(scope, current, content)
+      true -> save_synced_content(current, content)
     end
   end
 
@@ -177,11 +177,11 @@ defmodule Feather.Content.Sync do
       current.lock_version != record.lock_version
   end
 
-  defp save_synced_content(scope, %schema{} = current, content) do
+  defp save_synced_content(%schema{} = current, content) do
     {_version_schema, owner_field} = Map.fetch!(@versions, schema)
     changeset = Ecto.Changeset.change(current, content: content)
 
-    case Saving.save_with_images(changeset, scope, owner_field, []) do
+    case Saving.save_with_images(changeset, owner_field) do
       {:ok, saved} -> {:ok, put_navigation_flag(saved)}
       error -> stale_error(error)
     end

@@ -52,22 +52,6 @@ defmodule Feather.Content.Pages do
   end
 
   @doc """
-  One page of the scope's pages (the homepage first, then by title), with
-  header and thumbnail images preloaded and `add_to_navigation` filled in.
-  Pages beyond the last one are empty (the content API).
-  """
-  @spec paginate_pages(Scope.t(), pos_integer() | String.t() | nil) :: Pagination.t()
-  def paginate_pages(%Scope{site: %Site{id: site_id}}, page) do
-    from(p in Page,
-      where: p.site_id == ^site_id,
-      order_by: [desc: p.slug == "/", asc: p.title, asc: p.inserted_at, asc: p.id],
-      preload: [:header_image, :thumbnail_image]
-    )
-    |> Pagination.paginate(page, out_of_range: :empty)
-    |> Map.update!(:entries, &put_navigation_flags/1)
-  end
-
-  @doc """
   One page of the scope's pages that are not in the main navigation, the
   homepage first, then by title, with the thumbnail image and the published
   version preloaded.
@@ -102,42 +86,35 @@ defmodule Feather.Content.Pages do
   def get_homepage(%Scope{} = scope), do: get_page_by_slug(scope, "/")
 
   @doc """
-  Creates a page in the scope's site, as a draft unless `draft: false` is
-  given (see "Saving" in the `Feather.Content` module doc). With
-  `add_to_navigation: true` the page is appended to the main navigation.
+  Creates a page in the scope's site, as a draft (see "Saving" in the
+  `Feather.Content` module doc). With `add_to_navigation: true` the page
+  is appended to the main navigation.
   """
-  @spec create_page(Scope.t(), map(), keyword()) ::
-          {:ok, Page.t()} | {:error, Ecto.Changeset.t()}
-  def create_page(%Scope{site: %Site{id: site_id}} = scope, attrs, opts \\ []) do
+  @spec create_page(Scope.t(), map()) :: {:ok, Page.t()} | {:error, Ecto.Changeset.t()}
+  def create_page(%Scope{site: %Site{id: site_id}} = scope, attrs) do
     %Page{site_id: site_id}
     |> Page.create_changeset(attrs)
-    |> save_page(scope, opts)
+    |> save_page(scope)
   end
 
   @doc """
-  Updates a page: stores the changes as its unpublished changes (`draft:`,
-  see "Saving" in the `Feather.Content` module doc). When
-  `add_to_navigation` is given, the page is added to or removed from the
-  main navigation accordingly.
+  Updates a page: stores the changes as its unpublished changes (see
+  "Saving" in the `Feather.Content` module doc). When `add_to_navigation`
+  is given, the page is added to or removed from the main navigation
+  accordingly.
   """
-  @spec update_page(Scope.t(), Page.t(), map(), keyword()) ::
-          {:ok, Page.t()} | {:error, Ecto.Changeset.t()}
-  def update_page(
-        %Scope{site: %Site{id: site_id}} = scope,
-        %Page{site_id: site_id} = page,
-        attrs,
-        opts \\ []
-      ) do
+  @spec update_page(Scope.t(), Page.t(), map()) :: {:ok, Page.t()} | {:error, Ecto.Changeset.t()}
+  def update_page(%Scope{site: %Site{id: site_id}} = scope, %Page{site_id: site_id} = page, attrs) do
     page
     |> Page.changeset(attrs)
-    |> save_page(scope, opts)
+    |> save_page(scope)
   end
 
-  defp save_page(changeset, scope, opts) do
+  defp save_page(changeset, scope) do
     navigation_given? = Map.has_key?(changeset.params || %{}, "add_to_navigation")
 
     Repo.transact(fn ->
-      with {:ok, page} <- Saving.save_with_images(changeset, scope, :page_id, opts) do
+      with {:ok, page} <- Saving.save_with_images(changeset, :page_id) do
         sync_navigation(navigation_given?, scope, page)
         {:ok, put_navigation_flag(page)}
       end

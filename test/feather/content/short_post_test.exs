@@ -180,16 +180,6 @@ defmodule Feather.Content.ShortPostTest do
     assert %{slug: nil} = Repo.reload!(republished)
   end
 
-  test "saving with draft: false generates them, as the content API does", %{scope: scope} do
-    stub_model("Über die API", "ueber-die-api")
-
-    {:ok, post} =
-      Content.create_post(scope, %{content: [paragraph("Sent over the API.")]}, draft: false)
-
-    assert %{slug: "/ueber-die-api", meta_title: "Über die API"} = Repo.reload!(post)
-    assert Content.publication_status(Repo.reload!(post)) == :published
-  end
-
   describe "generate/2" do
     test "shortens a long slug at a dash" do
       Req.Test.stub(Feather.Ollama, fn conn ->

@@ -22,12 +22,7 @@ defmodule Feather.Content do
   ## Saving
 
   Creating or updating a record only stores it; publishing is a step of
-  its own (`publish/2`). Posts and pages also take the option `draft:`
-  (the content API's field), applied in the same transaction as the save:
-  `draft: false` publishes the saved record, `draft: true` makes it a draft
-  (unpublishing it if it was published) that keeps the saved changes.
-  Where `publish/2` refuses the slug, the save fails with "has already
-  been taken" on `:slug`.
+  its own (`publish/2`).
 
   Every save that changes a record's fields (forms, `sync_content/4`,
   `discard_changes/2`, `restore_version/3`) increments its
@@ -54,11 +49,10 @@ defmodule Feather.Content do
   defdelegate list_posts(scope), to: Posts
   defdelegate get_post!(scope, public_id), to: Posts
   defdelegate get_post(scope, public_id), to: Posts
-  defdelegate paginate_posts(scope, page), to: Posts
   defdelegate paginate_admin_posts(scope, page), to: Posts
   defdelegate get_post_by_slug(scope, slug), to: Posts
-  defdelegate create_post(scope, attrs, opts \\ []), to: Posts
-  defdelegate update_post(scope, post, attrs, opts \\ []), to: Posts
+  defdelegate create_post(scope, attrs), to: Posts
+  defdelegate update_post(scope, post, attrs), to: Posts
   defdelegate delete_post(scope, post), to: Posts
   defdelegate change_post(scope, post, attrs \\ %{}), to: Posts
 
@@ -67,12 +61,11 @@ defmodule Feather.Content do
   defdelegate list_pages(scope), to: Pages
   defdelegate get_page!(scope, public_id), to: Pages
   defdelegate get_page(scope, public_id), to: Pages
-  defdelegate paginate_pages(scope, page), to: Pages
   defdelegate paginate_pages_outside_navigation(scope, page), to: Pages
   defdelegate get_page_by_slug(scope, slug), to: Pages
   defdelegate get_homepage(scope), to: Pages
-  defdelegate create_page(scope, attrs, opts \\ []), to: Pages
-  defdelegate update_page(scope, page, attrs, opts \\ []), to: Pages
+  defdelegate create_page(scope, attrs), to: Pages
+  defdelegate update_page(scope, page, attrs), to: Pages
   defdelegate delete_page(scope, page), to: Pages
   defdelegate change_page(scope, page, attrs \\ %{}), to: Pages
 

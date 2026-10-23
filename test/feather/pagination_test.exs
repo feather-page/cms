@@ -17,18 +17,13 @@ defmodule Feather.PaginationTest do
     assert %Pagination{entries: [_], page: 3} = Pagination.paginate(query, "3", per_page: 2)
   end
 
-  test "clamps a page beyond the last one by default", %{query: query} do
+  test "clamps a page beyond the last one", %{query: query} do
     assert %Pagination{entries: [_], page: 3} = Pagination.paginate(query, 9, per_page: 2)
-  end
-
-  test "out_of_range: :empty returns an empty page instead", %{query: query} do
-    assert %Pagination{entries: [], page: 9, total_pages: 3, total_entries: 5} =
-             Pagination.paginate(query, "9", per_page: 2, out_of_range: :empty)
   end
 
   test "anything but a positive integer is page 1", %{query: query} do
     for page <- [nil, "0", "-1", "abc", 0] do
-      assert %Pagination{page: 1} = Pagination.paginate(query, page, out_of_range: :empty)
+      assert %Pagination{page: 1} = Pagination.paginate(query, page)
     end
   end
 end
