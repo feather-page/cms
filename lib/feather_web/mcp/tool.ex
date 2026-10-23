@@ -52,4 +52,15 @@ defmodule FeatherWeb.MCP.Tool do
       site -> {:ok, Scope.put_site(scope, site)}
     end
   end
+
+  @doc """
+  The validation errors of a changeset as one message, such as `author
+  can't be blank; rating must be between 1 and 5`.
+  """
+  @spec errors(Ecto.Changeset.t()) :: String.t()
+  def errors(%Ecto.Changeset{} = changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(&FeatherWeb.CoreComponents.translate_error/1)
+    |> Enum.map_join("; ", fn {field, messages} -> "#{field} #{Enum.join(messages, ", ")}" end)
+  end
 end

@@ -1,7 +1,8 @@
 defmodule Feather.OpenLibrary do
   @moduledoc """
-  A small client for the OpenLibrary search API, used by the admin's book
-  form when no Hardcover token is configured (ADR 0023).
+  A small client for the OpenLibrary search API, which the book search
+  (`Feather.Books.search_books/2`) asks when no Hardcover token is
+  configured (ADR 0023).
 
   Requests time out after 5 seconds. Tests stub them with `Req.Test`
   (`config :feather, :open_library_req_options, plug: {Req.Test,

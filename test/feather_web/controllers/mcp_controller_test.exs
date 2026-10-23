@@ -1,11 +1,16 @@
 defmodule FeatherWeb.MCPControllerTest do
   use FeatherWeb.ConnCase
 
+  alias Feather.Accounts.Scope
+  alias Feather.Books
+
   setup do
     user = user_fixture()
     %{access_token: access_token} = connected_app_fixture(user)
     %{user: user, access_token: access_token}
   end
+
+  @tools ~w(list_sites deploy_site search_books list_books add_book update_book)
 
   defp tool_names(conn),
     do: for(tool <- json_response(conn, 200)["result"]["tools"], do: tool["name"])
@@ -43,7 +48,7 @@ defmodule FeatherWeb.MCPControllerTest do
         |> put_req_header("mcp-protocol-version", "2025-11-25")
         |> post_json(%{"jsonrpc" => "2.0", "id" => 1, "method" => "tools/list"})
 
-      assert tool_names(conn) == ["list_sites", "deploy_site"]
+      assert tool_names(conn) == @tools
     end
   end
 
@@ -66,10 +71,7 @@ defmodule FeatherWeb.MCPControllerTest do
     test "lists the tools and calls one", %{user: user, access_token: access_token} do
       site_fixture(user, title: "Notes", domain: "notes.example")
 
-      assert access_token |> mcp_request("tools/list") |> tool_names() == [
-               "list_sites",
-               "deploy_site"
-             ]
+      assert access_token |> mcp_request("tools/list") |> tool_names() == @tools
 
       assert %{"resultType" => "complete", "isError" => false, "structuredContent" => result} =
                call_tool(access_token, "list_sites")
@@ -111,6 +113,61 @@ defmodule FeatherWeb.MCPControllerTest do
         |> post_json(mcp_body("tools/call", %{"name" => "list_sites"}))
 
       assert %{"error" => %{"code" => -32_020}} = json_response(conn, 400)
+    end
+  end
+
+  describe "books" do
+    test "adds a book from a search result with its cover", %{
+      user: user,
+      access_token: access_token
+    } do
+      site = site_fixture(user, domain: "notes.example")
+
+      Req.Test.stub(Feather.OpenLibrary, fn conn ->
+        Req.Test.json(conn, %{
+          "docs" => [
+            %{
+              "title" => "Dune",
+              "author_name" => ["Frank Herbert"],
+              "isbn" => ["0441013597", "9780441013593"],
+              "cover_i" => 11_481_354
+            }
+          ]
+        })
+      end)
+
+      image = File.read!(test_image_path())
+
+      Req.Test.stub(Feather.Media, fn conn ->
+        assert conn.host == "covers.openlibrary.org"
+        Plug.Conn.send_resp(conn, 200, image)
+      end)
+
+      assert %{"structuredContent" => %{"books" => [result]}} =
+               call_tool(access_token, "search_books", %{"query" => "dune"})
+
+      arguments =
+        result
+        |> Map.take(~w(title author isbn cover_url))
+        |> Map.merge(%{"site" => "notes.example", "rating" => 5, "read_at" => "2026-10-20"})
+
+      assert %{"isError" => false, "structuredContent" => book} =
+               call_tool(access_token, "add_book", arguments)
+
+      assert %{
+               "title" => "Dune",
+               "author" => "Frank Herbert",
+               "isbn" => "9780441013593",
+               "reading_status" => "finished",
+               "rating" => 5,
+               "read_at" => "2026-10-20",
+               "has_cover" => true
+             } = book
+
+      scope = user |> Scope.for_user() |> Scope.put_site(site)
+      [saved] = Books.list_books(scope, preload: [:cover_image])
+      assert saved.public_id == book["id"]
+      assert saved.cover_image.source_url == "https://covers.openlibrary.org/b/id/11481354-M.jpg"
     end
   end
 

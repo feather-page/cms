@@ -1,6 +1,6 @@
 defmodule Feather.Books do
   @moduledoc """
-  The bookshelf of a site and book reviews.
+  The bookshelf of a site, the book search and book reviews.
 
   A review is a post linked from the book (`book.post_id`). Deleting a
   review deletes the post and clears the rating; deleting a book deletes
@@ -17,7 +17,9 @@ defmodule Feather.Books do
   alias Feather.Books.Book
   alias Feather.Content
   alias Feather.Content.Post
+  alias Feather.Hardcover
   alias Feather.Media
+  alias Feather.OpenLibrary
   alias Feather.Repo
   alias Feather.Sites
   alias Feather.Sites.Site
@@ -83,6 +85,23 @@ defmodule Feather.Books do
   end
 
   defp escape_like(text), do: String.replace(text, ~r/([\\%_])/, "\\\\\\1")
+
+  @doc """
+  The service the book search asks: Hardcover with a token, OpenLibrary
+  without one (ADR 0023).
+  """
+  @spec search_service() :: Hardcover | OpenLibrary
+  def search_service, do: if(Hardcover.configured?(), do: Hardcover, else: OpenLibrary)
+
+  @doc """
+  Searches books by title or author on the search service
+  (`search_service/0`), for the book form and for agents. Queries shorter
+  than 3 characters find nothing. Errors are the service's, never answered
+  from the other one.
+  """
+  @spec search_books(Scope.t(), String.t() | nil) ::
+          {:ok, [Hardcover.result() | OpenLibrary.result()]} | {:error, String.t()}
+  def search_books(%Scope{}, query), do: search_service().search(query)
 
   @doc """
   Downloads a cover image (e.g. of a book search result) and makes it the

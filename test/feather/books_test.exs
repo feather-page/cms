@@ -1,7 +1,7 @@
 defmodule Feather.BooksTest do
   use Feather.DataCase
 
-  alias Feather.{Books, Content, Media}
+  alias Feather.{Books, Content, Hardcover, Media, OpenLibrary}
   alias Feather.Books.Book
   alias Feather.Content.Post
 
@@ -131,5 +131,43 @@ defmodule Feather.BooksTest do
     assert Books.get_book(site_scope_fixture(), book.public_id) == nil
     {:ok, _} = Books.delete_book(scope, book)
     assert Books.get_book(scope, book.public_id) == nil
+  end
+
+  describe "search_books/2" do
+    setup do
+      previous = Application.get_env(:feather, :hardcover_token)
+      on_exit(fn -> Application.put_env(:feather, :hardcover_token, previous) end)
+    end
+
+    test "asks Hardcover with a token", %{scope: scope} do
+      Application.put_env(:feather, :hardcover_token, "secret")
+      Req.Test.stub(OpenLibrary, fn _conn -> flunk("OpenLibrary must not be asked") end)
+
+      Req.Test.stub(Hardcover, fn conn ->
+        hit = %{"document" => %{"title" => "Dune", "author_names" => ["Frank Herbert"]}}
+        Req.Test.json(conn, %{"data" => %{"search" => %{"results" => %{"hits" => [hit]}}}})
+      end)
+
+      assert Books.search_service() == Hardcover
+
+      assert {:ok, [%{title: "Dune", author: "Frank Herbert"}]} =
+               Books.search_books(scope, "dune")
+    end
+
+    test "asks OpenLibrary without a token", %{scope: scope} do
+      Application.put_env(:feather, :hardcover_token, nil)
+      Req.Test.stub(Hardcover, fn _conn -> flunk("Hardcover must not be asked") end)
+
+      Req.Test.stub(OpenLibrary, fn conn ->
+        Req.Test.json(conn, %{
+          "docs" => [%{"title" => "Dune", "author_name" => ["Frank Herbert"]}]
+        })
+      end)
+
+      assert Books.search_service() == OpenLibrary
+
+      assert {:ok, [%{title: "Dune", author: "Frank Herbert"}]} =
+               Books.search_books(scope, "dune")
+    end
   end
 end

@@ -11,9 +11,9 @@ defmodule FeatherWeb.MCP.Tools do
 
   alias Feather.Accounts.Scope
   alias Feather.Content.SchemaValidator
-  alias FeatherWeb.MCP.Tools.{DeploySite, ListSites}
+  alias FeatherWeb.MCP.Tools.{AddBook, DeploySite, ListBooks, ListSites, SearchBooks, UpdateBook}
 
-  @tools [ListSites, DeploySite]
+  @tools [ListSites, DeploySite, SearchBooks, ListBooks, AddBook, UpdateBook]
 
   @doc "The definitions of all tools."
   @spec definitions() :: [map()]
