@@ -109,6 +109,18 @@ defmodule Feather.BooksTest do
     assert Media.get_image(scope, cover.public_id) == nil
   end
 
+  test "a new cover keeps the previous image, which may be used elsewhere", %{scope: scope} do
+    previous = image_fixture(scope)
+    book = book_fixture(scope, cover_image_id: previous.id)
+    post = post_fixture(scope, header_image_id: previous.id)
+    Req.Test.stub(Feather.Media, &Plug.Conn.send_resp(&1, 200, File.read!(test_image_path())))
+
+    assert {:ok, book} = Books.attach_cover_from_url(scope, book, "https://covers.example/a.jpg")
+    refute book.cover_image_id == previous.id
+    assert Media.get_image(scope, previous.public_id)
+    assert Content.get_post!(scope, post.public_id).header_image_id == previous.id
+  end
+
   test "the cover must be an image of the site", %{scope: scope} do
     foreign = image_fixture(site_scope_fixture())
 

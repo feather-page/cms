@@ -105,7 +105,9 @@ defmodule Feather.Books do
 
   @doc """
   Downloads a cover image (e.g. of a book search result) and makes it the
-  book's cover. A previous cover image is deleted.
+  book's cover. A previous cover image stays, for the daily image cleanup
+  (`Feather.Media.cleanup_orphaned_images/1`) to delete once nothing uses
+  it.
   """
   @spec attach_cover_from_url(Scope.t(), Book.t(), String.t()) ::
           {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -120,8 +122,8 @@ defmodule Feather.Books do
   end
 
   @doc """
-  Makes an uploaded file the book's cover. A previous cover image is
-  deleted.
+  Makes an uploaded file the book's cover. A previous cover image stays,
+  as with `attach_cover_from_url/3`.
   """
   @spec attach_cover_from_upload(Scope.t(), Book.t(), Path.t(), String.t()) ::
           {:ok, Book.t()} | {:error, Ecto.Changeset.t() | String.t()}
@@ -141,27 +143,10 @@ defmodule Feather.Books do
     do: [variants: ImageVariants.for_role(scope.site, :book_cover)]
 
   defp attach_cover(scope, book, image) do
-    case update_book(scope, book, %{cover_image_id: image.id}) do
-      {:ok, updated} ->
-        delete_previous_cover(book.cover_image_id, image.id)
-        {:ok, updated}
-
-      {:error, changeset} ->
-        Media.delete_image(image)
-        {:error, changeset}
+    with {:error, changeset} <- update_book(scope, book, %{cover_image_id: image.id}) do
+      Media.delete_image(image)
+      {:error, changeset}
     end
-  end
-
-  defp delete_previous_cover(nil, _new_id), do: :ok
-  defp delete_previous_cover(same, same), do: :ok
-
-  defp delete_previous_cover(old_id, _new_id) do
-    case Repo.get(Feather.Media.Image, old_id) do
-      nil -> :ok
-      image -> Media.delete_image(image)
-    end
-
-    :ok
   end
 
   @doc "Gets a book of the scope's site by public id. Raises if not found."
