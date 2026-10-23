@@ -46,8 +46,8 @@ defmodule FeatherWeb.Endpoint do
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
   plug Plug.Parsers,
-    # Admin uploads may be 25 MB (Feather.Media.max_byte_size/0); Plug's default limit is 8 MB.
-    parsers: [:urlencoded, {:multipart, length: 26_000_000}, :json],
+    # Room for a 25 MiB upload (Feather.Media.max_byte_size/0) plus the multipart overhead.
+    parsers: [:urlencoded, {:multipart, length: 27_000_000}, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
