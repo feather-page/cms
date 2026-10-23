@@ -29,11 +29,11 @@ defmodule Feather.Content do
   Where `publish/2` refuses the slug, the save fails with "has already
   been taken" on `:slug`.
 
-  Every save that changes a record's fields (forms, the content API,
-  `sync_content/4`, `discard_changes/2`, `restore_version/3`) increments
-  its `lock_version`, and a save based on an older `lock_version` fails
-  with the error "was changed elsewhere" on `:lock_version`. So an editor
-  open in two tabs cannot overwrite the other tab's changes unnoticed.
+  Every save that changes a record's fields (forms, `sync_content/4`,
+  `discard_changes/2`, `restore_version/3`) increments its
+  `lock_version`, and a save based on an older `lock_version` fails with
+  the error "was changed elsewhere" on `:lock_version`. So an editor open
+  in two tabs cannot overwrite the other tab's changes unnoticed.
   Publishing and unpublishing only move the published version and leave
   the counter.
   """

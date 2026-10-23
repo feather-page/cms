@@ -12,7 +12,7 @@ defmodule Feather.Media.Cleanup do
 
   Either way an image that an image block of any post, page or project of
   its site embeds is kept: images can be embedded by more than one record
-  (copied blocks, content API imports), but only one owns them.
+  (copied blocks), but only one owns them.
   `delete_released/1` applies the same rule when the owner is deleted.
 
   Every version of a post, page or project counts like the record: its

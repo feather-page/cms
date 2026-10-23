@@ -4,9 +4,8 @@ defmodule Feather.Content.HTML do
   quotes, captions, table cells). This is a security boundary twice over:
 
     * `Feather.Content.Blocks.normalize/1` sanitizes every inline HTML
-      field with `sanitize(html, :editor)` before content is stored (admin
-      editor, content API, import) and before it is handed to the admin
-      editor.
+      field with `sanitize(html, :editor)` before content is stored and
+      before it is handed to the admin editor.
     * The static site inserts `sanitize(html)` unescaped into its pages.
 
   `to_markdown/2` converts the sanitized markup to Markdown for the

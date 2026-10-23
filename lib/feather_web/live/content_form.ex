@@ -42,7 +42,7 @@ defmodule FeatherWeb.ContentForm do
   this view handed out since it mounted builds on the current one (see
   `Feather.Content.sync_content/4`), so field saves and editor syncs of
   one tab never conflict with each other, while a change made elsewhere
-  (another tab, the API) is still detected. After a reconnect the view
+  (another tab, an agent) is still detected. After a reconnect the view
   mounts again and its counters start anew: the editor's resend names
   the counter of the earlier view, which is the current one unless the
   record changed elsewhere meanwhile, and is rejected then.

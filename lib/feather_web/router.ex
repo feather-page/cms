@@ -31,10 +31,6 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  pipeline :api do
-    plug :accepts, ["json"]
-  end
-
   pipeline :browser_json do
     plug :accepts, ["json"]
     plug :fetch_session
@@ -44,21 +40,9 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  pipeline :api_token do
-    plug FeatherWeb.Plugs.ApiAuth
-  end
-
   # No pipeline: no session, no CSRF; excluded from force_ssl in config/prod.exs.
   scope "/", FeatherWeb do
     get "/up", HealthController, :show
-  end
-
-  scope "/api/v1/sites/:site_id", FeatherWeb.Api.V1 do
-    pipe_through [:api, :api_token]
-
-    resources "/posts", PostController, except: [:new, :edit]
-    resources "/pages", PageController, except: [:new, :edit]
-    resources "/images", ImageController, only: [:show, :create]
   end
 
   if Application.compile_env(:feather, :dev_routes) do

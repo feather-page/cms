@@ -13,7 +13,6 @@ defmodule Feather.Accounts.User do
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
 
-    has_many :api_tokens, Feather.Accounts.ApiToken
     has_many :site_users, Feather.Sites.SiteUser
     has_many :sites, through: [:site_users, :site]
 

@@ -5,7 +5,7 @@ defmodule Feather.Content.Blocks do
 
   Content is a list of blocks. Each block is a map with string keys, an
   `"id"`, a `"type"` and the fields of its type. This is the stored format
-  and the format of the content API (the Rails internal format):
+  (the Rails internal format):
 
     * `paragraph` - `text`
     * `header` - `level` (2, 3 or 4; anything else becomes 2), `text`
@@ -22,8 +22,7 @@ defmodule Feather.Content.Blocks do
   diagram captions, list items, table cells) is sanitized with
   `Feather.Content.HTML.sanitize(html, :editor)` and embed URLs that are
   not safe link targets are dropped whenever content is normalized: before
-  it is stored (admin editor, content API, import) and before it is handed
-  to the admin editor. Content stored before this was in place is
+  it is stored and before it is handed to the admin editor. Content stored before this was in place is
   therefore sanitized on its way to the editor as well.
 
   Blocks of unknown types are dropped. `Feather.Content.ProseMirror`

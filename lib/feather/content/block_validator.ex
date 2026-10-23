@@ -1,12 +1,10 @@
 defmodule Feather.Content.BlockValidator do
   @moduledoc """
-  Validates content coming in through the content API against the block
-  schemas of `docs/api/openapi.yml` (port of Rails'
-  `Blocks::ContentValidator`).
+  Validates content against the JSON Schema of each block type (port of
+  Rails' `Blocks::ContentValidator`).
 
-  Each block is checked against the schema of its `type` (the `Block`
-  discriminator mapping in the OpenAPI document). Error messages name the
-  block index and type so an API client (often an AI import tool) can fix
+  Each block is checked against the schema of its `type`. Error messages
+  name the block index and type so the sender (often an AI agent) can fix
   its input:
 
       Block 0: unknown or missing type 'fancy'. Valid types: paragraph, header, ...
@@ -17,15 +15,11 @@ defmodule Feather.Content.BlockValidator do
   Valid content is normalized with `Feather.Content.Blocks.normalize/1`:
   blocks without an `id` get a random 10 character alphanumeric one and
   defaults are filled in.
-
-  The schemas are hand-ported from the OpenAPI document (without
-  descriptions). `test/feather/content/block_validator_test.exs` checks
-  that they stay identical to it.
   """
 
   alias Feather.Content.{Blocks, SchemaValidator}
 
-  @ref_list_item %{"$ref" => "#/components/schemas/ListItem"}
+  @ref_list_item %{"$ref" => "#/$defs/ListItem"}
   @list_item_entry %{"oneOf" => [@ref_list_item, %{"type" => "string"}]}
 
   @id %{"type" => "string"}
@@ -176,7 +170,7 @@ defmodule Feather.Content.BlockValidator do
   @types Enum.map(@block_schemas, &elem(&1, 0))
   @schemas Map.new(@block_schemas)
 
-  @doc "The block types in the order of the OpenAPI discriminator mapping."
+  @doc "The block types, in the order error messages list them."
   @spec types() :: [String.t()]
   def types, do: @types
 

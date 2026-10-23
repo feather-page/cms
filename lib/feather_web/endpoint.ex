@@ -46,8 +46,7 @@ defmodule FeatherWeb.Endpoint do
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
   plug Plug.Parsers,
-    # Multipart bodies may carry an image of up to 25 MB (Feather.Media.max_byte_size/0)
-    # through the content API; Plug's default limit is 8 MB.
+    # Admin uploads may be 25 MB (Feather.Media.max_byte_size/0); Plug's default limit is 8 MB.
     parsers: [:urlencoded, {:multipart, length: 26_000_000}, :json],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()

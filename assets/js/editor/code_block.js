@@ -6,7 +6,7 @@ import {arrowIntoHiddenSource} from "./hidden_source"
 
 const CACHE_SIZE = 100
 
-// Editor.js's languages; a stored language outside them (API, paste, ``` shortcut) is kept.
+// Editor.js's languages; a stored language outside them (an agent, paste, ``` shortcut) is kept.
 export const CODE_LANGUAGES = {
   plaintext: "Plain text",
   bash: "Bash",

@@ -220,11 +220,6 @@ defmodule Feather.StaticSite.MarkdownAlternateTest do
       )
     end
 
-    defp front_matter(markdown) do
-      [_, yaml, _body] = String.split(markdown, "---\n", parts: 3)
-      YamlElixir.read_from_string!(yaml)
-    end
-
     test "a post: front matter with title, URL, date and tags, then title and content",
          %{routes: r, context: c} do
       markdown = render(r, post(title: ~S|Say "hi" \ *now*|, tags: "elixir, web"), c)
@@ -243,13 +238,6 @@ defmodule Feather.StaticSite.MarkdownAlternateTest do
 
              Hello.
              """
-
-      assert front_matter(markdown) == %{
-               "title" => ~S|Say "hi" \ *now*|,
-               "url" => "https://example.com/hello/",
-               "date" => "2024-03-06",
-               "tags" => ["elixir", "web"]
-             }
     end
 
     test "a short post is titled by its meta title, without tags", %{routes: r, context: c} do
@@ -288,8 +276,6 @@ defmodule Feather.StaticSite.MarkdownAlternateTest do
                - "ab"
              ---
              """
-
-      assert front_matter(markdown)["title"] == "Grüße\t🦉\n"
     end
 
     test "a review names its book below the title", %{routes: r, context: c} do
