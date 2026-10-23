@@ -152,6 +152,26 @@ defmodule FeatherWeb.MCP.Tools.CreatePostTest do
                 "Block 2 (book): there is no book unknown on notes.example"}
   end
 
+  test "a book block takes title, author and emoji from the bookshelf", %{
+    site_scope: site_scope,
+    scope: scope
+  } do
+    book = book_fixture(site_scope, title: "Dune", author: "Frank Herbert", emoji: "🏜️")
+
+    assert {:ok, %{id: id, content: [block]}} =
+             CreatePost.call(scope, %{
+               "site" => "notes.example",
+               "content" => [
+                 %{"type" => "book", "book_public_id" => book.public_id, "title" => "Dun"}
+               ]
+             })
+
+    assert %{"title" => "Dune", "author" => "Frank Herbert", "emoji" => "🏜️"} = block
+
+    assert [%{"title" => "Dune", "author" => "Frank Herbert"}] =
+             Content.get_post!(site_scope, id).content
+  end
+
   test "invalid blocks are an error with the block validator's messages", %{scope: scope} do
     assert CreatePost.call(scope, %{
              "site" => "notes.example",

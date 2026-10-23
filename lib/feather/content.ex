@@ -85,6 +85,7 @@ defmodule Feather.Content do
   defdelegate autosave(scope, record, attrs, opts \\ []), to: Sync
   defdelegate sync_content(scope, record, sync, opts \\ []), to: Sync
   defdelegate synced_doc(sync), to: Sync
+  defdelegate resolve_references(scope, blocks), to: Sync
 
   ## Publishing
 

@@ -1,15 +1,15 @@
 defmodule FeatherWeb.MCP.ContentFields do
   @moduledoc """
-  What the post tools share with tools for other content: the content as
-  JSON blocks (`Feather.Content.BlockValidator`), images named by public
-  id, the message for a failed save and the link to the preview.
+  What the post and page tools share: the content as JSON blocks
+  (`Feather.Content.BlockValidator`), images named by public id, tags as a
+  list, the message for a failed save and the link to the preview.
   """
 
   import Phoenix.VerifiedRoutes, only: [unverified_url: 2]
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Media}
-  alias Feather.Content.{Blocks, BlockValidator}
+  alias Feather.{Content, Media}
+  alias Feather.Content.{Blocks, BlockValidator, Tags}
   alias Feather.Media.Image
   alias Feather.StaticSite.Routes
   alias FeatherWeb.MCP.Tool
@@ -26,33 +26,42 @@ defmodule FeatherWeb.MCP.ContentFields do
     )
   end
 
-  @doc "The schemas the content property refers to, as the input schema's `$defs`."
-  @spec definitions() :: map()
-  def definitions, do: BlockValidator.definitions()
-
-  @doc "The input schema property of an image: the id of one of the site's images."
+  @doc """
+  The input schema property of an image: the id of one of the site's
+  images, `description` saying where it is shown.
+  """
   @spec image_property(String.t()) :: map()
-  def image_property(description),
-    do: %{"type" => ["string", "null"], "description" => description}
+  def image_property(description) do
+    %{
+      "type" => ["string", "null"],
+      "description" => description <> "; an id from list_images or add_image_from_url"
+    }
+  end
+
+  @doc "The input schema property of the tags."
+  @spec tags_property() :: map()
+  def tags_property, do: %{"type" => ["array", "null"], "items" => %{"type" => "string"}}
 
   @doc """
-  The arguments with `content` checked by the block validator and with the
-  public ids of `header_image` and `thumbnail_image` replaced by the
-  `header_image_id` and `thumbnail_image_id` of the site's images. Image and
-  book blocks must name the site's images and books.
+  The arguments with `content` checked by the block validator, the public
+  ids of `header_image` and `thumbnail_image` replaced by the
+  `header_image_id` and `thumbnail_image_id` of the site's images and
+  `tags` joined as `Feather.Content` takes them. Image and book blocks must
+  name the site's images and books (`Feather.Content.resolve_references/2`).
   """
   @spec cast(Scope.t(), map()) :: {:ok, map()} | {:error, String.t()}
   def cast(%Scope{} = scope, arguments) do
     with {:ok, arguments} <- cast_content(scope, arguments),
-         {:ok, arguments} <- cast_image(scope, arguments, "header_image") do
-      cast_image(scope, arguments, "thumbnail_image")
+         {:ok, arguments} <- cast_image(scope, arguments, "header_image"),
+         {:ok, arguments} <- cast_image(scope, arguments, "thumbnail_image") do
+      {:ok, Map.replace_lazy(arguments, "tags", &Tags.from_list(List.wrap(&1)))}
     end
   end
 
   # The argument check passes anyOf over, so the block validator's messages say what is wrong.
   defp cast_content(scope, %{"content" => content} = arguments) do
     with {:ok, blocks} <- validate_blocks(content),
-         :ok <- check_references(scope, blocks) do
+         {:ok, blocks} <- resolve_references(scope, blocks) do
       {:ok, Map.put(arguments, "content", blocks)}
     end
   end
@@ -66,27 +75,19 @@ defmodule FeatherWeb.MCP.ContentFields do
     end
   end
 
-  defp check_references(%Scope{site: site} = scope, blocks) do
-    known = known_references(scope, blocks)
+  defp resolve_references(%Scope{site: site} = scope, blocks) do
+    case Content.resolve_references(scope, blocks) do
+      {:ok, blocks} ->
+        {:ok, blocks}
 
-    messages =
-      for {block, index} <- Enum.with_index(blocks),
-          {type, id} = reference <- [reference(block)],
-          reference not in known,
-          do: "Block #{index} (#{type}): there is no #{type} #{id} on #{site.domain}"
+      {:error, unknown} ->
+        messages =
+          for {index, type, id} <- unknown,
+              do: "Block #{index} (#{type}): there is no #{type} #{id} on #{site.domain}"
 
-    if messages == [], do: :ok, else: {:error, "Invalid content: " <> Enum.join(messages, "; ")}
+        {:error, "Invalid content: " <> Enum.join(messages, "; ")}
+    end
   end
-
-  defp known_references(scope, blocks) do
-    images = Media.site_image_ids(scope, Blocks.image_ids(blocks))
-    books = Map.keys(Books.books_by_public_id(scope, Blocks.book_ids(blocks)))
-    MapSet.new(Enum.map(images, &{"image", &1}) ++ Enum.map(books, &{"book", &1}))
-  end
-
-  defp reference(%{"type" => "image", "image_id" => id}), do: {"image", id}
-  defp reference(%{"type" => "book", "book_public_id" => id}), do: {"book", id}
-  defp reference(_block), do: nil
 
   defp cast_image(scope, arguments, field) do
     case Map.fetch(arguments, field) do
@@ -108,6 +109,14 @@ defmodule FeatherWeb.MCP.ContentFields do
       nil -> {:error, "#{field}: there is no image #{public_id} on #{site.domain}."}
     end
   end
+
+  @doc "The arguments with the slug suggested from the title when they give a title but no slug."
+  @spec put_suggested_slug(Scope.t(), map()) :: map()
+  def put_suggested_slug(%Scope{} = scope, %{"title" => title} = arguments)
+      when is_binary(title) and not is_map_key(arguments, "slug"),
+      do: Map.put(arguments, "slug", Content.suggest_slug(scope, title))
+
+  def put_suggested_slug(%Scope{}, arguments), do: arguments
 
   @doc """
   The message for a save that failed, `noun` naming the record: that it was

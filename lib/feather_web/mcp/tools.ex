@@ -12,6 +12,8 @@ defmodule FeatherWeb.MCP.Tools do
   alias Feather.Accounts.Scope
   alias Feather.Content.SchemaValidator
   alias FeatherWeb.MCP.Tools.{AddBook, DeploySite, ListBooks, ListSites, SearchBooks, UpdateBook}
+  alias FeatherWeb.MCP.Tools.{AddImageFromUrl, ListImages, UpdateImage}
+  alias FeatherWeb.MCP.Tools.{CreatePage, GetPage, ListPages, PublishPage, UpdatePage}
   alias FeatherWeb.MCP.Tools.{CreatePost, GetPost, ListPosts, PublishPost, UpdatePost}
 
   @tools [
@@ -25,7 +27,15 @@ defmodule FeatherWeb.MCP.Tools do
     GetPost,
     CreatePost,
     UpdatePost,
-    PublishPost
+    PublishPost,
+    ListPages,
+    GetPage,
+    CreatePage,
+    UpdatePage,
+    PublishPage,
+    ListImages,
+    AddImageFromUrl,
+    UpdateImage
   ]
 
   @doc "The definitions of all tools."

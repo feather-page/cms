@@ -2,7 +2,7 @@ defmodule FeatherWeb.MCPControllerTest do
   use FeatherWeb.ConnCase
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Content}
+  alias Feather.{Books, Content, Sites}
   alias Feather.Content.BlockValidator
 
   setup do
@@ -12,7 +12,9 @@ defmodule FeatherWeb.MCPControllerTest do
   end
 
   @tools ~w(list_sites deploy_site search_books list_books add_book update_book
-            list_posts get_post create_post update_post publish_post)
+            list_posts get_post create_post update_post publish_post
+            list_pages get_page create_page update_page publish_page
+            list_images add_image_from_url update_image)
 
   defp tool_names(conn),
     do: for(tool <- json_response(conn, 200)["result"]["tools"], do: tool["name"])
@@ -289,6 +291,105 @@ defmodule FeatherWeb.MCPControllerTest do
 
       assert text =~ "was changed elsewhere"
       assert Content.get_post!(scope, post.public_id).title == "Hello, editor"
+    end
+  end
+
+  describe "pages" do
+    setup %{user: user} do
+      site = site_fixture(user, domain: "notes.example")
+      %{site: site, scope: user |> Scope.for_user() |> Scope.put_site(site)}
+    end
+
+    test "a page is created in the navigation and published", %{
+      site: site,
+      scope: scope,
+      access_token: access_token
+    } do
+      assert %{"isError" => false, "structuredContent" => created} =
+               call_tool(access_token, "create_page", %{
+                 "site" => "notes.example",
+                 "title" => "About",
+                 "in_navigation" => true,
+                 "content" => [%{"type" => "paragraph", "text" => "Who writes here."}]
+               })
+
+      assert %{
+               "status" => "draft",
+               "slug" => "/about",
+               "page_type" => "default",
+               "in_navigation" => true,
+               "lock_version" => 1
+             } = created
+
+      assert created["editor_url"] ==
+               "#{FeatherWeb.Endpoint.url()}/sites/#{site.public_id}/pages/#{created["id"]}/edit"
+
+      assert created["preview_url"] ==
+               "#{FeatherWeb.Endpoint.url()}/preview/#{site.public_id}/about/"
+
+      assert [%{page: %{public_id: page_id}}] = Sites.list_navigation_items(scope)
+      assert page_id == created["id"]
+
+      assert %{"isError" => false, "structuredContent" => %{"status" => "published"}} =
+               call_tool(access_token, "publish_page", %{
+                 "site" => "notes.example",
+                 "page" => created["id"],
+                 "lock_version" => created["lock_version"]
+               })
+
+      assert %{"structuredContent" => %{"pages" => pages}} =
+               call_tool(access_token, "list_pages", %{"site" => "notes.example"})
+
+      assert %{"slug" => "/about", "in_navigation" => true, "status" => "published"} =
+               Enum.find(pages, &(&1["id"] == created["id"]))
+    end
+  end
+
+  describe "images" do
+    setup %{user: user} do
+      site = site_fixture(user, domain: "notes.example")
+      %{scope: user |> Scope.for_user() |> Scope.put_site(site)}
+    end
+
+    test "an image added by URL becomes a post's header image", %{
+      scope: scope,
+      access_token: access_token
+    } do
+      file = File.read!(test_image_path())
+
+      Req.Test.stub(Feather.Media, fn conn ->
+        assert conn.host == "photos.example"
+        Plug.Conn.send_resp(conn, 200, file)
+      end)
+
+      assert %{"isError" => false, "structuredContent" => image} =
+               call_tool(access_token, "add_image_from_url", %{
+                 "site" => "notes.example",
+                 "url" => "https://photos.example/lighthouse.png"
+               })
+
+      assert %{"filename" => "lighthouse.png", "width" => 64, "height" => 48} = image
+
+      assert %{"isError" => false, "structuredContent" => %{"alt" => "A lighthouse in fog"}} =
+               call_tool(access_token, "update_image", %{
+                 "site" => "notes.example",
+                 "image" => image["id"],
+                 "alt" => "A lighthouse in fog"
+               })
+
+      assert %{"isError" => false, "structuredContent" => post} =
+               call_tool(access_token, "create_post", %{
+                 "site" => "notes.example",
+                 "title" => "Coast",
+                 "header_image" => image["id"]
+               })
+
+      assert post["header_image"] == image["id"]
+
+      [saved] = scope |> Content.list_posts() |> Content.preload_post_details()
+      assert saved.header_image.public_id == image["id"]
+      assert saved.header_image.alt == "A lighthouse in fog"
+      assert saved.header_image.source_url == "https://photos.example/lighthouse.png"
     end
   end
 

@@ -1,7 +1,8 @@
 defmodule Feather.Content.Sync do
   @moduledoc """
   Autosaving forms and syncing the editor into the unpublished changes of
-  posts, pages and projects, called through `Feather.Content`.
+  posts, pages and projects, and checking the images and books content
+  names, called through `Feather.Content`.
   """
 
   import Feather.Content.Versions, only: [put_navigation_flag: 1, stale_error: 1]
@@ -73,11 +74,39 @@ defmodule Feather.Content.Sync do
   defp keep_site_references(attrs, _scope), do: attrs
 
   defp site_references_only(blocks, scope) do
-    images = MapSet.new(Media.site_image_ids(scope, Blocks.image_ids(blocks)))
-    books = Books.books_by_public_id(scope, Blocks.book_ids(blocks))
-
+    {images, books} = site_references(scope, blocks)
     for block <- blocks, site_reference?(block, images, books), do: refresh_book(block, books)
   end
+
+  @doc """
+  Checks that the image and book blocks of `blocks` (normalized) name
+  images and books of the scope's site. Returns the blocks with book
+  blocks taking title, author and emoji from the bookshelf
+  (`Feather.Content.Blocks.put_book/2`), or the references that are not
+  the site's as `{block index, type, id}`.
+  """
+  @spec resolve_references(Scope.t(), [Blocks.block()]) ::
+          {:ok, [Blocks.block()]} | {:error, [{non_neg_integer(), String.t(), String.t()}]}
+  def resolve_references(%Scope{site: %Site{}} = scope, blocks) when is_list(blocks) do
+    {images, books} = site_references(scope, blocks)
+
+    unknown =
+      for {block, index} <- Enum.with_index(blocks),
+          not site_reference?(block, images, books),
+          do: {index, block["type"], reference_id(block)}
+
+    if unknown == [],
+      do: {:ok, Enum.map(blocks, &refresh_book(&1, books))},
+      else: {:error, unknown}
+  end
+
+  defp site_references(scope, blocks) do
+    images = MapSet.new(Media.site_image_ids(scope, Blocks.image_ids(blocks)))
+    {images, Books.books_by_public_id(scope, Blocks.book_ids(blocks))}
+  end
+
+  defp reference_id(%{"type" => "image"} = block), do: block["image_id"]
+  defp reference_id(%{"type" => "book"} = block), do: block["book_public_id"]
 
   defp refresh_book(%{"type" => "book"} = block, books), do: Blocks.put_book(block, books)
   defp refresh_book(block, _books), do: block

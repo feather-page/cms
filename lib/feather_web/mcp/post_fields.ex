@@ -34,7 +34,7 @@ defmodule FeatherWeb.MCP.PostFields do
         "description" => "One sentence for search results and link previews"
       },
       "emoji" => %{"type" => ["string", "null"], "description" => "An emoji for the post"},
-      "tags" => %{"type" => ["array", "null"], "items" => %{"type" => "string"}},
+      "tags" => ContentFields.tags_property(),
       "publish_at" => %{
         "type" => "string",
         "format" => "date-time",
@@ -42,10 +42,8 @@ defmodule FeatherWeb.MCP.PostFields do
           "The post's date and time in UTC, such as 2026-10-23T09:00:00Z; now by default. " <>
             "A time in the future makes the published post a scheduled one."
       },
-      "header_image" =>
-        ContentFields.image_property("The id of the site's image shown large above the post"),
-      "thumbnail_image" =>
-        ContentFields.image_property("The id of the site's image shown with the post in lists"),
+      "header_image" => ContentFields.image_property("The image shown large above the post"),
+      "thumbnail_image" => ContentFields.image_property("The image shown with the post in lists"),
       "content" => ContentFields.content_property()
     }
   end
@@ -55,14 +53,8 @@ defmodule FeatherWeb.MCP.PostFields do
   as `Feather.Content` takes them.
   """
   @spec attrs(Scope.t(), map()) :: {:ok, map()} | {:error, String.t()}
-  def attrs(%Scope{} = scope, arguments) do
-    with {:ok, attrs} <- ContentFields.cast(scope, Map.take(arguments, @fields)) do
-      {:ok, Map.replace_lazy(attrs, "tags", &join_tags/1)}
-    end
-  end
-
-  defp join_tags(nil), do: nil
-  defp join_tags(tags), do: Enum.join(tags, ", ")
+  def attrs(%Scope{} = scope, arguments),
+    do: ContentFields.cast(scope, Map.take(arguments, @fields))
 
   @doc "The post of the site with the public id `id`."
   @spec fetch_post(Scope.t(), String.t()) :: {:ok, Post.t()} | {:error, String.t()}

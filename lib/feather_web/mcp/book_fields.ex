@@ -7,7 +7,7 @@ defmodule FeatherWeb.MCP.BookFields do
   alias Feather.Accounts.Scope
   alias Feather.Books
   alias Feather.Books.Book
-  alias FeatherWeb.MCP.Tool
+  alias FeatherWeb.MCP.ImageFields
 
   @fields ~w(title author isbn emoji reading_status rating read_at)
 
@@ -77,13 +77,10 @@ defmodule FeatherWeb.MCP.BookFields do
         Map.put(
           result(book),
           :cover_error,
-          "The cover could not be downloaded: #{message(reason)}"
+          "The cover could not be downloaded: #{ImageFields.download_error(reason)}"
         )
     end
   end
-
-  defp message(%Ecto.Changeset{} = changeset), do: Tool.errors(changeset)
-  defp message(message) when is_binary(message), do: message
 
   @doc "A book as a tool result; `id` is its public id."
   @spec result(Book.t()) :: map()

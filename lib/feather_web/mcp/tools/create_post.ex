@@ -36,17 +36,12 @@ defmodule FeatherWeb.MCP.Tools.CreatePost do
   @impl true
   def call(scope, %{"site" => domain} = arguments) do
     with {:ok, scope} <- Tool.site_scope(scope, domain),
-         {:ok, attrs} <- PostFields.attrs(scope, put_suggested_slug(scope, arguments)),
+         {:ok, attrs} <-
+           PostFields.attrs(scope, ContentFields.put_suggested_slug(scope, arguments)),
          {:ok, post} <- create(scope, attrs, arguments["book"]) do
       {:ok, PostFields.result(scope, post)}
     end
   end
-
-  defp put_suggested_slug(scope, %{"title" => title} = arguments)
-       when is_binary(title) and not is_map_key(arguments, "slug"),
-       do: Map.put(arguments, "slug", Content.suggest_slug(scope, title))
-
-  defp put_suggested_slug(_scope, arguments), do: arguments
 
   defp create(scope, attrs, nil) do
     case Content.create_post(scope, attrs) do
