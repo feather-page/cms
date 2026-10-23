@@ -54,3 +54,4 @@ config :feather, :open_library_req_options, plug: {Req.Test, Feather.OpenLibrary
 config :feather, :ollama_req_options, plug: {Req.Test, Feather.Ollama}
 config :feather, :indexnow_req_options, plug: {Req.Test, Feather.IndexNow}
 config :feather, :archive_org_req_options, plug: {Req.Test, Feather.ArchiveOrg}
+config :feather, :client_metadata_req_options, plug: {Req.Test, Feather.OAuth.ClientMetadata}

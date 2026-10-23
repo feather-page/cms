@@ -1,0 +1,8 @@
+<Layouts.app flash={@flash} current_scope={@current_scope} bare>
+  <div class="mx-auto max-w-md text-center">
+    <.plush name="feather" size={:xxl} />
+    <h1 class="mt-4 text-2xl font-semibold">The app cannot connect</h1>
+    <p id="authorization-error" class="mt-2 text-base-content/70">{@message}</p>
+    <.button navigate={~p"/"} class="mt-6">Back to your sites</.button>
+  </div>
+</Layouts.app>

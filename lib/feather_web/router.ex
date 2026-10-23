@@ -4,22 +4,9 @@ defmodule FeatherWeb.Router do
   import FeatherWeb.UserAuth
   import FeatherWeb.SiteAuth, only: [fetch_current_site: 2]
 
-  # Own scripts only, so injected markup cannot run; the block editor needs inline styles.
-  @csp_directives [
-    "default-src 'self'",
-    "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
-    "font-src 'self' data:",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self'",
-    "frame-src 'self' https:",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'self'"
-  ]
-
-  @browser_headers %{"content-security-policy" => Enum.join(@csp_directives, "; ")}
+  @browser_headers %{
+    "content-security-policy" => FeatherWeb.ContentSecurityPolicy.header()
+  }
 
   pipeline :browser do
     plug :accepts, ["html"]
@@ -40,9 +27,33 @@ defmodule FeatherWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
+  pipeline :oauth do
+    plug :accepts, ["json"]
+  end
+
+  pipeline :mcp do
+    plug FeatherWeb.Plugs.RequireAccessToken
+  end
+
   # No pipeline: no session, no CSRF; excluded from force_ssl in config/prod.exs.
   scope "/", FeatherWeb do
     get "/up", HealthController, :show
+  end
+
+  # MCP clients discover and call these without a session (ADR 0032).
+  scope "/", FeatherWeb do
+    pipe_through :oauth
+
+    get "/.well-known/oauth-protected-resource", OAuthMetadataController, :protected_resource
+    get "/.well-known/oauth-protected-resource/mcp", OAuthMetadataController, :protected_resource
+    get "/.well-known/oauth-authorization-server", OAuthMetadataController, :authorization_server
+    post "/oauth/token", OAuthTokenController, :create
+  end
+
+  scope "/", FeatherWeb do
+    pipe_through :mcp
+
+    post "/mcp", McpController, :create
   end
 
   if Application.compile_env(:feather, :dev_routes) do
@@ -73,6 +84,14 @@ defmodule FeatherWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
+  end
+
+  # A logged-out member comes back here after the magic link (user_return_to).
+  scope "/oauth", FeatherWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    get "/authorize", OAuthAuthorizationController, :new
+    post "/authorize", OAuthAuthorizationController, :create
   end
 
   # Logged out: the invitee may not have an account yet.

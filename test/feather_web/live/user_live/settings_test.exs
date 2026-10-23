@@ -141,4 +141,57 @@ defmodule FeatherWeb.UserLive.SettingsTest do
       assert message == "You must log in to access this page."
     end
   end
+
+  describe "connected apps" do
+    setup %{conn: conn} do
+      user = user_fixture()
+      %{conn: log_in_user(conn, user), user: user}
+    end
+
+    test "lists the user's connected apps", %{conn: conn, user: user} do
+      %{connected_app: app} = connected_app_fixture(user)
+      %{connected_app: other} = connected_app_fixture(user_fixture(), client_name: "Not mine")
+
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      assert has_element?(lv, "#connected-app-#{app.id}", "Claude")
+      refute has_element?(lv, "#connected-app-#{other.id}")
+      refute has_element?(lv, "#no-connected-apps")
+    end
+
+    test "says when no app is connected", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      assert has_element?(lv, "#no-connected-apps")
+    end
+
+    test "revoking an app cuts it off from /mcp at once", %{conn: conn, user: user} do
+      %{connected_app: app, access_token: access_token} = connected_app_fixture(user)
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      confirm_click(
+        lv,
+        "#revoke-connected-app-#{app.id}-menu-item",
+        "Revoke access for “Claude”?"
+      )
+
+      refute has_element?(lv, "#connected-app-#{app.id}")
+
+      conn =
+        build_conn()
+        |> put_req_header("authorization", "Bearer #{access_token}")
+        |> post(~p"/mcp", %{})
+
+      assert conn.status == 401
+    end
+
+    test "cannot revoke another user's app", %{conn: conn} do
+      %{connected_app: other, access_token: access_token} = connected_app_fixture(user_fixture())
+      {:ok, lv, _html} = live(conn, ~p"/users/settings")
+
+      render_hook(lv, "revoke_connected_app", %{"id" => other.id})
+
+      assert {:ok, _user} = Feather.OAuth.authenticate(access_token)
+    end
+  end
 end
