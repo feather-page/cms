@@ -60,16 +60,23 @@ defmodule Feather.Content.Blocks do
     end)
   end
 
-  defp normalize_block("paragraph", b), do: %{"type" => "paragraph", "text" => inline(b["text"])}
+  defp normalize_block("paragraph", b),
+    do: %{"type" => "paragraph", "text" => inline(b["text"]) || ""}
 
-  defp normalize_block("header", b),
-    do: %{"type" => "header", "level" => header_level(b["level"]), "text" => inline(b["text"])}
+  defp normalize_block("header", b) do
+    %{"type" => "header", "level" => header_level(b["level"]), "text" => inline(b["text"]) || ""}
+  end
 
   defp normalize_block("list", b),
     do: %{"type" => "list", "style" => list_style(b["style"]), "items" => list_items(b["items"])}
 
-  defp normalize_block("quote", b),
-    do: %{"type" => "quote", "text" => inline(b["text"]), "caption" => inline(b["caption"])}
+  defp normalize_block("quote", b) do
+    %{
+      "type" => "quote",
+      "text" => inline(b["text"]) || "",
+      "caption" => inline(b["caption"]) || ""
+    }
+  end
 
   defp normalize_block("code", b),
     do: %{"type" => "code", "code" => code(b["code"]), "language" => code_language(b["language"])}

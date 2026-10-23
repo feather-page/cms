@@ -87,6 +87,19 @@ defmodule Feather.Content.BlocksTest do
       end
     end
 
+    test "defaults missing text and quote captions to empty strings" do
+      assert [
+               %{"text" => ""},
+               %{"text" => "", "level" => 2},
+               %{"text" => "", "caption" => ""}
+             ] =
+               Blocks.normalize([
+                 %{"type" => "paragraph"},
+                 %{"type" => "header", "level" => 2, "text" => nil},
+                 %{"type" => "quote"}
+               ])
+    end
+
     test "stringifies keys and drops unknown types" do
       assert [%{"id" => "x", "type" => "paragraph", "text" => "Hi"}] =
                Blocks.normalize([
