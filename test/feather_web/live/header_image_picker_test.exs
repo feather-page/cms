@@ -205,6 +205,23 @@ defmodule FeatherWeb.HeaderImagePickerTest do
     assert has_element?(lv, "#{@picker}-error", "must be an image")
   end
 
+  test "does not accept TIFF files", %{conn: conn, site: site, scope: scope} do
+    {:ok, lv, _html} = new_post(conn, site)
+    lv |> element("#{@picker}-choose-cover") |> render_click()
+    tiff = File.read!(test_image_path(64, 48, "tif"))
+
+    for name <- ~w(scan.tif scan.tiff) do
+      upload =
+        file_input(lv, "#{@picker}-upload-form", :image, [
+          %{name: name, content: tiff, type: "image/tiff"}
+        ])
+
+      assert {:error, [[_ref, :not_accepted]]} = render_upload(upload, name)
+    end
+
+    assert Media.list_images(scope) == []
+  end
+
   test "picks and removes an emoji", %{conn: conn, site: site, scope: scope} do
     {:ok, lv, _html} = new_post(conn, site)
 

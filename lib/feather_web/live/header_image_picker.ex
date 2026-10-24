@@ -32,7 +32,7 @@ defmodule FeatherWeb.HeaderImagePicker do
           | {:thumbnail, Media.Image.t() | nil}
           | {:emoji, String.t() | nil}
 
-  @upload_extensions ~w(.jpg .jpeg .png .webp .gif .heic .heif .tif .tiff)
+  @upload_extensions ~w(.jpg .jpeg .png .webp .gif .heic .heif)
 
   @impl true
   def mount(socket) do

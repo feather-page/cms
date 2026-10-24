@@ -17,8 +17,7 @@ defmodule Feather.Media.Processor do
     "pngload" => {"image/png", "png"},
     "webpload" => {"image/webp", "webp"},
     "gifload" => {"image/gif", "gif"},
-    "heifload" => {"image/heif", "heic"},
-    "tiffload" => {"image/tiff", "tiff"}
+    "heifload" => {"image/heif", "heic"}
   }
 
   @type info :: %{

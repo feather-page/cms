@@ -170,6 +170,14 @@ defmodule Feather.MediaTest do
       assert Media.list_images(scope) == []
     end
 
+    test "rejects TIFF images", %{scope: scope} do
+      path = test_image_path(64, 48, "tif")
+
+      assert {:error, changeset} = Media.create_image_from_upload(scope, path, "scan.tif")
+      assert errors_on(changeset) == %{file: ["must be an image"]}
+      assert Media.list_images(scope) == []
+    end
+
     test "rejects files over 25 MB", %{scope: scope} do
       path = Path.join(System.tmp_dir!(), "big-#{System.unique_integer([:positive])}.png")
       File.write!(path, :binary.copy(<<0>>, Media.max_byte_size() + 1))
