@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 #
-# Release image of the CMS. CI builds it on main and pushes it to
-# ghcr.io/feather-page/cms; it runs with docker compose (ops/compose.yml).
+# Release image of the CMS. CI builds it for pull requests and main, and pushes
+# it from main to ghcr.io/feather-page/cms; it runs with docker compose
+# (ops/compose.yml).
 #
 # Volume: /data (SQLite database, image storage and build output).
 # The container migrates the database on start (bin/server).
