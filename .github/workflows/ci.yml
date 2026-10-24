@@ -107,6 +107,8 @@ jobs:
   image:
     needs: [test, assets]
     runs-on: ubuntu-24.04
+    # One build per ref at a time, so an older build cannot push :latest over a newer one.
+    concurrency: image-${{ github.ref }}
     permissions:
       contents: read
       packages: write
