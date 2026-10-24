@@ -26,7 +26,12 @@ defmodule Feather.Fediverse.FederatedObjects do
   deploy after it became due, and a change that leaves the documents as
   they were, such as a new theme, sends nothing. The first comparison of
   an account, after the deploy that put it online, only records the
-  documents: posts published before the site joined are not sent.
+  documents.
+
+  A post whose document is `published` before the account went online,
+  such as an old article restored with its date, is never sent: no
+  `Create`, `Update` or `Delete`, and it is not recorded, since followers
+  never received it. Moved to a later date, it goes out in a `Create`.
   """
 
   import Ecto.Query, warn: false
@@ -51,10 +56,12 @@ defmodule Feather.Fediverse.FederatedObjects do
   """
   @spec sync(Site.t(), Path.t()) :: :ok
   def sync(%Site{} = site, dir) do
-    if Fediverse.account?(site) and online?(site) do
+    online_at = online_at(site)
+
+    if Fediverse.account?(site) and online_at do
       routes = Routes.new(site)
       account = dir |> Path.join(Routes.activitypub_path(routes, :account)) |> read!(nil)
-      compare(site, account, read_posts(site, dir, routes))
+      compare(site, account, read_posts(site, dir, routes, online_at))
     end
 
     :ok
@@ -66,11 +73,11 @@ defmodule Feather.Fediverse.FederatedObjects do
       )
   end
 
-  defp online?(%Site{id: site_id}) do
-    Repo.exists?(from s in Site, where: s.id == ^site_id and not is_nil(s.fediverse_online_at))
+  defp online_at(%Site{id: site_id}) do
+    Repo.one(from s in Site, where: s.id == ^site_id, select: s.fediverse_online_at)
   end
 
-  defp read_posts(site, dir, routes) do
+  defp read_posts(site, dir, routes, online_at) do
     from(p in Post,
       where: p.site_id == ^site.id,
       select: struct(p, [:id, :public_id, :fediverse_generation])
@@ -78,8 +85,16 @@ defmodule Feather.Fediverse.FederatedObjects do
     |> Repo.all()
     |> Enum.flat_map(fn post ->
       path = Path.join(dir, Routes.activitypub_path(routes, post))
-      if File.exists?(path), do: [read!(path, post.id)], else: []
+
+      if File.exists?(path), do: [read_post!(path, post.id, online_at)], else: []
     end)
+  end
+
+  defp read_post!(path, post_id, online_at) do
+    post = read!(path, post_id)
+    # The document, not the post: a draft may already carry another date.
+    published = post.document |> Map.fetch!("published") |> timestamp()
+    Map.put(post, :backdated, DateTime.before?(published, DateTime.truncate(online_at, :second)))
   end
 
   defp read!(path, post_id) do
@@ -97,21 +112,23 @@ defmodule Feather.Fediverse.FederatedObjects do
 
   defp updated_at(document) do
     case document["updated"] || document["published"] do
-      nil ->
-        nil
-
-      time ->
-        {:ok, datetime, 0} = DateTime.from_iso8601(time)
-        datetime
+      nil -> nil
+      time -> timestamp(time)
     end
+  end
+
+  defp timestamp(time) do
+    {:ok, datetime, 0} = DateTime.from_iso8601(time)
+    datetime
   end
 
   defp compare(site, account, posts) do
     objects = Repo.all(from o in FederatedObject, where: o.site_id == ^site.id)
+    federated = Enum.reject(posts, & &1.backdated)
 
     if Enum.any?(objects, &(&1.uri == account.uri)),
-      do: send_changes(site, account, posts, objects),
-      else: record_first(site, [account | posts])
+      do: send_changes(site, account, federated, posts, objects),
+      else: record_first(site, [account | federated])
   end
 
   # Objects of an account at another address (an earlier domain) are not this account's.
@@ -124,10 +141,11 @@ defmodule Feather.Fediverse.FederatedObjects do
       end)
   end
 
-  defp send_changes(site, account, posts, objects) do
+  # Backdated posts count as exported, so objects recorded for them earlier get no Delete.
+  defp send_changes(site, account, federated, posts, objects) do
     now = DateTime.utc_now(:second)
 
-    case changes([account | posts], objects, now) ++ removals(account, posts, objects) do
+    case changes([account | federated], objects, now) ++ removals(account, posts, objects) do
       [] ->
         :ok
 

@@ -130,6 +130,68 @@ defmodule Feather.Fediverse.FederatedObjectsTest do
     assert delivered() == []
   end
 
+  test "a post dated before the account went online is never sent, edited or removed", c do
+    deploy(c)
+    post = short_post(c.scope, "Back in 2012.", %{publish_at: ~U[2012-05-01 10:00:00Z]})
+
+    dir = deploy(c)
+    assert post_document(dir, post)["published"] == "2012-05-01T10:00:00Z"
+    assert delivered() == []
+
+    {:ok, post} = Content.update_post(c.scope, post, %{content: [paragraph("Back in 2013.")]})
+    {:ok, post} = Content.publish(c.scope, post)
+    deploy(c)
+    assert delivered() == []
+
+    {:ok, _post} = Content.unpublish(c.scope, post)
+    deploy(c)
+    assert delivered() == []
+
+    refute Repo.get_by(Fediverse.FederatedObject, post_id: post.id)
+  end
+
+  test "a backdated post recorded as a federated object earlier gets no Update or Delete", c do
+    deploy(c)
+    post = short_post(c.scope, "Back in 2012.", %{publish_at: ~U[2012-05-01 10:00:00Z]})
+
+    Repo.insert!(%Fediverse.FederatedObject{
+      site_id: c.scope.site.id,
+      post_id: post.id,
+      uri: "https://timon.blog/activitypub/posts/#{post.public_id}",
+      document_hash: "an older hash"
+    })
+
+    deploy(c)
+    assert delivered() == []
+
+    {:ok, _post} = Content.unpublish(c.scope, post)
+    deploy(c)
+    assert %{"type" => "Delete"} = delivered_to_all()
+  end
+
+  test "a backdated post whose unpublished draft has a later date is not sent", c do
+    deploy(c)
+    post = short_post(c.scope, "Back in 2012.", %{publish_at: ~U[2012-05-01 10:00:00Z]})
+    {:ok, _post} = Content.update_post(c.scope, post, %{publish_at: DateTime.utc_now()})
+
+    deploy(c)
+    assert delivered() == []
+  end
+
+  test "a backdated post moved to a date after the account went online goes out in a Create",
+       c do
+    deploy(c)
+    post = short_post(c.scope, "Back in 2012.", %{publish_at: ~U[2012-05-01 10:00:00Z]})
+    deploy(c)
+
+    {:ok, post} = Content.update_post(c.scope, post, %{publish_at: DateTime.utc_now()})
+    {:ok, post} = Content.publish(c.scope, post)
+    dir = deploy(c)
+
+    assert %{"type" => "Create", "object" => note} = delivered_to_all()
+    assert note["id"] == post_document(dir, post)["id"]
+  end
+
   test "a post with a title goes out as an Article", c do
     deploy(c)
     post = post_fixture(c.scope, %{title: "Hello", slug: "/hello"})
