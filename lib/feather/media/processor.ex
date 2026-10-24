@@ -8,7 +8,10 @@ defmodule Feather.Media.Processor do
     * only JPEG, PNG, WebP, GIF and HEIF (AVIF included) are accepted, by
       their magic bytes, before libvips sees the file;
     * only the loader of that format opens it, and only one image is
-      read: the first frame, or a HEIF file's primary image.
+      read: the first frame, or a HEIF file's primary image;
+    * an image whose header names more than 100 megapixels is refused
+      (`{:error, :too_many_pixels}`) before a pixel is decoded, also when
+      variants are made from an original stored before this check.
 
   An image opened with sequential access can only be written once, so
   every variant opens the original afresh.
@@ -27,6 +30,8 @@ defmodule Feather.Media.Processor do
 
   @heif_brands ~w(heic heix hevc heim heis hevm hevs mif1 msf1 avif)
 
+  @max_pixels 100_000_000
+
   @type info :: %{
           content_type: String.t(),
           extension: String.t(),
@@ -36,10 +41,11 @@ defmodule Feather.Media.Processor do
 
   @doc """
   Inspects a file. Returns `{:ok, info}` for a JPEG, PNG, WebP, GIF or HEIF
-  image and `{:error, :not_an_image}` otherwise. Width and height are given
-  after applying the EXIF orientation.
+  image of at most 100 megapixels, `{:error, :too_many_pixels}` for a
+  bigger one and `{:error, :not_an_image}` for anything else. Width and
+  height are given after applying the EXIF orientation.
   """
-  @spec inspect_file(Path.t()) :: {:ok, info()} | {:error, :not_an_image}
+  @spec inspect_file(Path.t()) :: {:ok, info()} | {:error, :not_an_image | :too_many_pixels}
   def inspect_file(path) do
     with {:ok, format} <- format(path),
          {:ok, image} <- open(path, format) do
@@ -47,6 +53,7 @@ defmodule Feather.Media.Processor do
       {width, height} = oriented_size(image)
       {:ok, %{content_type: content_type, extension: extension, width: width, height: height}}
     else
+      {:error, :too_many_pixels} -> {:error, :too_many_pixels}
       _ -> {:error, :not_an_image}
     end
   end
@@ -141,7 +148,8 @@ defmodule Feather.Media.Processor do
 
   defp open(path, format, opts \\ []) do
     with {:ok, {image, _flags}} <-
-           load_picture(path, format, [access: :VIPS_ACCESS_SEQUENTIAL] ++ opts) do
+           load_picture(path, format, [access: :VIPS_ACCESS_SEQUENTIAL] ++ opts),
+         :ok <- check_pixels(image, @max_pixels) do
       {:ok, image}
     end
   end
@@ -151,6 +159,12 @@ defmodule Feather.Media.Processor do
   defp load_picture(path, :webp, opts), do: Operation.webpload(path, [n: 1] ++ opts)
   defp load_picture(path, :gif, opts), do: Operation.gifload(path, [n: 1] ++ opts)
   defp load_picture(path, :heif, opts), do: Operation.heifload(path, opts)
+
+  defp check_pixels(image, max_pixels) do
+    if Image.width(image) * Image.height(image) <= max_pixels,
+      do: :ok,
+      else: {:error, :too_many_pixels}
+  end
 
   # As libvips' thumbnail: JPEG block-shrinks to at least twice the size, WebP scales right to it.
   defp shrink_on_load(:jpeg, header, size) do

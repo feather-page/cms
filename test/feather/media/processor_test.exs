@@ -68,6 +68,52 @@ defmodule Feather.Media.ProcessorTest do
     end
   end
 
+  describe "images whose header names more than 100 megapixels" do
+    setup do
+      %{
+        bombs: [
+          bomb_image_path(20_000, 20_000, "jpg"),
+          bomb_image_path(20_000, 20_000, "png"),
+          bomb_image_path(16_383, 16_383, "webp"),
+          bomb_image_path(20_000, 20_000, "gif"),
+          bomb_image_path(20_000, 20_000, "avif")
+        ]
+      }
+    end
+
+    test "are refused before they are decoded", %{bombs: bombs} do
+      for path <- bombs do
+        assert Processor.inspect_file(path) == {:error, :too_many_pixels}, path
+      end
+    end
+
+    test "get no variants and no JPEG", %{tmp_dir: dir, bombs: bombs} do
+      preview = Variants.preview()
+
+      for path <- bombs do
+        assert Processor.write_variant(path, Path.join(dir, preview.filename), preview) ==
+                 {:error, :too_many_pixels},
+               path
+
+        assert Processor.write_variants(path, dir, [preview]) ==
+                 {:error, {preview.filename, :too_many_pixels}},
+               path
+
+        assert Processor.jpeg(path, 480) == {:error, :too_many_pixels}, path
+      end
+
+      assert File.ls!(dir) == []
+    end
+
+    test "at most 100 megapixels are allowed" do
+      assert {:ok, %{width: 10_000, height: 10_000}} =
+               Processor.inspect_file(bomb_image_path(10_000, 10_000, "png"))
+
+      assert Processor.inspect_file(bomb_image_path(10_000, 10_001, "png")) ==
+               {:error, :too_many_pixels}
+    end
+  end
+
   describe "files that are not JPEG, PNG, WebP, GIF or HEIF" do
     setup %{tmp_dir: dir} do
       text = Path.join(dir, "notes.txt")

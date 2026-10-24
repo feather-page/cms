@@ -123,8 +123,9 @@ defmodule Feather.Media do
   `attrs` may contain `:source_url`, `:unsplash_data`, `:post_id`,
   `:page_id` and `:project_id`.
 
-  Returns `{:error, changeset}` if the file is too big or not a JPEG, PNG,
-  WebP, GIF or HEIF image (`Feather.Media.Processor.inspect_file/1`).
+  Returns `{:error, changeset}` if the file is too big, not a JPEG, PNG,
+  WebP, GIF or HEIF image, or has more than 100 megapixels
+  (`Feather.Media.Processor.inspect_file/1`).
   A created image gets its alt text suggested in the background.
   """
   @spec create_image_from_upload(Scope.t() | Site.t(), Path.t(), String.t(), map(), keyword()) ::
@@ -166,6 +167,9 @@ defmodule Feather.Media do
         %Image{site_id: site.id}
         |> Image.create_changeset(attrs)
         |> insert_with_files(path, info.extension, fitting(variants, info))
+
+      {:error, :too_many_pixels} ->
+        file_error(site, attrs, "has too many pixels (at most 100 megapixels)")
 
       {:error, :not_an_image} ->
         file_error(site, attrs, "must be an image")

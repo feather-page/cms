@@ -4,6 +4,8 @@ defmodule Feather.MediaFixtures do
   binary fixtures are needed.
   """
 
+  import Bitwise
+
   alias Vix.Vips.{Image, Operation}
 
   @doc """
@@ -147,6 +149,87 @@ defmodule Feather.MediaFixtures do
     :ok = Operation.uhdrsave(image, path)
     path
   end
+
+  @doc """
+  Writes a small generated image whose header declares `width` × `height`
+  pixels, as a decompression bomb does, and returns its path. Only the
+  header is patched, so decoding it fails or yields garbage. `format` is
+  `"jpg"`, `"png"`, `"webp"` (at most 16383 × 16383), `"gif"` or `"avif"`.
+  """
+  def bomb_image_path(width, height, format) do
+    path = test_image_path(64, 48, format)
+
+    data =
+      if format == "webp" do
+        {:ok, image} = Image.new_from_file(path)
+        {:ok, lossless} = Operation.webpsave_buffer(image, lossless: true, keep: [])
+        lossless
+      else
+        File.read!(path)
+      end
+
+    File.write!(path, declare_size(format, data, width, height))
+    path
+  end
+
+  defp declare_size("jpg", <<0xFF, 0xD8, segments::binary>>, width, height),
+    do: <<0xFF, 0xD8>> <> declare_frame_size(segments, width, height)
+
+  defp declare_size("png", data, width, height) do
+    <<signature::binary-size(8), 13::32, "IHDR", _size::binary-size(8), tail::binary-size(5),
+      _crc::32, rest::binary>> = data
+
+    ihdr = <<"IHDR", width::32, height::32, tail::binary>>
+    <<signature::binary, 13::32, ihdr::binary, :erlang.crc32(ihdr)::32, rest::binary>>
+  end
+
+  defp declare_size("webp", data, width, height) do
+    <<riff::binary-size(12), "VP8L", chunk_size::binary-size(4), 0x2F, bits::little-32,
+      rest::binary>> = data
+
+    bits = (bits &&& 0xF0000000) ||| (height - 1) <<< 14 ||| width - 1
+    <<riff::binary, "VP8L", chunk_size::binary, 0x2F, bits::little-32, rest::binary>>
+  end
+
+  defp declare_size("gif", data, width, height) do
+    <<version::binary-size(6), _screen::binary-size(4), flags, rest::binary>> = data
+    colour_table_size = if (flags &&& 0x80) == 0, do: 0, else: 3 <<< ((flags &&& 7) + 1)
+    screen_rest_size = 2 + colour_table_size
+    <<screen_rest::binary-size(^screen_rest_size), blocks::binary>> = rest
+
+    <<version::binary, width::little-16, height::little-16, flags, screen_rest::binary>> <>
+      declare_gif_frame_size(blocks, width, height)
+  end
+
+  defp declare_size("avif", data, width, height) do
+    {ispe, 4} = :binary.match(data, "ispe")
+    offset = ispe + 8
+    <<head::binary-size(^offset), _size::binary-size(8), rest::binary>> = data
+    <<head::binary, width::32, height::32, rest::binary>>
+  end
+
+  defp declare_frame_size(<<0xFF, marker, length::16, precision, _size::32, rest::binary>>, w, h)
+       when marker in [0xC0, 0xC1, 0xC2],
+       do: <<0xFF, marker, length::16, precision, h::16, w::16, rest::binary>>
+
+  defp declare_frame_size(<<0xFF, marker, length::16, rest::binary>>, width, height) do
+    body_size = length - 2
+    <<body::binary-size(^body_size), rest::binary>> = rest
+    <<0xFF, marker, length::16, body::binary>> <> declare_frame_size(rest, width, height)
+  end
+
+  defp declare_gif_frame_size(<<0x21, label, rest::binary>>, width, height) do
+    {sub_blocks, rest} = split_gif_sub_blocks(rest, <<>>)
+    <<0x21, label, sub_blocks::binary>> <> declare_gif_frame_size(rest, width, height)
+  end
+
+  defp declare_gif_frame_size(<<0x2C, position::binary-size(4), _size::32, rest::binary>>, w, h),
+    do: <<0x2C, position::binary, w::little-16, h::little-16, rest::binary>>
+
+  defp split_gif_sub_blocks(<<0, rest::binary>>, blocks), do: {blocks <> <<0>>, rest}
+
+  defp split_gif_sub_blocks(<<size, block::binary-size(size), rest::binary>>, blocks),
+    do: split_gif_sub_blocks(rest, <<blocks::binary, size, block::binary>>)
 
   @doc """
   Creates an image in the scope's site from a generated file. `:width`,
