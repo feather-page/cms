@@ -67,22 +67,29 @@ post titles for content from before `OLLAMA_URL` was set; deploy the sites by ha
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PHX_HOST` | Public host name of the CMS (prod) | `example.com` |
+| `PHX_HOST` | Public host name of the CMS (prod); the inboxes of the sites' fediverse accounts live on it | `example.com` |
 | `PORT` | HTTP port | `4000` |
 | `SECRET_KEY_BASE` | Signs cookies and tokens (prod, required) | |
 | `DATABASE_PATH` | SQLite database file (prod, required) | |
 | `POOL_SIZE` | Database connections (prod) | `5` |
-| `STORAGE_PATH` | Images, rendered diagrams and build output (prod, required) | dev: `storage/` |
-| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials and archive.org keys (prod, required) | fixed dev/test keys |
+| `STORAGE_PATH` | Images, rendered diagrams, the pictures of the authors of approved fediverse replies and build output (prod, required) | dev: `storage/` |
+| `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials, archive.org keys and the private keys, mentions, Timeline posts, members' replies and outgoing deliveries of the sites' fediverse accounts (prod, required) | fixed dev/test keys |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `HARDCOVER_TOKEN` | Hardcover API key for the book search (optional; without it books are searched on OpenLibrary) | |
 | `OLLAMA_URL` | Base URL of an Ollama instance (e.g. `http://ollama:11434`), which suggests alt texts, descriptions and titles of short posts (optional; without it no suggestions are made) | |
 | `OLLAMA_MODEL` | The Ollama model that makes the suggestions; it must read images | `gemma4:26b-a4b-it-qat` |
+| `FEDIVERSE_PROXY` | URL of an HTTP proxy (e.g. `http://proxy:3128`) that all requests to fediverse servers tunnel through, so they do not learn where the CMS runs (optional); the CMS still checks every address, but the proxy itself must reach only public addresses. Even with the proxy the CMS resolves the servers' names itself, so its DNS should go through a resolver that does not reveal where it runs | |
 | `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
 
 Generate a `CONFIG_ENCRYPTION_KEY` with
 `elixir -e 'IO.puts(Base.encode64(:crypto.strong_rand_bytes(32)))'`.
+
+Fediverse servers post to the inboxes of the sites' accounts below `/fediverse/inbox/` on `PHX_HOST`. A proxy in front
+of the CMS that asks for a login or blocks countries must open that prefix to the internet, matching it after decoding
+the path and resolving dot segments, and must reject encoded slashes. The CMS answers every other path below the prefix
+with 404 and limits the requests per client; when the proxy connects from a private network, the client is the last
+public address in its `X-Forwarded-For`.
 
 ## Connecting an agent
 
@@ -92,10 +99,10 @@ client) and allow it on the consent page. Tokens are bound to this URL, built fr
 ## Project structure
 
 *   `lib/feather/`: contexts with the domain logic (`Accounts`, `Sites`, `Content`, `Books`,
-    `Media`, `Publishing`, `Redirects`, `OAuth`)
+    `Media`, `Publishing`, `Redirects`, `OAuth`, `Fediverse`)
 *   `lib/feather/static_site/`: static export and preview (sinks, feed, sitemap, Markdown
-    alternates, `llms.txt`, the theme registry `Themes`); each theme's EEx templates live in
-    `themes/<theme>/`
+    alternates, `llms.txt`, the fediverse documents, the theme registry `Themes`); each theme's
+    EEx templates live in `themes/<theme>/`
 *   `lib/feather_web/`: the LiveView admin, built with the shared component library `setzkasten`
     (Tailwind CSS and daisyUI), and the MCP server at `/mcp` (`FeatherWeb.MCP`, its tools in
     `mcp/tools/`)
