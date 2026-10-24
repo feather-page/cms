@@ -102,21 +102,23 @@ jobs:
       - name: Build assets
         run: mix assets.setup && mix assets.deploy
 
-  # The release image for ops/compose.yml, only for main and only when the
-  # other jobs pass. Watchtower on the server pulls :latest at night.
+  # The release image for ops/compose.yml; Watchtower on the server pulls :latest
+  # at night. Only main writes the layer cache, so pull requests do not evict it.
   image:
     needs: [test, assets]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
 
       - uses: docker/setup-buildx-action@v4
 
-      - uses: docker/login-action@v4
+      - if: env.PUBLISH == 'true'
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -134,8 +136,8 @@ jobs:
         with:
           context: .
           platforms: linux/amd64
-          push: true
+          push: ${{ env.PUBLISH == 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-to: ${{ env.PUBLISH == 'true' && 'type=gha,mode=max' || '' }}
