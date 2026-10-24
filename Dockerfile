@@ -77,6 +77,9 @@ RUN apt-get update \
     rclone brotli sqlite3 curl fontconfig fonts-noto-color-emoji \
   && rm -rf /var/lib/apt/lists/*
 
+# Behind Processor's magic bytes, libvips also refuses its untrusted loaders.
+ENV VIPS_BLOCK_UNTRUSTED=1
+
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
 COPY --from=d2 /usr/local/bin/d2 /usr/local/bin/d2

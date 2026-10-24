@@ -2,24 +2,40 @@ defmodule Feather.Media.Processor do
   @moduledoc """
   Image inspection and resizing with libvips (through Vix).
 
-  Note: an image opened by `Vix.Vips.Operation.thumbnail/3` is read
-  sequentially from its file and can only be written once, so every
-  variant starts from a fresh thumbnail.
+  libvips never picks a loader itself, so none of its other loaders (SVG,
+  TIFF, VIPS, CSV, ...) ever parses a member's file:
+
+    * only JPEG, PNG, WebP, GIF and AVIF are accepted, by their magic
+      bytes, before libvips sees the file;
+    * a HEIF file without the `avif` brand is a HEIC coded with HEVC, as
+      iPhones write them, and is refused unopened (`{:error, :heic}`): the
+      bundled libvips has no HEVC decoder;
+    * only the loader of that format opens it, and only one image is
+      read: the first frame, or an AVIF file's primary image;
+    * an image whose header names more than 100 megapixels is refused
+      (`{:error, :too_many_pixels}`) before a pixel is decoded, also when
+      variants are made from an original stored before this check.
+
+  An image opened with sequential access can only be written once, so
+  every variant opens the original afresh.
   """
 
   alias Feather.Media.Variants
   alias Vix.Vips.{Image, Operation}
 
-  @loaders %{
-    "jpegload" => {"image/jpeg", "jpg"},
-    # Ultra HDR: a JPEG with a gain map, as iPhones take them
-    "uhdrload" => {"image/jpeg", "jpg"},
-    "pngload" => {"image/png", "png"},
-    "webpload" => {"image/webp", "webp"},
-    "gifload" => {"image/gif", "gif"},
-    "heifload" => {"image/heif", "heic"},
-    "tiffload" => {"image/tiff", "tiff"}
+  @formats %{
+    jpeg: {"image/jpeg", "jpg"},
+    png: {"image/png", "png"},
+    webp: {"image/webp", "webp"},
+    gif: {"image/gif", "gif"},
+    avif: {"image/avif", "avif"}
   }
+
+  @heif_brands ~w(heic heix hevc heim heis hevm hevs mif1 msf1 avif)
+
+  @head_size 256
+
+  @max_pixels 100_000_000
 
   @type info :: %{
           content_type: String.t(),
@@ -29,18 +45,22 @@ defmodule Feather.Media.Processor do
         }
 
   @doc """
-  Inspects a file. Returns `{:ok, info}` for a supported raster image and
-  `{:error, :not_an_image}` otherwise. Width and height are given after
-  applying the EXIF orientation.
+  Inspects a file. Returns `{:ok, info}` for a JPEG, PNG, WebP, GIF or AVIF
+  image of at most 100 megapixels, `{:error, :too_many_pixels}` for a
+  bigger one, `{:error, :heic}` for a HEIC coded with HEVC and
+  `{:error, :not_an_image}` for anything else. Width and height are given
+  after applying the EXIF orientation.
   """
-  @spec inspect_file(Path.t()) :: {:ok, info()} | {:error, :not_an_image}
+  @spec inspect_file(Path.t()) ::
+          {:ok, info()} | {:error, :not_an_image | :too_many_pixels | :heic}
   def inspect_file(path) do
-    with {:ok, image} <- Image.new_from_file(path),
-         {:ok, loader} <- Image.header_value(image, "vips-loader"),
-         {content_type, extension} <- Map.get(@loaders, loader) do
+    with {:ok, format} <- format(path),
+         {:ok, image} <- open(path, format) do
+      {content_type, extension} = Map.fetch!(@formats, format)
       {width, height} = oriented_size(image)
       {:ok, %{content_type: content_type, extension: extension, width: width, height: height}}
     else
+      {:error, reason} when reason in [:too_many_pixels, :heic] -> {:error, reason}
       _ -> {:error, :not_an_image}
     end
   end
@@ -64,7 +84,11 @@ defmodule Feather.Media.Processor do
     File.mkdir_p!(dir)
 
     Enum.reduce_while(variants, :ok, fn variant, :ok ->
-      case write_variant(source, Path.join(dir, variant.filename), variant) do
+      result = write_variant(source, Path.join(dir, variant.filename), variant)
+      # libvips frees an image only once the BEAM has collected its last reference.
+      :erlang.garbage_collect()
+
+      case result do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, {variant.filename, reason}}}
       end
@@ -74,15 +98,15 @@ defmodule Feather.Media.Processor do
   @doc """
   Writes one variant: fit within size×size without upscaling, EXIF
   orientation applied, metadata stripped. The file appears complete or not
-  at all, so a concurrent export never copies half of it.
+  at all, so a concurrent export never copies half of it. `source` is
+  checked as in `inspect_file/1`.
   """
   @spec write_variant(Path.t(), Path.t(), Variants.variant()) :: :ok | {:error, term()}
   def write_variant(source, target, %{size: size, format: format}) do
     partial = "#{target}.#{System.unique_integer([:positive])}.part"
 
     try do
-      with {:ok, thumbnail} <-
-             Operation.thumbnail(source, size, height: size, size: :VIPS_SIZE_DOWN),
+      with {:ok, thumbnail} <- thumbnail(source, size),
            :ok <- save(thumbnail, partial, format) do
         File.rename(partial, target)
       end
@@ -93,15 +117,82 @@ defmodule Feather.Media.Processor do
 
   @doc """
   A JPEG of `source` that fits within size×size, without upscaling, EXIF
-  orientation applied and metadata stripped.
+  orientation applied and metadata stripped. `source` is checked as in
+  `inspect_file/1`.
   """
   @spec jpeg(Path.t(), pos_integer()) :: {:ok, binary()} | {:error, term()}
   def jpeg(source, size) do
-    with {:ok, thumbnail} <-
-           Operation.thumbnail(source, size, height: size, size: :VIPS_SIZE_DOWN) do
+    with {:ok, thumbnail} <- thumbnail(source, size) do
       Image.write_to_buffer(thumbnail, ".jpg", Q: 85, keep: [])
     end
   end
+
+  defp thumbnail(source, size) do
+    with {:ok, format} <- format(source),
+         {:ok, header} <- open(source, format),
+         {:ok, image} <- open(source, format, shrink_on_load(format, header, size)) do
+      Operation.thumbnail_image(image, size, height: size, size: :VIPS_SIZE_DOWN)
+    end
+  end
+
+  defp format(path) do
+    case File.open(path, [:read, :binary], &IO.binread(&1, @head_size)) do
+      {:ok, head} when is_binary(head) -> magic(head)
+      _ -> {:error, :not_an_image}
+    end
+  end
+
+  defp magic(<<0xFF, 0xD8, 0xFF, _rest::binary>>), do: {:ok, :jpeg}
+  defp magic(<<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, _rest::binary>>), do: {:ok, :png}
+  defp magic(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: {:ok, :webp}
+  defp magic(<<"GIF8", version, "a", _rest::binary>>) when version in [?7, ?9], do: {:ok, :gif}
+
+  defp magic(<<size::32, "ftyp", brand::binary-size(4), _minor::binary-size(4), rest::binary>>)
+       when brand in @heif_brands and size in 16..@head_size//4 and byte_size(rest) >= size - 16 do
+    compatible = for <<other::binary-size(4) <- binary_part(rest, 0, size - 16)>>, do: other
+    if "avif" in [brand | compatible], do: {:ok, :avif}, else: {:error, :heic}
+  end
+
+  defp magic(_head), do: {:error, :not_an_image}
+
+  defp open(path, format, opts \\ []) do
+    with {:ok, {image, _flags}} <-
+           load_picture(path, format, [access: :VIPS_ACCESS_SEQUENTIAL] ++ opts),
+         :ok <- check_pixels(image, @max_pixels) do
+      {:ok, image}
+    end
+  end
+
+  defp load_picture(path, :jpeg, opts), do: Operation.jpegload(path, opts)
+  defp load_picture(path, :png, opts), do: Operation.pngload(path, opts)
+  defp load_picture(path, :webp, opts), do: Operation.webpload(path, [n: 1] ++ opts)
+  defp load_picture(path, :gif, opts), do: Operation.gifload(path, [n: 1] ++ opts)
+  defp load_picture(path, :avif, opts), do: Operation.heifload(path, opts)
+
+  defp check_pixels(image, max_pixels) do
+    if Image.width(image) * Image.height(image) <= max_pixels,
+      do: :ok,
+      else: {:error, :too_many_pixels}
+  end
+
+  # As libvips' thumbnail: JPEG block-shrinks to at least twice the size, WebP scales right to it.
+  defp shrink_on_load(:jpeg, header, size) do
+    shrink = longest_side(header) / size
+
+    cond do
+      shrink >= 16 -> [shrink: 8]
+      shrink >= 8 -> [shrink: 4]
+      shrink >= 4 -> [shrink: 2]
+      true -> []
+    end
+  end
+
+  defp shrink_on_load(:webp, header, size),
+    do: [scale: 1 / max(longest_side(header) / size, 1.0)]
+
+  defp shrink_on_load(_format, _header, _size), do: []
+
+  defp longest_side(image), do: max(Image.width(image), Image.height(image))
 
   defp save(image, target, :webp), do: Operation.webpsave(image, target, keep: [], Q: 80)
   defp save(image, target, :jpg), do: Operation.jpegsave(image, target, keep: [], Q: 85)
