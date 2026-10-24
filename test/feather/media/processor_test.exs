@@ -9,13 +9,13 @@ defmodule Feather.Media.ProcessorTest do
   @moduletag :tmp_dir
 
   describe "inspect_file/1" do
-    test "accepts JPEG, PNG, WebP, GIF and HEIF (AVIF) by their magic bytes", %{tmp_dir: dir} do
+    test "accepts JPEG, PNG, WebP, GIF and AVIF by their magic bytes", %{tmp_dir: dir} do
       for {format, content_type, extension} <- [
             {"jpg", "image/jpeg", "jpg"},
             {"png", "image/png", "png"},
             {"webp", "image/webp", "webp"},
             {"gif", "image/gif", "gif"},
-            {"avif", "image/heif", "heic"}
+            {"avif", "image/avif", "avif"}
           ] do
         path = test_image_path(64, 48, format)
 
@@ -45,7 +45,7 @@ defmodule Feather.Media.ProcessorTest do
       avif = with_major_brand(test_image_path(64, 48, "avif"), "mif1", dir)
       heic = with_major_brand(hevc_heic_path(), "mif1", dir)
 
-      assert {:ok, %{content_type: "image/heif", width: 64, height: 48}} =
+      assert {:ok, %{content_type: "image/avif", width: 64, height: 48}} =
                Processor.inspect_file(avif)
 
       assert Processor.inspect_file(heic) == {:error, :heic}

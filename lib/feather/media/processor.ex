@@ -11,7 +11,7 @@ defmodule Feather.Media.Processor do
       iPhones write them, and is refused unopened (`{:error, :heic}`): the
       bundled libvips has no HEVC decoder;
     * only the loader of that format opens it, and only one image is
-      read: the first frame, or a HEIF file's primary image;
+      read: the first frame, or an AVIF file's primary image;
     * an image whose header names more than 100 megapixels is refused
       (`{:error, :too_many_pixels}`) before a pixel is decoded, also when
       variants are made from an original stored before this check.
@@ -28,7 +28,7 @@ defmodule Feather.Media.Processor do
     png: {"image/png", "png"},
     webp: {"image/webp", "webp"},
     gif: {"image/gif", "gif"},
-    heif: {"image/heif", "heic"}
+    avif: {"image/avif", "avif"}
   }
 
   @heif_brands ~w(heic heix hevc heim heis hevm hevs mif1 msf1 avif)
@@ -150,7 +150,7 @@ defmodule Feather.Media.Processor do
   defp magic(<<size::32, "ftyp", brand::binary-size(4), _minor::binary-size(4), rest::binary>>)
        when brand in @heif_brands and size in 16..@head_size//4 and byte_size(rest) >= size - 16 do
     compatible = for <<other::binary-size(4) <- binary_part(rest, 0, size - 16)>>, do: other
-    if "avif" in [brand | compatible], do: {:ok, :heif}, else: {:error, :heic}
+    if "avif" in [brand | compatible], do: {:ok, :avif}, else: {:error, :heic}
   end
 
   defp magic(_head), do: {:error, :not_an_image}
@@ -167,7 +167,7 @@ defmodule Feather.Media.Processor do
   defp load_picture(path, :png, opts), do: Operation.pngload(path, opts)
   defp load_picture(path, :webp, opts), do: Operation.webpload(path, [n: 1] ++ opts)
   defp load_picture(path, :gif, opts), do: Operation.gifload(path, [n: 1] ++ opts)
-  defp load_picture(path, :heif, opts), do: Operation.heifload(path, opts)
+  defp load_picture(path, :avif, opts), do: Operation.heifload(path, opts)
 
   defp check_pixels(image, max_pixels) do
     if Image.width(image) * Image.height(image) <= max_pixels,
