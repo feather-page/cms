@@ -24,6 +24,8 @@ config :feather,
   backfill_image_variants: false,
   image_variant_sync: :inline,
   alt_text_suggestions: :inline,
+  fediverse_deliveries: :inline,
+  fediverse_inbox: :inline,
   # Deploys tell IndexNow and archive.org nothing unless a test asks for it.
   deploy_notifications: false,
   config_encryption_key: "TNNvQkxC2kCFMB1wciLl7rHKXNTwz4kCIREO7dEvVKA="
@@ -44,9 +46,11 @@ config :phoenix,
 
 config :feather, :image_fetch_req_options, plug: {Req.Test, Feather.Media}
 config :feather, :image_fetch_resolver, {Feather.FakeResolver, :resolve}
+config :feather, :fediverse_req_options, plug: {Req.Test, Feather.Fediverse}
 
 config :feather, Feather.Media.CleanupScheduler, enabled: false
 config :feather, Feather.Publishing.ScheduledDeploys, enabled: false
+config :feather, Feather.Fediverse.Scheduler, enabled: false
 
 config :feather, :unsplash_req_options, plug: {Req.Test, Feather.Unsplash}
 config :feather, :hardcover_req_options, plug: {Req.Test, Feather.Hardcover}

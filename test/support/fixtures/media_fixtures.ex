@@ -29,6 +29,18 @@ defmodule Feather.MediaFixtures do
   def hevc_heic_path, do: Path.expand("../../fixtures/hevc.heic", __DIR__)
 
   @doc """
+  A generated image as the bytes of a file of the format of `suffix`
+  (`".png"`, `".jpg"`, `".webp"`, `".gif"`, `".tif"`, ...).
+  """
+  def test_image_binary(width \\ 64, height \\ 48, suffix \\ ".png") do
+    {:ok, image} = Operation.black(width, height, bands: 3)
+    {:ok, image} = Operation.linear(image, [1.0], [128.0])
+    {:ok, image} = Operation.cast(image, :VIPS_FORMAT_UCHAR)
+    {:ok, binary} = Image.write_to_buffer(image, suffix)
+    binary
+  end
+
+  @doc """
   Writes a generated PNG with an alpha channel that runs from fully
   transparent on the left to opaque on the right, and returns its path.
   """

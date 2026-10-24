@@ -4,15 +4,17 @@ defmodule Feather.StaticSite.Blocks do
   static site.
 
   Inline HTML (paragraphs, headers, list items, quotes, captions, table
-  cells) goes through `Feather.Content.HTML.sanitize/1`; everything else is
-  escaped. Image and book blocks look their records up in the maps given
+  cells) goes through `Feather.Content.HTML.sanitize/3`, its relative links
+  resolved against the context's `base_url` when it has one; everything
+  else is escaped. Image and book blocks look their records up in the maps given
   in the context (by public id) and render nothing when the record is
   missing; an image's alt text is its own, else its caption. Diagram
   blocks look their SVG file up by their source (see
   `Feather.Diagrams.render_all/2`) and show the source as d2 code when the
   diagram was not rendered. Code blocks look their highlighted HTML up
   by code and language (see `Feather.Highlighting.highlight_all/2`) and
-  show the escaped code when there is none.
+  show the escaped code when there is none. Without inline images, image
+  blocks render nothing and book blocks no cover.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -20,7 +22,7 @@ defmodule Feather.StaticSite.Blocks do
   alias Feather.Books.Book
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.HTML
-  alias Feather.Media.Image
+  alias Feather.Media.{Image, Variants}
   alias Feather.StaticSite.{Routes, ThemeHelpers}
 
   @enforce_keys [:routes, :content_image_sizes]
@@ -29,6 +31,8 @@ defmodule Feather.StaticSite.Blocks do
     :content_image_sizes,
     image_variants: %{},
     book_cover_sizes: "80px",
+    inline_images: true,
+    base_url: nil,
     images: %{},
     books: %{},
     diagrams: %{},
@@ -41,8 +45,11 @@ defmodule Feather.StaticSite.Blocks do
   (`c:Feather.StaticSite.Theme.content_image_sizes/0`) and of the cover in
   a book block (`c:Feather.StaticSite.Theme.book_cover_sizes/0`), the
   theme's variant sizes per image role
-  (`c:Feather.StaticSite.Theme.image_variants/0`), the site's images
-  and books by public id (books with `cover_image` preloaded and their
+  (`c:Feather.StaticSite.Theme.image_variants/0`), whether images render
+  inline (the fediverse documents carry them as attachments instead, so
+  they do not change with the theme), the URL relative links resolve
+  against (nil keeps them relative), the site's images and books by
+  public id (books with `cover_image` preloaded and their
   review as `post` where the site shows it), the file names of the
   rendered diagrams by source and the highlighted HTML of the code blocks
   by `{code, language}`.
@@ -52,6 +59,8 @@ defmodule Feather.StaticSite.Blocks do
           content_image_sizes: String.t(),
           image_variants: %{atom() => [pos_integer()]},
           book_cover_sizes: String.t(),
+          inline_images: boolean(),
+          base_url: String.t() | nil,
           images: %{String.t() => Image.t()},
           books: %{String.t() => Book.t()},
           diagrams: %{String.t() => String.t()},
@@ -60,8 +69,9 @@ defmodule Feather.StaticSite.Blocks do
 
   @doc """
   Builds a rendering context. Options: `:content_image_sizes` (required),
-  `:image_variants`, `:book_cover_sizes`, `:images`, `:books`, `:diagrams`
-  and `:highlights` (see `t:context/0`, default: none).
+  `:image_variants`, `:book_cover_sizes`, `:inline_images` (default:
+  true), `:base_url`, `:images`, `:books`, `:diagrams` and `:highlights`
+  (see `t:context/0`, default: none).
   """
   @spec context(Routes.t(), keyword()) :: context()
   def context(%Routes{} = routes, opts), do: struct!(__MODULE__, [routes: routes] ++ opts)
@@ -90,20 +100,20 @@ defmodule Feather.StaticSite.Blocks do
 
   @doc "Renders one (normalized) block to iodata."
   @spec render_block(map(), context()) :: iodata()
-  def render_block(%{"type" => "paragraph", "text" => text} = block, _context),
-    do: if(visible?(block), do: ["<p>", sanitize(text), "</p>"], else: [])
+  def render_block(%{"type" => "paragraph", "text" => text} = block, context),
+    do: if(visible?(block), do: ["<p>", sanitize(text, context), "</p>"], else: [])
 
-  def render_block(%{"type" => "header", "level" => level, "text" => text}, _context) do
+  def render_block(%{"type" => "header", "level" => level, "text" => text}, context) do
     tag = "h#{level}"
-    ["<", tag, ">", sanitize(text), "</", tag, ">"]
+    ["<", tag, ">", sanitize(text, context), "</", tag, ">"]
   end
 
-  def render_block(%{"type" => "list", "style" => style, "items" => items}, _context),
-    do: list(style, items)
+  def render_block(%{"type" => "list", "style" => style, "items" => items}, context),
+    do: list(style, items, context)
 
-  def render_block(%{"type" => "quote", "text" => text, "caption" => caption}, _context) do
-    cite = if present?(caption), do: ["<cite>", sanitize(caption), "</cite>"], else: []
-    ["<blockquote><p>", sanitize(text), "</p>", cite, "</blockquote>"]
+  def render_block(%{"type" => "quote", "text" => text, "caption" => caption}, context) do
+    cite = if present?(caption), do: ["<cite>", sanitize(caption, context), "</cite>"], else: []
+    ["<blockquote><p>", sanitize(text, context), "</p>", cite, "</blockquote>"]
   end
 
   def render_block(%{"type" => "code", "code" => code} = block, context) do
@@ -113,6 +123,8 @@ defmodule Feather.StaticSite.Blocks do
     end
   end
 
+  def render_block(%{"type" => "image"}, %{inline_images: false}), do: []
+
   def render_block(%{"type" => "image", "image_id" => image_id} = block, context) do
     case Map.get(context.images, image_id) do
       %Image{} = image -> image(image, block["caption"], context)
@@ -120,20 +132,22 @@ defmodule Feather.StaticSite.Blocks do
     end
   end
 
-  def render_block(%{"type" => "table", "content" => rows} = block, _context) do
+  def render_block(%{"type" => "table", "content" => rows} = block, context) do
     rows = if is_list(rows), do: Enum.filter(rows, &is_list/1), else: []
 
     {head, body} =
       case {block["with_headings"], rows} do
-        {true, [first | rest]} -> {["<thead>", row(first, "th"), "</thead>"], rest}
+        {true, [first | rest]} -> {["<thead>", row(first, "th", context), "</thead>"], rest}
         _ -> {[], rows}
       end
 
-    ["<table>", head, "<tbody>", Enum.map(body, &row(&1, "td")), "</tbody></table>"]
+    ["<table>", head, "<tbody>", Enum.map(body, &row(&1, "td", context)), "</tbody></table>"]
   end
 
-  def render_block(%{"type" => "embed"} = block, _context) do
-    if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]), do: embed(block), else: []
+  def render_block(%{"type" => "embed"} = block, context) do
+    if is_binary(block["embed"]) and HTML.safe_url?(block["embed"]),
+      do: embed(block, context),
+      else: []
   end
 
   def render_block(%{"type" => "book", "book_public_id" => public_id}, context) do
@@ -146,11 +160,26 @@ defmodule Feather.StaticSite.Blocks do
   def render_block(%{"type" => "diagram", "code" => code} = block, context) do
     case Map.get(context.diagrams, code) do
       nil -> if present?(code), do: code_block(code, "d2"), else: []
-      name -> diagram(name, block["caption"], context.routes)
+      name -> diagram(name, block["caption"], context)
     end
   end
 
   def render_block(_block, _context), do: []
+
+  @doc "The alt text of a content image: its own, else the caption of its block as text."
+  @spec image_alt(Image.t(), String.t() | nil) :: String.t()
+  def image_alt(%Image{alt: alt}, caption) do
+    if present?(alt), do: alt, else: ContentBlocks.strip_tags(caption || "")
+  end
+
+  @doc "The largest variant the theme gives a content image, nil if it gives none."
+  @spec largest_content_variant(Image.t(), context()) :: Variants.variant() | nil
+  def largest_content_variant(%Image{width: width, height: height}, %__MODULE__{} = context) do
+    context.image_variants
+    |> Map.get(:content, [])
+    |> Variants.for_image(width, height)
+    |> List.last()
+  end
 
   @doc """
   The language a code block is labelled with: its name, nil for plain text
@@ -183,7 +212,7 @@ defmodule Feather.StaticSite.Blocks do
   defp code_html({:safe, html}), do: html
   defp code_html(code), do: escape(code)
 
-  defp embed(block) do
+  defp embed(block, context) do
     src = String.replace(block["embed"], "youtube.com/embed/", "youtube-nocookie.com/embed/")
 
     [
@@ -196,7 +225,7 @@ defmodule Feather.StaticSite.Blocks do
       size_attribute("height", block["height"]),
       aspect_ratio(block["width"], block["height"]),
       " allowfullscreen></iframe>",
-      figcaption(block["caption"]),
+      figcaption(block["caption"], context),
       "</figure>"
     ]
   end
@@ -206,36 +235,41 @@ defmodule Feather.StaticSite.Blocks do
     if String.trim(title) == "", do: gettext("Embedded content"), else: title
   end
 
-  defp diagram(name, caption, routes) do
+  defp diagram(name, caption, context) do
     alt = ContentBlocks.strip_tags(caption)
     alt = if present?(alt), do: alt, else: gettext("Diagram")
 
     [
       "<figure class=\"diagram\"><img loading=\"lazy\" src=\"",
-      escape(Routes.diagram_url(routes, name)),
+      escape(Routes.diagram_url(context.routes, name)),
       "\" alt=\"",
       escape(alt),
       "\">",
-      figcaption(caption),
+      figcaption(caption, context),
       "</figure>"
     ]
   end
 
-  defp list(_style, []), do: []
+  defp list(_style, [], _context), do: []
 
-  defp list(style, items) when is_list(items) do
+  defp list(style, items, context) when is_list(items) do
     tag = if style == "ol", do: "ol", else: "ul"
 
     items =
       Enum.map(items, fn item ->
-        ["<li>", sanitize(item["content"]), list(tag, item["items"] || []), "</li>"]
+        [
+          "<li>",
+          sanitize(item["content"], context),
+          list(tag, item["items"] || [], context),
+          "</li>"
+        ]
       end)
 
     ["<", tag, ">", items, "</", tag, ">"]
   end
 
-  defp row(cells, tag) do
-    ["<tr>", Enum.map(cells, &["<", tag, ">", sanitize(&1), "</", tag, ">"]), "</tr>"]
+  defp row(cells, tag, context) do
+    ["<tr>", Enum.map(cells, &["<", tag, ">", sanitize(&1, context), "</", tag, ">"]), "</tr>"]
   end
 
   defp image(%Image{} = image, caption, context) do
@@ -247,13 +281,9 @@ defmodule Feather.StaticSite.Blocks do
       " alt=\"",
       escape(image_alt(image, caption)),
       "\" />",
-      figcaption(caption),
+      figcaption(caption, context),
       "</figure>"
     ]
-  end
-
-  defp image_alt(%Image{alt: alt}, caption) do
-    if present?(alt), do: alt, else: ContentBlocks.strip_tags(caption)
   end
 
   defp sources(image, role, sizes, %{routes: routes, image_variants: variants}) do
@@ -275,7 +305,7 @@ defmodule Feather.StaticSite.Blocks do
     ]
   end
 
-  defp book_mark(%Book{cover_image: %Image{} = cover}, context) do
+  defp book_mark(%Book{cover_image: %Image{} = cover}, %{inline_images: true} = context) do
     [
       "<img",
       sources(cover, :book_cover, context.book_cover_sizes, context),
@@ -327,11 +357,13 @@ defmodule Feather.StaticSite.Blocks do
   defp optional_attribute(_name, nil), do: []
   defp optional_attribute(name, value), do: [" ", name, "=\"", escape(value), "\""]
 
-  defp figcaption(caption) do
-    if present?(caption), do: ["<figcaption>", sanitize(caption), "</figcaption>"], else: []
+  defp figcaption(caption, context) do
+    if present?(caption),
+      do: ["<figcaption>", sanitize(caption, context), "</figcaption>"],
+      else: []
   end
 
-  defp sanitize(html), do: HTML.sanitize(html)
+  defp sanitize(html, context), do: HTML.sanitize(html, :published, base_url: context.base_url)
 
   defp escape(nil), do: ""
 

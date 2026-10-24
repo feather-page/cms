@@ -37,7 +37,8 @@ defmodule Feather.StaticSite.Theme do
       `og_image_url`, a share card's for a page without an image;
       `favicon_url`, nil where the page's own emoji is its icon;
       `markdown_url`, the Markdown alternate of the home page, a post, page
-      or project; `structured_data`, see
+      or project; `activitypub_url`, the fediverse document of a post or,
+      on the home page, the site's account; `structured_data`, see
       `Feather.StaticSite.StructuredData`; render them with
       `ThemeHelpers.head_meta/1`),
       `stylesheet_url` (`style.css` with a hash of its content)
@@ -48,7 +49,14 @@ defmodule Feather.StaticSite.Theme do
   and each view its own:
 
     * `c:home/1` - `posts`, `current_page`, `total_pages`
-    * `c:post/1` - `post`, `newer_post`, `older_post`
+    * `c:post/1` - `post`, `newer_post`, `older_post`, `replies` (the
+      approved replies to it, oldest first, see
+      `Feather.Fediverse.Mentions`, each with the members' public replies
+      to it in `member_replies`, shown below it and marked as by the
+      author) and `reply_handle` (the site's fediverse handle, nil without
+      a fediverse name): a site with one shows the thread below each post,
+      also without replies, with a line on how to reply
+      (`ThemeHelpers.reply_invitation/1`)
     * `c:page/1` - `page`
     * `c:project/1` - `project`
     * `c:not_found/1` - `projects_page` (nil without one)

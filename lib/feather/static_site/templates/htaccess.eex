@@ -12,7 +12,17 @@ ErrorDocument 404 <%= @not_found_url %>
   AddCharset utf-8 .md .txt
 </IfModule>
 
-<%= if @redirects != [] do %><IfModule mod_rewrite.c>
+<%= if @fediverse do %><If "%{REQUEST_URI} =~ m#^/activitypub/#">
+  ForceType application/activity+json
+</If>
+<FilesMatch "^webfinger(\.br|\.gz)?$">
+  ForceType application/jrd+json
+  <IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+  </IfModule>
+</FilesMatch>
+
+<% end %><%= if @redirects != [] do %><IfModule mod_rewrite.c>
   RewriteEngine On
 <%= for rule <- @redirects do %>  RewriteRule <%= rule.pattern %> <%= rule.url %> [R=<%= rule.status %>,L]
 <% end %></IfModule>
@@ -31,8 +41,13 @@ ErrorDocument 404 <%= @not_found_url %>
     RewriteCond %{HTTP:Accept-Encoding} \b<%= encoding %>\b
     RewriteCond %{REQUEST_FILENAME}<%= suffix %> -f
     RewriteRule ^(.+\.(<%= @extensions %>))$ $1<%= suffix %> [L]
-<% end %>
+<%= if @fediverse do %>    RewriteCond %{HTTP:Accept-Encoding} \b<%= encoding %>\b
+    RewriteCond %{REQUEST_FILENAME}<%= suffix %> -f
+    RewriteRule ^(activitypub/.+|\.well-known/webfinger)$ $1<%= suffix %> [L]
+<% end %><% end %>
 <%= for {extension, content_type} <- @content_types do %>    RewriteRule \.<%= extension %>\.(br|gz)$ - [T=<%= content_type %>,E=no-gzip:1,E=no-brotli:1]
+<% end %><%= if @fediverse do %>    RewriteRule ^activitypub/.+\.(br|gz)$ - [T=application/activity+json,E=no-gzip:1,E=no-brotli:1]
+    RewriteRule ^\.well-known/webfinger\.(br|gz)$ - [T=application/jrd+json,E=no-gzip:1,E=no-brotli:1]
 <% end %>
     <IfModule mod_mime.c>
       RemoveEncoding .br .gz
@@ -45,7 +60,10 @@ ErrorDocument 404 <%= @not_found_url %>
     <FilesMatch "\.(<%= @extensions %>)(\.br|\.gz)?$">
       Header always merge Vary Accept-Encoding
     </FilesMatch>
-    <FilesMatch "^index\.(html|md)(\.br|\.gz)?$">
+<%= if @fediverse do %>    <If "%{REQUEST_URI} =~ m#^/(activitypub/|\.well-known/webfinger)#">
+      Header always merge Vary Accept-Encoding
+    </If>
+<% end %>    <FilesMatch "^index\.(html|md)(\.br|\.gz)?$">
       Header always merge Vary Accept
     </FilesMatch>
   </IfModule>

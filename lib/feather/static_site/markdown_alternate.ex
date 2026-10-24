@@ -26,7 +26,7 @@ defmodule Feather.StaticSite.MarkdownAlternate do
   alias Feather.Content
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Markdown, Page, Post, Project}
-  alias Feather.Media.{Image, Variants}
+  alias Feather.Media.Image
   alias Feather.StaticSite.{Blocks, Routes, SiteData, ThemeHelpers}
 
   @yaml_unsafe ~r/[\x00-\x08\x0B-\x1F\x7F-\x9F\x{FFFE}\x{FFFF}]/u
@@ -265,7 +265,7 @@ defmodule Feather.StaticSite.MarkdownAlternate do
 
   defp render_block(%{"type" => "image", "image_id" => image_id} = block, context, _base_url) do
     with %Image{} = image <- Map.get(context.images, image_id),
-         %{} = variant <- largest_content_variant(image, context) do
+         %{} = variant <- Blocks.largest_content_variant(image, context) do
       Markdown.image(plain(block["caption"]), Routes.image_url(context.routes, image, variant))
     else
       _missing -> ""
@@ -325,13 +325,6 @@ defmodule Feather.StaticSite.MarkdownAlternate do
   defp list_marker("ol", :second, number), do: "#{number})"
   defp list_marker(_ul, :first, _number), do: "-"
   defp list_marker(_ul, :second, _number), do: "*"
-
-  defp largest_content_variant(%Image{width: width, height: height}, context) do
-    context.image_variants
-    |> Map.get(:content, [])
-    |> Variants.for_image(width, height)
-    |> List.last()
-  end
 
   # Tables need a header row; one without headings gets an empty one.
   defp table(rows, with_headings?, base_url) do

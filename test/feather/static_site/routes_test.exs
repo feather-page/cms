@@ -114,6 +114,24 @@ defmodule Feather.StaticSite.RoutesTest do
                "https://example.com/hello/index.md"
     end
 
+    test "the fediverse documents, at addresses that never derive from slugs", %{routes: r} do
+      r = %{r | site: %{r.site | fediverse_name: "timon"}}
+      post = %Post{slug: "/hello", public_id: "ABC123xyz789"}
+
+      assert Routes.webfinger_path(r) == ".well-known/webfinger"
+      assert Routes.activitypub_url(r, :account) == "/activitypub/timon"
+      assert Routes.activitypub_path(r, :account) == "activitypub/timon"
+      assert Routes.activitypub_url(r, :outbox) == "/activitypub/outbox"
+      assert Routes.activitypub_path(r, :outbox) == "activitypub/outbox"
+      assert Routes.activitypub_path(r, post) == "activitypub/posts/ABC123xyz789"
+
+      assert Routes.activitypub_url(Routes.canonical(r), post) ==
+               "https://example.com/activitypub/posts/ABC123xyz789"
+
+      assert Routes.activitypub_path(r, %{post | fediverse_generation: 2}) ==
+               "activitypub/posts/ABC123xyz789-2"
+    end
+
     test "canonical routes", %{routes: r, scope: scope} do
       canonical = Routes.canonical(r)
       assert Routes.post_url(canonical, %Post{slug: "/hello"}) == "https://example.com/hello/"

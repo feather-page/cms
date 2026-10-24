@@ -15,6 +15,7 @@ defmodule FeatherWeb.ProjectLive.Index do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
+      unread_mentions={@site_unread_mentions}
       active={:projects}
     >
       <.header>

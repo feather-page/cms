@@ -5,9 +5,9 @@ defmodule Feather.Content.Slug do
   A slug is normalized to `/x/y` (leading slash, no trailing slash) and
   must match `#{inspect(~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z})}`. Only the
   homepage may own the site root `/`. Paths the export generates itself
-  are reserved: everything under `images/`, `page/`, `posts/` and
-  `projects/`, plus `feed.xml`, `llms.txt`, `robots.txt`, `sitemap.xml`
-  and `style.css`. Projects live under `projects/`, so their slugs are
+  are reserved: everything under `images/`, `page/`, `posts/`,
+  `projects/` and `activitypub/` (the fediverse documents), plus
+  `feed.xml`, `llms.txt`, `robots.txt`, `sitemap.xml` and `style.css`. Projects live under `projects/`, so their slugs are
   exempt from the reservation.
 
   Posts and pages share the site root, so a slug is unique among the
@@ -24,7 +24,7 @@ defmodule Feather.Content.Slug do
   alias Feather.StaticSite.Routes
 
   @format ~r{\A/([a-z0-9-]+(/[a-z0-9-]+)*)?\z}
-  @reserved_prefixes ~w(images page posts projects)
+  @reserved_prefixes ~w(images page posts projects activitypub)
   @artifacts ~w(feed.xml llms.txt robots.txt sitemap.xml style.css)
 
   @doc "Top-level path segments the export generates."

@@ -169,6 +169,30 @@ defmodule Feather.Media.Processor do
   defp load_picture(path, :gif, opts), do: Operation.gifload(path, [n: 1] ++ opts)
   defp load_picture(path, :avif, opts), do: Operation.heifload(path, opts)
 
+  @doc """
+  A square webp, size×size and cropped to the centre, of a picture from
+  another server whose format its magic bytes named: only that format's
+  own loader opens it, so libvips never picks a loader itself and none of
+  its untrusted loaders runs; only its first frame is read; a picture
+  whose header names more than `max_pixels` is refused before it is
+  decoded. Metadata is stripped.
+  """
+  @spec square_picture(binary(), :jpeg | :png | :webp | :gif, pos_integer(), pos_integer()) ::
+          {:ok, binary()} | {:error, term()}
+  def square_picture(picture, format, size, max_pixels) do
+    with {:ok, {image, _flags}} <- load_buffer(picture, format),
+         :ok <- check_pixels(image, max_pixels),
+         {:ok, square} <-
+           Operation.thumbnail_image(image, size, height: size, crop: :VIPS_INTERESTING_CENTRE) do
+      Operation.webpsave_buffer(square, keep: [], Q: 80)
+    end
+  end
+
+  defp load_buffer(picture, :jpeg), do: Operation.jpegload_buffer(picture)
+  defp load_buffer(picture, :png), do: Operation.pngload_buffer(picture)
+  defp load_buffer(picture, :webp), do: Operation.webpload_buffer(picture, n: 1)
+  defp load_buffer(picture, :gif), do: Operation.gifload_buffer(picture, n: 1)
+
   defp check_pixels(image, max_pixels) do
     if Image.width(image) * Image.height(image) <= max_pixels,
       do: :ok,

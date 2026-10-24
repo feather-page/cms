@@ -22,6 +22,11 @@ defmodule Feather.PinnedAdapterTestServer do
     end
   end
 
+  def call(%{request_path: "/echo"} = conn, _opts) do
+    {:ok, body, conn} = read_body(conn)
+    send_resp(conn, 200, "#{conn.method} #{body}")
+  end
+
   def call(conn, _opts) do
     send_resp(
       conn,

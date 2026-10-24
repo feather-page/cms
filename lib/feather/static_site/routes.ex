@@ -4,52 +4,72 @@ defmodule Feather.StaticSite.Routes do
   URL and output path of the export and resolves a requested path back to
   a record (for the preview).
 
-  | Record             | URL                            | Output path                           |
-  |--------------------|--------------------------------|---------------------------------------|
-  | home, page 1       | `/`                            | `index.html`                          |
-  | home, page n > 1   | `/page/n/`                     | `page/n/index.html`                   |
-  | post with slug     | `/<slug>/`                     | `<slug>/index.html`                   |
-  | post without slug  | `/posts/<public id, lower>/`   | `posts/<public id, lower>/index.html` |
-  | page               | `/<slug>/` (homepage: `/`)     | `<slug>/index.html`                   |
-  | project            | `/projects/<slug>/`            | `projects/<slug>/index.html`          |
-  | Markdown alternate | its page's URL + `index.md`    | `index.md` beside its `index.html`    |
-  | image variant      | `/images/<public id>/<file>`   | `images/<public id>/<file>`           |
-  | generated image    | `/images/<hash>.png`           | `images/<hash>.png`                   |
-  | theme font         | `/fonts/<file>?v=<hash>`       | `fonts/<file>`                        |
-  | diagram            | `/diagrams/<hash>.svg`         | `diagrams/<hash>.svg`                 |
-  | artifact           | `/feed.xml`, `/llms.txt`, ...  | `feed.xml`, `llms.txt`, ...           |
-  | not found page     | (any missing path)             | `404.html`                            |
-  | Apache rules       | (not served)                   | `.htaccess`                           |
+  | Record             | URL                                | Output path                           |
+  |--------------------|------------------------------------|---------------------------------------|
+  | home, page 1       | `/`                                | `index.html`                          |
+  | home, page n > 1   | `/page/n/`                         | `page/n/index.html`                   |
+  | post with slug     | `/<slug>/`                         | `<slug>/index.html`                   |
+  | post without slug  | `/posts/<public id, lower>/`       | `posts/<public id, lower>/index.html` |
+  | page               | `/<slug>/` (homepage: `/`)         | `<slug>/index.html`                   |
+  | project            | `/projects/<slug>/`                | `projects/<slug>/index.html`          |
+  | Markdown alternate | its page's URL + `index.md`        | `index.md` beside its `index.html`    |
+  | image variant      | `/images/<public id>/<file>`       | `images/<public id>/<file>`           |
+  | generated image    | `/images/<hash>.png`               | `images/<hash>.png`                   |
+  | replier's picture  | `/images/replies/<name>.webp`      | `images/replies/<name>.webp`          |
+  | theme font         | `/fonts/<file>?v=<hash>`           | `fonts/<file>`                        |
+  | diagram            | `/diagrams/<hash>.svg`             | `diagrams/<hash>.svg`                 |
+  | artifact           | `/feed.xml`, `/llms.txt`, ...      | `feed.xml`, `llms.txt`, ...           |
+  | not found page     | (any missing path)                 | `404.html`                            |
+  | Apache rules       | (not served)                       | `.htaccess`                           |
+  | WebFinger answer   | `/.well-known/webfinger`           | `.well-known/webfinger`               |
+  | fediverse account  | `/activitypub/<name>`              | `activitypub/<name>`                  |
+  | its outbox         | `/activitypub/outbox`              | `activitypub/outbox`                  |
+  | its followers      | `/activitypub/followers`           | `activitypub/followers`               |
+  | whom it follows    | `/activitypub/following`           | `activitypub/following`               |
+  | post document      | `/activitypub/posts/<public id>`   | `activitypub/posts/<public id>`       |
+  | member's reply     | `/activitypub/replies/<public id>` | `activitypub/replies/<public id>`     |
 
   The home page (its first page), posts, projects and pages have a
-  Markdown alternate; the homepage's is the home page's.
+  Markdown alternate; the homepage's is the home page's. The fediverse
+  documents (ADR 0033) exist only for a site with a fediverse name; they
+  have no extension, and their addresses never derive from slugs. From its
+  second `fediverse_generation` n on, a post's document is at its public
+  id followed by `-n`.
 
-  URLs are relative to `site_root`: `/` for a deployed site,
+  URLs are relative to `site_root`: `/` for a deployed site (`public/1`),
   `/preview/<site public id>/` for the preview. `canonical/1` returns the
   same routes against the site's public address (`https://<domain>/`),
-  used by the feed, the sitemap, `robots.txt`, `llms.txt` and the Markdown
-  alternates.
+  used by the feed, the sitemap, `robots.txt`, `llms.txt`, the Markdown
+  alternates and the fediverse documents.
   """
 
   import Ecto.Query, warn: false
 
   alias Feather.Content.{Page, Post, Project, Slug}
   alias Feather.Diagrams
+  alias Feather.Fediverse.{MemberReply, Mention, Pictures}
   alias Feather.Media.{Image, Variants}
   alias Feather.Repo
   alias Feather.Sites.Site
   alias Feather.StaticSite.{GeneratedImages, Precompress, Themes}
+
+  @activitypub "activitypub"
+  @webfinger ".well-known/webfinger"
 
   @enforce_keys [:site, :site_root, :canonical_url]
   defstruct [:site, :site_root, :canonical_url]
 
   @type t :: %__MODULE__{site: Site.t(), site_root: String.t(), canonical_url: String.t()}
 
+  @type activitypub_document ::
+          :account | :outbox | :followers | :following | Post.t() | MemberReply.t()
+
   @type route ::
           {:home, pos_integer()}
           | {:artifact, String.t()}
           | {:image, Image.t(), Variants.variant()}
           | {:generated_image, String.t()}
+          | {:reply_picture, String.t()}
           | {:font, String.t()}
           | {:diagram, String.t()}
           | {:project, Project.t()}
@@ -73,16 +93,21 @@ defmodule Feather.StaticSite.Routes do
   end
 
   @doc """
+  Routes for the deployed site: from `/`, canonically at its public
+  address `https://<site domain>/`.
+  """
+  @spec public(Site.t()) :: t()
+  def public(%Site{} = site), do: new(site, canonical_url: public_url(site))
+
+  @doc """
   Routes for the preview of a site: from `/preview/<site public id>/`,
   canonically at `https://<site domain>/`.
   """
   @spec preview(Site.t()) :: t()
-  def preview(%Site{} = site) do
-    new(site,
-      site_root: "/preview/#{site.public_id}/",
-      canonical_url: "https://#{site.domain}/"
-    )
-  end
+  def preview(%Site{} = site),
+    do: new(site, site_root: "/preview/#{site.public_id}/", canonical_url: public_url(site))
+
+  defp public_url(%Site{domain: domain}), do: "https://#{domain}/"
 
   @doc "The same routes against the canonical URL."
   @spec canonical(t()) :: t()
@@ -166,6 +191,14 @@ defmodule Feather.StaticSite.Routes do
     do: root <> generated_image_segment(name)
 
   @doc """
+  The URL of the picture of an approved reply's author by its file name
+  (see `Feather.Fediverse.Pictures`).
+  """
+  @spec reply_picture_url(t(), String.t()) :: String.t()
+  def reply_picture_url(%__MODULE__{site_root: root}, name),
+    do: root <> reply_picture_segment(name)
+
+  @doc """
   The `srcset` of an image shown with the webp variants of the given
   sizes: narrowest first, with their real widths (see
   `Feather.Media.Variants.srcset_widths/3`).
@@ -198,6 +231,17 @@ defmodule Feather.StaticSite.Routes do
   """
   @spec artifact_url(t(), String.t()) :: String.t()
   def artifact_url(%__MODULE__{site_root: root}, name), do: root <> artifact(name)
+
+  @doc """
+  The URL of a fediverse document of the site (ADR 0033): its account
+  (`:account`, by the site's fediverse name), the account's `:outbox`,
+  `:followers` or `:following`, or the document of a post (by its public
+  id and its `fediverse_generation`) or a member's reply (by its public
+  id).
+  """
+  @spec activitypub_url(t(), activitypub_document()) :: String.t()
+  def activitypub_url(%__MODULE__{site_root: root} = routes, document),
+    do: root <> activitypub_path(routes, document)
 
   @doc "The URL of a path relative to the site root (`/feed.xml`)."
   @spec path_url(t(), String.t()) :: String.t()
@@ -249,6 +293,10 @@ defmodule Feather.StaticSite.Routes do
   @spec generated_image_path(t(), String.t()) :: String.t()
   def generated_image_path(%__MODULE__{}, name), do: generated_image_segment(name)
 
+  @doc "The output path of the picture of an approved reply's author."
+  @spec reply_picture_path(t(), String.t()) :: String.t()
+  def reply_picture_path(%__MODULE__{}, name), do: reply_picture_segment(name)
+
   @doc "The output path of a theme font file."
   @spec font_path(t(), String.t()) :: String.t()
   def font_path(%__MODULE__{} = routes, name), do: font_segment(routes, name)
@@ -268,6 +316,30 @@ defmodule Feather.StaticSite.Routes do
   @doc "The output path of the rules for Apache hosts (see `Feather.StaticSite.Htaccess`)."
   @spec htaccess_path(t()) :: String.t()
   def htaccess_path(%__MODULE__{}), do: ".htaccess"
+
+  @doc "The output path of a fediverse document of the site (see `activitypub_url/2`)."
+  @spec activitypub_path(t(), activitypub_document()) :: String.t()
+  def activitypub_path(%__MODULE__{site: %Site{fediverse_name: name}}, :account)
+      when is_binary(name),
+      do: @activitypub <> "/" <> name
+
+  def activitypub_path(%__MODULE__{}, :outbox), do: @activitypub <> "/outbox"
+  def activitypub_path(%__MODULE__{}, :followers), do: @activitypub <> "/followers"
+  def activitypub_path(%__MODULE__{}, :following), do: @activitypub <> "/following"
+
+  def activitypub_path(%__MODULE__{}, %Post{public_id: public_id, fediverse_generation: n})
+      when n > 1,
+      do: @activitypub <> "/posts/" <> public_id <> "-" <> Integer.to_string(n)
+
+  def activitypub_path(%__MODULE__{}, %Post{public_id: public_id}),
+    do: @activitypub <> "/posts/" <> public_id
+
+  def activitypub_path(%__MODULE__{}, %MemberReply{public_id: public_id}),
+    do: @activitypub <> "/replies/" <> public_id
+
+  @doc "The output path of the WebFinger answer, which answers every query (ADR 0033)."
+  @spec webfinger_path(t()) :: String.t()
+  def webfinger_path(%__MODULE__{}), do: @webfinger
 
   @doc """
   The output path of the site's IndexNow key file (`<key>.txt`, holding
@@ -332,6 +404,12 @@ defmodule Feather.StaticSite.Routes do
       else: raise(ArgumentError, "unknown generated image #{inspect(name)}")
   end
 
+  defp reply_picture_segment(name) do
+    if Pictures.file_name?(name),
+      do: "images/replies/" <> name,
+      else: raise(ArgumentError, "unknown reply picture #{inspect(name)}")
+  end
+
   defp strip_slug(nil), do: ""
 
   defp strip_slug(slug),
@@ -344,10 +422,11 @@ defmodule Feather.StaticSite.Routes do
   there, or nil. Content of other sites is never found; drafts are (the
   preview shows them).
 
-  Precedence for ambiguous paths: home, artifact, generated image, image, font, diagram, project,
-  post by public id, page, post by slug. A trailing `index.html`, `.html` or `/`
-  is ignored. `index.md` is the home page's Markdown alternate, a post, page
-  or project path followed by `/index.md` its Markdown alternate.
+  Precedence for ambiguous paths: home, artifact, generated image, reply
+  picture, image, font, diagram, project, post by public id, page, post by
+  slug. A trailing `index.html`, `.html` or `/` is ignored. `index.md` is
+  the home page's Markdown alternate, a post, page or project path followed
+  by `/index.md` its Markdown alternate.
   """
   @spec resolve(t(), String.t() | [String.t()]) :: route() | nil
   def resolve(%__MODULE__{} = routes, segments) when is_list(segments),
@@ -375,6 +454,7 @@ defmodule Feather.StaticSite.Routes do
       &resolve_home/2,
       &resolve_artifact/2,
       &resolve_generated_image/2,
+      &resolve_reply_picture/2,
       &resolve_image/2,
       fn path, _site_id -> resolve_font(path, site) end,
       &resolve_diagram/2
@@ -403,15 +483,30 @@ defmodule Feather.StaticSite.Routes do
   @doc """
   Returns true if the export writes a file at the path (relative to the
   site root) that `resolve/2` does not serve: the 404 page, the
-  `.htaccess`, the IndexNow key file and the precompressed copies of the
-  text files (`Feather.StaticSite.Precompress`).
+  `.htaccess`, the IndexNow key file, the precompressed copies of the
+  text files (`Feather.StaticSite.Precompress`) and the fediverse
+  documents, which own every path below `activitypub/` and the WebFinger
+  answer for every site, so that a later fediverse name finds them free.
   """
   @spec unserved_file?(t(), String.t()) :: boolean()
   def unserved_file?(%__MODULE__{} = routes, path) when is_binary(path) do
     path = String.trim_leading(path, "/")
 
     path in [not_found_path(routes), htaccess_path(routes), indexnow_key_path(routes)] or
-      precompressed_copy?(routes, path)
+      fediverse_path?(path) or precompressed_copy?(routes, path)
+  end
+
+  @doc """
+  Returns true for the paths the fediverse documents own, relative to the
+  site root: `activitypub` and everything below it, and the WebFinger
+  answer, precompressed copies included.
+  """
+  @spec fediverse_path?(String.t()) :: boolean()
+  def fediverse_path?(path) when is_binary(path) do
+    path = String.trim_leading(path, "/")
+
+    path == @activitypub or String.starts_with?(path, @activitypub <> "/") or
+      String.replace(path, ~r/\.(br|gz)\z/, "") == @webfinger
   end
 
   defp precompressed_copy?(routes, path) do
@@ -470,6 +565,19 @@ defmodule Feather.StaticSite.Routes do
     do: if(GeneratedImages.file_name?(name), do: {:generated_image, name})
 
   defp resolve_generated_image(_path, _site_id), do: nil
+
+  # Only the picture of a reply the site shows.
+  defp resolve_reply_picture("images/replies/" <> name, site_id) do
+    if Pictures.file_name?(name) and
+         Repo.exists?(
+           from m in Mention,
+             where:
+               m.site_id == ^site_id and m.approved_picture == ^name and m.approval == :approved
+         ),
+       do: {:reply_picture, name}
+  end
+
+  defp resolve_reply_picture(_path, _site_id), do: nil
 
   defp resolve_image(path, site_id) do
     with [_, public_id, filename] <- Regex.run(~r{\Aimages/([^/]+)/([^/]+)\z}, path),

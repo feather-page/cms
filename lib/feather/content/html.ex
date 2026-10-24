@@ -16,7 +16,10 @@ defmodule Feather.Content.HTML do
   renderers, plus the line breaks the editor writes). The `:editor` mode
   keeps what the admin editor writes on top of that and is harmless:
   `target="_blank"` and `rel="nofollow"`/`"noopener"`/`"noreferrer"` on
-  links. Other attributes
+  links. The `:remote` mode is for HTML from fediverse servers: the
+  `:published` allow list, but only absolute links survive, each with
+  `rel="nofollow ugc noopener"`, and paragraphs become two line breaks.
+  Other attributes
   (such as the classes the former editor put on `code` and `u`) are
   dropped. Other elements are removed but their text is
   kept (like Loofah's strip scrubber Rails used); the content of `script`
@@ -45,11 +48,12 @@ defmodule Feather.Content.HTML do
 
   alias Feather.Content.Markdown
 
-  @type mode :: :published | :editor
+  @type mode :: :published | :editor | :remote
 
   @allowed_tags %{
     published: ~w(b i u a code br),
-    editor: ~w(b i u a code br)
+    editor: ~w(b i u a code br),
+    remote: ~w(b i u a code br)
   }
   @void_tags ~w(br)
   @dropped_content_tags ~w(script style)
@@ -58,35 +62,70 @@ defmodule Feather.Content.HTML do
   # Link attributes the admin editor writes, kept in :editor mode with
   # these values only (besides href).
   @editor_rel_tokens ~w(nofollow noopener noreferrer)
+  @remote_rel "nofollow ugc noopener"
 
   @emphasis_delimiters %{"b" => "**", "i" => "*"}
 
   @doc """
   Returns the sanitized HTML of an inline HTML string. nil becomes `""`.
 
-  `mode` is `:published` (default: the static site) or `:editor` (stored
-  content and the admin editor), see the module documentation.
+  `mode` is `:published` (default: the static site), `:editor` (stored
+  content and the admin editor) or `:remote` (HTML from fediverse
+  servers), see the module documentation. The option `:base_url` (an
+  absolute URL) resolves relative hrefs against it.
   """
-  @spec sanitize(String.t() | nil, mode()) :: String.t()
-  def sanitize(html, mode \\ :published)
+  @spec sanitize(String.t() | nil, mode(), keyword()) :: String.t()
+  def sanitize(html, mode \\ :published, opts \\ [])
 
-  def sanitize(nil, _mode), do: ""
+  def sanitize(nil, _mode, _opts), do: ""
 
-  def sanitize(html, mode) when is_binary(html) and mode in [:published, :editor] do
-    html = String.replace_invalid(html, "")
+  def sanitize(html, mode, opts)
+      when is_binary(html) and mode in [:published, :editor, :remote] do
+    html = html |> String.replace_invalid("") |> break_paragraphs(mode)
 
     case tokens(html) do
-      {:ok, tokens} -> tokens |> walk(mode, [], nil, []) |> IO.iodata_to_binary()
-      :error -> escape_text(html)
+      {:ok, tokens} ->
+        tokens
+        |> resolve_links(opts[:base_url])
+        |> walk(mode, [], nil, [])
+        |> IO.iodata_to_binary()
+
+      :error ->
+        escape_text(html)
     end
   end
 
-  def sanitize(other, mode), do: other |> to_string() |> sanitize(mode)
+  def sanitize(other, mode, opts), do: other |> to_string() |> sanitize(mode, opts)
+
+  # Only inserts line breaks: the sanitizing that follows decides what survives.
+  defp break_paragraphs(html, :remote),
+    do: String.replace(html, ~r{</p\s*>\s*<p(?:\s[^>]*)?>}i, "<br><br>")
+
+  defp break_paragraphs(html, _mode), do: html
 
   defp tokens(html) do
     {:ok, :floki_mochi_html.tokens(html)}
   rescue
     _exception -> :error
+  end
+
+  defp resolve_links(tokens, nil), do: tokens
+  defp resolve_links(tokens, base_url), do: Enum.map(tokens, &resolve_link(&1, base_url))
+
+  defp resolve_link({:start_tag, tag, attributes, self_closing?} = token, base_url) do
+    if String.downcase(tag) == "a",
+      do: {:start_tag, tag, Enum.map(attributes, &resolve_href(&1, base_url)), self_closing?},
+      else: token
+  end
+
+  defp resolve_link(token, _base_url), do: token
+
+  defp resolve_href({name, value} = attribute, base_url) do
+    href = IO.iodata_to_binary(value)
+
+    if String.downcase(to_string(name)) == "href" and relative_url?(href),
+      do: {name, Markdown.absolute_url(href, base_url)},
+      else: attribute
   end
 
   @doc """
@@ -195,6 +234,10 @@ defmodule Feather.Content.HTML do
     end)
   end
 
+  @doc "The `rel` of links to other people's servers, such as those the `:remote` mode keeps."
+  @spec remote_rel() :: String.t()
+  def remote_rel, do: @remote_rel
+
   @doc """
   Returns true if `url` may be used as a link target: a relative URL or one
   with the scheme `http`, `https`, `mailto` or `tel`. The check ignores
@@ -204,21 +247,29 @@ defmodule Feather.Content.HTML do
   @spec safe_url?(String.t() | nil) :: boolean()
   def safe_url?(url) when is_binary(url) do
     String.valid?(url) and
-      url
-      |> String.replace(~r/[\x00-\x20\x7F-\x9F\p{Z}\p{Cf}]/u, "")
-      |> String.downcase()
-      |> allowed_scheme?()
+      case url |> normalize_url() |> scheme() do
+        nil -> true
+        scheme -> scheme in @allowed_schemes
+      end
   end
 
   def safe_url?(_url), do: false
 
+  defp safe_absolute_url?(url),
+    do: safe_url?(url) and not is_nil(url |> normalize_url() |> scheme())
+
+  defp relative_url?(url), do: safe_url?(url) and is_nil(url |> normalize_url() |> scheme())
+
+  defp normalize_url(url),
+    do: url |> String.replace(~r/[\x00-\x20\x7F-\x9F\p{Z}\p{Cf}]/u, "") |> String.downcase()
+
   # Everything before the first ":" that is not preceded by "/", "?" or "#"
   # is a scheme to a browser (or an invalid URL); without one the URL is
   # relative.
-  defp allowed_scheme?(normalized) do
+  defp scheme(normalized) do
     case Regex.run(~r/\A([^\/?#]*?):/u, normalized) do
-      nil -> true
-      [_, scheme] -> scheme in @allowed_schemes
+      nil -> nil
+      [_, scheme] -> scheme
     end
   end
 
@@ -290,31 +341,37 @@ defmodule Feather.Content.HTML do
 
     kept =
       Enum.flat_map(candidates, fn {name, value} ->
-        case keep_attribute(tag, name, value) do
+        case keep_attribute(tag, name, value, mode) do
           nil -> []
           kept_value -> [[" ", name, ~s(="), escape_attribute(kept_value), ~s(")]]
         end
       end)
 
-    ["<", tag, kept, ">"]
+    ["<", tag, kept, remote_link_rel(tag, kept, mode), ">"]
   end
+
+  defp remote_link_rel("a", [_href | _], :remote), do: [~s( rel="), @remote_rel, ~s(")]
+  defp remote_link_rel(_tag, _kept, _mode), do: []
 
   defp editor_attributes("a", attributes, :editor),
     do: [{"target", attributes["target"]}, {"rel", attributes["rel"]}]
 
   defp editor_attributes(_tag, _attributes, _mode), do: []
 
-  defp keep_attribute("a", "href", href) when is_binary(href),
+  defp keep_attribute("a", "href", href, :remote) when is_binary(href),
+    do: if(safe_absolute_url?(href), do: href)
+
+  defp keep_attribute("a", "href", href, _mode) when is_binary(href),
     do: if(safe_url?(href), do: href)
 
-  defp keep_attribute("a", "target", "_blank"), do: "_blank"
+  defp keep_attribute("a", "target", "_blank", _mode), do: "_blank"
 
-  defp keep_attribute("a", "rel", rel) when is_binary(rel) do
+  defp keep_attribute("a", "rel", rel, _mode) when is_binary(rel) do
     tokens = rel |> String.downcase() |> String.split()
     if tokens != [] and Enum.all?(tokens, &(&1 in @editor_rel_tokens)), do: Enum.join(tokens, " ")
   end
 
-  defp keep_attribute(_tag, _name, _value), do: nil
+  defp keep_attribute(_tag, _name, _value, _mode), do: nil
 
   defp close(tag), do: ["</", tag, ">"]
 

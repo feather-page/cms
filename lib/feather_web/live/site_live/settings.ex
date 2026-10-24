@@ -2,7 +2,11 @@ defmodule FeatherWeb.SiteLive.Settings do
   @moduledoc """
   The settings of a site: emoji, title, domain, language, theme and
   copyright notice, the site's social media links, its mascots, its
-  portrait, its bio and the archive.org keys deploys use (ADR 0027).
+  portrait, its bio, its fediverse name (ADR 0033) with the number of
+  followers, its signing key, which members rotate, and the blocked
+  accounts and servers, and the archive.org keys deploys use (ADR 0027).
+  A new domain typed in for a site with a fediverse name brings a
+  warning: saving it starts the account over.
 
   Each change counts as not deployed yet in the site shell's deploy
   control (`FeatherWeb.SiteAuth.refresh_deploy_status/1`).
@@ -10,7 +14,8 @@ defmodule FeatherWeb.SiteLive.Settings do
   use FeatherWeb, :live_view
 
   alias Feather.Accounts.Scope
-  alias Feather.Sites
+  alias Feather.{Fediverse, Sites}
+  alias Feather.Fediverse.Block
   alias Feather.Sites.{Languages, Site, SocialMediaLink, SocialMediaService}
   alias Feather.StaticSite.Themes
   alias FeatherWeb.SiteAuth
@@ -54,6 +59,7 @@ defmodule FeatherWeb.SiteLive.Settings do
       current_scope={@current_scope}
       notices={@site_notices}
       deploy={@site_deploy}
+      unread_mentions={@site_unread_mentions}
       active={:settings}
     >
       <.header>
@@ -75,6 +81,18 @@ defmodule FeatherWeb.SiteLive.Settings do
               options={Languages.options()}
             />
           </div>
+          <.alert
+            :if={@new_domain}
+            id="domain-change-warning"
+            tone={:warning}
+            title="Your fediverse account starts over"
+            class="mb-4"
+          >
+            With the new domain your site is a new account,
+            @{@current_scope.site.fediverse_name}@{@new_domain}, which goes online with the next
+            deploy. {Fediverse.handle(@current_scope.site)} loses its followers and the accounts it
+            follows.
+          </.alert>
           <.input
             field={@form[:theme]}
             type="select"
@@ -261,6 +279,130 @@ defmodule FeatherWeb.SiteLive.Settings do
           </.form>
         </section>
 
+        <section id="fediverse" aria-labelledby="fediverse-heading" class="mt-10">
+          <.section_heading id="fediverse-heading">Fediverse</.section_heading>
+          <p id="fediverse-hint" class="mb-4 text-sm text-base-content/70">
+            With a fediverse name, your site becomes an account that people on Mastodon,
+            micro.blog and other servers find by its handle. Its profile shows your site's title,
+            bio and portrait. The name is fixed after the first deploy with it. A new domain
+            starts the account over, without its followers.
+          </p>
+
+          <.list :if={@current_scope.site.fediverse_name} id="fediverse-account" class="mb-4">
+            <.list_row id="fediverse-handle" title={Fediverse.handle(@current_scope.site)}>
+              <:leading>
+                <.tile><.icon name="globe" class="size-5" /></.tile>
+              </:leading>
+              <:meta>{Fediverse.account_url(@current_scope.site)}</:meta>
+              <:trailing>
+                <.badge
+                  :if={Fediverse.online?(@current_scope.site)}
+                  id="fediverse-status"
+                  tone={:success}
+                >
+                  Online
+                </.badge>
+                <.badge :if={!Fediverse.online?(@current_scope.site)} id="fediverse-status">
+                  Online with the next deploy
+                </.badge>
+              </:trailing>
+            </.list_row>
+            <.list_row id="fediverse-followers" title={followers_text(@fediverse_followers)}>
+              <:leading>
+                <.tile><.icon name="users" class="size-5" /></.tile>
+              </:leading>
+            </.list_row>
+            <.list_row
+              id="fediverse-key"
+              title="Signing key"
+              actions_label="Actions"
+              menu={:always}
+            >
+              <:leading>
+                <.tile><.icon name="key-round" class="size-5" /></.tile>
+              </:leading>
+              <:meta :if={Fediverse.key_pending?(@current_scope.site)}>
+                A new key goes online with the next deploy. Until then the account signs with the
+                current one.
+              </:meta>
+              <:meta :if={!Fediverse.key_pending?(@current_scope.site)}>
+                Signs what the account sends to other servers.
+              </:meta>
+              <:trailing :if={Fediverse.key_pending?(@current_scope.site)}>
+                <.badge id="fediverse-key-status">New key with the next deploy</.badge>
+              </:trailing>
+              <:action
+                :if={!Fediverse.key_pending?(@current_scope.site)}
+                id="rotate-key"
+                icon="key-round"
+                label="Rotate key"
+                on_click="rotate_key"
+                confirm="Rotate the account's key?"
+                confirm_text="The new key goes online with the next deploy. From then on the account signs with it, and the current key is discarded."
+                confirm_label="Rotate"
+              />
+            </.list_row>
+          </.list>
+
+          <.form
+            :if={!Fediverse.online?(@current_scope.site)}
+            for={@fediverse_form}
+            id="fediverse-form"
+            phx-change="validate_fediverse"
+            phx-submit="save_fediverse"
+          >
+            <.input
+              field={@fediverse_form[:fediverse_name]}
+              type="text"
+              label="Fediverse name"
+              prefix="@"
+              suffix={"@" <> @current_scope.site.domain}
+              placeholder="timon"
+              autocomplete="off"
+              help="Leave it empty to keep your site out of the fediverse."
+            />
+            <.action_bar class="mt-4">
+              <.button type="submit" variant={:primary} phx-disable-with="Saving…">Save</.button>
+            </.action_bar>
+          </.form>
+
+          <div :if={@current_scope.site.fediverse_name} id="fediverse-blocks" class="mt-6">
+            <.section_heading id="blocks-heading" level={3}>Blocked</.section_heading>
+            <p id="blocks-hint" class="mb-4 text-sm text-base-content/70">
+              Accounts and servers blocked from the menu of a mention or a Timeline post can
+              neither follow your site nor reach its Mentions.
+            </p>
+            <.empty_state :if={@blocks_empty?} id="no-blocks" icon="ban">
+              Nothing blocked.
+            </.empty_state>
+            <.list id="blocks" phx-update="stream" class={@blocks_empty? && "hidden"}>
+              <.list_row
+                :for={{id, block} <- @streams.blocks}
+                id={id}
+                title={Block.name(block)}
+                actions_label="Actions"
+                menu={:always}
+              >
+                <:leading>
+                  <.tile>
+                    <.icon
+                      name={if Block.server?(block), do: "globe", else: "circle-user"}
+                      class="size-5"
+                    />
+                  </.tile>
+                </:leading>
+                <:meta>{block_meta(block)}</:meta>
+                <:action
+                  id={"unblock-#{id}"}
+                  icon="rotate-ccw"
+                  label="Unblock"
+                  on_click={JS.push("unblock", value: %{id: block.id})}
+                />
+              </.list_row>
+            </.list>
+          </div>
+        </section>
+
         <section id="notifications" aria-labelledby="notifications-heading" class="mt-10">
           <.section_heading id="notifications-heading">
             Search engines and archive.org
@@ -415,8 +557,11 @@ defmodule FeatherWeb.SiteLive.Settings do
      |> assign(:image_errors, %{})
      |> assign(:page_title, "Site settings")
      |> assign(:services, SocialMediaService.all())
-     |> assign(:form, to_form(Sites.change_site(scope.site)))
+     |> assign_form(:form, Sites.change_site(scope.site))
      |> assign(:bio_form, to_form(Sites.change_site(scope.site)))
+     |> assign(:fediverse_form, to_form(Fediverse.change_name(scope.site)))
+     |> assign(:fediverse_followers, Fediverse.count_followers(scope))
+     |> assign_blocks(Fediverse.list_blocks(scope))
      |> assign_archive_org_keys()
      |> assign(:links_empty?, links == [])
      |> stream(:social_media_links, links)
@@ -426,7 +571,7 @@ defmodule FeatherWeb.SiteLive.Settings do
   @impl true
   def handle_event("validate", %{"site" => params}, socket) do
     changeset = Sites.change_site(socket.assigns.current_scope.site, params)
-    {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+    {:noreply, assign_form(socket, :form, changeset, action: :validate)}
   end
 
   def handle_event("save", %{"site" => params}, socket), do: save_site(socket, :form, params)
@@ -438,6 +583,57 @@ defmodule FeatherWeb.SiteLive.Settings do
 
   def handle_event("save_bio", %{"site" => params}, socket),
     do: save_site(socket, :bio_form, params)
+
+  def handle_event("validate_fediverse", %{"site" => params}, socket) do
+    changeset = Fediverse.change_name(socket.assigns.current_scope.site, params)
+    {:noreply, assign(socket, :fediverse_form, to_form(changeset, action: :validate))}
+  end
+
+  def handle_event("save_fediverse", %{"site" => params}, socket) do
+    scope = socket.assigns.current_scope
+
+    case Fediverse.update_name(scope, params) do
+      {:ok, site} ->
+        site = Sites.preload_images(site)
+
+        {:noreply,
+         socket
+         |> assign(:current_scope, Scope.put_site(scope, site))
+         |> SiteAuth.refresh_deploy_status()
+         |> assign(:fediverse_form, to_form(Fediverse.change_name(site)))
+         |> put_flash(:info, "The fediverse name was saved.")}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, :fediverse_form, to_form(changeset, action: :update))}
+    end
+  end
+
+  def handle_event("rotate_key", _params, socket) do
+    scope = socket.assigns.current_scope
+
+    case Fediverse.rotate_key(scope) do
+      {:ok, site} ->
+        {:noreply,
+         socket
+         |> assign(:current_scope, Scope.put_site(scope, Sites.preload_images(site)))
+         |> SiteAuth.refresh_deploy_status()
+         |> put_flash(:info, "The new key goes online with the next deploy.")}
+
+      {:error, :not_an_account} ->
+        {:noreply, put_flash(socket, :error, "The site has no fediverse name.")}
+    end
+  end
+
+  def handle_event("unblock", %{"id" => id}, socket) do
+    scope = socket.assigns.current_scope
+    block = Fediverse.get_block!(scope, id)
+    :ok = Fediverse.unblock(scope, block)
+
+    {:noreply,
+     socket
+     |> assign_blocks(Fediverse.list_blocks(scope))
+     |> put_flash(:info, "Unblocked #{Block.name(block)}.")}
+  end
 
   def handle_event("save_archive_org_keys", %{"archive_org_keys" => params}, socket) do
     case Sites.put_archive_org_keys(socket.assigns.current_scope, params) do
@@ -619,16 +815,39 @@ defmodule FeatherWeb.SiteLive.Settings do
 
     case Sites.update_site(scope, scope.site, params) do
       {:ok, site} ->
+        scope = Scope.put_site(scope, site)
+
         {:noreply,
          socket
-         |> assign(:current_scope, Scope.put_site(scope, site))
+         |> assign(:current_scope, scope)
          |> SiteAuth.refresh_deploy_status()
-         |> assign(form, to_form(Sites.change_site(site)))
+         |> assign_form(form, Sites.change_site(site))
+         |> assign(:fediverse_followers, Fediverse.count_followers(scope))
          |> put_flash(:info, "Site was successfully updated.")}
 
       {:error, changeset} ->
-        {:noreply, assign(socket, form, to_form(changeset, action: :update))}
+        {:noreply, assign_form(socket, form, changeset, action: :update)}
     end
+  end
+
+  defp assign_form(socket, form, changeset, opts \\ [])
+
+  defp assign_form(socket, :form, changeset, opts) do
+    site = socket.assigns.current_scope.site
+    new_domain = Fediverse.account?(site) && Ecto.Changeset.get_change(changeset, :domain)
+
+    socket
+    |> assign(:form, to_form(changeset, opts))
+    |> assign(:new_domain, new_domain)
+  end
+
+  defp assign_form(socket, form, changeset, opts),
+    do: assign(socket, form, to_form(changeset, opts))
+
+  defp assign_blocks(socket, blocks) do
+    socket
+    |> assign(:blocks_empty?, blocks == [])
+    |> stream(:blocks, blocks, reset: true)
   end
 
   defp assign_archive_org_keys(socket) do
@@ -706,4 +925,13 @@ defmodule FeatherWeb.SiteLive.Settings do
   # The icon is a hidden field, so `<.input>` shows no errors for it. The
   # form only carries errors once it has an action (validate or submit).
   defp link_icon_errors(form), do: Enum.map(form[:icon].errors, &translate_error/1)
+
+  defp block_meta(block) do
+    kind = if Block.server?(block), do: "Server", else: "Account"
+    "#{kind} · blocked #{time_ago(block.inserted_at)}"
+  end
+
+  defp followers_text(0), do: "No followers yet"
+  defp followers_text(1), do: "1 follower"
+  defp followers_text(count), do: "#{count} followers"
 end

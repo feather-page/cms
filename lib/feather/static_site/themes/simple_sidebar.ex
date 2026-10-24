@@ -28,7 +28,7 @@ defmodule Feather.StaticSite.Themes.SimpleSidebar do
   @fonts %{@font_file => "font/woff2", "OFL.txt" => "text/plain"}
 
   @views ~w(layout home post page project not_found)a
-  @partials ~w(meta entry header_image books_list projects_list tags site_nav)a
+  @partials ~w(meta entry header_image books_list projects_list tags site_nav replies)a
 
   for name <- @views ++ @partials do
     if name in @views, do: @impl(true)

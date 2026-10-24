@@ -25,6 +25,26 @@ if config_env() != :test do
     config :feather, :ollama_model, ollama_model
   end
 
+  case System.get_env("FEDIVERSE_PROXY", "") do
+    "" ->
+      :ok
+
+    fediverse_proxy ->
+      case URI.new(fediverse_proxy) do
+        {:ok, %URI{scheme: scheme, host: host, port: port}}
+        when scheme in ["http", "https"] and is_binary(host) and host != "" ->
+          config :feather,
+                 :fediverse_proxy,
+                 {if(scheme == "https", do: :https, else: :http), host, port}
+
+        _invalid ->
+          raise """
+          environment variable FEDIVERSE_PROXY must be the URL of an HTTP proxy,
+          for example: http://proxy:3128
+          """
+      end
+  end
+
   if System.get_env("IMAGE_CLEANUP") == "false" do
     config :feather, Feather.Media.CleanupScheduler, enabled: false
   end

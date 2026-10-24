@@ -1,19 +1,22 @@
 defmodule Feather.Media.Fetcher do
   @moduledoc """
-  Downloads a file from a URL someone else gave us: an image for
-  `Feather.Media.create_image_from_url/4`, a client's metadata document for
-  `Feather.OAuth.ClientMetadata`.
+  Requests a URL that someone else chose (a user's image URL, a client's
+  metadata document for `Feather.OAuth.ClientMetadata`, a fediverse
+  server's address) from the server, the checked way:
 
     * The URL must pass `Feather.Media.UrlChecker.check/1`, its host must
       resolve to public addresses only (`Feather.Media.UrlChecker.resolve/2`)
       and the connection goes to the checked address
       (`Feather.Media.PinnedAdapter`).
-    * At most 3 redirects are followed (`:redirects`), each target checked
-      the same way.
+    * At most 3 redirects are followed, each target checked the same way.
     * The body may have at most `max_bytes` bytes; the download stops as
       soon as it exceeds them.
     * Everything (resolving, connecting, all redirects) shares one deadline,
-      30 seconds unless `:timeout` says otherwise.
+      30 seconds unless told otherwise.
+
+  `fetch/3` returns the body; `request/2` returns the response and can
+  also require https on port 443, send a body, headers per requested URL
+  and the request through a proxy, and run each request through a limiter.
 
   Requests go through `Req`, so tests stub them with `Req.Test`: the
   `:req_options` (by default `config :feather, :image_fetch_req_options`)
@@ -45,68 +48,126 @@ defmodule Feather.Media.Fetcher do
   @doc """
   Fetches `url`. Returns `{:ok, body}` or `{:error, reason}`; only
   `{:invalid_url, message}` is about the URL as given, every other reason
-  comes from resolving or fetching it.
+  comes from resolving or fetching it. Takes the options `:redirects`,
+  `:timeout` and `:req_options` of `request/2`.
   """
   @spec fetch(String.t(), pos_integer(), [option()]) :: {:ok, binary()} | {:error, error()}
   def fetch(url, max_bytes, opts \\ []) do
-    case UrlChecker.check(url) do
-      {:ok, uri} ->
-        limits = %{
-          deadline: System.monotonic_time(:millisecond) + Keyword.get(opts, :timeout, @timeout),
-          max_bytes: max_bytes,
-          req_options:
-            Keyword.get_lazy(opts, :req_options, fn ->
-              Application.get_env(:feather, :image_fetch_req_options, [])
-            end)
-        }
+    with {:ok, response, _url} <- request(url, [max_bytes: max_bytes] ++ opts),
+         do: {:ok, response.body}
+  end
 
-        get(uri, limits, Keyword.get(opts, :redirects, @max_redirects))
+  @doc """
+  Requests `url` and returns the successful (2xx) response with the URL it
+  came from after redirects, or `{:error, reason}` as `fetch/3` does.
+
+  Options:
+
+    * `:max_bytes` (required) - the most bytes the body may have
+    * `:method` - `:get` (default) or `:post`
+    * `:body` - the request's body
+    * `:headers` - a function that returns the headers of a request to
+      each URI (the first one and every redirect target), say to sign it
+    * `:https_only` - only https on port 443 (default `false`)
+    * `:redirects` - the most redirects to follow, default 3; with 0 a
+      redirect is an error
+    * `:timeout` - milliseconds for everything from the first request on,
+      default 30 seconds
+    * `:limiter` - a function that runs each request (to the first URI
+      and to every redirect target) and returns its result, given the URI
+      and a function that makes the request, say to cap the requests per
+      host
+    * `:proxy` - `{scheme, host, port}` of a proxy that https requests
+      tunnel through to the checked address
+    * `:req_options` - merged into the `Req` options, default
+      `config :feather, :image_fetch_req_options`
+  """
+  @spec request(String.t(), keyword()) :: {:ok, Req.Response.t(), URI.t()} | {:error, error()}
+  def request(url, opts) do
+    opts =
+      Keyword.merge(
+        [
+          method: :get,
+          headers: fn _uri -> [] end,
+          limiter: fn _uri, request -> request.() end,
+          https_only: false,
+          redirects: @max_redirects,
+          timeout: @timeout,
+          req_options: Application.get_env(:feather, :image_fetch_req_options, [])
+        ],
+        opts
+      )
+
+    case check(url, opts) do
+      {:ok, uri} ->
+        get(uri, nil, opts, opts[:redirects])
 
       {:error, message} ->
         {:error, {:invalid_url, message}}
     end
   end
 
-  defp get(uri, limits, redirects_left) do
-    timeout = max(limits.deadline - System.monotonic_time(:millisecond), 0)
-
-    with {:ok, ip} <- UrlChecker.resolve(uri.host, timeout),
-         {:ok, response} <- request(uri, ip, limits) do
-      handle_response(response, uri, limits, redirects_left)
+  defp check(url, opts) do
+    with {:ok, uri} <- UrlChecker.check(url) do
+      cond do
+        not opts[:https_only] -> {:ok, uri}
+        uri.scheme != "https" -> {:error, "Forbidden Schema: #{url}"}
+        uri.port != 443 -> {:error, "Forbidden Port: #{url}"}
+        true -> {:ok, uri}
+      end
     end
   end
 
-  defp handle_response(response, uri, limits, redirects_left) do
+  defp get(uri, deadline, opts, redirects_left) do
+    result =
+      opts[:limiter].(uri, fn ->
+        deadline = deadline || System.monotonic_time(:millisecond) + opts[:timeout]
+        timeout = max(deadline - System.monotonic_time(:millisecond), 0)
+
+        with {:ok, ip} <- UrlChecker.resolve(uri.host, timeout),
+             {:ok, response} <- send_request(uri, ip, deadline, opts),
+             do: {:ok, response, deadline}
+      end)
+
+    with {:ok, response, deadline} <- result do
+      handle_response(response, uri, deadline, opts, redirects_left)
+    end
+  end
+
+  defp handle_response(response, uri, deadline, opts, redirects_left) do
     case response.status do
       status when status in 200..299 ->
-        if byte_size(response.body) > limits.max_bytes,
+        if byte_size(response.body) > opts[:max_bytes],
           do: {:error, :too_large},
-          else: {:ok, response.body}
+          else: {:ok, response, uri}
 
       status when status in @redirect_statuses ->
-        redirect(uri, response, limits, redirects_left)
+        redirect(uri, response, deadline, opts, redirects_left)
 
       status ->
         {:error, {:status, status}}
     end
   end
 
-  defp redirect(_uri, _response, _limits, 0), do: {:error, :too_many_redirects}
+  defp redirect(_uri, _response, _deadline, _opts, 0), do: {:error, :too_many_redirects}
 
-  defp redirect(uri, response, limits, redirects_left) do
+  defp redirect(uri, response, deadline, opts, redirects_left) do
     with [location | _] <- Req.Response.get_header(response, "location"),
          {:ok, location} <- URI.new(location),
-         {:ok, next} <- uri |> URI.merge(location) |> URI.to_string() |> UrlChecker.check() do
-      get(next, limits, redirects_left - 1)
+         {:ok, next} <- uri |> URI.merge(location) |> URI.to_string() |> check(opts) do
+      get(next, deadline, opts, redirects_left - 1)
     else
       {:error, message} when is_binary(message) -> {:error, {:forbidden_redirect, message}}
       _ -> {:error, {:status, response.status}}
     end
   end
 
-  defp request(uri, ip, limits) do
+  defp send_request(uri, ip, deadline, opts) do
     [
       url: uri,
+      method: opts[:method],
+      body: opts[:body],
+      headers: opts[:headers].(uri),
       adapter: PinnedAdapter,
       redirect: false,
       retry: false,
@@ -114,12 +175,13 @@ defmodule Feather.Media.Fetcher do
       raw: true,
       decode_body: false
     ]
-    |> Keyword.merge(limits.req_options)
+    |> Keyword.merge(opts[:req_options])
     |> Req.new()
     |> Req.Request.put_private(:feather_pinned, %{
       ip: ip,
-      deadline: limits.deadline,
-      max_bytes: limits.max_bytes
+      deadline: deadline,
+      max_bytes: opts[:max_bytes],
+      proxy: opts[:proxy]
     })
     |> Req.request()
   end

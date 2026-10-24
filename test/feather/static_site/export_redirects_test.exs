@@ -2,6 +2,7 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
   use Feather.DataCase
 
   alias Feather.{Content, Redirects}
+  alias Feather.Redirects.Redirect
   alias Feather.StaticSite.{Export, RecordingSink, Routes}
 
   setup do
@@ -46,6 +47,25 @@ defmodule Feather.StaticSite.ExportRedirectsTest do
            <IfModule mod_rewrite.c>
              <IfModule mod_headers.c>
            """
+  end
+
+  test "leaves out redirects from the paths of the fediverse documents made before they were reserved",
+       %{scope: scope} do
+    post_fixture(scope, %{slug: "/neu"})
+    redirect_fixture(scope, old_path: "/alt", target: "/neu/")
+
+    for {old_path, legacy_path} <- [
+          {"/account", "/activitypub/timon"},
+          {"/finger", "/.well-known/webfinger"}
+        ] do
+      redirect = redirect_fixture(scope, old_path: old_path, target: "/neu/")
+      Repo.update_all(where(Redirect, id: ^redirect.id), set: [old_path: legacy_path])
+    end
+
+    assert rules(htaccess(scope)) == [
+             "  RewriteRule ^alt(/(index\\.html)?)?$ /neu/ [R=301,L]",
+             "  RewriteRule ^alt/index\\.md$ /neu/index.md [R=301,L]"
+           ]
   end
 
   test "matches an old path with an extension exactly, the target as published", %{scope: scope} do

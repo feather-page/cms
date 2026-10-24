@@ -13,7 +13,11 @@ defmodule Feather.Publishing.Deploy do
     4. sync it with rclone (`Feather.Publishing.Rclone`)
     5. record the time the export started as the target's `last_deployed_at`
        (`Feather.Publishing.record_deploy/2`): what was published or
-       changed later is not in this deploy
+       changed later is not in this deploy; for a site with a fediverse
+       name, record it as the time its account went online, unless it was
+       before (`Feather.Fediverse.record_online/2`), send its followers
+       what the export changed and delete the pictures of repliers it no
+       longer shows (`Feather.Fediverse.federate/2`)
     6. tell IndexNow and archive.org what changed since the previous
        deploy, in the background (`Feather.Publishing.Notifications`)
     7. remove the directory and release the lock (both always), broadcast
@@ -38,7 +42,7 @@ defmodule Feather.Publishing.Deploy do
   """
 
   alias Feather.Content.Blocks
-  alias Feather.Media
+  alias Feather.{Fediverse, Media}
   alias Feather.Publishing
   alias Feather.Publishing.{DeploymentTarget, Notifications, Rclone}
   alias Feather.Repo
@@ -191,7 +195,7 @@ defmodule Feather.Publishing.Deploy do
     try do
       Publishing.put_deploy_progress(target, :build, started_at)
 
-      routes = Routes.new(target.site, canonical_url: "https://#{target.site.domain}/")
+      routes = Routes.public(target.site)
       Export.run(target.site, routes, sink, now: export_started_at)
 
       Publishing.put_deploy_progress(target, :compress, started_at)
@@ -202,6 +206,8 @@ defmodule Feather.Publishing.Deploy do
       with {:ok, _output} <-
              Rclone.deploy(target, FileSink.dir(sink) <> "/", Keyword.take(opts, [:runner])) do
         Publishing.record_deploy(target, export_started_at)
+        Fediverse.record_online(target.site, export_started_at)
+        Fediverse.federate(target.site, FileSink.dir(sink))
         {:ok, :deployed}
       end
     rescue

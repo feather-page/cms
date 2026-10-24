@@ -13,6 +13,7 @@ defmodule Feather.StaticSite.ThemeHelpers do
   alias Feather.Content
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Project}
+  alias Feather.Fediverse.{MemberReply, Mention}
   alias Feather.Media.{Image, Variants}
   alias Feather.Sites.{Site, SocialMediaService}
   alias Feather.StaticSite.Routes
@@ -204,6 +205,65 @@ defmodule Feather.StaticSite.ThemeHelpers do
   defp abbreviated_month_name(10), do: pgettext("abbreviated month", "Oct")
   defp abbreviated_month_name(11), do: pgettext("abbreviated month", "Nov")
   defp abbreviated_month_name(12), do: pgettext("abbreviated month", "Dec")
+
+  @doc """
+  The line above the replies to a post: readers reply from the fediverse
+  by following the site's `handle` or by looking up the post's address
+  from their account.
+  """
+  @spec reply_invitation(String.t()) :: Phoenix.HTML.safe()
+  def reply_invitation(handle) do
+    raw(
+      gettext(
+        "To reply from the fediverse, follow %{handle} or look up the address of this post from your account.",
+        handle: IO.iodata_to_binary(["<strong>", escape(handle), "</strong>"])
+      )
+    )
+  end
+
+  @doc "The `rel` of links to other people's servers in and around replies."
+  @spec reply_link_rel() :: String.t()
+  def reply_link_rel, do: HTML.remote_rel()
+
+  @doc "The name of an approved reply's author as approved, else their handle or server."
+  @spec reply_author(Mention.t()) :: String.t()
+  def reply_author(%Mention{approved_name: name, approved_handle: handle} = reply) do
+    cond do
+      present?(name) -> name
+      present?(handle) -> handle
+      true -> URI.parse(reply.remote_account.uri).host
+    end
+  end
+
+  @doc "The address of a reply's author, which their server shows as their profile."
+  @spec reply_profile_url(Mention.t()) :: String.t()
+  def reply_profile_url(%Mention{remote_account: %{uri: uri}}), do: uri
+
+  @doc "The address of a reply on its server."
+  @spec reply_url(Mention.t()) :: String.t()
+  def reply_url(%Mention{url: url, uri: uri}), do: url || uri
+
+  @doc "The text of an approved reply as approved, sanitized again (`HTML.sanitize/2`, `:remote`)."
+  @spec reply_content(Mention.t()) :: Phoenix.HTML.safe()
+  def reply_content(%Mention{approved_content: content}),
+    do: {:safe, HTML.sanitize(content, :remote)}
+
+  @doc "The text of a member's reply, its line breaks kept."
+  @spec member_reply_content(MemberReply.t()) :: Phoenix.HTML.safe()
+  def member_reply_content(%MemberReply{content: content}) do
+    lines = content |> String.replace("\r\n", "\n") |> String.split("\n")
+    {:safe, lines |> Enum.map(&escape/1) |> Enum.intersperse("<br>")}
+  end
+
+  @doc """
+  The URL of the picture of the site's fediverse account, its portrait,
+  which the members' replies show; nil without one (the portrait preloaded).
+  """
+  @spec account_picture_url(Routes.t(), Site.t()) :: String.t() | nil
+  def account_picture_url(%Routes{} = routes, %Site{portrait_image: %Image{} = image}),
+    do: Routes.image_url(routes, image, Variants.account_picture())
+
+  def account_picture_url(%Routes{}, %Site{}), do: nil
 
   @doc "A rating for screen readers, clamped to 0 to 5: `\"4 of 5 stars\"`."
   @spec rating_label(integer()) :: String.t()

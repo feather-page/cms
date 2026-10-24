@@ -20,6 +20,10 @@ defmodule Feather.Application do
       {Task.Supervisor, name: Feather.TaskSupervisor},
       {Registry, keys: :unique, name: Feather.Publishing.Registry},
       Feather.Publishing.ScheduledDeploys,
+      Feather.Fediverse.Limiter,
+      {Feather.Fediverse.Limiter, pool: :inbox},
+      Feather.Fediverse.RateLimit,
+      Feather.Fediverse.Scheduler,
       FeatherWeb.Endpoint
     ]
 

@@ -4,6 +4,8 @@
 
 <%= tags(%{tags: Content.tag_list(@post)}) %>
 
+<%= if @reply_handle do %><%= replies(%{replies: @replies, handle: @reply_handle, routes: @routes, site: @site}) %><% end %>
+
 <nav class="post-nav" aria-label="<%= gettext("More posts") %>">
   <%= cond do %>
   <% match?(%Image{}, @site.post_end_mascot_image) -> %>

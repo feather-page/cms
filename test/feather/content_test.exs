@@ -953,6 +953,7 @@ defmodule Feather.ContentTest do
         :site_id,
         :published_version_id,
         :lock_version,
+        :fediverse_generation,
         :inserted_at,
         :updated_at
       ]

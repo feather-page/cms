@@ -95,7 +95,7 @@ defmodule Feather.Publishing.Notifications do
   """
   @spec changed_urls(Site.t(), DateTime.t() | nil, DateTime.t()) :: [String.t()]
   def changed_urls(%Site{} = site, since, %DateTime{} = now) do
-    routes = site |> Routes.new(canonical_url: "https://#{site.domain}/") |> Routes.canonical()
+    routes = site |> Routes.public() |> Routes.canonical()
     changed = site |> published_records(now) |> Enum.filter(&changed_between?(&1, since, now))
 
     if changed == [] and not changed_between?(site, since, now) do

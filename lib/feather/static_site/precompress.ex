@@ -1,12 +1,16 @@
 defmodule Feather.StaticSite.Precompress do
   @moduledoc """
-  Writes precompressed copies of the text files of an exported site, which
-  the deploy uploads with the rest, so a web server on the external host
-  can serve them as they are (on Apache through `Feather.StaticSite.Htaccess`):
+  Writes precompressed copies of the text files of an exported site and of
+  its fediverse documents, which have no extension
+  (`Feather.StaticSite.Routes.fediverse_path?/1`). The deploy uploads them
+  with the rest, so a web server on the external host can serve them as
+  they are (on Apache through `Feather.StaticSite.Htaccess`):
   `<file>.gz` with `:zlib` and `<file>.br` with the `brotli` command line
   tool. Without `brotli` on the `PATH` the `.br` files are skipped (logged
   once per run).
   """
+
+  alias Feather.StaticSite.Routes
 
   require Logger
 
@@ -14,8 +18,8 @@ defmodule Feather.StaticSite.Precompress do
 
   @doc """
   Precompresses every `.html`, `.css`, `.js`, `.txt`, `.xml`, `.svg` and
-  `.md` file below `dir`. Returns the list of compressed source files; raises if
-  a file could not be compressed.
+  `.md` file and every fediverse document below `dir`. Returns the list of
+  compressed source files; raises if a file could not be compressed.
 
   ## Options
 
@@ -66,8 +70,11 @@ defmodule Feather.StaticSite.Precompress do
     dir
     |> Path.join("**/*")
     |> Path.wildcard(match_dot: true)
-    |> Enum.filter(&(Path.extname(&1) in @extensions and File.regular?(&1)))
+    |> Enum.filter(&(text_file?(dir, &1) and File.regular?(&1)))
   end
+
+  defp text_file?(dir, path),
+    do: Path.extname(path) in @extensions or Routes.fediverse_path?(Path.relative_to(path, dir))
 
   defp compress(file, brotli) do
     File.write!(file <> ".gz", :zlib.gzip(File.read!(file)))

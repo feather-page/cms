@@ -23,6 +23,8 @@ defmodule Feather.Sites do
   alias Feather.Accounts.{Scope, User}
   alias Feather.Content
   alias Feather.Content.Page
+  alias Feather.Fediverse
+  alias Feather.Fediverse.Pictures
   alias Feather.Media.Cleanup
   alias Feather.Repo
   alias Feather.StaticSite.ImageVariants
@@ -157,29 +159,45 @@ defmodule Feather.Sites do
 
   @doc """
   Updates a site. A new theme brings the image variants in line with it
-  (`Feather.StaticSite.ImageVariants.start_sync/1`).
+  (`Feather.StaticSite.ImageVariants.start_sync/1`), a new domain starts
+  its fediverse account over (`Feather.Fediverse.start_over/1`).
   """
   @spec update_site(Scope.t(), Site.t(), map()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def update_site(%Scope{} = scope, %Site{} = site, attrs) do
     true = can_access_site?(scope, site)
+    changeset = Site.changeset(site, attrs)
 
-    with {:ok, updated} <- site |> Site.changeset(attrs) |> Repo.update() do
+    with {:ok, updated} <- Repo.transact(fn -> update_and_start_over(changeset) end) do
       if updated.theme != site.theme, do: ImageVariants.start_sync(updated)
       {:ok, updated}
     end
   end
 
+  defp update_and_start_over(changeset) do
+    with {:ok, site} <- Repo.update(changeset) do
+      if Ecto.Changeset.changed?(changeset, :domain) do
+        :ok = Fediverse.start_over(site)
+        {:ok, %{site | fediverse_online_at: nil}}
+      else
+        {:ok, site}
+      end
+    end
+  end
+
   @doc """
-  Deletes a site with all its content. Image files are removed as well.
+  Deletes a site with all its content. Image files and the pictures of its
+  repliers are removed as well.
   """
   @spec delete_site(Scope.t(), Site.t()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def delete_site(%Scope{} = scope, %Site{} = site) do
     true = can_access_site?(scope, site)
 
     images = Repo.all(from i in Feather.Media.Image, where: i.site_id == ^site.id)
+    reply_pictures = Fediverse.reply_pictures(site)
 
     with {:ok, site} <- Repo.delete(site) do
       Enum.each(images, &Feather.Media.delete_image_files/1)
+      Enum.each(reply_pictures, &Pictures.delete/1)
       {:ok, site}
     end
   end

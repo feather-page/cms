@@ -5,6 +5,7 @@ defmodule Feather.SitesTest do
 
   alias Feather.Accounts.Scope
   alias Feather.{Content, Publishing, Sites}
+  alias Feather.Fediverse.Pictures
   alias Feather.Sites.{Invitation, Site, SocialMediaService}
 
   describe "create_site/2" do
@@ -255,6 +256,21 @@ defmodule Feather.SitesTest do
       assert {:ok, _} = Sites.delete_site(scope, site)
       assert Sites.list_sites(scope) == []
       refute File.exists?(dir)
+    end
+
+    test "delete_site/2 removes the pictures of its repliers, also those waiting for a deploy" do
+      scope = fediverse_scope_fixture()
+      deployment_target_fixture(scope)
+      post = post_fixture(scope)
+      shown = approved_reply_fixture(scope.site, post)
+      hidden = approved_reply_fixture(scope.site, post)
+      {:ok, _hidden} = Feather.Fediverse.hide_reply(scope, hidden)
+      [unused] = Pictures.unused(scope.site)
+      pictures = Enum.map([shown.approved_picture, unused], &Pictures.path/1)
+      assert Enum.all?(pictures, &File.regular?/1)
+
+      assert {:ok, _} = Sites.delete_site(scope, scope.site)
+      refute Enum.any?(pictures, &File.exists?/1)
     end
   end
 
