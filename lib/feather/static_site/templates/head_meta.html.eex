@@ -32,6 +32,9 @@
     <%= if @markdown_url do %>
     <link rel="alternate" type="text/markdown" href="<%= @markdown_url %>" />
     <% end %>
+    <%= if @activitypub_url do %>
+    <link rel="alternate" type="application/activity+json" href="<%= @activitypub_url %>" />
+    <% end %>
     <%= if @structured_data do %>
     <script type="application/ld+json"><%= Feather.StaticSite.StructuredData.encode(@structured_data) %></script>
     <% end %>

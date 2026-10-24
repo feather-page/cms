@@ -7,6 +7,11 @@ defmodule Feather.Content.Post do
   Whether a post is a draft is `Feather.Content.draft?/1`. Its
   description is described in `Feather.Content.Description`, the meta
   title of a short post in `Feather.Content.ShortPost`.
+
+  `fediverse_generation` counts the addresses of its fediverse document
+  (ADR 0033): a post back on the site after the `Delete` of its document
+  went out comes back under the next one, since fediverse servers keep the
+  old one deleted (`Feather.Fediverse.FederatedObjects`).
   """
   use Feather.Schema
 
@@ -26,6 +31,7 @@ defmodule Feather.Content.Post do
     field :description, :string
     field :description_generated, :boolean, default: false
     field :meta_title, :string
+    field :fediverse_generation, :integer, default: 1
 
     belongs_to :site, Feather.Sites.Site
     belongs_to :header_image, Feather.Media.Image

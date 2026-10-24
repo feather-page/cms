@@ -44,6 +44,7 @@ defmodule FeatherWeb.ConnCase do
       import Feather.OAuthFixtures
       import Feather.PublishingFixtures
       import Feather.RedirectsFixtures
+      import Feather.FediverseFixtures
     end
   end
 

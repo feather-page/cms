@@ -245,6 +245,47 @@ defmodule Feather.Content.HTMLTest do
     end
   end
 
+  describe "remote mode" do
+    test "keeps absolute links only, each marked as user content" do
+      html =
+        ~S|<a href="https://e.com/@ana" class="mention" rel="me">@ana</a> | <>
+          ~S|<a href="/tags/x">#x</a> <a href="//e.com">p</a> <a href="?q">q</a>|
+
+      assert sanitize(html, :remote) ==
+               ~S|<a href="https://e.com/@ana" rel="nofollow ugc noopener">@ana</a> | <>
+                 ~S|<a>#x</a> <a>p</a> <a>q</a>|
+    end
+
+    test "turns paragraphs into line breaks" do
+      html = ~S|<p>One <span class="h-card">two</span></p><p class="x">Three</p>|
+
+      assert sanitize(html, :remote) == "One two<br><br>Three"
+    end
+
+    test "sanitizing twice changes nothing" do
+      html = ~S|<p><a href="https://e.com">l</a> <b>b</b></p><P>x</P>|
+      once = sanitize(html, :remote)
+
+      assert sanitize(once, :remote) == once
+    end
+
+    test "no XSS vector survives" do
+      for vector <- @vectors do
+        output = sanitize(vector, :remote)
+        {:ok, nodes} = Floki.parse_fragment(output)
+
+        for {tag, attributes, _children} <- Floki.find(nodes, "*") do
+          assert tag in ~w(b i u a code br), "unexpected <#{tag}> in #{inspect(output)}"
+
+          for {name, value} <- attributes do
+            assert name in ~w(href rel), "unexpected #{name} in #{inspect(output)}"
+            if name == "href", do: assert(safe_url?(value))
+          end
+        end
+      end
+    end
+  end
+
   describe "to_markdown/2" do
     test "converts bold, italic, code and links, underline becomes plain text" do
       assert to_markdown(

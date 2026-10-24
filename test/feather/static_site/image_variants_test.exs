@@ -85,6 +85,21 @@ defmodule Feather.StaticSite.ImageVariantsTest do
       assert roles[site.portrait_image_id] == [:portrait]
       assert roles[site.footer_mascot_image_id] == [:footer_mascot]
     end
+
+    test "the portrait of a site with a fediverse name is also the account's picture",
+         %{scope: scope} do
+      path = test_image_path(600, 600)
+      {:ok, site} = Sites.put_portrait(scope, path, "me.png")
+      File.rm(path)
+
+      {:ok, site} =
+        Feather.Fediverse.update_name(%{scope | site: site}, %{"fediverse_name" => "timon"})
+
+      assert ImageVariants.image_roles(site)[site.portrait_image_id] == [
+               :account_picture,
+               :portrait
+             ]
+    end
   end
 
   describe "variants/3" do
@@ -103,6 +118,9 @@ defmodule Feather.StaticSite.ImageVariantsTest do
                [Variants.webp(120), Variants.webp(240), Variants.webp(360), Variants.sharing()]
 
       assert ImageVariants.variants(feather, image, [:portrait]) == []
+
+      assert ImageVariants.variants(feather, image, [:account_picture, :portrait]) ==
+               [Variants.jpg(400)]
     end
 
     test "sizes an image is too small for collapse per role", %{scope: scope} do

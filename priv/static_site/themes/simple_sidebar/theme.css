@@ -792,6 +792,99 @@ th {
   color: var(--seam);
 }
 
+.replies {
+  margin-top: var(--section);
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--rule);
+}
+
+.replies h2 {
+  margin: 0 0 0.5rem;
+  font-size: var(--title-sm);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.replies-invitation {
+  margin: 0;
+  color: var(--quiet);
+  font-size: var(--body-sm);
+}
+
+.replies-invitation strong {
+  color: var(--ink);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.reply-list {
+  display: grid;
+  gap: 1.5rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reply {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  gap: 0 0.875rem;
+  align-items: start;
+}
+
+.reply-picture {
+  display: block;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 4px;
+  object-fit: cover;
+  background: var(--panel);
+}
+
+.reply-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  margin: 0;
+  font-size: var(--body-sm);
+}
+
+.reply-author {
+  font-weight: 600;
+}
+
+:is(.reply-handle, .reply-date) {
+  color: var(--quiet);
+}
+
+.reply-handle {
+  overflow-wrap: anywhere;
+}
+
+.reply-content {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.reply-answers {
+  display: grid;
+  gap: 1.25rem;
+  margin: 1.25rem 0 0;
+  padding: 0 0 0 1rem;
+  border-left: 1px solid var(--rule);
+  list-style: none;
+}
+
+.reply-badge {
+  padding: 0 0.45em;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  color: var(--quiet);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
 .post-nav {
   display: grid;
   gap: 1.125rem;

@@ -87,6 +87,18 @@ defmodule FeatherWeb.SiteAuthTest do
       assert Repo.reload!(post).emoji == "🌲"
     end
 
+    test "gets no more posts in the Timeline", %{conn: conn, scope: scope, user: user} do
+      {:ok, site} = Feather.Fediverse.update_name(scope, %{"fediverse_name" => "timon"})
+      post = site |> followed_account_fixture() |> timeline_post_fixture(%{content: "Secret"})
+      {:ok, view, _html} = live(conn, ~p"/sites/#{site.public_id}/timeline")
+
+      remove_user(site, user)
+
+      send(view.pid, {:timeline_post, :created, post.id})
+      assert %{"error" => message} = assert_redirect(view, "/")
+      assert message =~ "no longer have access"
+    end
+
     test "a picker change does not reach a new record's form", %{
       conn: conn,
       site: site,

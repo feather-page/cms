@@ -7,7 +7,8 @@ defmodule Feather.Media.Variants do
 
   Which variants an image gets follows from its roles in the site's theme
   (`Feather.StaticSite.ImageVariants`); every image also gets the admin
-  preview, and the sharing image (`og:image`) a JPEG.
+  preview, the sharing image (`og:image`) a JPEG and the picture of a
+  fediverse account a small one.
   """
 
   @type format :: :webp | :jpg
@@ -15,6 +16,7 @@ defmodule Feather.Media.Variants do
 
   @preview_size 480
   @sharing_size 1200
+  @account_picture_size 400
 
   @doc "The webp variant fitting within size×size."
   @spec webp(pos_integer()) :: variant()
@@ -34,6 +36,10 @@ defmodule Feather.Media.Variants do
   @doc "The variant `og:image` links to."
   @spec sharing() :: variant()
   def sharing, do: jpg(@sharing_size)
+
+  @doc "The variant a site's fediverse account shows as its picture."
+  @spec account_picture() :: variant()
+  def account_picture, do: jpg(@account_picture_size)
 
   @doc """
   The variant a file name (`"640.webp"`) names, or nil for anything else.

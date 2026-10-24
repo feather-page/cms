@@ -148,5 +148,19 @@ defmodule Feather.Media.UrlCheckerTest do
       assert {127, 0, 0, 1} in addresses
       refute Enum.any?(addresses, &UrlChecker.public_address?/1)
     end
+
+    test "the system resolver gives the IPv6 lookup only the time the IPv4 lookup left" do
+      test_pid = self()
+
+      slow_lookup = fn _host, family, timeout ->
+        send(test_pid, {:lookup, family, timeout})
+        Process.sleep(timeout)
+        {:error, :timeout}
+      end
+
+      assert UrlChecker.system_resolve("slow.example", 100, slow_lookup) == {:error, :nxdomain}
+      assert_received {:lookup, :inet, first} when first <= 100
+      assert_received {:lookup, :inet6, 0}
+    end
   end
 end

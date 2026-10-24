@@ -1,6 +1,8 @@
 defmodule FeatherWeb.PreviewControllerTest do
   use FeatherWeb.ConnCase
 
+  alias Feather.Accounts.Scope
+  alias Feather.{Encryption, Fediverse, Repo}
   alias Feather.StaticSite.Themes.{FeatherPage, SimpleSidebar}
 
   setup [:register_and_log_in_user, :create_site_for_user]
@@ -368,6 +370,32 @@ defmodule FeatherWeb.PreviewControllerTest do
   test "requires login", %{root: root} do
     conn = get(Phoenix.ConnTest.build_conn(), root <> "/")
     assert redirected_to(conn) == ~p"/users/log-in"
+  end
+
+  test "shows neither the private key of the site's fediverse account nor a pending one",
+       %{conn: conn, scope: scope, root: root} do
+    {:ok, site} = Fediverse.update_name(scope, %{"fediverse_name" => "timon"})
+    scope = Scope.put_site(scope, site)
+    {:ok, site} = Fediverse.rotate_key(scope)
+    post_fixture(scope, %{title: "Hello", slug: "/hello"})
+
+    [[current, pending]] =
+      Repo.query!(
+        "SELECT fediverse_private_key, fediverse_pending_private_key FROM sites WHERE id = ?",
+        [site.id]
+      ).rows
+
+    key_bodies =
+      for stored <- [current, pending] do
+        {:ok, pem} = Encryption.decrypt(stored)
+        pem |> String.split("\n") |> Enum.at(1)
+      end
+
+    for path <- ["/", "/hello/", "/hello/index.md"] do
+      body = response(get(conn, root <> path), 200)
+      refute body =~ "PRIVATE KEY", path
+      for key_body <- key_bodies, do: refute(body =~ key_body, path)
+    end
   end
 
   defp fresh(user), do: log_in_user(build_conn(), user)

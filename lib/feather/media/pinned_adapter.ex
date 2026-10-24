@@ -12,36 +12,36 @@ defmodule Feather.Media.PinnedAdapter do
   https URL therefore still verifies the certificate against the name in
   the URL, while the TCP connection goes to the checked address.
 
+  With a proxy, an https request tunnels through it with `CONNECT` to the
+  pinned address, so the proxy cannot resolve the name differently either;
+  plain http never goes through a proxy, which would resolve the name
+  itself.
+
   It opens one HTTP/1.1 connection per request (no pool, so no state per
   host is left behind) and closes it afterwards. The body is streamed and
   the request fails as soon as it exceeds `max_bytes`; all reads share one
   deadline.
 
   The request carries its parameters in `request.private.feather_pinned`:
-  `%{ip: ip, deadline: monotonic_ms, max_bytes: n}`.
+  `%{ip: ip, deadline: monotonic_ms, max_bytes: n}`, optionally with
+  `proxy: {scheme, host, port}`.
   """
 
   @connect_timeout 10_000
 
   @doc false
   def run(%Req.Request{} = request) do
-    %{ip: ip, deadline: deadline, max_bytes: max_bytes} = request.private.feather_pinned
-    {request, fetch(request, ip, deadline, max_bytes)}
+    %{ip: ip, deadline: deadline, max_bytes: max_bytes} = params = request.private.feather_pinned
+    {request, fetch(request, ip, Map.get(params, :proxy), deadline, max_bytes)}
   end
 
-  defp fetch(request, ip, deadline, max_bytes) do
+  defp fetch(request, ip, proxy, deadline, max_bytes) do
     uri = request.url
     scheme = if uri.scheme == "https", do: :https, else: :http
-    family = if tuple_size(ip) == 8, do: [:inet6], else: []
 
     with {:ok, timeout} <- remaining(deadline),
-         {:ok, conn} <-
-           Mint.HTTP.connect(scheme, ip, uri.port,
-             hostname: uri.host,
-             protocols: [:http1],
-             mode: :passive,
-             transport_opts: [timeout: min(timeout, @connect_timeout)] ++ family
-           ) do
+         {:ok, opts} <- connect_opts(scheme, uri, ip, proxy, min(timeout, @connect_timeout)),
+         {:ok, conn} <- Mint.HTTP.connect(scheme, ip, uri.port, opts) do
       {conn, result} = request(conn, request, uri, deadline, max_bytes)
       Mint.HTTP.close(conn)
       result
@@ -50,11 +50,32 @@ defmodule Feather.Media.PinnedAdapter do
     end
   end
 
+  defp connect_opts(_scheme, uri, ip, nil, timeout) do
+    family = if tuple_size(ip) == 8, do: [:inet6], else: []
+    {:ok, mint_opts(uri, transport_opts: [timeout: timeout] ++ family)}
+  end
+
+  defp connect_opts(:https, uri, _ip, {proxy_scheme, proxy_host, proxy_port}, timeout) do
+    proxy_opts = [transport_opts: [timeout: timeout], tunnel_timeout: timeout]
+
+    {:ok,
+     mint_opts(uri,
+       transport_opts: [timeout: timeout],
+       proxy: {proxy_scheme, proxy_host, proxy_port, proxy_opts}
+     )}
+  end
+
+  defp connect_opts(:http, _uri, _ip, _proxy, _timeout),
+    do: {:error, %ArgumentError{message: "only https requests go through a proxy"}}
+
+  defp mint_opts(uri, opts),
+    do: [hostname: uri.host, protocols: [:http1], mode: :passive] ++ opts
+
   defp request(conn, request, uri, deadline, max_bytes) do
     method = request.method |> to_string() |> String.upcase()
     headers = for {name, values} <- request.headers, value <- values, do: {name, value}
 
-    case Mint.HTTP.request(conn, method, target(uri), headers, nil) do
+    case Mint.HTTP.request(conn, method, target(uri), headers, request.body) do
       {:ok, conn, ref} ->
         receive_response(
           conn,

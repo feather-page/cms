@@ -45,12 +45,14 @@ defmodule FeatherWeb.Endpoint do
   plug Plug.RequestId
   plug Plug.Telemetry, event_prefix: [:phoenix, :endpoint], log: {__MODULE__, :log_level, []}
 
-  plug Plug.Parsers,
-    # Room for a 25 MiB upload (Feather.Media.max_byte_size/0) plus the multipart overhead.
-    parsers: [:urlencoded, {:multipart, length: 27_000_000}, :json],
-    pass: ["*/*"],
-    json_decoder: Phoenix.json_library()
+  @parsers Plug.Parsers.init(
+             # Room for a 25 MiB upload (Feather.Media.max_byte_size/0) plus the multipart overhead.
+             parsers: [:urlencoded, {:multipart, length: 27_000_000}, :json],
+             pass: ["*/*"],
+             json_decoder: Phoenix.json_library()
+           )
 
+  plug :parse_body
   plug Plug.MethodOverride
   plug Plug.Head
   plug :session
@@ -87,6 +89,24 @@ defmodule FeatherWeb.Endpoint do
     do: Enum.join(["/invitations/[FILTERED]" | rest], "/")
 
   defp filtered_path(_path_info), do: nil
+
+  # The fediverse inbox reads its own body: at most 1 MB, kept raw for its signature.
+  defp parse_body(%Plug.Conn{path_info: ["fediverse", "inbox" | _rest]} = conn, _opts), do: conn
+
+  # Its prefix written encoded reaches no route, so it gets the inbox's 404 before any parsing.
+  defp parse_body(%Plug.Conn{path_info: [first, second | _rest]} = conn, _opts) do
+    if decode_segment(first) == "fediverse" and decode_segment(second) == "inbox",
+      do: conn |> FeatherWeb.FediverseInboxController.call(:not_found) |> halt(),
+      else: Plug.Parsers.call(conn, @parsers)
+  end
+
+  defp parse_body(conn, _opts), do: Plug.Parsers.call(conn, @parsers)
+
+  defp decode_segment(segment) do
+    URI.decode(segment)
+  rescue
+    ArgumentError -> segment
+  end
 
   @doc """
   Whether cookies get the `Secure` attribute: when the endpoint's URL uses

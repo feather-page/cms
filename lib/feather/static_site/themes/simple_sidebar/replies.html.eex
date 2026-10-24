@@ -1,0 +1,39 @@
+<% author_picture = account_picture_url(@routes, @site) %>
+<section class="replies" id="replies" aria-labelledby="replies-heading">
+  <h2 id="replies-heading"><%= gettext("Replies") %></h2>
+  <p class="replies-invitation"><%= reply_invitation(@handle) %></p>
+  <%= if @replies != [] do %>
+  <ol class="reply-list">
+    <%= for reply <- @replies do %>
+    <li class="reply">
+      <%= if reply.approved_picture do %>
+      <img class="reply-picture" src="<%= Routes.reply_picture_url(@routes, reply.approved_picture) %>" width="48" height="48" loading="lazy" alt="">
+      <% else %>
+      <span class="reply-picture" aria-hidden="true"></span>
+      <% end %>
+      <div class="reply-body">
+        <p class="reply-meta"><%= if reply.approved_handle do %><span class="reply-author"><%= reply_author(reply) %></span> <a class="reply-handle" href="<%= reply_profile_url(reply) %>" rel="<%= reply_link_rel() %>"><%= reply.approved_handle %></a><% else %><a class="reply-author" href="<%= reply_profile_url(reply) %>" rel="<%= reply_link_rel() %>"><%= reply_author(reply) %></a><% end %> <a class="reply-date" href="<%= reply_url(reply) %>" rel="<%= reply_link_rel() %>"><%= time_tag(reply.published_at, &short_date/1) %></a></p>
+        <p class="reply-content"><%= reply_content(reply) %></p>
+        <%= if reply.member_replies != [] do %>
+        <ol class="reply-answers">
+          <%= for answer <- reply.member_replies do %>
+          <li class="reply reply-by-author" id="reply-<%= answer.public_id %>">
+            <%= if author_picture do %>
+            <img class="reply-picture" src="<%= author_picture %>" width="48" height="48" loading="lazy" alt="">
+            <% else %>
+            <span class="reply-picture" aria-hidden="true"></span>
+            <% end %>
+            <div class="reply-body">
+              <p class="reply-meta"><span class="reply-author"><%= @site.title %></span> <span class="reply-badge"><%= gettext("Author") %></span> <a class="reply-date" href="#reply-<%= answer.public_id %>"><%= time_tag(answer.inserted_at, &short_date/1) %></a></p>
+              <p class="reply-content"><%= member_reply_content(answer) %></p>
+            </div>
+          </li>
+          <% end %>
+        </ol>
+        <% end %>
+      </div>
+    </li>
+    <% end %>
+  </ol>
+  <% end %>
+</section>

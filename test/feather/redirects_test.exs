@@ -123,6 +123,25 @@ defmodule Feather.RedirectsTest do
       assert {:ok, _} = Redirects.create_redirect(scope, %{old_path: "/old.html.gz", target: "/"})
     end
 
+    test "refuses the paths of the fediverse documents, also for a site without a fediverse name",
+         %{scope: scope} do
+      for old_path <- [
+            "/.well-known/webfinger",
+            "/.well-known/webfinger.gz",
+            "/activitypub",
+            "/activitypub/timon",
+            "/activitypub/posts/AbC123.br"
+          ] do
+        assert {:error, changeset} =
+                 Redirects.create_redirect(scope, %{old_path: old_path, target: "/"})
+
+        assert "is already a URL of the site" in errors_on(changeset).old_path
+      end
+
+      assert {:ok, _} =
+               Redirects.create_redirect(scope, %{old_path: "/activitypubs", target: "/"})
+    end
+
     test "refuses the /index.html form of a URL where content lives", %{scope: scope} do
       page_fixture(scope, %{slug: "/foo"})
       project_fixture(scope, %{slug: "/cms"})

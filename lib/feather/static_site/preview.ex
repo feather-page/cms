@@ -13,6 +13,7 @@ defmodule Feather.StaticSite.Preview do
 
   alias Feather.Accounts.Scope
   alias Feather.{Diagrams, Media, Redirects}
+  alias Feather.Fediverse.Pictures
   alias Feather.Media.Variants
   alias Feather.Sites.Site
   alias Feather.StaticSite.{GeneratedImages, ImageVariants, Renderer, Routes, SiteData, Themes}
@@ -33,8 +34,9 @@ defmodule Feather.StaticSite.Preview do
       `robots.txt`, `style.css`, the Markdown alternate of the home page, a
       post, page or project
     * `{:file, path, content_type}` - a stored image variant or one the
-      image's roles need (generated then), a drawn favicon or share card, a
-      font of the site's theme or a rendered diagram
+      image's roles need (generated then), a drawn favicon or share card,
+      the picture of an approved reply's author, a font of the site's theme
+      or a rendered diagram
     * `{:redirect, url}` - the preview URL an active redirect from the path
       leads to
     * `{:not_found, iodata}` - the site's 404 page
@@ -76,6 +78,9 @@ defmodule Feather.StaticSite.Preview do
 
   defp serve({:generated_image, name}, site, routes),
     do: existing_file(GeneratedImages.path(name), "image/png", site, routes)
+
+  defp serve({:reply_picture, name}, site, routes),
+    do: existing_file(Pictures.path(name), "image/webp", site, routes)
 
   defp serve({:diagram, name}, site, routes),
     do: existing_file(Diagrams.path(name), "image/svg+xml", site, routes)

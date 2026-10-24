@@ -237,6 +237,17 @@ defmodule Feather.StaticSite.BlocksTest do
     refute output =~ "book-emoji"
   end
 
+  test "without inline images, images render nothing and a book card shows no cover",
+       %{context: c} do
+    c = %{c | inline_images: false}
+
+    assert html(%{"type" => "image", "image_id" => @image.public_id, "caption" => "Hi"}, c) == ""
+
+    output = html(%{"type" => "book", "book_public_id" => "book00000002"}, c)
+    assert output =~ ~s(<span class="book-emoji">📗</span>)
+    refute output =~ "<img"
+  end
+
   test "unknown books and block types render nothing", %{context: c} do
     assert html(%{"type" => "book", "book_public_id" => "nope"}, c) == ""
     assert Blocks.to_html([%{"type" => "unknown"}, nil], c) == ""

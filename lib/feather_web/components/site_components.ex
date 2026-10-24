@@ -6,14 +6,15 @@ defmodule FeatherWeb.SiteComponents do
   pages (pagination, image URLs, star ratings).
 
   Pages under `/sites/:site_id` live in the `:site` live_session, whose
-  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices` and
-  `site_deploy`:
+  `FeatherWeb.SiteAuth` on_mount hook assigns `site_notices`,
+  `site_deploy` and `site_unread_mentions`:
 
       <.site_shell
         flash={@flash}
         current_scope={@current_scope}
         notices={@site_notices}
         deploy={@site_deploy}
+        unread_mentions={@site_unread_mentions}
         active={:posts}
       >
         ...
@@ -27,6 +28,7 @@ defmodule FeatherWeb.SiteComponents do
   use Setzkasten
 
   alias Feather.Content.Blocks
+  alias Feather.Fediverse
   alias Feather.Media.Variants
   alias Feather.Publishing
   alias FeatherWeb.Layouts
@@ -38,7 +40,10 @@ defmodule FeatherWeb.SiteComponents do
   screens in its compact form next to the user menu).
 
   `active` marks the current section: `:posts`, `:pages`, `:books`,
-  `:projects`, `:settings`, `:redirects`, `:users` or `:deployments`.
+  `:projects`, `:timeline`, `:mentions`, `:settings`, `:redirects`,
+  `:users` or `:deployments`. The section Fediverse with the Timeline and
+  Mentions with the number of unread ones shows only for a site with a
+  fediverse name.
   `deploy` is the `site_deploy` assign of `FeatherWeb.SiteAuth`. Detail
   pages pass `bar` (breadcrumbs and status), which takes the place of
   brand and site switcher in the top bar, and `bar_actions` (their own
@@ -50,6 +55,7 @@ defmodule FeatherWeb.SiteComponents do
   attr :active, :atom, default: nil
   attr :notices, :list, default: [], doc: "site notices, see FeatherWeb.SiteAuth"
   attr :deploy, :map, default: nil, doc: "the deploy status, see FeatherWeb.SiteAuth"
+  attr :unread_mentions, :integer, default: 0, doc: "see FeatherWeb.SiteAuth"
   slot :bar, doc: "detail pages: breadcrumbs and status, see setzkasten's app_shell"
   slot :bar_actions, doc: "detail pages: the page's own actions, see setzkasten's app_shell"
   slot :inner_block, required: true
@@ -60,7 +66,7 @@ defmodule FeatherWeb.SiteComponents do
     assigns =
       assign(assigns,
         site: site,
-        nav: nav(site),
+        nav: nav(site, assigns.unread_mentions),
         preview_path: ~p"/preview/#{site.public_id}"
       )
 
@@ -145,7 +151,11 @@ defmodule FeatherWeb.SiteComponents do
     """
   end
 
-  defp nav(site) do
+  defp nav(site, unread_mentions) do
+    content_nav(site) ++ fediverse_nav(site, unread_mentions) ++ site_nav(site)
+  end
+
+  defp content_nav(site) do
     [
       %{
         key: :posts,
@@ -165,7 +175,36 @@ defmodule FeatherWeb.SiteComponents do
         label: "Projects",
         icon: "folder-kanban",
         navigate: ~p"/sites/#{site.public_id}/projects"
-      },
+      }
+    ]
+  end
+
+  defp fediverse_nav(site, unread_mentions) do
+    if Fediverse.account?(site) do
+      [
+        %{
+          key: :timeline,
+          label: "Timeline",
+          icon: "newspaper",
+          section: "Fediverse",
+          navigate: ~p"/sites/#{site.public_id}/timeline"
+        },
+        %{
+          key: :mentions,
+          label: "Mentions",
+          icon: "at-sign",
+          section: "Fediverse",
+          count: if(unread_mentions > 0, do: unread_mentions),
+          navigate: ~p"/sites/#{site.public_id}/mentions"
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  defp site_nav(site) do
+    [
       %{
         key: :settings,
         label: "Settings",

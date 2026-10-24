@@ -166,3 +166,67 @@ belongs to content or to one redirect. Publishing a record under a new URL redir
 redirect is active while its target record is published or its target path still resolves; the static export writes
 the active ones into the `.htaccess`, and the preview follows them.
 _Avoid_: Alias, Forward
+
+**Fediverse Name** · _de:_ Fediverse-Name:
+The first part of the site's handle `@name@domain`, set in the site settings. With it the site is an account in the
+fediverse that people on Mastodon, micro.blog and other servers find by its handle: the static export writes the
+account and a document per post on the site's domain, only its inbox runs on the CMS. The name is fixed after the
+first deploy with it; a site without one is not in the fediverse. A new domain starts the account over: it loses its
+followers and the accounts it follows, and goes online at its new address with the next deploy. The protocol types `Note` and `Article` are not the
+site's terms: a short post goes out as `Note`, a post with a title as `Article`.
+_Avoid_: Username, Account Name
+
+**Follower** · _de:_ Follower:
+An account in the fediverse that follows the site's account. Its server sends the follow to the site's inbox on the
+CMS, which accepts it unless the account or its server is blocked, or 100 accounts of its server became followers
+within the hour; the settings show how many followers there are, and the export publishes their number, not who they
+are. Each deploy sends the followers the posts it puts on the site,
+changes or takes off, and a changed profile; posts that were on the site before its account went online are not sent.
+A site that comes from micro.blog gets its followers back on their own: their servers follow again once they notice
+the account's new key.
+_Avoid_: Subscriber
+
+**Followed Account** · _de:_ gefolgtes Konto:
+An account in the fediverse that the site follows. Members follow accounts by their handles in the CMS, several at
+once; the site's account sends each a follow once it is online, and the account's server accepts or refuses it. Its
+posts make up the site's Timeline; unfollowing takes them out again. The export publishes how many accounts the site
+follows, not which.
+_Avoid_: Subscription, Friend
+
+**Timeline** · _de:_ Timeline:
+The posts of the site's followed accounts in the CMS, newest first, as they arrive: their public posts, and those to
+their followers once the follow was accepted; no boosts or likes. Their pictures load through the CMS, so the
+accounts' servers do not see the members' addresses. Members reply to them as to mentions. Timeline posts are kept 30
+days, and what they say is stored encrypted.
+_Avoid_: Feed, Home, Stream
+
+**Mention** · _de:_ Erwähnung:
+Something addressed to the site's fediverse account: a reply to one of its posts, a mention of its handle or a private
+message. The site's inbox files it into the site's Mentions in the CMS, only for the site it addresses; its author's
+edits change it and their deletion removes it, and it is kept for good otherwise. Every member sees the Mentions,
+private messages included, and the navigation shows how many no member has seen yet. What it says is stored encrypted;
+private messages are still not end-to-end encrypted, the operators of both servers can read them.
+_Avoid_: Notification
+
+**Reply** · _de:_ Antwort:
+A message in answer to a post of the site or to another reply, received from the fediverse or written by a member in
+the CMS. A received reply to one of the site's posts, or to a member's reply, lands in Mentions; one addressed to the
+public waits there until a member approves or hides it. The site shows the approved replies in a thread below the post
+as they were approved: the text and its author's name, handle and picture, which the member saw before approving. Its
+author's edit puts it back to waiting, their deletion takes it off the site for good. Every post of a site with a
+fediverse name tells readers how to reply, also before the first reply.
+A member answers a mention or a Timeline post from the CMS, and the reply goes out at once as the site's account. A
+reply to something public is public: it also reaches the site's followers, and the deploy it starts shows it in the
+post's thread, below the reply it answers and marked as by the author, without approval. Any other reply goes only to
+the accounts named in what it answers and never reaches the site. Deleting a public reply takes it off the site with a
+deploy before the servers it went to are asked to delete it. Mentions lists every reply of the members, also those
+whose mention or Timeline post is gone, so that each can still be deleted.
+_Avoid_: Comment
+
+**Blocked Account** · _de:_ blockiertes Konto:
+An account in the fediverse that a member blocked from the menu of a mention or a Timeline post, alone or with every
+account on its server and the server's subdomains. It can neither follow the site nor reach its Mentions: the follows between it and the site end,
+its mentions are deleted, its replies leave the site, and what it sends afterwards is dropped; a follow is refused. A
+blocked account's server is told about the block, and about its end when a member unblocks it in the site settings.
+Not to be confused with a content Block.
+_Avoid_: Ban, Mute

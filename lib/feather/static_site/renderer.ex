@@ -11,9 +11,12 @@ defmodule Feather.StaticSite.Renderer do
 
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{HTML, Page, Post, Project}
+  alias Feather.Fediverse
+  alias Feather.Fediverse.MemberReply
   alias Feather.Media.{Image, Variants}
 
   alias Feather.StaticSite.{
+    ActivityStreams,
     Blocks,
     Feed,
     GeneratedImages,
@@ -60,6 +63,7 @@ defmodule Feather.StaticSite.Renderer do
     |> Map.merge(home_sharing(data, routes, homepage, page_number))
     |> Map.merge(%{
       markdown_url: if(page_number == 1, do: Routes.markdown_url(routes, :home)),
+      activitypub_url: if(page_number == 1, do: activitypub_url(data, routes, :account)),
       masthead_image: homepage.header_image,
       rss_url: Routes.artifact_url(routes, "feed.xml"),
       posts: posts_on_page(data, page_number),
@@ -107,11 +111,14 @@ defmodule Feather.StaticSite.Renderer do
     |> Map.merge(post_sharing(data, routes, post))
     |> Map.merge(%{
       markdown_url: Routes.markdown_url(routes, post),
+      activitypub_url: activitypub_url(data, routes, post),
       post: post,
       published_at: post.publish_at,
       header_image: post.header_image,
       newer_post: newer,
-      older_post: older
+      older_post: older,
+      replies: Map.get(data.replies, post.id, []),
+      reply_handle: Fediverse.handle(data.site)
     })
   end
 
@@ -208,6 +215,55 @@ defmodule Feather.StaticSite.Renderer do
     end)
   end
 
+  @doc """
+  A fediverse document of a site with a fediverse name as JSON (see
+  `Feather.StaticSite.ActivityStreams`), with canonical URLs: the
+  `:webfinger` answer, the `:account` (the site's portrait preloaded),
+  its `:outbox`, `:followers` or `:following` or the document of a post
+  or of a member's public reply.
+  """
+  @spec render_activitypub(
+          SiteData.t(),
+          Routes.t(),
+          :webfinger | Routes.activitypub_document()
+        ) :: iodata()
+  def render_activitypub(%SiteData{} = data, %Routes{} = routes, document) do
+    canonical = Routes.canonical(routes)
+
+    data
+    |> in_site_language(fn -> activitypub_document(data, canonical, document) end)
+    |> Jason.encode_to_iodata!()
+  end
+
+  defp activitypub_document(data, routes, :webfinger), do: ActivityStreams.webfinger(data, routes)
+  defp activitypub_document(data, routes, :account), do: ActivityStreams.account(data, routes)
+
+  defp activitypub_document(data, routes, :followers),
+    do: ActivityStreams.followers(data, routes)
+
+  defp activitypub_document(data, routes, :following),
+    do: ActivityStreams.following(data, routes)
+
+  defp activitypub_document(data, routes, :outbox),
+    do: ActivityStreams.outbox(data, routes, block_context(data, routes))
+
+  defp activitypub_document(data, routes, %Post{} = post),
+    do: ActivityStreams.post(data, routes, post, block_context(data, routes))
+
+  defp activitypub_document(data, routes, %MemberReply{} = reply),
+    do: ActivityStreams.member_reply(data.site, routes, reply, thread_post(data, reply))
+
+  defp thread_post(data, %MemberReply{post_id: post_id, mention_id: mention_id}) do
+    if Enum.any?(Map.get(data.replies, post_id, []), &(&1.id == mention_id)),
+      do: Enum.find(data.posts, &(&1.id == post_id))
+  end
+
+  # The documents' addresses are their ids, so pages link them canonically, also in the preview.
+  defp activitypub_url(%SiteData{site: site}, routes, document) do
+    if Fediverse.account?(site),
+      do: routes |> Routes.canonical() |> Routes.activitypub_url(document)
+  end
+
   @doc "The page shown for paths that do not exist."
   @spec render_not_found(SiteData.t(), Routes.t()) :: iodata()
   def render_not_found(%SiteData{} = data, %Routes{} = routes) do
@@ -298,6 +354,7 @@ defmodule Feather.StaticSite.Renderer do
       og_type: "website",
       og_image_url: nil,
       markdown_url: nil,
+      activitypub_url: nil,
       page_emoji: page_emoji,
       favicon: favicon,
       favicon_url:

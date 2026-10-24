@@ -56,7 +56,11 @@ defmodule Feather.StaticSite.SinksAndPrecompressTest do
             {"style.css", "b{}"},
             {"app.js", "x()"},
             {"diagrams/x.svg", "<svg/>"},
-            {"images/x/mobile_x1.webp", "binary"}
+            {"images/x/mobile_x1.webp", "binary"},
+            {".well-known/webfinger", ~s({"subject":"acct:timon@timon.blog"})},
+            {"activitypub/timon", ~s({"type":"Person"})},
+            {"activitypub/posts/AbC123", ~s({"type":"Note"})},
+            {".htaccess", "ErrorDocument 404 /404.html"}
           ] do
         full = Path.join(tmp, path)
         File.mkdir_p!(Path.dirname(full))
@@ -66,19 +70,21 @@ defmodule Feather.StaticSite.SinksAndPrecompressTest do
       :ok
     end
 
-    test "writes .gz for text files and skips brotli when it is missing", %{tmp_dir: tmp} do
+    test "writes .gz for text files and the fediverse documents and skips brotli when it is missing",
+         %{tmp_dir: tmp} do
       files = Precompress.run(tmp, brotli: false)
 
-      assert length(files) == 8
+      assert length(files) == 11
 
       for path <-
-            ~w(index.html a/index.html a/index.md feed.xml robots.txt style.css app.js diagrams/x.svg) do
+            ~w(index.html a/index.html a/index.md feed.xml robots.txt style.css app.js diagrams/x.svg .well-known/webfinger activitypub/timon activitypub/posts/AbC123) do
         full = Path.join(tmp, path)
         assert :zlib.gunzip(File.read!(full <> ".gz")) == File.read!(full)
         refute File.exists?(full <> ".br")
       end
 
       refute File.exists?(Path.join(tmp, "images/x/mobile_x1.webp.gz"))
+      refute File.exists?(Path.join(tmp, ".htaccess.gz"))
     end
 
     test "writes .br with the brotli executable", %{tmp_dir: tmp} do

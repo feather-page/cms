@@ -10,7 +10,7 @@ defmodule Feather.StaticSite.SiteData do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Content, Diagrams, Highlighting, Media, Redirects, Sites}
+  alias Feather.{Books, Content, Diagrams, Fediverse, Highlighting, Media, Redirects, Sites}
   alias Feather.Books.Book
   alias Feather.Content.{Blocks, Page, Post, Project}
   alias Feather.Media.Image
@@ -23,7 +23,11 @@ defmodule Feather.StaticSite.SiteData do
     :site,
     :homepage,
     :now,
+    follower_count: 0,
+    following_count: 0,
     posts: [],
+    replies: %{},
+    member_replies: [],
     pages: [],
     projects: [],
     books: [],
@@ -39,7 +43,11 @@ defmodule Feather.StaticSite.SiteData do
           site: Site.t(),
           homepage: Page.t() | nil,
           now: DateTime.t(),
+          follower_count: non_neg_integer(),
+          following_count: non_neg_integer(),
           posts: [Post.t()],
+          replies: %{Ecto.UUID.t() => [Feather.Fediverse.Mention.t()]},
+          member_replies: [Feather.Fediverse.MemberReply.t()],
           pages: [Page.t()],
           projects: [Project.t()],
           books: [Book.t()],
@@ -61,7 +69,13 @@ defmodule Feather.StaticSite.SiteData do
   passed, newest first; `pages` are all pages, the homepage included; a
   book's `post` is its review among `posts`, nil if it is none of them; the
   navigation leaves out pages that are not among them; `now` is the time
-  the site is exported at.
+  the site is exported at; `follower_count` counts the followers of the
+  site's fediverse account, `following_count` the accounts that accepted
+  its follow; `replies` are the approved replies to the
+  posts by post id, oldest first, with their authors and the members'
+  public replies to them (`Feather.Fediverse.approved_replies/2`);
+  `member_replies` are all public replies of members, which have a
+  document.
 
   ## Options
 
@@ -81,19 +95,33 @@ defmodule Feather.StaticSite.SiteData do
     pages = load_pages(scope, content)
     books = load_books(scope, posts)
 
-    %__MODULE__{
-      site: Sites.preload_images(site),
-      now: now,
-      homepage: Enum.find(pages, &Page.homepage?/1),
-      posts: posts,
-      pages: pages,
-      projects: load_projects(scope, content),
-      books: books,
-      navigation: load_navigation(scope, pages),
-      social_links: Sites.list_social_media_links(scope),
-      images: load_images(scope),
-      books_by_public_id: Map.new(books, &{&1.public_id, &1})
-    }
+    struct!(
+      %__MODULE__{
+        site: Sites.preload_images(site),
+        now: now,
+        homepage: Enum.find(pages, &Page.homepage?/1),
+        posts: posts,
+        pages: pages,
+        projects: load_projects(scope, content),
+        books: books,
+        navigation: load_navigation(scope, pages),
+        social_links: Sites.list_social_media_links(scope),
+        images: load_images(scope),
+        books_by_public_id: Map.new(books, &{&1.public_id, &1})
+      },
+      load_fediverse(scope, posts)
+    )
+  end
+
+  defp load_fediverse(%Scope{site: site} = scope, posts) do
+    if Fediverse.account?(site),
+      do: %{
+        follower_count: Fediverse.count_followers(scope),
+        following_count: Fediverse.count_following(scope),
+        replies: Fediverse.approved_replies(site, posts),
+        member_replies: Fediverse.public_member_replies(site)
+      },
+      else: %{}
   end
 
   defp load_posts(scope, content, now) do
@@ -217,8 +245,9 @@ defmodule Feather.StaticSite.SiteData do
   @doc """
   The images the exported site uses, without duplicates: the images
   embedded in the content of its posts, pages and projects, their header
-  and thumbnail images, the book covers and the site images its theme
-  renders (`c:Feather.StaticSite.Theme.site_image_fields/0`).
+  and thumbnail images, the book covers, the site images its theme
+  renders (`c:Feather.StaticSite.Theme.site_image_fields/0`) and, for a
+  site with a fediverse name, the portrait as its account's picture.
   """
   @spec images_in_use(t()) :: [Image.t()]
   def images_in_use(%__MODULE__{site: %Site{id: site_id}} = data) do
@@ -242,6 +271,8 @@ defmodule Feather.StaticSite.SiteData do
     )
   end
 
-  defp site_image_ids(%Site{} = site),
-    do: Enum.map(Themes.module(site).site_image_fields(), &Map.fetch!(site, &1))
+  defp site_image_ids(%Site{} = site) do
+    theme_ids = Enum.map(Themes.module(site).site_image_fields(), &Map.fetch!(site, &1))
+    if site.fediverse_name, do: [site.portrait_image_id | theme_ids], else: theme_ids
+  end
 end

@@ -7,6 +7,12 @@ defmodule Feather.Sites.Site do
   stored encrypted and not loaded with the site (see
   `Feather.Sites.archive_org_keys/1`), so a wrong encryption key does not
   break loading sites.
+
+  With a `fediverse_name` the site is an account in the fediverse
+  (`Feather.Fediverse`, ADR 0033). Its private key is stored encrypted and
+  not loaded with the site either (`Feather.Fediverse.private_key/1`), nor
+  is the private half of a new key pair, which is pending until the next
+  deploy publishes its public half (`Feather.Fediverse.rotate_key/1`).
   """
   use Feather.Schema
 
@@ -31,6 +37,17 @@ defmodule Feather.Sites.Site do
     field :indexnow_key, :string
 
     field :archive_org_keys, Feather.Encrypted.Map, load_in_query: false
+
+    field :fediverse_name, :string
+    field :fediverse_public_key, :string
+    field :fediverse_private_key, Feather.Encrypted.Binary, load_in_query: false, redact: true
+    field :fediverse_pending_public_key, :string
+
+    field :fediverse_pending_private_key, Feather.Encrypted.Binary,
+      load_in_query: false,
+      redact: true
+
+    field :fediverse_online_at, :utc_datetime_usec
 
     has_many :site_users, Feather.Sites.SiteUser
     has_many :users, through: [:site_users, :user]

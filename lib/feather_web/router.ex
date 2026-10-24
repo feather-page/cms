@@ -36,9 +36,25 @@ defmodule FeatherWeb.Router do
     plug FeatherWeb.Plugs.RequireAccessToken
   end
 
+  pipeline :fediverse_inbox do
+    plug FeatherWeb.Plugs.InboxRequest
+  end
+
   # No pipeline: no session, no CSRF; excluded from force_ssl in config/prod.exs.
   scope "/", FeatherWeb do
     get "/up", HealthController, :show
+  end
+
+  # Fediverse servers post here unauthenticated: no session, flash, CSRF or user.
+  scope "/fediverse/inbox", FeatherWeb do
+    pipe_through :fediverse_inbox
+
+    post "/:site_id", FediverseInboxController, :create
+  end
+
+  # Nothing else below the inbox prefix reaches another route, whatever path it resolves to.
+  scope "/fediverse/inbox", FeatherWeb do
+    match :*, "/*path", FediverseInboxController, :not_found
   end
 
   # MCP clients discover and call these without a session (ADR 0032).
@@ -141,6 +157,10 @@ defmodule FeatherWeb.Router do
       live "/books/:book_id/review/new", ReviewLive.Form, :new
       live "/books/:book_id/review/edit", ReviewLive.Form, :edit
 
+      live "/timeline", TimelineLive.Index, :index
+      live "/mentions", MentionLive.Index, :index
+      live "/following", FollowLive.Index, :index
+
       live "/settings", SiteLive.Settings, :edit
       live "/redirects", RedirectLive.Index, :index
       live "/redirects/:id/edit", RedirectLive.Index, :edit
@@ -160,6 +180,9 @@ defmodule FeatherWeb.Router do
     get "/books/lookup", BookLookupController, :index
     post "/diagrams/preview", DiagramPreviewController, :create
     post "/code/highlight", CodeHighlightController, :create
+    get "/timeline/:post_id/pictures/:index", FediversePictureController, :show
+    get "/following/:followed_id/picture", FediversePictureController, :account
+    get "/mentions/:mention_id/picture", FediversePictureController, :mention
   end
 
   scope "/", FeatherWeb do

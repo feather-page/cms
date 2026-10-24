@@ -13,6 +13,8 @@
   <%= tags(%{tags: Content.tag_list(@post)}) %>
 </article>
 
+<%= if @reply_handle do %><%= replies(%{replies: @replies, handle: @reply_handle, routes: @routes, site: @site}) %><% end %>
+
 <nav class="post-nav" aria-label="<%= gettext("More posts") %>">
   <%= if @newer_post do %>
   <p class="post-nav-newer">

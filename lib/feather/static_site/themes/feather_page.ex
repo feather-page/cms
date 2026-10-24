@@ -26,7 +26,7 @@ defmodule Feather.StaticSite.Themes.FeatherPage do
   }
 
   @views ~w(layout home post page project not_found)a
-  @partials ~w(masthead post_book_card books_list projects_list project_card tags)a
+  @partials ~w(masthead post_book_card books_list projects_list project_card tags replies)a
 
   for name <- @views ++ @partials do
     if name in @views, do: @impl(true)

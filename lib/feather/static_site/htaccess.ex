@@ -10,6 +10,11 @@ defmodule Feather.StaticSite.Htaccess do
   name that always means the same file). Rules sit in module guards, so a
   host without a module serves plain files instead of failing.
 
+  For a site with a fediverse name it serves the fediverse documents
+  (ADR 0033), which have no extension, as `application/activity+json`
+  and the WebFinger answer as `application/jrd+json` for any origin, by
+  core directives, and their precompressed copies like the text files.
+
   The content security policy allows only what the themes load: the site's
   own images (the drawn favicon among them), stylesheet and fonts, the
   icon of a page with an emoji of its own as a data URI, inline style
@@ -20,6 +25,7 @@ defmodule Feather.StaticSite.Htaccess do
   """
 
   alias Feather.Content.{Page, Post, Project}
+  alias Feather.Fediverse
   alias Feather.Redirects
   alias Feather.Redirects.Redirect
   alias Feather.StaticSite.{Precompress, Routes}
@@ -80,7 +86,9 @@ defmodule Feather.StaticSite.Htaccess do
   sends its `index.md` to the target's Markdown alternate
   (`Feather.Redirects.markdown_target_url/2`). The rules of old paths with
   an extension come first, so a redirect from such an `index.html` or
-  `index.md` itself wins.
+  `index.md` itself wins. A redirect from a path the fediverse documents
+  own (`Feather.StaticSite.Routes.fediverse_path?/1`) gets no rule: one
+  from before those paths were reserved must not shadow them.
   """
   @spec render(Routes.t(), [{Redirect.t(), Post.t() | Page.t() | Project.t() | String.t()}]) ::
           String.t()
@@ -93,9 +101,16 @@ defmodule Feather.StaticSite.Htaccess do
 
     template(%{
       not_found_url: Routes.not_found_url(routes),
+      fediverse: Fediverse.account?(routes.site),
       security_headers: @security_headers,
       diagram_content_security_policy: Enum.join(@diagram_content_security_policy, "; "),
-      redirects: Enum.flat_map(with_extension_first(redirects), &redirect_rules(routes, &1)),
+      redirects:
+        redirects
+        |> Enum.reject(fn {%Redirect{old_path: old_path}, _target} ->
+          Routes.fediverse_path?(old_path)
+        end)
+        |> with_extension_first()
+        |> Enum.flat_map(&redirect_rules(routes, &1)),
       encodings: [{"br", ".br"}, {"gzip", ".gz"}],
       extensions: Enum.map_join(content_types, "|", &elem(&1, 0)),
       content_types: content_types

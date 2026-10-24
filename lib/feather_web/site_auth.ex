@@ -27,13 +27,19 @@ defmodule FeatherWeb.SiteAuth do
       LiveView's hooks: a component that acts on the site calls
       `check_component_events/1` on mount (and `check_access/1` where it
       acts outside events, e.g. on upload progress). The changes the
-      `FeatherWeb.HeaderImagePicker` sends its LiveView are checked too,
+      `FeatherWeb.HeaderImagePicker` sends its LiveView and the posts the
+      Timeline broadcasts (`Feather.Fediverse.subscribe_timeline/1`) are
+      checked too,
     * subscribes to the site's notices (`Feather.Publishing.subscribe_notices/1`)
       and collects `{:site_notice, notice}` broadcasts (e.g. from the deploy
       pipeline) in `site_notices`, which `FeatherWeb.SiteComponents.site_shell/1`
       shows as alerts above the page content. The event
       `"dismiss_site_notice"` removes one, `"retry_deploy"` deploys the
       site again and removes it,
+    * assigns `site_unread_mentions`, the number of the site's mentions no
+      member has seen yet (`Feather.Fediverse.count_unread_mentions/1`),
+      which the shell shows next to Mentions; `refresh_unread_mentions/1`
+      counts them again,
     * assigns `site_deploy` for the deploy control of the shell: the site's
       deployment `target` (or nil), how many changes it does not show yet
       (`pending`, `Feather.Publishing.undeployed_count/2`) and the
@@ -53,7 +59,7 @@ defmodule FeatherWeb.SiteAuth do
   import Plug.Conn, only: [assign: 3]
 
   alias Feather.Accounts.Scope
-  alias Feather.{Publishing, Sites}
+  alias Feather.{Fediverse, Publishing, Sites}
   alias Phoenix.LiveView
 
   @max_notices 5
@@ -67,6 +73,7 @@ defmodule FeatherWeb.SiteAuth do
       socket
       |> Phoenix.Component.assign(:current_scope, scope)
       |> Phoenix.Component.assign(:site_notices, [])
+      |> Phoenix.Component.assign(:site_unread_mentions, unread_mentions(scope))
       |> Phoenix.Component.assign(:site_deploy, deploy_status(scope))
       |> LiveView.attach_hook(:site_access_on_event, :handle_event, &check_access_on_event/3)
       |> LiveView.attach_hook(:site_access_on_params, :handle_params, &check_access_on_params/3)
@@ -150,6 +157,7 @@ defmodule FeatherWeb.SiteAuth do
 
   # Also covers the picker's upload progress; its events are checked in the component.
   defp handle_message({FeatherWeb.HeaderImagePicker, _change}, socket), do: check_access(socket)
+  defp handle_message({:timeline_post, _event, _id}, socket), do: check_access(socket)
   defp handle_message(_message, socket), do: {:cont, socket}
 
   @doc """
@@ -159,6 +167,20 @@ defmodule FeatherWeb.SiteAuth do
   @spec refresh_deploy_status(LiveView.Socket.t()) :: LiveView.Socket.t()
   def refresh_deploy_status(socket) do
     Phoenix.Component.assign(socket, :site_deploy, deploy_status(socket.assigns.current_scope))
+  end
+
+  @doc "Counts the site's unread mentions again, e.g. after showing some."
+  @spec refresh_unread_mentions(LiveView.Socket.t()) :: LiveView.Socket.t()
+  def refresh_unread_mentions(socket) do
+    Phoenix.Component.assign(
+      socket,
+      :site_unread_mentions,
+      unread_mentions(socket.assigns.current_scope)
+    )
+  end
+
+  defp unread_mentions(%Scope{site: site} = scope) do
+    if Fediverse.account?(site), do: Fediverse.count_unread_mentions(scope), else: 0
   end
 
   defp deploy_status(scope) do

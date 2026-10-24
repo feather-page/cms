@@ -10,8 +10,12 @@ defmodule Feather.StaticSite.Export do
   (`Feather.StaticSite.GeneratedImages`, drawn first), the fonts of the
   site's theme, the rendered diagrams, `feed.xml`, `llms.txt`,
   `robots.txt`, `sitemap.xml`, `style.css`, `404.html`, the IndexNow key
-  file (ADR 0027) and the `.htaccess` for Apache hosts, with the security
-  headers and the active redirects.
+  file (ADR 0027), the `.htaccess` for Apache hosts, with the security
+  headers and the active redirects, and, for a site with a fediverse name,
+  the WebFinger answer, the account, its outbox, its followers, whom it
+  follows, a document per post and per public reply of a member
+  (ADR 0033) and the pictures of the authors of the approved replies the
+  posts show (ADR 0034).
 
   Knows nothing about deployment targets, locks or where the files end up
   (see ADR 0006). The data is loaded up front; rendering and copying run
@@ -20,7 +24,8 @@ defmodule Feather.StaticSite.Export do
   """
 
   alias Feather.Content.{Page, Slug}
-  alias Feather.{Diagrams, Media}
+  alias Feather.{Diagrams, Fediverse, Media}
+  alias Feather.Fediverse.Pictures
   alias Feather.Sites.Site
 
   alias Feather.StaticSite.{
@@ -53,6 +58,7 @@ defmodule Feather.StaticSite.Export do
     jobs =
       [:not_found, {:htaccess, redirects} | documents] ++
         markdown_jobs(data) ++
+        fediverse_jobs(data) ++
         indexnow_key_jobs(site) ++
         Enum.map(Slug.artifacts(), &{:artifact, &1}) ++
         asset_jobs(data, site) ++ generated_image_jobs(data, routes, documents)
@@ -70,6 +76,20 @@ defmodule Feather.StaticSite.Export do
   defp markdown_jobs(data) do
     pages = Enum.reject(data.pages, &Page.homepage?/1)
     [{:markdown, :home} | Enum.map(data.posts ++ data.projects ++ pages, &{:markdown, &1})]
+  end
+
+  defp fediverse_jobs(%SiteData{site: site, posts: posts, replies: replies} = data) do
+    if Fediverse.account?(site) do
+      documents =
+        [:webfinger, :account, :outbox, :followers, :following | posts] ++ data.member_replies
+
+      Enum.map(documents, &{:activitypub, &1}) ++
+        for reply <- replies |> Map.values() |> List.flatten(),
+            reply.approved_picture,
+            do: {:reply_picture, reply.approved_picture}
+    else
+      []
+    end
   end
 
   defp indexnow_key_jobs(%Site{indexnow_key: nil}), do: []
@@ -159,6 +179,14 @@ defmodule Feather.StaticSite.Export do
   defp run_job(:not_found, data, routes, sink),
     do: Sink.write(sink, Routes.not_found_path(routes), Renderer.render_not_found(data, routes))
 
+  defp run_job({:activitypub, document}, data, routes, sink) do
+    Sink.write(
+      sink,
+      activitypub_path(routes, document),
+      Renderer.render_activitypub(data, routes, document)
+    )
+  end
+
   defp run_job({:htaccess, redirects}, _data, routes, sink),
     do: Sink.write(sink, Routes.htaccess_path(routes), Htaccess.render(routes, redirects))
 
@@ -192,6 +220,14 @@ defmodule Feather.StaticSite.Export do
     end
   end
 
+  defp run_job({:reply_picture, name}, _data, routes, sink) do
+    source = Pictures.path(name)
+
+    if File.regular?(source),
+      do: Sink.copy(sink, Routes.reply_picture_path(routes, name), from: source),
+      else: Logger.warning("Reply picture #{name} missing, not exported")
+  end
+
   defp run_job({:generated_image, image}, _data, routes, sink) do
     name = GeneratedImages.file_name(image)
 
@@ -207,4 +243,7 @@ defmodule Feather.StaticSite.Export do
         )
     end
   end
+
+  defp activitypub_path(routes, :webfinger), do: Routes.webfinger_path(routes)
+  defp activitypub_path(routes, document), do: Routes.activitypub_path(routes, document)
 end

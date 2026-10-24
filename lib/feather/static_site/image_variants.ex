@@ -3,7 +3,8 @@ defmodule Feather.StaticSite.ImageVariants do
   Which variants (`Feather.Media.Variants`) an image of a site needs: the
   union over its roles of the sizes the site's theme declares for each
   role (`c:Feather.StaticSite.Theme.image_variants/0`), plus the 1200 px
-  JPEG for the sharing image. Every image also keeps the admin preview.
+  JPEG for the sharing image and the 400 px JPEG for the account picture,
+  whatever the theme. Every image also keeps the admin preview.
 
   An image's roles follow from what references it, in the records as they
   are and as their published versions show them, so a draft's images are
@@ -17,6 +18,8 @@ defmodule Feather.StaticSite.ImageVariants do
     * `:portrait`, `:footer_mascot`, `:post_end_mascot`, `:projects_mascot` - the site's
     * `:sharing` - the `og:image` of a post, page or project: its header,
       else its thumbnail, else its first content image
+    * `:account_picture` - the portrait of a site with a fediverse name, the
+      picture of its account (ADR 0033)
 
   `sync_site/1` brings the stored variants in line; it runs for every site
   on start (`backfill/0`) and for a site whose theme changes.
@@ -47,6 +50,7 @@ defmodule Feather.StaticSite.ImageVariants do
           | :post_end_mascot
           | :projects_mascot
           | :sharing
+          | :account_picture
 
   @site_roles [
     portrait_image_id: :portrait,
@@ -75,15 +79,17 @@ defmodule Feather.StaticSite.ImageVariants do
   @doc """
   The variants an image with the given roles needs in the site's theme:
   per role the webp variants of its sizes (collapsed where the image is too
-  small, as `Feather.Media.Variants.for_image/3` does), then the JPEG of
-  the sharing image.
+  small, as `Feather.Media.Variants.for_image/3` does), then the JPEGs of
+  the sharing image and the account picture.
   """
   @spec variants(Site.t(), Image.t(), [role()]) :: [Variants.variant()]
   def variants(%Site{} = site, %Image{width: width, height: height}, roles) do
     webp = Enum.flat_map(roles, &Variants.for_image(sizes(site, &1), width, height))
-    jpg = if :sharing in roles, do: [Variants.sharing()], else: []
+    jpg = for {role, variant} <- jpg_roles(), role in roles, do: variant
     Enum.uniq(webp ++ jpg)
   end
+
+  defp jpg_roles, do: [sharing: Variants.sharing(), account_picture: Variants.account_picture()]
 
   @doc "The variants one image of the site needs (see `variants/3`)."
   @spec variants_of(Site.t(), Image.t()) :: [Variants.variant()]
@@ -147,8 +153,13 @@ defmodule Feather.StaticSite.ImageVariants do
   defp book_references(scope),
     do: for(book <- Books.list_books(scope), do: {book.cover_image_id, :book_cover})
 
-  defp site_references(site),
-    do: for({field, role} <- @site_roles, do: {Map.get(site, field), role})
+  defp site_references(site) do
+    references = for {field, role} <- @site_roles, do: {Map.get(site, field), role}
+
+    if site.fediverse_name,
+      do: [{site.portrait_image_id, :account_picture} | references],
+      else: references
+  end
 
   @doc """
   Brings the stored variants of every image of the site in line with its

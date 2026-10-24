@@ -89,6 +89,7 @@ defmodule FeatherWeb.Layouts do
         navigate={item.navigate}
         icon={item.icon}
         section={item[:section]}
+        count={item[:count]}
       />
       <:nav_footer :let={place} :if={@nav_footer != []}>
         {render_slot(@nav_footer, place)}
