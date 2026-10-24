@@ -25,7 +25,13 @@ defmodule Feather.Fediverse.TimelinePost do
     field :name, Feather.Encrypted.Binary, redact: true
     field :content, Feather.Encrypted.Binary, redact: true
     field :summary, Feather.Encrypted.Binary, redact: true
-    field :attachments, Feather.Encrypted.List, default: [], redact: true
+
+    # No default dump at compile time: that needs the key, which a release reads at runtime.
+    field :attachments, Feather.Encrypted.List,
+      default: [],
+      skip_default_validation: true,
+      redact: true
+
     field :named_accounts, {:array, :string}, default: []
     field :published_at, :utc_datetime_usec
 
