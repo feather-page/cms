@@ -113,21 +113,26 @@ defmodule Feather.Media.UrlChecker do
   end
 
   @doc """
-  Resolves a host name with the system resolver, IPv4 and IPv6.
+  Resolves a host name with the system resolver, IPv4 and IPv6, both
+  within `timeout` milliseconds. `lookup` looks up one address family,
+  `:inet.getaddrs/3` unless a test passes another.
   """
-  @spec system_resolve(String.t(), non_neg_integer()) ::
+  @spec system_resolve(String.t(), non_neg_integer(), function()) ::
           {:ok, [:inet.ip_address()]} | {:error, :nxdomain}
-  def system_resolve(host, timeout) do
+  def system_resolve(host, timeout, lookup \\ &:inet.getaddrs/3) do
     host = String.to_charlist(host)
+    deadline = System.monotonic_time(:millisecond) + timeout
 
     addresses =
       for family <- [:inet, :inet6],
-          {:ok, ips} <- [:inet.getaddrs(host, family, timeout)],
+          {:ok, ips} <- [lookup.(host, family, remaining(deadline))],
           ip <- ips,
           do: ip
 
     if addresses == [], do: {:error, :nxdomain}, else: {:ok, Enum.uniq(addresses)}
   end
+
+  defp remaining(deadline), do: max(deadline - System.monotonic_time(:millisecond), 0)
 
   @doc """
   Returns true for a public unicast address. IPv4 addresses embedded in
