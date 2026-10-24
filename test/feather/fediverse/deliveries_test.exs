@@ -1,6 +1,7 @@
 defmodule Feather.Fediverse.DeliveriesTest do
   use Feather.DataCase
 
+  import ExUnit.CaptureLog
   import Plug.Conn
 
   alias Feather.Fediverse
@@ -323,6 +324,24 @@ defmodule Feather.Fediverse.DeliveriesTest do
     assert_received {:delivered, "mastodon.example"}
     refute_received {:delivered, _host}
     assert deliveries() == []
+  end
+
+  test "logs what an inbox answered when it refused a delivery", %{site: site} do
+    Req.Test.stub(Feather.Fediverse, fn conn ->
+      send_resp(conn, 401, ~s({"error":\n  "Signature invalid"}))
+    end)
+
+    level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: level) end)
+
+    log =
+      capture_log([level: :info], fn ->
+        assert :ok = Deliveries.deliver(site, [remote_account_fixture()], @activity)
+      end)
+
+    assert log =~ "failed (attempt 1)"
+    assert log =~ ~s({:status, 401, "{\\"error\\": \\"Signature invalid\\"}"})
   end
 
   test "stores payloads encrypted", %{site: site} do

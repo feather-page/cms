@@ -263,10 +263,16 @@ defmodule Feather.Fediverse.ClientTest do
     assert {:error, :too_large} = Client.get_picture("https://mastodon.example/big.png", key)
   end
 
-  test "reports the status of a failed request", %{key: key} do
-    Req.Test.stub(Feather.Fediverse, &send_resp(&1, 410, "gone"))
+  test "reports the status of a failed request with an excerpt of its body", %{key: key} do
+    Req.Test.stub(
+      Feather.Fediverse,
+      &send_resp(&1, 410, "  gone\n\n  for good " <> String.duplicate("x", 400))
+    )
 
-    assert {:error, {:status, 410}} = Client.get_object(@actor, key)
-    assert {:error, {:status, 410}} = Client.post("https://mastodon.example/inbox", "{}", key)
+    assert {:error, {:status, 410, "gone for good " <> rest}} = Client.get_object(@actor, key)
+    assert byte_size("gone for good " <> rest) == 300
+
+    assert {:error, {:status, 410, "gone for good " <> _rest}} =
+             Client.post("https://mastodon.example/inbox", "{}", key)
   end
 end

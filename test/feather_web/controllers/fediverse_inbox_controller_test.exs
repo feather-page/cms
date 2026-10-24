@@ -2,6 +2,7 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
   use FeatherWeb.ConnCase
 
   import Ecto.Query
+  import ExUnit.CaptureLog
 
   alias Feather.{Fediverse, Repo}
 
@@ -78,15 +79,20 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
 
   defp send_activity(c, activity, opts \\ []) do
     body = Keyword.get_lazy(opts, :body, fn -> Jason.encode!(activity) end)
-    path = inbox(c.site)
+    post_signed(c, activity_headers(c, body, opts), body)
+  end
+
+  defp activity_headers(c, body, opts) do
     key = Keyword.get(opts, :key, c.key)
     key_id = Keyword.get(opts, :key_id, c.ana <> "#main-key")
-    headers = signed_headers(key, key_id, path, body, Keyword.take(opts, [:host, :date, :digest]))
+    signed_headers(key, key_id, inbox(c.site), body, Keyword.take(opts, [:host, :date, :digest]))
+  end
 
+  defp post_signed(c, headers, body) do
     headers
     |> Enum.reduce(build_conn(), &put_header/2)
     |> put_req_header("content-type", "application/activity+json")
-    |> post(path, body)
+    |> post(inbox(c.site), body)
   end
 
   # Plug keeps the host apart from the headers, but servers pass the header on as sent.
@@ -414,6 +420,118 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
       assert [_follower] = followers(c.site)
       assert delivered(c) == nil
       assert [%Delivery{attempts: 0}] = Repo.all(Delivery)
+    end
+  end
+
+  describe "a rejected activity" do
+    # The test config only prints warnings.
+    defp signature_value(headers) do
+      {"signature", header} = List.keyfind(headers, "signature", 0)
+      [_match, value] = Regex.run(~r/signature="([^"]+)"/, header)
+      value
+    end
+
+    defp rejection_log(fun) do
+      level = Logger.level()
+      Logger.configure(level: :info)
+      on_exit(fn -> Logger.configure(level: level) end)
+      capture_log([level: :info], fun)
+    end
+
+    test "logs why a signature failed, naming the signed headers", c do
+      for {opts, reason, detail} <- [
+            {[host: "timon.blog"], "wrong_host", ~s(host="timon.blog")},
+            {[digest: "SHA-256=" <> Base.encode64(:crypto.hash(:sha256, "{}"))], "digest", ""},
+            {[date: DateTime.add(DateTime.utc_now(), -13, :hour)], "stale", "date="}
+          ] do
+        body = Jason.encode!(follow(c))
+        headers = activity_headers(c, body, opts)
+        log = rejection_log(fn -> assert response(post_signed(c, headers, body), 401) end)
+
+        assert log =~ "Inbox rejected Follow from mastodon.example: unauthorized #{reason}"
+        assert log =~ "key_host=mastodon.example"
+        assert log =~ "signed=(request-target),host,date,digest"
+        assert log =~ detail
+        refute log =~ signature_value(headers)
+        refute log =~ "follows/1"
+      end
+    end
+
+    test "logs a missing signature", c do
+      log =
+        rejection_log(fn ->
+          conn =
+            build_conn()
+            |> put_req_header("content-type", "application/activity+json")
+            |> post(inbox(c.site), Jason.encode!(follow(c)))
+
+          assert response(conn, 401)
+        end)
+
+      assert log =~ "Inbox rejected Follow from mastodon.example: unauthorized unsigned"
+      assert log =~ "key_host=none signed=none"
+    end
+
+    test "logs a keyId on another origin and a signature the fetched key does not verify", c do
+      body = Jason.encode!(follow(c))
+      foreign = activity_headers(c, body, key_id: "https://evil.example/u#main-key")
+      unverified = activity_headers(c, body, key: c.other_key)
+
+      log =
+        rejection_log(fn ->
+          assert response(post_signed(c, foreign, body), 401)
+          assert response(post_signed(c, unverified, body), 401)
+        end)
+
+      assert log =~ "unauthorized key_origin key_host=evil.example"
+      assert log =~ "unauthorized not_verified key_host=mastodon.example"
+      refute log =~ signature_value(foreign)
+      refute log =~ signature_value(unverified)
+    end
+
+    test "logs no signed header names that are malformed or too many", c do
+      body = Jason.encode!(follow(c))
+      signed = ~s[headers="(request-target) host date digest"]
+
+      for names <- [
+            "(request-target) host date digest key_host=mastodon.social unauthorized not_verified",
+            "(request-target) host date digest" <> String.duplicate(" x-padding", 13)
+          ] do
+        headers =
+          c
+          |> activity_headers(body, [])
+          |> Enum.map(fn
+            {"signature", value} ->
+              {"signature", String.replace(value, signed, ~s(headers="#{names}"))}
+
+            header ->
+              header
+          end)
+
+        log = rejection_log(fn -> assert response(post_signed(c, headers, body), 401) end)
+
+        assert log =~ "Inbox rejected Follow from mastodon.example: unauthorized"
+        assert log =~ "signed=invalid"
+        refute log =~ "mastodon.social"
+        refute log =~ "x-padding"
+      end
+    end
+
+    test "logs a forbidden and an invalid activity", c do
+      log =
+        rejection_log(fn ->
+          delete = activity(c, "Delete", "https://other.example/users/ana/statuses/1", 1)
+          assert response(send_activity(c, delete), 403)
+
+          assert response(send_activity(c, Map.delete(follow(c), "id")), 400)
+        end)
+
+      assert log =~
+               "Inbox rejected Delete from mastodon.example: forbidden key_host=mastodon.example " <>
+                 "signed=(request-target),host,date,digest"
+
+      assert log =~
+               "Inbox rejected Follow from mastodon.example: invalid key_host=mastodon.example"
     end
   end
 

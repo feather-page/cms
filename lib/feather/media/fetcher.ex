@@ -14,6 +14,10 @@ defmodule Feather.Media.Fetcher do
     * Everything (resolving, connecting, all redirects) shares one deadline,
       30 seconds unless told otherwise.
 
+  A response that is neither 2xx nor a redirect followed is
+  `{:status, status, excerpt}`, the excerpt at most 300 bytes of its
+  body, whitespace collapsed.
+
   `fetch/3` returns the body; `request/2` returns the response and can
   also require https on port 443, send a body, headers per requested URL
   and the request through a proxy, and run each request through a limiter.
@@ -29,6 +33,7 @@ defmodule Feather.Media.Fetcher do
   @timeout 30_000
   @max_redirects 3
   @redirect_statuses [301, 302, 303, 307, 308]
+  @excerpt_bytes 300
 
   @type error ::
           {:invalid_url, String.t()}
@@ -37,7 +42,7 @@ defmodule Feather.Media.Fetcher do
           | :too_large
           | :too_many_redirects
           | {:forbidden_redirect, String.t()}
-          | {:status, pos_integer()}
+          | {:status, pos_integer(), String.t()}
           | Exception.t()
 
   @type option ::
@@ -145,9 +150,23 @@ defmodule Feather.Media.Fetcher do
         redirect(uri, response, deadline, opts, redirects_left)
 
       status ->
-        {:error, {:status, status}}
+        {:error, {:status, status, excerpt(response.body)}}
     end
   end
+
+  defp excerpt(body) when is_binary(body) do
+    body
+    |> binary_part(0, min(byte_size(body), @excerpt_bytes * 2))
+    |> String.replace_invalid()
+    |> String.split()
+    |> Enum.join(" ")
+    |> truncate()
+  end
+
+  defp excerpt(_body), do: ""
+
+  defp truncate(text) when byte_size(text) <= @excerpt_bytes, do: text
+  defp truncate(text), do: text |> binary_part(0, @excerpt_bytes) |> String.replace_invalid("")
 
   defp redirect(_uri, _response, _deadline, _opts, 0), do: {:error, :too_many_redirects}
 
@@ -158,7 +177,7 @@ defmodule Feather.Media.Fetcher do
       get(next, deadline, opts, redirects_left - 1)
     else
       {:error, message} when is_binary(message) -> {:error, {:forbidden_redirect, message}}
-      _ -> {:error, {:status, response.status}}
+      _ -> {:error, {:status, response.status, excerpt(response.body)}}
     end
   end
 
