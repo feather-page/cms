@@ -5,8 +5,11 @@ defmodule Feather.Media.Processor do
   libvips never picks a loader itself, so none of its other loaders (SVG,
   TIFF, VIPS, CSV, ...) ever parses a member's file:
 
-    * only JPEG, PNG, WebP, GIF and HEIF (AVIF included) are accepted, by
-      their magic bytes, before libvips sees the file;
+    * only JPEG, PNG, WebP, GIF and AVIF are accepted, by their magic
+      bytes, before libvips sees the file;
+    * a HEIF file without the `avif` brand is a HEIC coded with HEVC, as
+      iPhones write them, and is refused unopened (`{:error, :heic}`): the
+      bundled libvips has no HEVC decoder;
     * only the loader of that format opens it, and only one image is
       read: the first frame, or a HEIF file's primary image;
     * an image whose header names more than 100 megapixels is refused
@@ -30,6 +33,8 @@ defmodule Feather.Media.Processor do
 
   @heif_brands ~w(heic heix hevc heim heis hevm hevs mif1 msf1 avif)
 
+  @head_size 256
+
   @max_pixels 100_000_000
 
   @type info :: %{
@@ -40,12 +45,14 @@ defmodule Feather.Media.Processor do
         }
 
   @doc """
-  Inspects a file. Returns `{:ok, info}` for a JPEG, PNG, WebP, GIF or HEIF
+  Inspects a file. Returns `{:ok, info}` for a JPEG, PNG, WebP, GIF or AVIF
   image of at most 100 megapixels, `{:error, :too_many_pixels}` for a
-  bigger one and `{:error, :not_an_image}` for anything else. Width and
-  height are given after applying the EXIF orientation.
+  bigger one, `{:error, :heic}` for a HEIC coded with HEVC and
+  `{:error, :not_an_image}` for anything else. Width and height are given
+  after applying the EXIF orientation.
   """
-  @spec inspect_file(Path.t()) :: {:ok, info()} | {:error, :not_an_image | :too_many_pixels}
+  @spec inspect_file(Path.t()) ::
+          {:ok, info()} | {:error, :not_an_image | :too_many_pixels | :heic}
   def inspect_file(path) do
     with {:ok, format} <- format(path),
          {:ok, image} <- open(path, format) do
@@ -53,7 +60,7 @@ defmodule Feather.Media.Processor do
       {width, height} = oriented_size(image)
       {:ok, %{content_type: content_type, extension: extension, width: width, height: height}}
     else
-      {:error, :too_many_pixels} -> {:error, :too_many_pixels}
+      {:error, reason} when reason in [:too_many_pixels, :heic] -> {:error, reason}
       _ -> {:error, :not_an_image}
     end
   end
@@ -129,7 +136,7 @@ defmodule Feather.Media.Processor do
   end
 
   defp format(path) do
-    case File.open(path, [:read, :binary], &IO.binread(&1, 12)) do
+    case File.open(path, [:read, :binary], &IO.binread(&1, @head_size)) do
       {:ok, head} when is_binary(head) -> magic(head)
       _ -> {:error, :not_an_image}
     end
@@ -140,9 +147,11 @@ defmodule Feather.Media.Processor do
   defp magic(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: {:ok, :webp}
   defp magic(<<"GIF8", version, "a", _rest::binary>>) when version in [?7, ?9], do: {:ok, :gif}
 
-  defp magic(<<_size::binary-size(4), "ftyp", brand::binary-size(4), _rest::binary>>)
-       when brand in @heif_brands,
-       do: {:ok, :heif}
+  defp magic(<<size::32, "ftyp", brand::binary-size(4), _minor::binary-size(4), rest::binary>>)
+       when brand in @heif_brands and size in 16..@head_size//4 and byte_size(rest) >= size - 16 do
+    compatible = for <<other::binary-size(4) <- binary_part(rest, 0, size - 16)>>, do: other
+    if "avif" in [brand | compatible], do: {:ok, :heif}, else: {:error, :heic}
+  end
 
   defp magic(_head), do: {:error, :not_an_image}
 

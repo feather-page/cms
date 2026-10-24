@@ -29,13 +29,37 @@ defmodule Feather.Media.ProcessorTest do
       end
     end
 
-    test "accepts a HEIF image whose major brand is heic", %{tmp_dir: dir} do
-      <<box::binary-size(8), "avif", rest::binary>> = File.read!(test_image_path(64, 48, "avif"))
-      path = Path.join(dir, "photo.heic")
-      File.write!(path, box <> "heic" <> rest)
+    test "refuses a HEIC coded with HEVC, which the bundled libvips cannot decode",
+         %{tmp_dir: dir} do
+      path = hevc_heic_path()
 
-      assert {:ok, %{content_type: "image/heif", extension: "heic", width: 64, height: 48}} =
-               Processor.inspect_file(path)
+      assert Processor.inspect_file(path) == {:error, :heic}
+
+      assert Processor.write_variant(path, Path.join(dir, "480.webp"), Variants.preview()) ==
+               {:error, :heic}
+
+      assert Processor.jpeg(path, 64) == {:error, :heic}
+    end
+
+    test "tells AVIF from HEIC by all brands of the file type box", %{tmp_dir: dir} do
+      avif = with_major_brand(test_image_path(64, 48, "avif"), "mif1", dir)
+      heic = with_major_brand(hevc_heic_path(), "mif1", dir)
+
+      assert {:ok, %{content_type: "image/heif", width: 64, height: 48}} =
+               Processor.inspect_file(avif)
+
+      assert Processor.inspect_file(heic) == {:error, :heic}
+    end
+
+    test "reads a file type box that names many brands", %{tmp_dir: dir} do
+      <<size::32, "ftyp", box::binary-size(size - 8), rest::binary>> =
+        File.read!(test_image_path(64, 48, "avif"))
+
+      brands = String.duplicate("mif1", 13)
+      path = Path.join(dir, "brands.avif")
+      File.write!(path, <<size + byte_size(brands)::32, "ftyp">> <> box <> brands <> rest)
+
+      assert {:ok, %{width: 64, height: 48}} = Processor.inspect_file(path)
     end
 
     test "reads the primary image of a HEIF file that holds several", %{tmp_dir: dir} do
@@ -58,7 +82,7 @@ defmodule Feather.Media.ProcessorTest do
             <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A>>,
             <<"RIFF", 0, 2, 0, 0, "WEBP">>,
             "GIF89a",
-            <<0, 0, 0, 24, "ftypheic">>
+            <<0, 0, 0, 24, "ftypavif">>
           ] do
         path = Path.join(dir, "garbage-#{System.unique_integer([:positive])}")
         File.write!(path, magic <> garbage)
@@ -210,6 +234,13 @@ defmodule Feather.Media.ProcessorTest do
 
   defp fitted(variant, width, height),
     do: {Variants.width(variant, width, height), Variants.width(variant, height, width)}
+
+  defp with_major_brand(source, brand, dir) do
+    <<box::binary-size(8), _brand::binary-size(4), rest::binary>> = File.read!(source)
+    path = Path.join(dir, "#{brand}-#{System.unique_integer([:positive])}.heif")
+    File.write!(path, box <> brand <> rest)
+    path
+  end
 
   # Stored landscape, left half white: orientation 6 turns it upright, white half on top.
   defp rotated_jpeg_path(dir, width, height) do

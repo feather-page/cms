@@ -178,6 +178,17 @@ defmodule Feather.MediaTest do
       assert Media.list_images(scope) == []
     end
 
+    test "rejects HEIC photos coded with HEVC and says how to upload them", %{scope: scope} do
+      assert {:error, changeset} =
+               Media.create_image_from_upload(scope, hevc_heic_path(), "IMG_0001.HEIC")
+
+      assert errors_on(changeset) == %{
+               file: ["is a HEIC photo, which can't be processed (upload it as JPEG)"]
+             }
+
+      assert Media.list_images(scope) == []
+    end
+
     test "rejects images whose header names more than 100 megapixels", %{scope: scope} do
       path = bomb_image_path(20_000, 20_000, "png")
 

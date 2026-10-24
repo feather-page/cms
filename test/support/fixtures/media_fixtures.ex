@@ -1,7 +1,8 @@
 defmodule Feather.MediaFixtures do
   @moduledoc """
-  Test helpers for images. Test images are generated with libvips, so no
-  binary fixtures are needed.
+  Test helpers for images. Test images are generated with libvips; only a
+  HEVC-coded HEIC, which libvips cannot write, is a file
+  (`test/fixtures/hevc.heic`, made with libheif's `heif-enc`).
   """
 
   import Bitwise
@@ -23,6 +24,9 @@ defmodule Feather.MediaFixtures do
     :ok = Image.write_to_file(image, path)
     path
   end
+
+  @doc "The path of a 64×48 HEIC coded with HEVC, as iPhones write them."
+  def hevc_heic_path, do: Path.expand("../../fixtures/hevc.heic", __DIR__)
 
   @doc """
   Writes a generated PNG with an alpha channel that runs from fully
