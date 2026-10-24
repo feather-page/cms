@@ -74,6 +74,15 @@ defmodule Feather.Fediverse.Inbox do
   Deliveries to a shared inbox stay: they carry activities for other
   accounts too.
 
+  A rejection with `:invalid`, `:unauthorized` or `:forbidden` is logged
+  at info with its cause (for `:unauthorized` the failed check of
+  `Feather.Fediverse.Signature.check/3`, `:key_origin`, `:key_fetch_limited`,
+  `{:key_fetch_failed, reason}` or `:not_verified`), the activity's type,
+  the hosts of its actor and keyId and the names of the signed headers
+  (`invalid` for a malformed list or more than 16),
+  for a wrong host or a stale date also the header received; never the
+  body or the signature. The answer stays as it was.
+
   `check_client/1` limits the requests per client: at most 300 within 5
   minutes, from an IPv6 client per /64 network, which a client usually
   has whole.
@@ -149,9 +158,72 @@ defmodule Feather.Fediverse.Inbox do
          {:ok, account} <- admit(site, request, activity) do
       store(site, account, activity)
     else
-      :ignore -> :ok
-      {:error, reason} -> {:error, reason}
+      :ignore ->
+        :ok
+
+      {:error, {:unauthorized, cause}} ->
+        reject(:unauthorized, cause, request, activity)
+
+      {:error, reason} when reason in [:invalid, :forbidden] ->
+        reject(reason, nil, request, activity)
+
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  defp reject(reason, cause, request, activity) do
+    signature = Signature.summary(request)
+
+    [
+      "Inbox rejected #{log_type(activity["type"])} from #{log_host(id_of(activity["actor"]))}:",
+      reason,
+      cause && log_cause(cause),
+      "key_host=#{log_host(signature.key_id)}",
+      "signed=#{log_signed(signature.headers)}",
+      received(cause, request)
+    ]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
+    |> Logger.info()
+
+    {:error, reason}
+  end
+
+  defp log_type(type) when is_binary(type),
+    do: if(type =~ ~r/\A\w{1,64}\z/, do: type, else: "activity")
+
+  defp log_type(_type), do: "activity"
+
+  defp log_signed(nil), do: "none"
+
+  defp log_signed(names) do
+    {shown, rest} = Enum.split(names, 16)
+
+    if rest == [] and Enum.all?(shown, &(&1 =~ ~r/\A[a-z0-9()_-]{1,64}\z/)),
+      do: Enum.join(shown, ","),
+      else: "invalid"
+  end
+
+  defp log_host(url) when is_binary(url) do
+    case URI.new(url) do
+      {:ok, %URI{host: host}} when is_binary(host) and host != "" -> host
+      _other -> "none"
+    end
+  end
+
+  defp log_host(_url), do: "none"
+
+  defp log_cause({stage, reason}), do: "#{stage}:#{inspect(reason, printable_limit: 300)}"
+  defp log_cause(cause), do: to_string(cause)
+
+  defp received(:wrong_host, request), do: "host=" <> received_header(request, "host")
+  defp received(:stale, request), do: "date=" <> received_header(request, "date")
+  defp received(_cause, _request), do: nil
+
+  defp received_header(request, name) do
+    values = for {^name, value} <- request.headers, do: value
+    inspect(Enum.join(values, ", "), printable_limit: 100)
   end
 
   defp admit(site, request, %{"actor" => actor} = activity) do
@@ -334,7 +406,8 @@ defmodule Feather.Fediverse.Inbox do
          true <- same_origin?(signature.key_id, actor) do
       {:ok, signature}
     else
-      _unsigned -> {:error, :unauthorized}
+      {:error, reason} -> {:error, {:unauthorized, reason}}
+      false -> {:error, {:unauthorized, :key_origin}}
     end
   end
 
@@ -354,12 +427,21 @@ defmodule Feather.Fediverse.Inbox do
   defp signer(site, signature, actor, nil), do: fetch_signer(site, signature, actor)
 
   defp fetch_signer(site, signature, actor) do
-    with :ok <- RateLimit.hit({:inbox_key_fetch, actor}, 1, @key_fetch_interval_ms),
+    with :ok <- allow_key_fetch(actor),
          {:ok, account} <- fetch_account(site, actor),
          true <- signed_by?(signature, account) do
       {:ok, account}
     else
-      _unverified -> {:error, :unauthorized}
+      {:error, :key_fetch_limited} -> {:error, {:unauthorized, :key_fetch_limited}}
+      {:error, reason} -> {:error, {:unauthorized, {:key_fetch_failed, reason}}}
+      false -> {:error, {:unauthorized, :not_verified}}
+    end
+  end
+
+  defp allow_key_fetch(actor) do
+    case RateLimit.hit({:inbox_key_fetch, actor}, 1, @key_fetch_interval_ms) do
+      :ok -> :ok
+      {:error, :rate_limited} -> {:error, :key_fetch_limited}
     end
   end
 

@@ -71,6 +71,22 @@ defmodule Feather.Fediverse.Signature do
     end
   end
 
+  @doc """
+  The keyId and the names of the signed headers of `request`'s signature,
+  read without checking anything; nil without a `signature` header.
+  """
+  @spec summary(request()) :: %{key_id: String.t() | nil, headers: [String.t()] | nil}
+  def summary(request) do
+    case header(request, "signature") do
+      nil ->
+        %{key_id: nil, headers: nil}
+
+      header ->
+        params = params(header)
+        %{key_id: params["keyId"], headers: signed_names(params)}
+    end
+  end
+
   @doc "Returns true if the signature is valid for the public key (PEM)."
   @spec verified?(t(), String.t()) :: boolean()
   def verified?(%__MODULE__{} = signature, public_key_pem) when is_binary(public_key_pem) do
@@ -97,19 +113,24 @@ defmodule Feather.Fediverse.Signature do
   defp parse(nil), do: {:error, :unsigned}
 
   defp parse(header) do
-    params =
-      ~r/(\w+)="([^"]*)"/
-      |> Regex.scan(header)
-      |> Map.new(fn [_param, name, value] -> {name, value} end)
+    params = params(header)
 
     with %{"keyId" => key_id, "signature" => signature} <- params,
          {:ok, signature} <- Base.decode64(signature) do
-      headers = params |> Map.get("headers", "date") |> String.downcase() |> String.split()
-      {:ok, %{key_id: key_id, signature: signature, headers: headers}}
+      {:ok, %{key_id: key_id, signature: signature, headers: signed_names(params)}}
     else
       _malformed -> {:error, :malformed_signature}
     end
   end
+
+  defp params(header) do
+    ~r/(\w+)="([^"]*)"/
+    |> Regex.scan(header)
+    |> Map.new(fn [_param, name, value] -> {name, value} end)
+  end
+
+  defp signed_names(params),
+    do: params |> Map.get("headers", "date") |> String.downcase() |> String.split()
 
   defp check_signed(headers, method) do
     required = ["(request-target)", "host", "date" | List.wrap(if method == "POST", do: "digest")]
