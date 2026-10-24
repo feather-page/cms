@@ -123,7 +123,8 @@ defmodule Feather.Media do
   `attrs` may contain `:source_url`, `:unsplash_data`, `:post_id`,
   `:page_id` and `:project_id`.
 
-  Returns `{:error, changeset}` if the file is not an image or too big.
+  Returns `{:error, changeset}` if the file is too big or not a JPEG, PNG,
+  WebP, GIF or HEIF image (`Feather.Media.Processor.inspect_file/1`).
   A created image gets its alt text suggested in the background.
   """
   @spec create_image_from_upload(Scope.t() | Site.t(), Path.t(), String.t(), map(), keyword()) ::

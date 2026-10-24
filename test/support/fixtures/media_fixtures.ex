@@ -43,6 +43,96 @@ defmodule Feather.MediaFixtures do
   end
 
   @doc """
+  Writes an AVIF holding a black image of `first` and a white one of
+  `second` (`{width, height}`), in that order, and returns its path. Its
+  primary image (`pitm`) is the second.
+  """
+  def two_image_avif_path(first, second) do
+    {ftyp, first} = avif_parts(first, 0.0)
+    {_ftyp, second} = avif_parts(second, 255.0)
+    second = shift_properties(second, length(first.properties))
+    offset = byte_size(ftyp) + byte_size(avif_meta(0, first, second)) + 8
+    dir = Path.join(System.tmp_dir!(), "feather-test-images")
+    File.mkdir_p!(dir)
+    path = Path.join(dir, "test-#{System.unique_integer([:positive])}.avif")
+    mdat = box("mdat", first.data <> second.data)
+    File.write!(path, ftyp <> avif_meta(offset, first, second) <> mdat)
+    path
+  end
+
+  defp avif_parts({width, height}, grey) do
+    {:ok, image} = Operation.black(width, height, bands: 3)
+    {:ok, image} = Operation.linear(image, [1.0], [grey])
+    {:ok, image} = Operation.cast(image, :VIPS_FORMAT_UCHAR)
+
+    {:ok, avif} =
+      Operation.heifsave_buffer(image, compression: :VIPS_FOREIGN_HEIF_COMPRESSION_AV1, keep: [])
+
+    avif_item(avif)
+  end
+
+  defp avif_item(avif) do
+    [{"ftyp", ftyp}, {"meta", <<_version_flags::32, meta::binary>>}, {"mdat", data}] = boxes(avif)
+    meta = Map.new(boxes(meta))
+
+    [{"ipco", ipco}, {"ipma", <<_::32, 1::32, 1::16, count, associations::binary-size(count)>>}] =
+      boxes(meta["iprp"])
+
+    {box("ftyp", ftyp),
+     %{
+       hdlr: box("hdlr", meta["hdlr"]),
+       properties: for({type, body} <- boxes(ipco), do: box(type, body)),
+       associations: associations,
+       data: data
+     }}
+  end
+
+  defp shift_properties(item, shift) do
+    associations =
+      for <<essential::1, index::7 <- item.associations>>,
+        into: <<>>,
+        do: <<essential::1, index + shift::7>>
+
+    %{item | associations: associations}
+  end
+
+  defp avif_meta(offset, first, second) do
+    pitm = full_box("pitm", 0, <<2::16>>)
+
+    extents =
+      item_extent(1, offset, first) <> item_extent(2, offset + byte_size(first.data), second)
+
+    iloc = full_box("iloc", 0, <<0x44, 0x00, 2::16>> <> extents)
+    infe = &full_box("infe", 2, <<&1::16, 0::16, "av01", 0>>)
+    iinf = full_box("iinf", 0, <<2::16>> <> infe.(1) <> infe.(2))
+    full_box("meta", 0, first.hdlr <> pitm <> iloc <> iinf <> avif_iprp(first, second))
+  end
+
+  defp avif_iprp(first, second) do
+    ipco = box("ipco", Enum.join(first.properties ++ second.properties))
+    associations = item_associations(1, first) <> item_associations(2, second)
+    box("iprp", ipco <> full_box("ipma", 0, <<2::32>> <> associations))
+  end
+
+  defp item_associations(item, %{associations: associations}),
+    do: <<item::16, byte_size(associations), associations::binary>>
+
+  defp item_extent(item, offset, %{data: data}),
+    do: <<item::16, 0::16, 1::16, offset::32, byte_size(data)::32>>
+
+  defp box(type, body), do: <<byte_size(body) + 8::32, type::binary, body::binary>>
+
+  defp full_box(type, version, body), do: box(type, <<version, 0::24, body::binary>>)
+
+  defp boxes(<<>>), do: []
+
+  defp boxes(<<size::32, type::binary-size(4), rest::binary>>) do
+    body_size = size - 8
+    <<body::binary-size(^body_size), rest::binary>> = rest
+    [{type, body} | boxes(rest)]
+  end
+
+  @doc """
   Writes a generated Ultra HDR JPEG (a JPEG with a gain map, as iPhones take
   them; libvips reads it with `uhdrload`) and returns its path.
   """
