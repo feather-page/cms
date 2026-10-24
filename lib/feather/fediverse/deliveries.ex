@@ -230,7 +230,10 @@ defmodule Feather.Fediverse.Deliveries do
   defp refused?(:forbidden_address), do: true
   defp refused?(:too_many_redirects), do: true
   defp refused?({:forbidden_redirect, _message}), do: true
-  defp refused?({:status, status}) when status in 300..499, do: status not in [401, 408, 429]
+
+  defp refused?({:status, status, _excerpt}) when status in 300..499,
+    do: status not in [401, 408, 429]
+
   defp refused?(_reason), do: false
 
   defp retry(delivery, reason) do
