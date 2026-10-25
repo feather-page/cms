@@ -111,6 +111,10 @@ A static export synced to the site's deployment target. What changed since the l
 site's own changes, books, deleting or unpublishing a published record) counts as not deployed until the next one.
 After a deploy the CMS tells IndexNow and, with the site's archive.org keys, archive.org which URLs changed.
 
+**Deploy Manifest**:
+The content hash and modification time of every file of the last successful deploy of a deployment target. The
+next deploy gives unchanged files their time back, so only changed files are uploaded.
+
 **Static Export**:
 Rendering a site to static files through a sink. Syncing them to a deployment target is a separate step; both
 together are a deploy.
