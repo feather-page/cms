@@ -1,39 +1,11 @@
 defmodule Feather.Publishing.Deploy do
   @moduledoc """
-  The deploy pipeline of a site's deployment target, run synchronously (the
-  public entry points in `Feather.Publishing` run it under
-  `Feather.TaskSupervisor`):
+  The deploy pipeline of a site's deployment target, run synchronously
+  (`Feather.Publishing` runs it under `Feather.TaskSupervisor`).
 
-    1. take the target's deploy lock (see "Concurrent deploys")
-    2. export the site's published versions, canonically at
-       `https://<site domain>/`, into a fresh directory in
-       `<storage_root>/static_site/` (`Feather.StaticSite.Export` into a
-       `FileSink`)
-    3. precompress it (`Feather.StaticSite.Precompress`) and give every
-       file unchanged since the last successful deploy the modification
-       time recorded in the target's deploy manifest
-       (`Feather.Publishing.DeployManifest`), so rclone uploads only the
-       changed files
-    4. sync it with rclone (`Feather.Publishing.Rclone`)
-    5. save the export's deploy manifest, record the time the export
-       started as the target's `last_deployed_at`
-       (`Feather.Publishing.record_deploy/2`): what was published or
-       changed later is not in this deploy; for a site with a fediverse
-       name, record it as the time its account went online, unless it was
-       before (`Feather.Fediverse.record_online/2`), send its followers
-       what the export changed and delete the pictures of repliers it no
-       longer shows (`Feather.Fediverse.federate/2`)
-    6. tell IndexNow and archive.org what changed since the previous
-       deploy, in the background (`Feather.Publishing.Notifications`)
-    7. remove the directory and release the lock (both always), broadcast
-       a notice
-
-  A failure before step 4 leaves the site online untouched.
-
-  Each step is reported with `Feather.Publishing.put_deploy_progress/3`
-  (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
-  can show where a deploy is. The notice at the end says how long the
-  deploy took, or at which step it failed and with which message.
+  A failure before the upload leaves the site online untouched. The
+  target's `last_deployed_at` is the time the export started: what was
+  published later is not in this deploy.
 
   ## Concurrent deploys
 

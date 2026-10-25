@@ -1,21 +1,10 @@
 defmodule Feather.Publishing.DeployManifest do
   @moduledoc """
-  Every file of the last successful deploy of a target, changed or not:
-  the path relative to the export, the SHA-256 of its content and its
-  modification time in posix seconds (rclone's precision on FTP).
-
-  Every export writes fresh files, and rclone uploads a file whose
-  modification time differs from the remote's when the backend has no
-  hashes, as on FTP. Before the sync the deploy gives every file whose
-  content the manifest knows the manifest's time back (`restore_times/2`),
-  so only changed files are uploaded and unchanged ones keep their
-  `Last-Modified`; after a successful sync it saves the export's manifest
-  (`save/2`). See DECISIONS.md, 0035.
-
-  The manifest is a JSON file at `<storage_root>/deploy_manifests/<target
-  id>.json`, outside `<storage_root>/static_site/`, which the boot clears.
-  A missing or unreadable manifest counts as empty: the deploy then
-  uploads everything.
+  SHA-256 and modification time of every file of a target's last
+  successful deploy. rclone has no hashes on FTP and uploads every file
+  whose time differs, so unchanged files get their old time back
+  (DECISIONS.md, 0035). Lives outside `static_site/`, which the boot
+  clears.
   """
 
   alias Feather.Media
@@ -33,10 +22,7 @@ defmodule Feather.Publishing.DeployManifest do
   def path(%DeploymentTarget{id: id}),
     do: Path.join([Media.storage_root(), "deploy_manifests", "#{id}.json"])
 
-  @doc """
-  The manifest of the target's last successful deploy; empty when there is
-  none or it cannot be read (logged).
-  """
+  @doc "Empty when there is no manifest or it cannot be read."
   @spec load(DeploymentTarget.t()) :: t()
   def load(%DeploymentTarget{} = target) do
     path = path(target)
@@ -76,10 +62,7 @@ defmodule Feather.Publishing.DeployManifest do
     end)
   end
 
-  @doc """
-  Gives every file below `dir` whose content `manifest` records its
-  recorded modification time and returns the manifest of `dir`.
-  """
+  @doc "Restores the recorded times of unchanged files and returns the manifest of `dir`."
   @spec restore_times(t(), Path.t()) :: t()
   def restore_times(manifest, dir) do
     dir
@@ -110,11 +93,7 @@ defmodule Feather.Publishing.DeployManifest do
     |> Base.encode16(case: :lower)
   end
 
-  @doc """
-  Replaces the target's manifest atomically. A manifest that cannot be
-  saved is logged, not raised: the site is online by then, and the next
-  deploy only uploads more than it would have to.
-  """
+  @doc "Logs instead of raising: the site is online by then, the next deploy just uploads more."
   @spec save(DeploymentTarget.t(), t()) :: :ok
   def save(%DeploymentTarget{} = target, manifest) do
     path = path(target)
