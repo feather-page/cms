@@ -9,9 +9,14 @@ defmodule Feather.Publishing.Deploy do
        `https://<site domain>/`, into a fresh directory in
        `<storage_root>/static_site/` (`Feather.StaticSite.Export` into a
        `FileSink`)
-    3. precompress it (`Feather.StaticSite.Precompress`)
+    3. precompress it (`Feather.StaticSite.Precompress`) and give every
+       file unchanged since the last successful deploy the modification
+       time recorded in the target's deploy manifest
+       (`Feather.Publishing.DeployManifest`), so rclone uploads only the
+       changed files
     4. sync it with rclone (`Feather.Publishing.Rclone`)
-    5. record the time the export started as the target's `last_deployed_at`
+    5. save the export's deploy manifest, record the time the export
+       started as the target's `last_deployed_at`
        (`Feather.Publishing.record_deploy/2`): what was published or
        changed later is not in this deploy; for a site with a fediverse
        name, record it as the time its account went online, unless it was
@@ -44,7 +49,7 @@ defmodule Feather.Publishing.Deploy do
   alias Feather.Content.Blocks
   alias Feather.{Fediverse, Media}
   alias Feather.Publishing
-  alias Feather.Publishing.{DeploymentTarget, Notifications, Rclone}
+  alias Feather.Publishing.{DeployManifest, DeploymentTarget, Notifications, Rclone}
   alias Feather.Repo
   alias Feather.StaticSite.{Export, FileSink, Precompress, Routes}
 
@@ -200,11 +205,13 @@ defmodule Feather.Publishing.Deploy do
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
+      manifest = DeployManifest.restore_times(DeployManifest.load(target), FileSink.dir(sink))
 
       Publishing.put_deploy_progress(target, :upload, started_at)
 
       with {:ok, _output} <-
              Rclone.deploy(target, FileSink.dir(sink) <> "/", Keyword.take(opts, [:runner])) do
+        DeployManifest.save(target, manifest)
         Publishing.record_deploy(target, export_started_at)
         Fediverse.record_online(target.site, export_started_at)
         Fediverse.federate(target.site, FileSink.dir(sink))

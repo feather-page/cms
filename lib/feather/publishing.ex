@@ -11,7 +11,7 @@ defmodule Feather.Publishing do
 
   alias Feather.Accounts.Scope
   alias Feather.Content.{Post, PostVersion}
-  alias Feather.Publishing.{Deploy, DeploymentTarget}
+  alias Feather.Publishing.{Deploy, DeployManifest, DeploymentTarget}
   alias Feather.Repo
   alias Feather.Sites.Site
 
@@ -65,10 +65,13 @@ defmodule Feather.Publishing do
     |> Repo.update()
   end
 
-  @doc "Deletes a deployment target."
+  @doc "Deletes a deployment target with its deploy manifest."
   @spec delete_target(Scope.t(), DeploymentTarget.t()) :: {:ok, DeploymentTarget.t()}
   def delete_target(%Scope{site: %Site{id: site_id}}, %DeploymentTarget{site_id: site_id} = t) do
-    Repo.delete(t)
+    with {:ok, target} <- Repo.delete(t) do
+      DeployManifest.delete(target)
+      {:ok, target}
+    end
   end
 
   ## Deploy lock

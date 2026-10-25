@@ -68,6 +68,15 @@ defmodule Feather.PublishingTest do
     end
   end
 
+  test "delete_target/2 deletes the target with its deploy manifest", %{scope: scope} do
+    target = deployment_target_fixture(scope)
+    :ok = Publishing.DeployManifest.save(target, %{})
+
+    assert {:ok, _target} = Publishing.delete_target(scope, target)
+    assert Publishing.get_target(scope) == nil
+    refute File.exists?(Publishing.DeployManifest.path(target))
+  end
+
   describe "deploy lock" do
     test "only one caller acquires the lock", %{scope: scope} do
       target = deployment_target_fixture(scope)
