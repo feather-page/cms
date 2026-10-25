@@ -9,8 +9,11 @@ defmodule Feather.Fediverse.Inbox do
     2. The activity needs an id, a type and an actor, the id on the
        actor's origin (else `:invalid`).
     3. The request must carry a signature (`Feather.Fediverse.Signature`)
-       with its keyId on the actor's origin (else `:unauthorized`);
-       checking that fetches nothing.
+       with an https keyId (else `:unauthorized`); checking that fetches
+       nothing. One with its keyId on another origin than the actor's, as
+       servers sign the replies they pass on to their followers, is
+       accepted at once and dropped: the author's server delivers what the
+       site needs itself.
     4. An actor the CMS knows must have signed it (else `:unauthorized`)
        before the inbox decides whether it handles the activity, so that
        its answer tells nobody whom the site follows, who follows it, whom
@@ -81,7 +84,9 @@ defmodule Feather.Fediverse.Inbox do
   the hosts of its actor and keyId and the names of the signed headers
   (`invalid` for a malformed list or more than 16),
   for a wrong host or a stale date also the header received; never the
-  body or the signature. The answer stays as it was.
+  body or the signature. The answer stays as it was. An activity dropped
+  for its keyId's origin is logged at info as ignored, with its type and
+  the same hosts and header names.
 
   `check_client/1` limits the requests per client: at most 300 within 5
   minutes, from an IPv6 client per /64 network, which a client usually
@@ -161,6 +166,9 @@ defmodule Feather.Fediverse.Inbox do
       :ignore ->
         :ok
 
+      :foreign_key ->
+        ignore_foreign_key(request, activity)
+
       {:error, {:unauthorized, cause}} ->
         reject(:unauthorized, cause, request, activity)
 
@@ -173,21 +181,34 @@ defmodule Feather.Fediverse.Inbox do
   end
 
   defp reject(reason, cause, request, activity) do
-    signature = Signature.summary(request)
-
-    [
-      "Inbox rejected #{log_type(activity["type"])} from #{log_host(id_of(activity["actor"]))}:",
+    details = [
       reason,
       cause && log_cause(cause),
-      "key_host=#{log_host(signature.key_id)}",
-      "signed=#{log_signed(signature.headers)}",
+      signature_details(request),
       received(cause, request)
     ]
+
+    log_activity("rejected", activity, details)
+    {:error, reason}
+  end
+
+  defp ignore_foreign_key(request, activity) do
+    log_activity("ignored", activity, [signature_details(request)])
+    :ok
+  end
+
+  defp log_activity(verdict, activity, details) do
+    type = log_type(activity["type"])
+
+    ["Inbox #{verdict} #{type} from #{log_host(id_of(activity["actor"]))}:" | details]
     |> Enum.reject(&is_nil/1)
     |> Enum.join(" ")
     |> Logger.info()
+  end
 
-    {:error, reason}
+  defp signature_details(request) do
+    signature = Signature.summary(request)
+    "key_host=#{log_host(signature.key_id)} signed=#{log_signed(signature.headers)}"
   end
 
   defp log_type(type) when is_binary(type),
@@ -402,12 +423,17 @@ defmodule Feather.Fediverse.Inbox do
   defp known_account?(uri), do: Repo.exists?(from a in RemoteAccount, where: a.uri == ^uri)
 
   defp check_signature(request, actor) do
-    with {:ok, signature} <- Signature.check(request, public_host()),
-         true <- same_origin?(signature.key_id, actor) do
-      {:ok, signature}
-    else
+    case Signature.check(request, public_host()) do
+      {:ok, signature} -> key_origin(signature, actor)
       {:error, reason} -> {:error, {:unauthorized, reason}}
-      false -> {:error, {:unauthorized, :key_origin}}
+    end
+  end
+
+  defp key_origin(signature, actor) do
+    cond do
+      same_origin?(signature.key_id, actor) -> {:ok, signature}
+      RemoteAccount.https_url?(signature.key_id) -> :foreign_key
+      true -> {:error, {:unauthorized, :key_origin}}
     end
   end
 
