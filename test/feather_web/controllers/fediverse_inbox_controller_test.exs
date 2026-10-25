@@ -257,11 +257,36 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
       assert followers(c.site) == []
     end
 
-    test "rejects a keyId on another origin than the actor without fetching anything", c do
-      conn = send_activity(c, follow(c), key_id: "https://evil.example/users/ana#main-key")
+    test "accepts and drops what a key on another origin signed without fetching anything", c do
+      known_ana(c)
+      bob = "https://other.example/users/bob"
 
-      assert response(conn, 401)
+      reply =
+        note(c, 1, %{
+          "inReplyTo" => bob <> "/statuses/1",
+          "tag" => mention_of(),
+          "cc" => [@account]
+        })
+
+      for activity <- [create(c, reply, 1), follow(c)] do
+        assert response(send_activity(c, activity, key_id: bob <> "#main-key"), 202)
+      end
+
+      stale = DateTime.add(DateTime.utc_now(), -13, :hour)
+      assert response(send_activity(c, follow(c), key_id: bob <> "#main-key", date: stale), 401)
+
+      assert mentions(c.site) == []
+      assert followers(c.site) == []
+      assert Repo.all(ReceivedActivity) == []
       refute_received {:remote, _method, _url, _body}
+    end
+
+    test "rejects a keyId without an https origin", c do
+      for key_id <- ["/users/ana#main-key", "main-key", "http://mastodon.example/users/ana"] do
+        assert response(send_activity(c, follow(c), key_id: key_id), 401)
+      end
+
+      assert followers(c.site) == []
     end
 
     test "rejects a Delete or Update of someone else's object", c do
@@ -472,21 +497,26 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
       assert log =~ "key_host=none signed=none"
     end
 
-    test "logs a keyId on another origin and a signature the fetched key does not verify", c do
+    test "logs a signature the fetched key does not verify", c do
       body = Jason.encode!(follow(c))
-      foreign = activity_headers(c, body, key_id: "https://evil.example/u#main-key")
-      unverified = activity_headers(c, body, key: c.other_key)
+      headers = activity_headers(c, body, key: c.other_key)
+      log = rejection_log(fn -> assert response(post_signed(c, headers, body), 401) end)
 
-      log =
-        rejection_log(fn ->
-          assert response(post_signed(c, foreign, body), 401)
-          assert response(post_signed(c, unverified, body), 401)
-        end)
-
-      assert log =~ "unauthorized key_origin key_host=evil.example"
       assert log =~ "unauthorized not_verified key_host=mastodon.example"
-      refute log =~ signature_value(foreign)
-      refute log =~ signature_value(unverified)
+      refute log =~ signature_value(headers)
+    end
+
+    test "logs what a key on another origin signed as ignored", c do
+      body = Jason.encode!(follow(c))
+      headers = activity_headers(c, body, key_id: "https://other.example/users/bob#main-key")
+      log = rejection_log(fn -> assert response(post_signed(c, headers, body), 202) end)
+
+      assert log =~
+               "Inbox ignored Follow from mastodon.example: key_host=other.example " <>
+                 "signed=(request-target),host,date,digest"
+
+      refute log =~ "rejected"
+      refute log =~ signature_value(headers)
     end
 
     test "logs no signed header names that are malformed or too many", c do
