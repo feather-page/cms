@@ -19,8 +19,10 @@ defmodule Feather.StaticSite.ActivityStreams do
       description as `summary`. Both carry the page as `url`, the content
       as HTML in the site's language, its links absolute and without
       images, book covers, code highlighting and diagram images (a diagram
-      shows its source), and the images of the content as attachments
-      with their alt texts. A post published again after its date carries
+      shows its source, a book one line of emoji, title, author and
+      rating), and the images of the content as attachments with their alt
+      texts; a post without images attaches the covers of its books
+      instead, as their sharing images. A post published again after its date carries
       the time of that as `updated`; an `Update` of it carries the time it
       goes out (`Feather.Fediverse.FederatedObjects`);
     * one document per public reply of a member
@@ -28,15 +30,10 @@ defmodule Feather.StaticSite.ActivityStreams do
       answers. A reply that is not public goes out with the same `Note`
       (`member_reply/4`) but has no document.
 
-  Pages, projects and books have no documents. The content leaves out
-  images and book covers, whose markup follows the theme, so a new theme
-  changes no document and sends the followers no `Update`
-  (`Feather.Fediverse.FederatedObjects`), unless it gives content images
-  other sizes; it leaves out code highlighting and diagram images, which
-  follow the versions of chroma and d2, so upgrading them changes none
-  either.
+  Pages, projects and books have no documents.
   """
 
+  alias Feather.Books.Book
   alias Feather.Content.Blocks, as: ContentBlocks
   alias Feather.Content.{Post, PostVersion}
   alias Feather.Fediverse
@@ -260,12 +257,36 @@ defmodule Feather.StaticSite.ActivityStreams do
   end
 
   defp attachments(post, context) do
-    post.content
-    |> ContentBlocks.normalize()
-    |> Enum.filter(&(&1["type"] == "image"))
-    |> Enum.uniq_by(& &1["image_id"])
-    |> Enum.flat_map(&attachment(&1, context))
+    case post.content
+         |> ContentBlocks.normalize()
+         |> Enum.filter(&(&1["type"] == "image"))
+         |> Enum.uniq_by(& &1["image_id"])
+         |> Enum.flat_map(&attachment(&1, context)) do
+      [] -> cover_attachments(post, context)
+      images -> images
+    end
   end
+
+  defp cover_attachments(post, context) do
+    post.content
+    |> ContentBlocks.book_ids()
+    |> Enum.flat_map(&cover_attachment(Map.get(context.books, &1), context))
+  end
+
+  defp cover_attachment(%Book{cover_image: %Image{} = cover} = book, context) do
+    variant = Variants.sharing()
+
+    [
+      %{
+        "type" => "Image",
+        "mediaType" => Variants.content_type(variant),
+        "url" => Routes.image_url(context.routes, cover, variant),
+        "name" => book.title <> " – " <> book.author
+      }
+    ]
+  end
+
+  defp cover_attachment(_book, _context), do: []
 
   defp attachment(block, context) do
     with %Image{} = image <- Map.get(context.images, block["image_id"]),

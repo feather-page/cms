@@ -100,6 +100,16 @@ defmodule Feather.StaticSite.ImageVariantsTest do
                :portrait
              ]
     end
+
+    test "the book covers of a site with a fediverse name are also shared, as attachments",
+         %{scope: scope} do
+      cover = image(scope)
+      book_fixture(scope, %{cover_image_id: cover.id})
+
+      {:ok, site} = Feather.Fediverse.update_name(scope, %{"fediverse_name" => "timon"})
+
+      assert roles(site, cover) == [:book_cover, :sharing]
+    end
   end
 
   describe "variants/3" do

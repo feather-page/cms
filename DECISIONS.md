@@ -565,6 +565,10 @@ Accepted, 2026-10-23 (issue #487)
 
 Followers receive only posts dated after the account went online: a post whose published version is dated before `fediverse_online_at`, such as an old article restored with its original date, goes out in no `Create`, `Update` or `Delete` and is not recorded as a federated object, since followers never received it. Moved to a later date, it goes out in a `Create`. Objects recorded for such posts before this rule get no `Update` either, and a `Delete` only once the post leaves the site.
 
+### Update (2026-10-25)
+
+A post's document renders a book block as one line of emoji, title, author and rating, since fediverse servers strip the markup of the book card (issue #505). A post without images attaches the covers of its books instead, as their sharing images: on a site with a fediverse name every book cover also gets the 1200 px JPEG, whose size no theme changes, so a new theme still changes no document. The cover markup stays out of the content.
+
 ## 0034. Replies appear on the site only after a member approves them
 
 Accepted, 2026-10-23 (issue #487)

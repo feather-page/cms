@@ -14,7 +14,8 @@ defmodule Feather.StaticSite.Blocks do
   diagram was not rendered. Code blocks look their highlighted HTML up
   by code and language (see `Feather.Highlighting.highlight_all/2`) and
   show the escaped code when there is none. Without inline images, image
-  blocks render nothing and book blocks no cover.
+  blocks render nothing and a book block is one paragraph of emoji, title,
+  author and rating, without cover.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -46,8 +47,7 @@ defmodule Feather.StaticSite.Blocks do
   a book block (`c:Feather.StaticSite.Theme.book_cover_sizes/0`), the
   theme's variant sizes per image role
   (`c:Feather.StaticSite.Theme.image_variants/0`), whether images render
-  inline (the fediverse documents carry them as attachments instead, so
-  they do not change with the theme), the URL relative links resolve
+  inline, the URL relative links resolve
   against (nil keeps them relative), the site's images and books by
   public id (books with `cover_image` preloaded and their
   review as `post` where the site shows it), the file names of the
@@ -293,6 +293,19 @@ defmodule Feather.StaticSite.Blocks do
     attributes
   end
 
+  defp book(%Book{} = book, %{inline_images: false}) do
+    [
+      "<p>",
+      if(present?(book.emoji), do: [escape(book.emoji), " "], else: []),
+      "<strong>",
+      escape(book.title),
+      "</strong> – ",
+      escape(book.author),
+      rating_stars(book.rating),
+      "</p>"
+    ]
+  end
+
   defp book(%Book{} = book, context) do
     [
       "<figure class=\"book-card book-card--detail\">",
@@ -305,7 +318,7 @@ defmodule Feather.StaticSite.Blocks do
     ]
   end
 
-  defp book_mark(%Book{cover_image: %Image{} = cover}, %{inline_images: true} = context) do
+  defp book_mark(%Book{cover_image: %Image{} = cover}, context) do
     [
       "<img",
       sources(cover, :book_cover, context.book_cover_sizes, context),
@@ -319,6 +332,13 @@ defmodule Feather.StaticSite.Blocks do
   defp book_mark(%Book{emoji: emoji}, _context) do
     if present?(emoji), do: ["<span class=\"book-emoji\">", escape(emoji), "</span>"], else: []
   end
+
+  defp rating_stars(rating) when is_integer(rating) do
+    stars = rating |> max(0) |> min(5)
+    [" · ", String.duplicate("★", stars), String.duplicate("☆", 5 - stars)]
+  end
+
+  defp rating_stars(nil), do: []
 
   defp size_attribute(name, value) do
     case size(value) do

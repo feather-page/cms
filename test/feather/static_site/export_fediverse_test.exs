@@ -44,6 +44,8 @@ defmodule Feather.StaticSite.ExportFediverseTest do
     Jason.decode!(content)
   end
 
+  defp book_block(book), do: %{"type" => "book", "book_public_id" => book.public_id}
+
   defp path_of(url), do: String.replace_prefix(url, "https://timon.blog/", "")
 
   defp content(scope) do
@@ -325,6 +327,95 @@ defmodule Feather.StaticSite.ExportFediverseTest do
       assert article["published"] == "2026-10-02T10:00:00Z"
     end
 
+    test "writes a book block as one line of emoji, title, author and rating", c do
+      rated =
+        book_fixture(c.scope, %{
+          title: "Piranesi",
+          author: "Susanna Clarke",
+          emoji: "🗿",
+          rating: 4
+        })
+
+      plain = book_fixture(c.scope, %{title: "Emma & Co", author: "Jane Austen"})
+
+      post =
+        post_fixture(c.scope, %{
+          title: "",
+          slug: nil,
+          publish_at: @published_at,
+          content: [book_block(rated), book_block(plain)]
+        })
+
+      note = json(export(c.scope), "activitypub/posts/#{post.public_id}")
+
+      assert note["content"] ==
+               "<p>🗿 <strong>Piranesi</strong> – Susanna Clarke · ★★★★☆</p>" <>
+                 "<p><strong>Emma &amp; Co</strong> – Jane Austen</p>"
+    end
+
+    test "attaches the book covers of a post without images as their sharing images", c do
+      [first, second] = for _ <- 1..2, do: image_fixture(c.scope, width: 600, height: 900)
+
+      piranesi =
+        book_fixture(c.scope, %{
+          title: "Piranesi",
+          author: "Susanna Clarke",
+          cover_image_id: first.id
+        })
+
+      emma =
+        book_fixture(c.scope, %{title: "Emma", author: "Jane Austen", cover_image_id: second.id})
+
+      uncovered = book_fixture(c.scope, %{title: "Dune", author: "Frank Herbert"})
+
+      post =
+        post_fixture(c.scope, %{
+          title: "",
+          slug: nil,
+          publish_at: @published_at,
+          content: [book_block(piranesi), book_block(uncovered), book_block(emma)]
+        })
+
+      sink = export(c.scope)
+      note = json(sink, "activitypub/posts/#{post.public_id}")
+
+      assert note["attachment"] == [
+               %{
+                 "type" => "Image",
+                 "mediaType" => "image/jpeg",
+                 "url" => "https://timon.blog/images/#{first.public_id}/1200.jpg",
+                 "name" => "Piranesi – Susanna Clarke"
+               },
+               %{
+                 "type" => "Image",
+                 "mediaType" => "image/jpeg",
+                 "url" => "https://timon.blog/images/#{second.public_id}/1200.jpg",
+                 "name" => "Emma – Jane Austen"
+               }
+             ]
+
+      for %{"url" => url} <- note["attachment"] do
+        assert {:copy, _original} = RecordingSink.get(sink, path_of(url))
+      end
+    end
+
+    test "attaches only the images of a post that has images, not its book covers", c do
+      cover = image_fixture(c.scope, width: 600, height: 900)
+      book = book_fixture(c.scope, %{title: "Piranesi", cover_image_id: cover.id})
+
+      post =
+        post_fixture(c.scope, %{
+          title: "",
+          slug: nil,
+          publish_at: @published_at,
+          content: [book_block(book), image_block(c.image, "Grass")]
+        })
+
+      note = json(export(c.scope), "activitypub/posts/#{post.public_id}")
+
+      assert [%{"name" => "A warthog in the grass"}] = note["attachment"]
+    end
+
     test "writes the same documents in every theme", c do
       cover = image_fixture(c.scope, width: 600, height: 900)
       book = book_fixture(c.scope, %{title: "Emma", cover_image_id: cover.id})
@@ -335,8 +426,15 @@ defmodule Feather.StaticSite.ExportFediverseTest do
         publish_at: @published_at,
         content: [
           image_block(c.image, "Grass"),
-          %{"type" => "book", "book_public_id" => book.public_id}
+          book_block(book)
         ]
+      })
+
+      post_fixture(c.scope, %{
+        title: "",
+        slug: nil,
+        publish_at: @published_at,
+        content: [book_block(book)]
       })
 
       documents = fn sink ->
