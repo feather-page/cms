@@ -26,6 +26,8 @@ defmodule Feather.Sites do
   alias Feather.Fediverse
   alias Feather.Fediverse.Pictures
   alias Feather.Media.Cleanup
+  alias Feather.Publishing
+  alias Feather.Publishing.DeployManifest
   alias Feather.Repo
   alias Feather.StaticSite.ImageVariants
 
@@ -185,8 +187,9 @@ defmodule Feather.Sites do
   end
 
   @doc """
-  Deletes a site with all its content. Image files and the pictures of its
-  repliers are removed as well.
+  Deletes a site with all its content. Image files, the pictures of its
+  repliers and the deploy manifest of its deployment target are removed as
+  well.
   """
   @spec delete_site(Scope.t(), Site.t()) :: {:ok, Site.t()} | {:error, Ecto.Changeset.t()}
   def delete_site(%Scope{} = scope, %Site{} = site) do
@@ -194,10 +197,12 @@ defmodule Feather.Sites do
 
     images = Repo.all(from i in Feather.Media.Image, where: i.site_id == ^site.id)
     reply_pictures = Fediverse.reply_pictures(site)
+    target = Publishing.get_target(Scope.put_site(scope, site))
 
     with {:ok, site} <- Repo.delete(site) do
       Enum.each(images, &Feather.Media.delete_image_files/1)
       Enum.each(reply_pictures, &Pictures.delete/1)
+      if target, do: DeployManifest.delete(target)
       {:ok, site}
     end
   end

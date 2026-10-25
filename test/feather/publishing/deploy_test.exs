@@ -2,7 +2,7 @@ defmodule Feather.Publishing.DeployTest do
   use Feather.DataCase
 
   alias Feather.{Media, Publishing, Sites}
-  alias Feather.Publishing.Deploy
+  alias Feather.Publishing.{Deploy, DeployManifest}
 
   @moduletag :tmp_dir
   @moduletag :capture_log
@@ -34,8 +34,17 @@ defmodule Feather.Publishing.DeployTest do
         File.rm_rf!(synced)
         File.cp_r!(source, synced)
         send(test, {:synced, source, remote})
+        send(test, {:synced_mtimes, mtimes(source)})
         sync_result
     end
+  end
+
+  defp mtimes(dir) do
+    dir
+    |> Path.join("**/*")
+    |> Path.wildcard(match_dot: true)
+    |> Enum.filter(&File.regular?/1)
+    |> Map.new(&{Path.relative_to(&1, dir), File.stat!(&1, time: :posix).mtime})
   end
 
   defp exports_left, do: Path.wildcard(Path.join([Media.storage_root(), "static_site", "*"]))
@@ -245,12 +254,58 @@ defmodule Feather.Publishing.DeployTest do
     end
   end
 
-  test "remove_stale_exports/0 removes what interrupted deploys left" do
+  test "remove_stale_exports/0 removes what interrupted deploys left and keeps deploy manifests",
+       c do
     leftover = Path.join([Media.storage_root(), "static_site", "export-leftover"])
     File.mkdir_p!(Path.join(leftover, "hello"))
+    assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
 
     assert Deploy.remove_stale_exports() == :ok
     assert exports_left() == []
+    assert DeployManifest.load(c.target) != %{}
+  end
+
+  describe "deploy manifest" do
+    @long_ago 1_000_000_000
+
+    test "files unchanged since the previous deploy keep its modification time", c do
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+      assert_received {:synced_mtimes, first}
+      manifest = DeployManifest.load(c.target)
+      assert Map.keys(manifest) == Map.keys(first)
+      assert manifest["robots.txt"].mtime == first["robots.txt"]
+
+      backdated = Map.new(manifest, fn {path, entry} -> {path, %{entry | mtime: @long_ago}} end)
+      :ok = DeployManifest.save(c.target, backdated)
+      post_fixture(c.scope, %{title: "New", slug: "/new"})
+      second_started = System.os_time(:second)
+
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+      assert_received {:synced_mtimes, second}
+
+      for unchanged <- ["robots.txt", "style.css", "hello/index.md", "hello/index.md.gz"] do
+        assert second[unchanged] == @long_ago, "#{unchanged} got a new modification time"
+      end
+
+      for changed <- ["index.html", "index.html.gz", "new/index.html"] do
+        assert second[changed] >= second_started, "#{changed} kept an old modification time"
+      end
+
+      assert DeployManifest.load(c.target)["new/index.html"].mtime == second["new/index.html"]
+      assert DeployManifest.load(c.target)["robots.txt"].mtime == @long_ago
+    end
+
+    test "a failed sync keeps the manifest of the last successful deploy", c do
+      assert {:ok, :deployed} = Deploy.run(c.target, c.opts)
+      manifest = DeployManifest.load(c.target)
+      post_fixture(c.scope, %{title: "New", slug: "/new"})
+
+      opts =
+        Keyword.put(c.opts, :runner, c.runner.({:error, "rclone sync failed (exit 1): nope"}))
+
+      assert {:error, _message} = Deploy.run(c.target, opts)
+      assert DeployManifest.load(c.target) == manifest
+    end
   end
 
   describe "notifications" do

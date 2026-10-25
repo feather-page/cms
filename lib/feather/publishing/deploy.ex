@@ -1,34 +1,11 @@
 defmodule Feather.Publishing.Deploy do
   @moduledoc """
-  The deploy pipeline of a site's deployment target, run synchronously (the
-  public entry points in `Feather.Publishing` run it under
-  `Feather.TaskSupervisor`):
+  The deploy pipeline of a site's deployment target, run synchronously
+  (`Feather.Publishing` runs it under `Feather.TaskSupervisor`).
 
-    1. take the target's deploy lock (see "Concurrent deploys")
-    2. export the site's published versions, canonically at
-       `https://<site domain>/`, into a fresh directory in
-       `<storage_root>/static_site/` (`Feather.StaticSite.Export` into a
-       `FileSink`)
-    3. precompress it (`Feather.StaticSite.Precompress`)
-    4. sync it with rclone (`Feather.Publishing.Rclone`)
-    5. record the time the export started as the target's `last_deployed_at`
-       (`Feather.Publishing.record_deploy/2`): what was published or
-       changed later is not in this deploy; for a site with a fediverse
-       name, record it as the time its account went online, unless it was
-       before (`Feather.Fediverse.record_online/2`), send its followers
-       what the export changed and delete the pictures of repliers it no
-       longer shows (`Feather.Fediverse.federate/2`)
-    6. tell IndexNow and archive.org what changed since the previous
-       deploy, in the background (`Feather.Publishing.Notifications`)
-    7. remove the directory and release the lock (both always), broadcast
-       a notice
-
-  A failure before step 4 leaves the site online untouched.
-
-  Each step is reported with `Feather.Publishing.put_deploy_progress/3`
-  (`:waiting`, `:build`, `:compress`, `:upload`), so the deployments page
-  can show where a deploy is. The notice at the end says how long the
-  deploy took, or at which step it failed and with which message.
+  A failure before the upload leaves the site online untouched. The
+  target's `last_deployed_at` is the time the export started: what was
+  published later is not in this deploy.
 
   ## Concurrent deploys
 
@@ -44,7 +21,7 @@ defmodule Feather.Publishing.Deploy do
   alias Feather.Content.Blocks
   alias Feather.{Fediverse, Media}
   alias Feather.Publishing
-  alias Feather.Publishing.{DeploymentTarget, Notifications, Rclone}
+  alias Feather.Publishing.{DeployManifest, DeploymentTarget, Notifications, Rclone}
   alias Feather.Repo
   alias Feather.StaticSite.{Export, FileSink, Precompress, Routes}
 
@@ -200,11 +177,13 @@ defmodule Feather.Publishing.Deploy do
 
       Publishing.put_deploy_progress(target, :compress, started_at)
       Precompress.run(FileSink.dir(sink), Keyword.take(opts, [:brotli]))
+      manifest = DeployManifest.restore_times(DeployManifest.load(target), FileSink.dir(sink))
 
       Publishing.put_deploy_progress(target, :upload, started_at)
 
       with {:ok, _output} <-
              Rclone.deploy(target, FileSink.dir(sink) <> "/", Keyword.take(opts, [:runner])) do
+        DeployManifest.save(target, manifest)
         Publishing.record_deploy(target, export_started_at)
         Fediverse.record_online(target.site, export_started_at)
         Fediverse.federate(target.site, FileSink.dir(sink))

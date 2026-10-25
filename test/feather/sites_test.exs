@@ -6,6 +6,7 @@ defmodule Feather.SitesTest do
   alias Feather.Accounts.Scope
   alias Feather.{Content, Publishing, Sites}
   alias Feather.Fediverse.Pictures
+  alias Feather.Publishing.DeployManifest
   alias Feather.Sites.{Invitation, Site, SocialMediaService}
 
   describe "create_site/2" do
@@ -271,6 +272,15 @@ defmodule Feather.SitesTest do
 
       assert {:ok, _} = Sites.delete_site(scope, scope.site)
       refute Enum.any?(pictures, &File.exists?/1)
+    end
+
+    test "delete_site/2 removes the deploy manifest of its deployment target" do
+      scope = site_scope_fixture()
+      target = deployment_target_fixture(scope)
+      :ok = DeployManifest.save(target, %{})
+
+      assert {:ok, _} = Sites.delete_site(scope, scope.site)
+      refute File.exists?(DeployManifest.path(target))
     end
   end
 
