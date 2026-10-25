@@ -14,7 +14,8 @@ defmodule Feather.StaticSite.Blocks do
   diagram was not rendered. Code blocks look their highlighted HTML up
   by code and language (see `Feather.Highlighting.highlight_all/2`) and
   show the escaped code when there is none. Without inline images, image
-  blocks render nothing and book blocks no cover.
+  blocks render nothing and a book block is one paragraph of emoji, title,
+  author and rating, without cover.
   """
 
   use Gettext, backend: Feather.StaticSite.Gettext
@@ -293,6 +294,21 @@ defmodule Feather.StaticSite.Blocks do
     attributes
   end
 
+  # Fediverse servers keep little more than paragraphs, links and emphasis
+  # of a post's markup, so the book card turns into one line there.
+  defp book(%Book{} = book, %{inline_images: false}) do
+    [
+      "<p>",
+      if(present?(book.emoji), do: [escape(book.emoji), " "], else: []),
+      "<strong>",
+      escape(book.title),
+      "</strong> – ",
+      escape(book.author),
+      rating_stars(book.rating),
+      "</p>"
+    ]
+  end
+
   defp book(%Book{} = book, context) do
     [
       "<figure class=\"book-card book-card--detail\">",
@@ -305,7 +321,7 @@ defmodule Feather.StaticSite.Blocks do
     ]
   end
 
-  defp book_mark(%Book{cover_image: %Image{} = cover}, %{inline_images: true} = context) do
+  defp book_mark(%Book{cover_image: %Image{} = cover}, context) do
     [
       "<img",
       sources(cover, :book_cover, context.book_cover_sizes, context),
@@ -319,6 +335,13 @@ defmodule Feather.StaticSite.Blocks do
   defp book_mark(%Book{emoji: emoji}, _context) do
     if present?(emoji), do: ["<span class=\"book-emoji\">", escape(emoji), "</span>"], else: []
   end
+
+  defp rating_stars(rating) when is_integer(rating) do
+    stars = rating |> max(0) |> min(5)
+    [" · ", String.duplicate("★", stars), String.duplicate("☆", 5 - stars)]
+  end
+
+  defp rating_stars(nil), do: []
 
   defp size_attribute(name, value) do
     case size(value) do

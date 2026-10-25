@@ -17,7 +17,9 @@ defmodule Feather.StaticSite.ImageVariants do
     * `:book_cover` - a book's cover
     * `:portrait`, `:footer_mascot`, `:post_end_mascot`, `:projects_mascot` - the site's
     * `:sharing` - the `og:image` of a post, page or project: its header,
-      else its thumbnail, else its first content image
+      else its thumbnail, else its first content image; on a site with a
+      fediverse name also a book's cover, which the documents of posts
+      without images attach (ADR 0033)
     * `:account_picture` - the portrait of a site with a fediverse name, the
       picture of its account (ADR 0033)
 
@@ -104,7 +106,7 @@ defmodule Feather.StaticSite.ImageVariants do
 
     group_roles(
       record_references(scope, ids_by_public_id) ++
-        book_references(scope) ++ site_references(site)
+        book_references(scope, site) ++ site_references(site)
     )
   end
 
@@ -150,8 +152,10 @@ defmodule Feather.StaticSite.ImageVariants do
   defp picture_roles(%Page{} = page),
     do: {if(Page.homepage?(page), do: :homepage_header, else: :header), nil}
 
-  defp book_references(scope),
-    do: for(book <- Books.list_books(scope), do: {book.cover_image_id, :book_cover})
+  defp book_references(scope, site) do
+    roles = if site.fediverse_name, do: [:book_cover, :sharing], else: [:book_cover]
+    for book <- Books.list_books(scope), role <- roles, do: {book.cover_image_id, role}
+  end
 
   defp site_references(site) do
     references = for {field, role} <- @site_roles, do: {Map.get(site, field), role}
