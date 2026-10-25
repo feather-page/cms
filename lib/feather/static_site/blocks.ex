@@ -47,8 +47,7 @@ defmodule Feather.StaticSite.Blocks do
   a book block (`c:Feather.StaticSite.Theme.book_cover_sizes/0`), the
   theme's variant sizes per image role
   (`c:Feather.StaticSite.Theme.image_variants/0`), whether images render
-  inline (the fediverse documents carry them as attachments instead, so
-  they do not change with the theme), the URL relative links resolve
+  inline, the URL relative links resolve
   against (nil keeps them relative), the site's images and books by
   public id (books with `cover_image` preloaded and their
   review as `post` where the site shows it), the file names of the
@@ -294,8 +293,6 @@ defmodule Feather.StaticSite.Blocks do
     attributes
   end
 
-  # Fediverse servers keep little more than paragraphs, links and emphasis
-  # of a post's markup, so the book card turns into one line there.
   defp book(%Book{} = book, %{inline_images: false}) do
     [
       "<p>",

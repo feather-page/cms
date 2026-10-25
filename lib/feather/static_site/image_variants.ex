@@ -18,8 +18,7 @@ defmodule Feather.StaticSite.ImageVariants do
     * `:portrait`, `:footer_mascot`, `:post_end_mascot`, `:projects_mascot` - the site's
     * `:sharing` - the `og:image` of a post, page or project: its header,
       else its thumbnail, else its first content image; on a site with a
-      fediverse name also a book's cover, which the documents of posts
-      without images attach (ADR 0033)
+      fediverse name also a book's cover
     * `:account_picture` - the portrait of a site with a fediverse name, the
       picture of its account (ADR 0033)
 
