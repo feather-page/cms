@@ -7,11 +7,14 @@ defmodule Feather.Fediverse.Timeline do
   The inbox (`Feather.Fediverse.Inbox`) files the `Note` or `Article` of a
   `Create` by an account the site follows (`files?/3`): a public post, or
   one to its author's followers once the site's follow was accepted
-  (`Feather.Fediverse.Following`). Private messages go to Mentions only;
-  boosts and likes are not filed. `Update` changes a post, or removes it
-  when the site may no longer see it, and `Delete` removes it, leaving a
-  tombstone so that a late `Create` does not file it again; both only from
-  its author.
+  (`Feather.Fediverse.Following`). A reply comes in only when it names no
+  account but its author, names an account the site follows or addresses
+  the site (`Feather.Fediverse.Mentions.addresses?/2`); others'
+  conversations stay out. Private messages go to
+  Mentions only; boosts and likes are not filed. `Update` changes a post,
+  or removes it when it no longer belongs there, and `Delete` removes it,
+  leaving a tombstone so that a late `Create` does not file it again; both
+  only from its author.
 
   Every filed, changed or removed post is broadcast to the members who
   look at the Timeline (`subscribe/1`) as `{:timeline_post, :created |
@@ -28,6 +31,7 @@ defmodule Feather.Fediverse.Timeline do
     FollowedAccount,
     Following,
     MemberReply,
+    Mentions,
     Pictures,
     RemoteAccount,
     RemoteObject,
@@ -46,13 +50,15 @@ defmodule Feather.Fediverse.Timeline do
   @doc """
   Returns true if `object` by the actor at `actor` belongs into the site's
   Timeline: a note or article of an account the site follows that the
-  site may see.
+  site may see and that, as a reply, is addressed to it (see the module
+  doc).
   """
   @spec files?(Site.t(), String.t(), term()) :: boolean()
   def files?(%Site{} = site, actor, object) do
     with true <- RemoteObject.post?(object),
          %FollowedAccount{} = followed <- Following.get_by_uri(site, actor) do
-      visible?(RemoteObject.visibility(object, followed.remote_account), followed)
+      visible?(RemoteObject.visibility(object, followed.remote_account), followed) and
+        addressed?(site, object, actor)
     else
       _other -> false
     end
@@ -61,6 +67,13 @@ defmodule Feather.Fediverse.Timeline do
   defp visible?(:public, _followed), do: true
   defp visible?(:followers, followed), do: FollowedAccount.accepted?(followed)
   defp visible?(:direct, _followed), do: false
+
+  defp addressed?(site, object, author) do
+    named = RemoteObject.named_accounts(site, object, author)
+
+    is_nil(RemoteObject.id_of(object["inReplyTo"])) or named == [] or
+      Following.follows_any?(site, named) or Mentions.addresses?(site, object)
+  end
 
   @doc "Returns true if the site's Timeline holds the object at `uri` by the actor at `author`."
   @spec filed?(Site.t(), String.t() | nil, String.t()) :: boolean()
@@ -86,6 +99,7 @@ defmodule Feather.Fediverse.Timeline do
 
     with %FollowedAccount{} = followed <- Following.get_by_uri(site, account.uri),
          true <- visible?(attrs.visibility, followed),
+         true <- addressed?(site, object, account.uri),
          false <- Tombstone.exists?(site, attrs.uri, account.uri),
          {:ok, post} <- insert(site, followed, attrs) do
       broadcast(site, :created, post)
@@ -104,7 +118,7 @@ defmodule Feather.Fediverse.Timeline do
 
   @doc """
   Changes the site's Timeline post of `object` by `account` to what
-  `object` says now, or removes it when the site may no longer see it.
+  `object` says now, or removes it when it no longer belongs there.
   """
   @spec update(Site.t(), RemoteAccount.t(), map()) :: :ok
   def update(%Site{} = site, %RemoteAccount{} = account, object) do
@@ -112,9 +126,10 @@ defmodule Feather.Fediverse.Timeline do
          %TimelinePost{} = post <- get_by_author(site, account, object["id"]) do
       attrs = RemoteObject.attrs(site, object, account)
 
-      if visible?(attrs.visibility, post.followed_account),
-        do: change(site, post, attrs),
-        else: remove(site, post)
+      if visible?(attrs.visibility, post.followed_account) and
+           addressed?(site, object, account.uri),
+         do: change(site, post, attrs),
+         else: remove(site, post)
     end
 
     :ok

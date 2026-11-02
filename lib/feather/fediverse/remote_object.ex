@@ -50,7 +50,7 @@ defmodule Feather.Fediverse.RemoteObject do
       content: HTML.sanitize(content(object), :remote),
       summary: text(object["summary"]),
       attachments: attachments(object["attachment"]),
-      named_accounts: named_accounts(object, account, site),
+      named_accounts: named_accounts(site, object, account.uri),
       published_at: published_at(object["published"])
     }
   end
@@ -102,8 +102,13 @@ defmodule Feather.Fediverse.RemoteObject do
 
   defp ids(values), do: values |> Enum.map(&id_of/1) |> Enum.reject(&is_nil/1)
 
-  defp named_accounts(object, account, site) do
-    excluded = [account.uri, Fediverse.account_url(site)]
+  @doc """
+  The https accounts the object by the actor at `author` mentions, but the
+  author and the site's own account, at most #{@named_cap}.
+  """
+  @spec named_accounts(Site.t(), map(), String.t()) :: [String.t()]
+  def named_accounts(%Site{} = site, %{} = object, author) do
+    excluded = [author, Fediverse.account_url(site)]
 
     object
     |> mentioned()

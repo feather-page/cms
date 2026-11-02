@@ -146,6 +146,16 @@ defmodule Feather.Fediverse.Following do
 
   def get_by_uri(%Site{}, _uri), do: nil
 
+  @doc "Returns true if the site follows one of the accounts at `uris`, accepted or not."
+  @spec follows_any?(Site.t(), [String.t()]) :: boolean()
+  def follows_any?(%Site{id: site_id}, uris) when is_list(uris) do
+    Repo.exists?(
+      from f in FollowedAccount,
+        join: a in assoc(f, :remote_account),
+        where: f.site_id == ^site_id and a.uri in ^uris
+    )
+  end
+
   @doc "Records that `account` accepted the site's follow."
   @spec accept(Site.t(), RemoteAccount.t()) :: :ok
   def accept(%Site{id: site_id}, %RemoteAccount{id: account_id}) do

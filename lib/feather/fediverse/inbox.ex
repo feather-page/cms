@@ -31,7 +31,7 @@ defmodule Feather.Fediverse.Inbox do
        likes, boosts and other types, follows of other accounts, `Undo` of
        anything but a follower's follow, `Accept` and `Reject` of anything
        but the site's follow of the actor, `Create` of anything neither
-       addressed to the site's account nor by an account it follows,
+       addressed to the site's account nor belonging into its Timeline,
        `Update` of unknown accounts and objects and of mentions and
        Timeline posts by someone else, and every `Delete` of an actor the
        CMS does not know.
@@ -66,7 +66,8 @@ defmodule Feather.Fediverse.Inbox do
   follower. `Accept` and `Reject` of the site's own follow accept or end
   it (`Feather.Fediverse.Following`). A note or article addressed to the
   account goes into its Mentions (`Feather.Fediverse.Mentions`), one by an
-  account it follows into its Timeline (`Feather.Fediverse.Timeline`),
+  account it follows, unless it replies to others, into its Timeline
+  (`Feather.Fediverse.Timeline`),
   possibly both; its `Update` changes them and its `Delete` removes them,
   leaving a tombstone (`Feather.Fediverse.Tombstone`). The `Delete` of
   anything else by an actor the CMS knows leaves a tombstone too, without

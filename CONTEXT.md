@@ -199,8 +199,8 @@ _Avoid_: Subscription, Friend
 
 **Timeline** · _de:_ Timeline:
 The posts of the site's followed accounts in the CMS, newest first, as they arrive: their public posts, and those to
-their followers once the follow was accepted; no boosts or likes. Their pictures load through the CMS, so the
-accounts' servers do not see the members' addresses. Members reply to them as to mentions. Timeline posts are kept 30
+their followers once the follow was accepted; no boosts or likes, and no replies to accounts the site does not
+follow. Their pictures load through the CMS, so the accounts' servers do not see the members' addresses. Members reply to them as to mentions. Timeline posts are kept 30
 days, and what they say is stored encrypted.
 _Avoid_: Feed, Home, Stream
 

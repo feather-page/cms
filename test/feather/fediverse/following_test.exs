@@ -2,7 +2,7 @@ defmodule Feather.Fediverse.FollowingTest do
   use Feather.DataCase
 
   alias Feather.Fediverse
-  alias Feather.Fediverse.{Delivery, FollowedAccount, TimelinePost}
+  alias Feather.Fediverse.{Delivery, FollowedAccount, Following, TimelinePost}
 
   @moduletag :capture_log
 
@@ -150,5 +150,16 @@ defmodule Feather.Fediverse.FollowingTest do
     followed_account_fixture(site, accepted: false)
 
     assert Fediverse.count_following(scope) == 1
+  end
+
+  test "tells whether the site follows one of several accounts, accepted or not", %{site: site} do
+    pending = followed_account_fixture(site, accepted: false).remote_account
+    stranger = remote_account_fixture()
+    other_site = fediverse_scope_fixture(%{domain: "pumbaa.blog", fediverse_name: "pumbaa"}).site
+
+    assert Following.follows_any?(site, [stranger.uri, pending.uri])
+    refute Following.follows_any?(site, [stranger.uri])
+    refute Following.follows_any?(site, [])
+    refute Following.follows_any?(other_site, [pending.uri])
   end
 end
