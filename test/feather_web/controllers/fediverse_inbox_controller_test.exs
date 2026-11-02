@@ -23,6 +23,7 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
   @as "https://www.w3.org/ns/activitystreams"
   @public "https://www.w3.org/ns/activitystreams#Public"
   @account "https://timon.blog/activitypub/timon"
+  @zucker "https://mastodon.example/users/zucker"
 
   setup_all do
     {key, public_key} = remote_key_pair()
@@ -1286,6 +1287,101 @@ defmodule FeatherWeb.FediverseInboxControllerTest do
       assert [%TimelinePost{}] = timeline(c.site)
       assert [%Mention{post_id: post_id}] = mentions(c.site)
       assert post_id == post.id
+    end
+
+    test "files no reply to an account the site does not follow", c do
+      reply = note(c, 1, %{"inReplyTo" => @zucker <> "/statuses/1", "tag" => mention_of(@zucker)})
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert timeline(c.site) == []
+    end
+
+    test "files a reply in the author's own thread", c do
+      reply = note(c, 2, %{"inReplyTo" => c.ana <> "/statuses/1", "tag" => mention_of(c.ana)})
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert [%TimelinePost{}] = timeline(c.site)
+    end
+
+    test "files a reply that names an account the site follows, also one not accepted yet", c do
+      bert = remote_account_fixture()
+      followed_account_fixture(c.site, remote_account: bert, accepted: false)
+
+      reply =
+        note(c, 1, %{
+          "inReplyTo" => @zucker <> "/statuses/1",
+          "tag" => mention_of(@zucker) ++ mention_of(bert.uri)
+        })
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert [%TimelinePost{}] = timeline(c.site)
+    end
+
+    test "files a reply that names the site into the Timeline and Mentions", c do
+      reply =
+        note(c, 1, %{
+          "inReplyTo" => @zucker <> "/statuses/1",
+          "tag" => mention_of(@zucker) ++ mention_of()
+        })
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert [%TimelinePost{}] = timeline(c.site)
+      assert [%Mention{}] = mentions(c.site)
+    end
+
+    test "files a reply that addresses the site among many others or only in its recipients",
+         c do
+      strangers = for n <- 1..25, do: "https://mastodon.example/users/stranger#{n}"
+
+      in_crowd =
+        note(c, 1, %{
+          "inReplyTo" => @zucker <> "/statuses/1",
+          "tag" => Enum.flat_map(strangers, &mention_of/1) ++ mention_of()
+        })
+
+      in_cc =
+        note(c, 2, %{
+          "inReplyTo" => @zucker <> "/statuses/1",
+          "cc" => [@account],
+          "tag" => mention_of(@zucker)
+        })
+
+      assert response(send_activity(c, create(c, in_crowd, 1)), 202)
+      assert response(send_activity(c, create(c, in_cc, 2)), 202)
+      assert [_in_crowd, _in_cc] = timeline(c.site)
+    end
+
+    test "ignores mentions without an https address", c do
+      reply =
+        note(c, 1, %{
+          "inReplyTo" => @zucker <> "/statuses/1",
+          "tag" => mention_of(@zucker) ++ mention_of(123) ++ mention_of(%{"id" => @zucker})
+        })
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert timeline(c.site) == []
+    end
+
+    test "files a post that answers nothing, whoever it mentions", c do
+      post = note(c, 1, %{"tag" => mention_of(@zucker)})
+
+      assert response(send_activity(c, create(c, post, 1)), 202)
+      assert [%TimelinePost{}] = timeline(c.site)
+    end
+
+    test "removes a reply edited to name only accounts the site does not follow", c do
+      bert = remote_account_fixture()
+      followed_account_fixture(c.site, remote_account: bert)
+
+      reply =
+        note(c, 1, %{"inReplyTo" => bert.uri <> "/statuses/1", "tag" => mention_of(bert.uri)})
+
+      assert response(send_activity(c, create(c, reply, 1)), 202)
+      assert [%TimelinePost{}] = timeline(c.site)
+
+      edited = %{reply | "tag" => mention_of(@zucker)}
+      assert response(send_activity(c, activity(c, "Update", edited, 2)), 202)
+      assert timeline(c.site) == []
     end
 
     test "files posts to the author's followers only once the site's follow was accepted", c do
