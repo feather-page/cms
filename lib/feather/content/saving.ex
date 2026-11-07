@@ -52,11 +52,9 @@ defmodule Feather.Content.Saving do
         {:error, :stale} -> %{}
       end
 
-    Repo.transact(fn ->
-      Versions.publish_stored(scope, record,
-        prepare: &Suggestions.put_suggestions(&1, suggestions)
-      )
-    end)
+    Versions.publish_committed(scope, record,
+      prepare: &Suggestions.put_suggestions(&1, suggestions)
+    )
   end
 
   @doc false

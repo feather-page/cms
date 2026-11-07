@@ -46,12 +46,10 @@ defmodule Feather.Content.Backfill do
     if suggestions == %{} do
       :unchanged
     else
-      Repo.transact(fn ->
-        Versions.publish_stored(scope, record,
-          state: :published,
-          prepare: &Suggestions.put_suggestions(&1, suggestions)
-        )
-      end)
+      Versions.publish_committed(scope, record,
+        state: :published,
+        prepare: &Suggestions.put_suggestions(&1, suggestions)
+      )
     end
   end
 end

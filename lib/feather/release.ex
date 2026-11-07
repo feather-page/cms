@@ -110,18 +110,7 @@ defmodule Feather.Release do
   changes, by publishing them again (`Feather.Content.backfill_suggestions/1`).
   Needs `OLLAMA_URL`. Deploy the sites by hand afterwards.
   """
-  def backfill_suggestions do
-    with_app(fn ->
-      {:ok, _} = Application.ensure_all_started(:req)
-
-      if Feather.Ollama.configured?() do
-        Enum.each(Feather.Repo.all(Site), &backfill_site/1)
-      else
-        IO.puts(:stderr, "OLLAMA_URL is not set.")
-        {:error, :not_configured}
-      end
-    end)
-  end
+  def backfill_suggestions, do: each_site_with_model(&backfill_site/1)
 
   defp backfill_site(site) do
     scope = Scope.for_site(site)
@@ -131,6 +120,21 @@ defmodule Feather.Release do
     IO.puts(
       "#{site.domain}: alt texts filled in: #{alt_texts}, records published again: #{republished}"
     )
+  end
+
+  defp each_site_with_model(fun) do
+    with_app(fn ->
+      {:ok, _} = Application.ensure_all_started(:req)
+
+      if Feather.Ollama.configured?(),
+        do: Enum.each(Feather.Repo.all(Site), fun),
+        else: not_configured()
+    end)
+  end
+
+  defp not_configured do
+    IO.puts(:stderr, "OLLAMA_URL is not set.")
+    {:error, :not_configured}
   end
 
   defp with_app(fun) do

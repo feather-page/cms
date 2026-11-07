@@ -199,10 +199,12 @@ defmodule Feather.Ollama do
 
   defp url, do: Application.get_env(:feather, :ollama_url)
 
-  defp model do
-    case Application.get_env(:feather, :ollama_model) do
-      model when model in [nil, ""] -> @default_model
-      model -> model
+  defp model, do: setting(:ollama_model, @default_model)
+
+  defp setting(key, default) do
+    case Application.get_env(:feather, key) do
+      value when value in [nil, ""] -> default
+      value -> value
     end
   end
 end

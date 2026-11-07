@@ -44,6 +44,11 @@ defmodule Feather.Content.Versions do
   def lock_opts, do: @lock_opts
 
   @doc false
+  # publish_stored/3 in its own transaction.
+  def publish_committed(scope, record, opts \\ []),
+    do: Repo.transact(fn -> publish_stored(scope, record, opts) end)
+
+  @doc false
   # Publishes the stored record in the caller's transaction. `state: :unpublished` (the
   # default) publishes a draft or unpublished changes and leaves a published record as it
   # is; `state: :published` publishes a published record again and refuses unpublished
