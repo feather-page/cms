@@ -62,6 +62,10 @@ In a release the same is available through `bin/feather eval`, see `Feather.Rele
 (`migrate/0`, `create_user/2`). `bin/server` migrates and starts the app.
 `Feather.Release.backfill_suggestions/0` fills in the model's alt texts, descriptions and short
 post titles for content from before `OLLAMA_URL` was set; deploy the sites by hand afterwards.
+`Feather.Release.backfill_embeddings/0` reads the published posts without an embedding of the
+configured model, which their related posts need; it publishes nothing again. Run it once after
+upgrading to the release that brings related posts, for posts published before `OLLAMA_URL` was
+set and after changing `OLLAMA_EMBEDDING_MODEL`, then deploy.
 
 ### Environment variables
 
@@ -76,8 +80,9 @@ post titles for content from before `OLLAMA_URL` was set; deploy the sites by ha
 | `CONFIG_ENCRYPTION_KEY` | 32 random bytes, base64; encrypts deployment credentials, archive.org keys and the private keys, mentions, Timeline posts, members' replies and outgoing deliveries of the sites' fediverse accounts (prod, required) | fixed dev/test keys |
 | `UNSPLASH_ACCESS_KEY` | Unsplash API key (optional) | |
 | `HARDCOVER_TOKEN` | Hardcover API key for the book search (optional; without it books are searched on OpenLibrary) | |
-| `OLLAMA_URL` | Base URL of an Ollama instance (e.g. `http://ollama:11434`), which suggests alt texts, descriptions and titles of short posts (optional; without it no suggestions are made) | |
+| `OLLAMA_URL` | Base URL of an Ollama instance (e.g. `http://ollama:11434`), which suggests alt texts, descriptions and titles of short posts and reads posts for their related posts (optional; without it no suggestions are made and posts show no related posts) | |
 | `OLLAMA_MODEL` | The Ollama model that makes the suggestions; it must read images | `gemma4:26b-a4b-it-qat` |
+| `OLLAMA_EMBEDDING_MODEL` | The Ollama model that reads published posts for their related posts; after changing it, run `Feather.Release.backfill_embeddings()` | `embeddinggemma-2:270m` |
 | `FEDIVERSE_PROXY` | URL of an HTTP proxy (e.g. `http://proxy:3128`) that all requests to fediverse servers tunnel through, so they do not learn where the CMS runs (optional); the CMS still checks every address, but the proxy itself must reach only public addresses. Even with the proxy the CMS resolves the servers' names itself, so its DNS should go through a resolver that does not reveal where it runs | |
 | `IMAGE_CLEANUP` | `false` disables the daily deletion of orphaned images | enabled |
 | `SMTP_ADDRESS`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Outgoing mail (prod) | `localhost`, `587` |
