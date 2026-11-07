@@ -7,7 +7,10 @@ defmodule Feather.Ollama do
   The URL comes from `config :feather, :ollama_url` (`OLLAMA_URL`); without
   one nothing is asked and every call returns `{:error, :not_configured}`.
   The model comes from `config :feather, :ollama_model` (`OLLAMA_MODEL`),
-  by default Gemma 4 26B, which must read images.
+  by default Gemma 4 26B, which must read images. Embeddings
+  (`embedding/1`, `POST /api/embed`) come from `config :feather,
+  :ollama_embedding_model` (`OLLAMA_EMBEDDING_MODEL`), by default
+  EmbeddingGemma 2.
   Tests stub the requests with `Req.Test` (`config :feather,
   :ollama_req_options, plug: {Req.Test, Feather.Ollama}`).
   """
@@ -17,6 +20,7 @@ defmodule Feather.Ollama do
   require Logger
 
   @default_model "gemma4:26b-a4b-it-qat"
+  @default_embedding_model "embeddinggemma-2:270m"
   @timeout 90_000
   @max_alt_length 250
   @max_description_length 300
@@ -170,6 +174,42 @@ defmodule Feather.Ollama do
       {:error, :not_configured}
     end
   end
+
+  @doc """
+  The embedding of a text by the embedding model: a vector of numbers,
+  L2-normalised. Ollama cuts a text longer than the model's window.
+  """
+  @spec embedding(String.t()) :: {:ok, [number()]} | {:error, term()}
+  def embedding(text) when is_binary(text) do
+    if configured?() do
+      req()
+      |> Req.post(
+        url: "/api/embed",
+        json: %{model: embedding_model(), input: [text], truncate: true}
+      )
+      |> decode_embedding()
+    else
+      {:error, :not_configured}
+    end
+  end
+
+  @doc "The name of the embedding model `embedding/1` asks."
+  @spec embedding_model() :: String.t()
+  def embedding_model, do: setting(:ollama_embedding_model, @default_embedding_model)
+
+  defp decode_embedding(
+         {:ok, %Req.Response{status: 200, body: %{"embeddings" => [vector]} = body}}
+       ) do
+    if vector?(vector), do: {:ok, vector}, else: log_failure({:invalid_answer, body})
+  end
+
+  defp decode_embedding({:ok, %Req.Response{status: 200} = response}),
+    do: log_failure({:invalid_answer, response.body})
+
+  defp decode_embedding({:ok, %Req.Response{status: status}}), do: log_failure({:status, status})
+  defp decode_embedding({:error, exception}), do: log_failure(exception)
+
+  defp vector?(vector), do: is_list(vector) and vector != [] and Enum.all?(vector, &is_number/1)
 
   defp trimmed(text, max_length), do: text |> String.trim() |> String.slice(0, max_length)
 

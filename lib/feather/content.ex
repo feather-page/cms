@@ -35,7 +35,7 @@ defmodule Feather.Content do
 
   alias Feather.Accounts.Scope
   alias Feather.Books
-  alias Feather.Content.{Backfill, Blocks, Page, Pages, Post, Posts, Project, Projects}
+  alias Feather.Content.{Backfill, Blocks, Embedding, Page, Pages, Post, Posts, Project, Projects}
   alias Feather.Content.{ProseMirror, Saving, Slug, Suggestions, Sync, Tags, Versions}
   alias Feather.Repo
   alias Feather.Sites.Site
@@ -92,6 +92,7 @@ defmodule Feather.Content do
   defdelegate publish(scope, record), to: Saving
   defdelegate unpublish(scope, record), to: Versions
   defdelegate backfill_suggestions(scope), to: Backfill
+  defdelegate backfill_embeddings(scope), to: Embedding, as: :backfill
   defdelegate suggest_description(scope, record), to: Suggestions
   defdelegate put_suggested_description(scope, record, description), to: Suggestions
   defdelegate published_slug?(scope, schema, slug, except_id \\ nil), to: Versions

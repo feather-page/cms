@@ -40,7 +40,9 @@ defmodule Feather.Content.Saving do
   where `Feather.Content.Description.needed?/2` says so, and a short
   post's meta title and slug where `Feather.Content.ShortPost.needed?/2`
   does, outside the transaction, since that can take up to 90 seconds.
-  Without an answer it is published as it is.
+  Without an answer it is published as it is. After a post is published,
+  the embedding model reads its published version in the background
+  (`Feather.Content.Embedding.start/1`).
   """
   @spec publish(Scope.t(), record) :: {:ok, record} | {:error, :stale | :slug_taken}
         when record: Post.t() | Page.t() | Project.t()

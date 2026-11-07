@@ -5,7 +5,8 @@ defmodule Feather.ContentFixtures do
   The records are published (version 1) unless `draft: true` is given.
   """
 
-  alias Feather.Content
+  alias Feather.{Content, Ollama, Repo}
+  alias Feather.Content.{Embedding, PostVersion}
 
   def unique_slug(prefix \\ "item"), do: "/#{prefix}-#{System.unique_integer([:positive])}"
 
@@ -58,6 +59,22 @@ defmodule Feather.ContentFixtures do
       )
 
     publish_unless_draft(scope, project, draft)
+  end
+
+  @doc """
+  Stores `vector`, scaled to length 1 as Ollama returns it, as the
+  embedding of the post's published version, by default of the configured
+  model.
+  """
+  def put_embedding(post, vector, model \\ Ollama.embedding_model()) do
+    length = :math.sqrt(Enum.reduce(vector, 0.0, &(&1 * &1 + &2)))
+
+    :ok =
+      PostVersion
+      |> Repo.get!(post.published_version_id)
+      |> Embedding.store(Enum.map(vector, &(&1 / length)), model)
+
+    post
   end
 
   defp pop_draft(attrs), do: attrs |> Map.new() |> Map.pop(:draft, false)
