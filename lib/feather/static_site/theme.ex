@@ -49,8 +49,11 @@ defmodule Feather.StaticSite.Theme do
   and each view its own:
 
     * `c:home/1` - `posts`, `current_page`, `total_pages`
-    * `c:post/1` - `post`, `newer_post`, `older_post`, `replies` (the
-      approved replies to it, oldest first, see
+    * `c:post/1` - `post`, `newer_post`, `older_post`, `related_posts`
+      (`Feather.StaticSite.SiteData.related_posts/2`, listed first in
+      the post navigation, left out when empty; label every link there
+      with `ThemeHelpers.post_nav_label/2`),
+      `replies` (the approved replies to it, oldest first, see
       `Feather.Fediverse.Mentions`, each with the members' public replies
       to it in `member_replies`, shown below it and marked as by the
       author) and `reply_handle` (the site's fediverse handle, nil without

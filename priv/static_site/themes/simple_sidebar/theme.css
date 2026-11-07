@@ -886,8 +886,10 @@ th {
 }
 
 .post-nav {
+  --emoji-col: 1.5rem;
+  --emoji-gap: 0.4rem;
   display: grid;
-  gap: 1.125rem;
+  gap: 1.5rem;
   margin-top: var(--section);
   padding-top: 1.5rem;
   border-top: 1px solid var(--rule);
@@ -905,12 +907,48 @@ th {
   font-weight: 600;
 }
 
+.post-nav-label,
+.post-nav-all {
+  padding-left: calc(var(--emoji-col) + var(--emoji-gap));
+}
+
 .post-nav-label {
   display: block;
 }
 
-.link-emoji {
-  margin-right: 0.35em;
+.post-nav-list {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-nav-link {
+  display: inline-grid;
+  grid-template-columns: var(--emoji-col) minmax(0, 1fr);
+  column-gap: var(--emoji-gap);
+  align-items: baseline;
+}
+
+.post-nav-emoji {
+  text-align: center;
+}
+
+.post-nav .post-nav-link:is(:hover, :focus-visible) {
+  text-decoration-line: none;
+}
+
+.post-nav-link:is(:hover, :focus-visible) .post-nav-text {
+  text-decoration: underline 2px var(--signal);
+}
+
+.post-nav-year {
+  margin-left: 0.15em;
+  color: var(--quiet);
+  font-size: var(--body-sm);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 .books-year {

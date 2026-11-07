@@ -730,10 +730,12 @@ hr {
 }
 
 .post-nav {
+  --emoji-col: 1.5rem;
+  --emoji-gap: 0.4rem;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1rem 1.25rem;
-  align-items: center;
+  align-items: start;
   margin-top: 3.5rem;
   padding-top: 2rem;
   border-top: 2px dotted var(--divider);
@@ -748,10 +750,6 @@ hr {
 
 :is(.post-nav, .not-found):has(> :is(.post-nav-mascot, .post-nav-seal, .not-found-mascot, .not-found-seal)) {
   grid-template-columns: auto minmax(0, 1fr);
-}
-
-.post-nav > :is(.post-nav-mascot, .post-nav-seal) {
-  grid-row: span 3;
 }
 
 .not-found > :is(.not-found-mascot, .not-found-seal) {
@@ -793,23 +791,48 @@ hr {
 }
 
 @media (max-width: 30rem) {
-  :is(.post-nav, .not-found) > :is(.post-nav-mascot, .post-nav-seal, .not-found-mascot, .not-found-seal) {
+  .not-found > :is(.not-found-mascot, .not-found-seal) {
     align-self: start;
   }
 
-  :is(.post-nav-mascot, .not-found-mascot) {
+  .post-nav:has(> :is(.post-nav-mascot, .post-nav-seal)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .not-found-mascot {
     height: 6.25rem;
   }
 
-  :is(.post-nav-seal, .not-found-seal) {
+  .not-found-seal {
     inline-size: 4.25rem;
     block-size: 4.25rem;
     font-size: 2.1rem;
+  }
+
+  .post-nav > .post-nav-mascot {
+    justify-self: start;
+    height: 4.5rem;
+  }
+
+  .post-nav > .post-nav-seal {
+    inline-size: 3rem;
+    block-size: 3rem;
+    font-size: 1.5rem;
   }
 }
 
 .post-nav p {
   margin: 0;
+}
+
+.post-nav-links {
+  display: grid;
+  gap: 1.375rem;
+}
+
+.post-nav-label,
+.post-nav-all {
+  padding-left: calc(var(--emoji-col) + var(--emoji-gap));
 }
 
 .post-nav-label {
@@ -818,8 +841,44 @@ hr {
   color: var(--muted);
 }
 
-:is(.post-nav-newer, .post-nav-older) a {
+.post-nav-list {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.post-nav-link {
+  display: inline-grid;
+  grid-template-columns: var(--emoji-col) minmax(0, 1fr);
+  column-gap: var(--emoji-gap);
+  align-items: baseline;
   font-weight: 500;
+  text-decoration: none;
+}
+
+.post-nav-emoji {
+  text-align: center;
+}
+
+.post-nav-text {
+  text-decoration: underline;
+  text-decoration-color: var(--decoration);
+  text-decoration-thickness: 0.09em;
+}
+
+.post-nav-link:is(:hover, :focus-visible) .post-nav-text {
+  text-decoration-color: var(--accent-ink);
+  text-decoration-thickness: 0.15em;
+}
+
+.post-nav-year {
+  margin-left: 0.15em;
+  color: var(--muted);
+  font-size: 0.875em;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
 }
 
 .post-shortBody {

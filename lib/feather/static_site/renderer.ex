@@ -117,6 +117,7 @@ defmodule Feather.StaticSite.Renderer do
       header_image: post.header_image,
       newer_post: newer,
       older_post: older,
+      related_posts: SiteData.related_posts(data, post),
       replies: Map.get(data.replies, post.id, []),
       reply_handle: Fediverse.handle(data.site)
     })

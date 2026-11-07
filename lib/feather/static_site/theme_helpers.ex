@@ -483,6 +483,30 @@ defmodule Feather.StaticSite.ThemeHelpers do
     {:safe, [mark, escape(text)]}
   end
 
+  @doc """
+  A post as the post navigation links it: its emoji in a column of its
+  own, empty without one, beside its title or a short post's meta title
+  (`post_meta_title/1`); with `year: true` its publish year after that.
+  """
+  @spec post_nav_label(Content.Post.t(), keyword()) :: Phoenix.HTML.safe()
+  def post_nav_label(post, opts \\ []) do
+    year =
+      if opts[:year],
+        do: [~s(&nbsp;<span class="post-nav-year">), to_string(post.publish_at.year), "</span>"],
+        else: []
+
+    {:safe,
+     [
+       ~s(<span class="post-nav-emoji" aria-hidden="true">),
+       if(present?(post.emoji), do: escape(post.emoji), else: []),
+       ~s(</span><span class="post-nav-title"><span class="post-nav-text">),
+       escape(post_meta_title(post)),
+       "</span>",
+       year,
+       "</span>"
+     ]}
+  end
+
   @description_length 155
 
   @doc """
@@ -527,9 +551,9 @@ defmodule Feather.StaticSite.ThemeHelpers do
   end
 
   @doc """
-  What the document title, `og:title`, the Markdown alternates and
-  `llms.txt` name a post by: a short post's meta title, else its label
-  (`post_label/1`).
+  What the document title, `og:title`, the Markdown alternates,
+  `llms.txt` and the post navigation name a post by: a short post's meta
+  title, else its label (`post_label/1`).
   """
   @spec post_meta_title(Content.Post.t()) :: String.t()
   def post_meta_title(post) do
