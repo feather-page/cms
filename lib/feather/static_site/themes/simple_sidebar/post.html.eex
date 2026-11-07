@@ -16,16 +16,26 @@
 <%= if @reply_handle do %><%= replies(%{replies: @replies, handle: @reply_handle, routes: @routes, site: @site}) %><% end %>
 
 <nav class="post-nav" aria-label="<%= gettext("More posts") %>">
+  <%= if @related_posts != [] do %>
+  <div class="post-nav-related">
+    <span class="post-nav-label" id="related-posts-label"><%= gettext("Related posts") %></span>
+    <ul class="post-nav-list" id="related-posts" aria-labelledby="related-posts-label">
+      <%= for related <- @related_posts do %>
+      <li><a class="post-nav-link" href="<%= Routes.post_url(@routes, related) %>"><%= post_nav_label(related, year: true) %></a></li>
+      <% end %>
+    </ul>
+  </div>
+  <% end %>
   <%= if @newer_post do %>
   <p class="post-nav-newer">
     <span class="post-nav-label"><%= gettext("Newer post") %></span>
-    <a href="<%= Routes.post_url(@routes, @newer_post) %>"><%= emoji_label(@newer_post.emoji, post_label(@newer_post)) %></a>
+    <a class="post-nav-link" href="<%= Routes.post_url(@routes, @newer_post) %>"><%= post_nav_label(@newer_post) %></a>
   </p>
   <% end %>
   <%= if @older_post do %>
   <p class="post-nav-older">
     <span class="post-nav-label"><%= gettext("Older post") %></span>
-    <a href="<%= Routes.post_url(@routes, @older_post) %>"><%= emoji_label(@older_post.emoji, post_label(@older_post)) %></a>
+    <a class="post-nav-link" href="<%= Routes.post_url(@routes, @older_post) %>"><%= post_nav_label(@older_post) %></a>
   </p>
   <% end %>
   <p class="post-nav-all"><a href="<%= Routes.home_url(@routes) %>#posts"><%= gettext("All posts") %></a></p>

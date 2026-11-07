@@ -12,7 +12,8 @@ defmodule Feather.Content.Versions do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.Content.{Page, PageVersion, Post, PostVersion, Project, ProjectVersion, Slug}
+  alias Feather.Content.{Embedding, Page, PageVersion, Post, PostVersion, Project, ProjectVersion}
+  alias Feather.Content.Slug
   alias Feather.Redirects
   alias Feather.Repo
   alias Feather.Sites
@@ -42,6 +43,14 @@ defmodule Feather.Content.Versions do
 
   @doc false
   def lock_opts, do: @lock_opts
+
+  @doc false
+  # publish_stored/3 in its own transaction; after the commit the model reads a post's new version.
+  def publish_committed(scope, record, opts \\ []) do
+    result = Repo.transact(fn -> publish_stored(scope, record, opts) end)
+    with {:ok, %Post{} = post} <- result, do: Embedding.start(post)
+    result
+  end
 
   @doc false
   # Publishes the stored record in the caller's transaction. `state: :unpublished` (the

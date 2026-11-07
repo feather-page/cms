@@ -10,12 +10,13 @@ defmodule Feather.StaticSite.SiteData do
   import Ecto.Query, warn: false
 
   alias Feather.Accounts.Scope
-  alias Feather.{Books, Content, Diagrams, Fediverse, Highlighting, Media, Redirects, Sites}
+  alias Feather.{Books, Content, Diagrams, Fediverse, Highlighting, Media, Ollama, Redirects}
   alias Feather.Books.Book
-  alias Feather.Content.{Blocks, Page, Post, Project}
+  alias Feather.Content.{Blocks, Page, Post, Project, RelatedPosts}
   alias Feather.Media.Image
   alias Feather.Redirects.Redirect
   alias Feather.Repo
+  alias Feather.Sites
   alias Feather.Sites.{NavigationItem, Site, SocialMediaLink}
   alias Feather.StaticSite.Themes
 
@@ -26,6 +27,7 @@ defmodule Feather.StaticSite.SiteData do
     follower_count: 0,
     following_count: 0,
     posts: [],
+    related: nil,
     replies: %{},
     member_replies: [],
     pages: [],
@@ -46,6 +48,7 @@ defmodule Feather.StaticSite.SiteData do
           follower_count: non_neg_integer(),
           following_count: non_neg_integer(),
           posts: [Post.t()],
+          related: %{Ecto.UUID.t() => [Ecto.UUID.t()]} | nil,
           replies: %{Ecto.UUID.t() => [Feather.Fediverse.Mention.t()]},
           member_replies: [Feather.Fediverse.MemberReply.t()],
           pages: [Page.t()],
@@ -64,10 +67,15 @@ defmodule Feather.StaticSite.SiteData do
   @project_preloads [:header_image, :thumbnail_image]
   @book_preloads [:cover_image]
 
+  @related_count 3
+  # Enough to still show three after leaving out the newer and the older post.
+  @ranked_count @related_count + 2
+
   @doc """
   Loads the data of a site. `posts` are the posts whose `publish_at` has
-  passed, newest first; `pages` are all pages, the homepage included; a
-  book's `post` is its review among `posts`, nil if it is none of them; the
+  passed, newest first; `related` is nil until `put_related_posts/1`;
+  `pages` are all pages, the homepage included; a book's `post` is its
+  review among `posts`, nil if it is none of them; the
   navigation leaves out pages that are not among them; `now` is the time
   the site is exported at; `follower_count` counts the followers of the
   site's fediverse account, `following_count` the accounts that accepted
@@ -241,6 +249,43 @@ defmodule Feather.StaticSite.SiteData do
       index -> {Enum.at(posts, index - 1), Enum.at(posts, index + 1)}
     end
   end
+
+  @doc """
+  Ranks all posts once (`Feather.Content.RelatedPosts.all/3`) and keeps
+  the ids of each post's best related posts in `related`, for an export
+  that renders every post. The vectors themselves stay out of the data,
+  which every render job gets a copy of.
+  """
+  @spec put_related_posts(t()) :: t()
+  def put_related_posts(%__MODULE__{posts: posts} = data),
+    do: %{data | related: RelatedPosts.all(posts, Ollama.embedding_model(), @ranked_count)}
+
+  @doc """
+  Up to three related posts of a post among the posts, best first, by the
+  published versions (`Feather.Content.RelatedPosts`). The preview ranks
+  the same versions among the posts it shows, so drafts and changed
+  publish dates can change its list. Its newer and older post (`neighbours/2`),
+  which the post navigation shows anyway, are left out. Without
+  `put_related_posts/1` it ranks just this post. None for a draft, a post
+  without an embedding and posts not in the list.
+  """
+  @spec related_posts(t(), Post.t()) :: [Post.t()]
+  def related_posts(%__MODULE__{posts: posts} = data, %Post{} = post) do
+    posts_by_id = Map.new(posts, &{&1.id, &1})
+    {newer, older} = neighbours(data, post)
+    shown = for %Post{id: id} <- [newer, older], do: id
+
+    data
+    |> ranked_ids(post)
+    |> Enum.reject(&(&1 in shown))
+    |> Enum.take(@related_count)
+    |> Enum.map(&Map.fetch!(posts_by_id, &1))
+  end
+
+  defp ranked_ids(%__MODULE__{related: nil, posts: posts}, post),
+    do: RelatedPosts.of(posts, post, Ollama.embedding_model(), @ranked_count)
+
+  defp ranked_ids(%__MODULE__{related: related}, %Post{id: id}), do: Map.get(related, id, [])
 
   @doc """
   The images the exported site uses, without duplicates: the images

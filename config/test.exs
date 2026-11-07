@@ -24,6 +24,8 @@ config :feather,
   backfill_image_variants: false,
   image_variant_sync: :inline,
   alt_text_suggestions: :inline,
+  # Publishing reads no post for its related posts unless a test asks for it (:inline).
+  post_embeddings: false,
   fediverse_deliveries: :inline,
   fediverse_inbox: :inline,
   # Deploys tell IndexNow and archive.org nothing unless a test asks for it.

@@ -5,6 +5,7 @@ defmodule Feather.Release do
       bin/feather eval "Feather.Release.migrate()"
       bin/feather eval 'Feather.Release.create_user("me@example.com", true)'
       bin/feather eval "Feather.Release.backfill_suggestions()"
+      bin/feather eval "Feather.Release.backfill_embeddings()"
 
   `bin/migrate` and `bin/server` (in `rel/overlays/bin`) wrap the first.
   """
@@ -107,21 +108,11 @@ defmodule Feather.Release do
   existed, site by site: the alt texts of all images
   (`Feather.Media.backfill_alt_texts/1`), and descriptions and short
   posts' meta titles and slugs of published records without unpublished
-  changes, by publishing them again (`Feather.Content.backfill_suggestions/1`).
-  Needs `OLLAMA_URL`. Deploy the sites by hand afterwards.
+  changes, by publishing them again (`Feather.Content.backfill_suggestions/1`);
+  the embedding model reads the posts published again right away. Needs
+  `OLLAMA_URL`. Deploy the sites by hand afterwards.
   """
-  def backfill_suggestions do
-    with_app(fn ->
-      {:ok, _} = Application.ensure_all_started(:req)
-
-      if Feather.Ollama.configured?() do
-        Enum.each(Feather.Repo.all(Site), &backfill_site/1)
-      else
-        IO.puts(:stderr, "OLLAMA_URL is not set.")
-        {:error, :not_configured}
-      end
-    end)
-  end
+  def backfill_suggestions, do: each_site_with_model(&backfill_site/1)
 
   defp backfill_site(site) do
     scope = Scope.for_site(site)
@@ -131,6 +122,51 @@ defmodule Feather.Release do
     IO.puts(
       "#{site.domain}: alt texts filled in: #{alt_texts}, records published again: #{republished}"
     )
+  end
+
+  @doc """
+  Reads the published posts of every site that no embedding of the
+  configured model was stored for (`Feather.Content.backfill_embeddings/1`),
+  after a change of the model and for posts published before embeddings
+  existed. Publishes nothing again. Needs `OLLAMA_URL`. Deploy the sites
+  by hand afterwards.
+  """
+  def backfill_embeddings, do: each_site_with_model(&backfill_embeddings_of/1)
+
+  defp backfill_embeddings_of(site) do
+    read = site |> Scope.for_site() |> Feather.Content.backfill_embeddings()
+    IO.puts("#{site.domain}: posts read: #{read}")
+  end
+
+  defp each_site_with_model(fun) do
+    with_app(fn ->
+      {:ok, _} = Application.ensure_all_started(:req)
+
+      if Feather.Ollama.configured?(), do: each_site_reading_inline(fun), else: not_configured()
+    end)
+  end
+
+  defp each_site_reading_inline(fun),
+    do: reading_inline(fn -> Enum.each(Feather.Repo.all(Site), fun) end)
+
+  defp not_configured do
+    IO.puts(:stderr, "OLLAMA_URL is not set.")
+    {:error, :not_configured}
+  end
+
+  # eval starts no task supervisor and would end before background readings.
+  defp reading_inline(fun) do
+    previous = Application.fetch_env(:feather, :post_embeddings)
+    Application.put_env(:feather, :post_embeddings, :inline)
+
+    try do
+      fun.()
+    after
+      case previous do
+        {:ok, mode} -> Application.put_env(:feather, :post_embeddings, mode)
+        :error -> Application.delete_env(:feather, :post_embeddings)
+      end
+    end
   end
 
   defp with_app(fun) do

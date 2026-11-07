@@ -40,9 +40,9 @@ msgid "%{start} – %{finish}"
 msgstr "%{start} – %{finish}"
 
 #: lib/feather/static_site/themes/feather_page/not_found.html.eex:12
-#: lib/feather/static_site/themes/feather_page/post.html.eex:29
+#: lib/feather/static_site/themes/feather_page/post.html.eex:40
 #: lib/feather/static_site/themes/simple_sidebar/not_found.html.eex:5
-#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:31
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:41
 #, elixir-autogen, elixir-format
 msgid "All posts"
 msgstr "Alle Beiträge"
@@ -52,7 +52,7 @@ msgstr "Alle Beiträge"
 msgid "Breadcrumb"
 msgstr "Brotkrümelnavigation"
 
-#: lib/feather/static_site/blocks.ex:229
+#: lib/feather/static_site/blocks.ex:235
 #: lib/feather/static_site/markdown_alternate.ex:371
 #, elixir-autogen, elixir-format
 msgid "Embedded content"
@@ -76,8 +76,8 @@ msgstr "Links"
 msgid "More posts"
 msgstr "Weitere Beiträge"
 
-#: lib/feather/static_site/themes/feather_page/post.html.eex:19
-#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:21
+#: lib/feather/static_site/themes/feather_page/post.html.eex:30
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:31
 #, elixir-autogen, elixir-format
 msgid "Newer post"
 msgstr "Neuerer Beitrag"
@@ -88,8 +88,8 @@ msgstr "Neuerer Beitrag"
 msgid "Next page"
 msgstr "Nächste Seite"
 
-#: lib/feather/static_site/themes/feather_page/post.html.eex:25
-#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:27
+#: lib/feather/static_site/themes/feather_page/post.html.eex:36
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:37
 #, elixir-autogen, elixir-format
 msgid "Older post"
 msgstr "Älterer Beitrag"
@@ -99,7 +99,7 @@ msgstr "Älterer Beitrag"
 msgid "Page %{number}"
 msgstr "Seite %{number}"
 
-#: lib/feather/static_site/renderer.ex:264
+#: lib/feather/static_site/renderer.ex:271
 #, elixir-autogen, elixir-format
 msgid "Page not found"
 msgstr "Seite nicht gefunden"
@@ -438,7 +438,7 @@ msgid_plural "%{count} books"
 msgstr[0] "%{count} Buch"
 msgstr[1] "%{count} Bücher"
 
-#: lib/feather/static_site/blocks.ex:234
+#: lib/feather/static_site/blocks.ex:240
 #, elixir-autogen, elixir-format
 msgid "Diagram"
 msgstr "Diagramm"
@@ -464,3 +464,9 @@ msgstr "Antworten aus dem Fediverse: %{handle} folgen oder die Adresse dieses Be
 #, elixir-autogen, elixir-format
 msgid "Author"
 msgstr "Autor"
+
+#: lib/feather/static_site/themes/feather_page/post.html.eex:20
+#: lib/feather/static_site/themes/simple_sidebar/post.html.eex:21
+#, elixir-autogen, elixir-format
+msgid "Related posts"
+msgstr "Ähnliche Beiträge"

@@ -147,11 +147,19 @@ _Avoid_: Summary, Excerpt, Teaser, Bio
 
 **Short Post** · _de:_ Kurzbeitrag:
 A post without a title. The site and the CMS's post list show it untitled; its meta title names it in the page title, in
-link previews, in the feeds and in its Markdown alternate. At its first publish, when it has no slug, the self-hosted
+link previews, in the feeds, in its Markdown alternate and in the post navigation of other posts. At its first publish, when it has no slug, the self-hosted
 model writes a slug and, unless a member typed one, the meta title in the site's language; afterwards the slug stays.
 While its text is shorter than 300 characters the form hides the title field. A review without a title is a short post
 too.
 _Avoid_: Note, Untitled Post, Micropost
+
+**Related Post** · _de:_ ähnlicher Beitrag:
+One of up to three other posts of the same site, closest in content, that a post lists first in its post navigation,
+above its newer and older post, which never count among them. The self-hosted embedding model reads each post's
+published version after it is published, unless it has no text; the static export and the preview compare what it read
+and give tags a small bonus while few posts carry them. A post the model has not read, a draft included, shows none and
+is shown by none. Members neither choose nor set them.
+_Avoid_: Similar Post, Recommendation, See Also
 
 **Markdown Alternate** · _de:_ Markdown-Fassung:
 The home page, a post, page or project as Markdown, without the theme's markup: front matter with its title (a short

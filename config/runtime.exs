@@ -25,6 +25,10 @@ if config_env() != :test do
     config :feather, :ollama_model, ollama_model
   end
 
+  if ollama_embedding_model = System.get_env("OLLAMA_EMBEDDING_MODEL") do
+    config :feather, :ollama_embedding_model, ollama_embedding_model
+  end
+
   case System.get_env("FEDIVERSE_PROXY", "") do
     "" ->
       :ok

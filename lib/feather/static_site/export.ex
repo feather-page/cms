@@ -51,7 +51,12 @@ defmodule Feather.StaticSite.Export do
   """
   @spec run(Site.t(), Routes.t(), Sink.t(), keyword()) :: :ok
   def run(%Site{} = site, %Routes{} = routes, sink, opts \\ []) do
-    data = site |> SiteData.load(Keyword.take(opts, [:now])) |> SiteData.prerender()
+    data =
+      site
+      |> SiteData.load(Keyword.take(opts, [:now]))
+      |> SiteData.prerender()
+      |> SiteData.put_related_posts()
+
     redirects = SiteData.redirects(data)
     documents = documents(data)
 

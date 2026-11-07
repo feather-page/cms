@@ -1,6 +1,7 @@
 defmodule Feather.StaticSite.ThemeHelpersTest do
   use ExUnit.Case, async: true
 
+  alias Feather.Content.Post
   alias Feather.Media.Image
   alias Feather.Sites.Site
   alias Feather.StaticSite.{Routes, ThemeHelpers}
@@ -90,6 +91,23 @@ defmodule Feather.StaticSite.ThemeHelpersTest do
     test "is the text alone without an emoji" do
       assert html(ThemeHelpers.emoji_label(nil, "Plain", "title-emoji")) == "Plain"
       assert html(ThemeHelpers.emoji_label(" ", "Plain")) == "Plain"
+    end
+  end
+
+  describe "post_nav_label/2" do
+    test "escapes the emoji, the title and a short post's meta title" do
+      titled = %Post{title: "Ride & <run>", emoji: "<b>", publish_at: ~U[2025-03-01 12:00:00Z]}
+
+      assert html(ThemeHelpers.post_nav_label(titled, year: true)) ==
+               ~s(<span class="post-nav-emoji" aria-hidden="true">&lt;b&gt;</span>) <>
+                 ~s(<span class="post-nav-title"><span class="post-nav-text">Ride &amp; &lt;run&gt;</span>) <>
+                 ~s(&nbsp;<span class="post-nav-year">2025</span></span>)
+
+      short = %Post{title: nil, meta_title: "Ride & <run>", publish_at: ~U[2025-03-01 12:00:00Z]}
+
+      assert html(ThemeHelpers.post_nav_label(short)) ==
+               ~s(<span class="post-nav-emoji" aria-hidden="true"></span>) <>
+                 ~s(<span class="post-nav-title"><span class="post-nav-text">Ride &amp; &lt;run&gt;</span></span>)
     end
   end
 end

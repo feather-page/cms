@@ -1,6 +1,9 @@
 defmodule Feather.Content.PostVersion do
   @moduledoc """
   A published state of a post, see `Feather.Content.publish/2`.
+
+  `embedding` and `embedding_model` hold what the embedding model read in
+  it (`Feather.Content.Embedding`); they are not copied from the post.
   """
   use Feather.Schema
 
@@ -34,6 +37,8 @@ defmodule Feather.Content.PostVersion do
     field :description, :string
     field :description_generated, :boolean, default: false
     field :meta_title, :string
+    field :embedding, :binary
+    field :embedding_model, :string
 
     belongs_to :post, Feather.Content.Post
     belongs_to :published_by, Feather.Accounts.User
